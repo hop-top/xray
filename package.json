@@ -1,0 +1,57 @@
+{
+  "name": "repomap-ts",
+  "version": "1.0.0",
+  "description": "A TypeScript Re-Implementation of Aider-Style Repository Mapping",
+  "main": "dist/index.js",
+  "bin": {
+    "repomap": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc && cp -r src/parser/queries dist/parser/",
+    "start": "node dist/cli.js",
+    "dev": "ts-node src/cli.ts",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "@ganezdragon/tree-sitter-perl": "^1.1.1",
+    "better-sqlite3": "^11.0.0",
+    "chalk": "^4.1.2",
+    "commander": "^11.0.0",
+    "glob": "^10.3.10",
+    "graphology": "^0.25.4",
+    "graphology-metrics": "^2.2.0",
+    "ignore": "^5.3.0",
+    "tree-sitter": "^0.21.0",
+    "tree-sitter-bash": "^0.25.0",
+    "tree-sitter-c": "^0.21.4",
+    "tree-sitter-c-sharp": "^0.21.3",
+    "tree-sitter-cpp": "^0.21.0",
+    "tree-sitter-dart": "^1.0.0",
+    "tree-sitter-elixir": "^0.3.4",
+    "tree-sitter-go": "^0.21.2",
+    "tree-sitter-haskell": "^0.23.1",
+    "tree-sitter-java": "^0.21.0",
+    "tree-sitter-javascript": "^0.21.4",
+    "tree-sitter-kotlin": "^0.3.8",
+    "tree-sitter-lua": "^2.1.3",
+    "tree-sitter-php": "^0.21.1",
+    "tree-sitter-python": "^0.21.0",
+    "tree-sitter-r": "^0.0.1-security",
+    "tree-sitter-ruby": "^0.21.0",
+    "tree-sitter-rust": "^0.21.0",
+    "tree-sitter-scala": "^0.24.0",
+    "tree-sitter-swift": "^0.7.1",
+    "tree-sitter-typescript": "^0.21.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/glob": "^8.1.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.10.0",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2"
+  }
+}

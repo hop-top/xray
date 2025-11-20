@@ -1,0 +1,246 @@
+import * as path from 'path';
+import Parser from 'tree-sitter';
+import { getLanguageConfig } from './language-registry';
+import { Tag, Import } from './types';
+
+export class ParserManager {
+  private root: string;
+
+  constructor(root: string) {
+    this.root = root;
+  }
+
+  async parse(relPath: string, content: string, includeVariables: boolean = false, docConfig: string = 'none'): Promise<{ tags: Tag[], imports: Import[] }> {
+    // Validate docConfig
+    if (docConfig && docConfig !== 'none' && docConfig !== 'all') {
+      const validKinds = ['class', 'interface', 'type', 'enum', 'function', 'method', 'const', 'field'];
+      const allowed = docConfig.split(',').map(s => s.trim());
+      for (const k of allowed) {
+        if (!validKinds.includes(k)) {
+          throw new Error(`Invalid doc config: '${k}'. Valid options are: all, none, ${validKinds.join(', ')}`);
+        }
+      }
+    }
+
+    const ext = path.extname(relPath);
+    const langConfig = getLanguageConfig(ext);
+
+    if (!langConfig) {
+      return { tags: [], imports: [] };
+    }
+
+    const parser = new Parser();
+    parser.setLanguage(langConfig.grammar);
+
+    const tree = parser.parse(content);
+
+    const tags = this.extractTags(tree, langConfig.grammar, langConfig.tagsQuery, relPath, content, includeVariables, docConfig);
+    // Note: Import extraction logic would go here similarly using refsQuery
+    // For this MVP, we focus on Definitions (Tags)
+    const imports: Import[] = [];
+
+    return { tags, imports };
+  }
+
+  private extractTags(tree: Parser.Tree, language: any, queryStr: string, file: string, content: string, includeVariables: boolean, docConfig: string): Tag[] {
+    const tags: Tag[] = [];
+    if (!queryStr) {
+      return tags;
+    }
+
+    try {
+      // In tree-sitter v0.21.0+, use new Parser.Query(language, queryString)
+      const query = new Parser.Query(language, queryStr);
+      const captures = query.captures(tree.rootNode);
+
+      // Track seen names to avoid duplicates (e.g., arrow functions matched as both function and variable)
+      const seen = new Set<string>();
+
+      for (const capture of captures) {
+        if (capture.name.startsWith('name.definition')) {
+          const node = capture.node;
+          const tagName = node.text;
+
+          // Heuristic: Determine kind based on capture name or parent
+          let kind = 'def';
+          if (capture.name.includes('class')) kind = 'class';
+          if (capture.name.includes('interface')) kind = 'interface';
+          if (capture.name.includes('type')) kind = 'type';
+          if (capture.name.includes('enum')) kind = 'enum';
+          if (capture.name.includes('function')) kind = 'function';
+          if (capture.name.includes('method')) kind = 'method';
+          if (capture.name.includes('variable')) kind = 'const';
+          if (capture.name.includes('field')) kind = 'field';
+
+          // Skip if we've already seen this name (prefer function over variable for arrow functions)
+          const tagKey = `${file}::${tagName}`;
+          if (seen.has(tagKey)) continue;
+          seen.add(tagKey);
+
+          // Filter out local variables if includeVariables is false
+          if (!includeVariables && kind === 'const') {
+            // Check if this variable is inside a function/method (local variable)
+            if (this.isLocalVariable(node)) {
+              continue;
+            }
+          }
+
+          // Extract signature for functions/methods
+          let signature: string | undefined;
+          if (kind === 'function' || kind === 'method') {
+            signature = this.extractSignature(node, content);
+          }
+
+          // Extract Docstring
+          let doc: string | undefined;
+          // console.log('Processing tag:', tagName, 'Kind:', kind, 'Config:', docConfig);
+          if (this.shouldIncludeDoc(kind, docConfig)) {
+            doc = this.extractDoc(node, content);
+          }
+
+          tags.push({
+            file,
+            name: tagName,
+            kind,
+            line: node.startPosition.row,
+            col: node.startPosition.column,
+            signature,
+            doc
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(`Query error in ${file}:`, e);
+    }
+
+    return tags;
+  }
+
+  private shouldIncludeDoc(kind: string, config: string): boolean {
+    if (!config || config === 'none') return false;
+    if (config === 'all') return true;
+
+    const allowed = config.split(',').map(s => s.trim());
+    return allowed.includes(kind);
+  }
+
+  private extractDoc(nameNode: Parser.SyntaxNode, content: string): string | undefined {
+    // Look for comments preceding the definition
+    let node = nameNode.parent;
+
+    // Traverse up to find the main declaration node
+    while (node && !node.type.includes('declaration') && !node.type.includes('definition') && !node.type.includes('statement')) {
+      node = node.parent;
+    }
+
+    if (!node) node = nameNode.parent; // Fallback
+    if (!node) return undefined;
+
+    let prev = node.previousSibling;
+
+    // Skip empty nodes or whitespace (if any)
+    while (prev) {
+      const type = prev.type;
+
+      if (type === 'comment' || type === 'string' || type === 'expression_statement') {
+        let text = prev.text.trim();
+        // console.log('Checking sibling:', type, text);
+        if (text.startsWith('/**')) {
+          const doc = text.replace(/^\/\*\*|\*\/$/g, '').split('\n').map(l => l.replace(/^\s*\*\s?/, '').trim()).join(' ').trim();
+          return doc;
+        }
+        if (text.startsWith('//')) {
+          return text.replace(/^\/\/\s?/, '').trim();
+        }
+        if (text.startsWith('"""') || text.startsWith("'''")) {
+          return text.slice(3, -3).trim();
+        }
+        return text;
+      }
+
+      // If it's not a comment and not whitespace/empty, stop
+      if (prev.text.trim().length > 0) break;
+
+      // If it is empty/whitespace, we could continue, but tree-sitter usually doesn't give us these.
+      // For safety/coverage, we can just break here too or assume it's unreachable.
+      // Let's just break.
+      break;
+    }
+
+    // For Python, docstrings are often the *first child* of the function/class body
+    if (node.type === 'function_definition' || node.type === 'class_definition') {
+      const body = node.childForFieldName('body');
+      if (body && body.firstChild) {
+        const first = body.firstChild;
+        // console.log('Python Doc Check:', node.type, first.type, first.text);
+        if (first.type === 'expression_statement' && (first.text.trim().startsWith('"""') || first.text.trim().startsWith("'''"))) {
+          return first.text.trim().slice(3, -3).trim();
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  private extractSignature(nameNode: Parser.SyntaxNode, content: string): string {
+    // Traverse up to find the function/method declaration
+    let parent = nameNode.parent;
+
+    while (parent) {
+      const type = parent.type;
+
+      // Check if this is a function-like node
+      if (type === 'function_declaration' ||
+        type === 'method_definition' ||
+        type === 'arrow_function' ||
+        type === 'function_signature' ||
+        type === 'method_signature') {
+
+        // Find parameters and return type
+        const params = parent.childForFieldName('parameters');
+        const returnType = parent.childForFieldName('return_type');
+
+        let sig = '';
+        if (params) {
+          sig = params.text;
+        }
+        if (returnType) {
+          // Return type text includes the colon, so just append it
+          sig += ' ' + returnType.text;
+        }
+
+        return sig;
+      }
+
+      parent = parent.parent;
+    }
+
+    return '()';
+  }
+
+  private isLocalVariable(nameNode: Parser.SyntaxNode): boolean {
+    // Traverse up to check if this variable is inside a function/method
+    let parent = nameNode.parent;
+
+    while (parent) {
+      const type = parent.type;
+
+      // If we find a function-like parent, this is a local variable
+      if (type === 'function_declaration' ||
+        type === 'method_definition' ||
+        type === 'arrow_function' ||
+        type === 'function_expression') {
+        return true;
+      }
+
+      // If we hit a class boundary, stop (it's top-level)
+      if (type === 'class_declaration') {
+        return false;
+      }
+
+      parent = parent.parent;
+    }
+
+    return false;
+  }
+}

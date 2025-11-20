@@ -1,0 +1,5 @@
+(class_declaration name: (simple_identifier) @name.definition.class)
+(object_declaration name: (simple_identifier) @name.definition.class)
+(function_declaration name: (simple_identifier) @name.definition.function)
+(property_declaration name: (simple_identifier) @name.definition.field)
+(type_alias name: (simple_identifier) @name.definition.type)
