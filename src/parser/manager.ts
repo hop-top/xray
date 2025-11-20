@@ -3,6 +3,28 @@ import Parser from 'tree-sitter';
 import { getLanguageConfig } from './language-registry';
 import { Tag, Import } from './types';
 
+import { graphManager } from './flow-analysis';
+import { CGraphGenerator } from './graphs/c';
+import { CPPGraphGenerator } from './graphs/cpp';
+import { CSharpGraphGenerator } from './graphs/csharp';
+import { GoGraphGenerator } from './graphs/go';
+import { JavaGraphGenerator } from './graphs/java';
+import { RustGraphGenerator } from './graphs/rust';
+import { SwiftGraphGenerator } from './graphs/swift';
+
+// Register Generators
+graphManager.register('.c', 'internal', new CGraphGenerator());
+graphManager.register('.h', 'internal', new CGraphGenerator());
+graphManager.register('.cpp', 'internal', new CPPGraphGenerator());
+graphManager.register('.hpp', 'internal', new CPPGraphGenerator());
+graphManager.register('.cc', 'internal', new CPPGraphGenerator());
+graphManager.register('.cxx', 'internal', new CPPGraphGenerator());
+graphManager.register('.cs', 'internal', new CSharpGraphGenerator());
+graphManager.register('.go', 'internal', new GoGraphGenerator());
+graphManager.register('.java', 'internal', new JavaGraphGenerator());
+graphManager.register('.rs', 'internal', new RustGraphGenerator());
+graphManager.register('.swift', 'internal', new SwiftGraphGenerator());
+
 export class ParserManager {
   private root: string;
 
@@ -10,7 +32,7 @@ export class ParserManager {
     this.root = root;
   }
 
-  async parse(relPath: string, content: string, includeVariables: boolean = false, docConfig: string = 'none'): Promise<{ tags: Tag[], imports: Import[] }> {
+  async parse(relPath: string, content: string, includeVariables: boolean = false, docConfig: string = 'none', enableCfg: boolean = false, enableDfg: boolean = false): Promise<{ tags: Tag[], imports: Import[] }> {
     // Validate docConfig
     if (docConfig && docConfig !== 'none' && docConfig !== 'all') {
       const validKinds = ['class', 'interface', 'type', 'enum', 'function', 'method', 'const', 'field'];
@@ -34,7 +56,7 @@ export class ParserManager {
 
     const tree = parser.parse(content);
 
-    const tags = this.extractTags(tree, langConfig.grammar, langConfig.tagsQuery, relPath, content, includeVariables, docConfig);
+    const tags = await this.extractTags(tree, langConfig.grammar, langConfig.tagsQuery, relPath, content, includeVariables, docConfig, enableCfg, enableDfg);
     // Note: Import extraction logic would go here similarly using refsQuery
     // For this MVP, we focus on Definitions (Tags)
     const imports: Import[] = [];
@@ -42,7 +64,7 @@ export class ParserManager {
     return { tags, imports };
   }
 
-  private extractTags(tree: Parser.Tree, language: any, queryStr: string, file: string, content: string, includeVariables: boolean, docConfig: string): Tag[] {
+  private async extractTags(tree: Parser.Tree, language: any, queryStr: string, file: string, content: string, includeVariables: boolean, docConfig: string, enableCfg: boolean, enableDfg: boolean): Promise<Tag[]> {
     const tags: Tag[] = [];
     if (!queryStr) {
       return tags;
@@ -98,6 +120,25 @@ export class ParserManager {
             doc = this.extractDoc(node, content);
           }
 
+          // Generate CFG/DFG for functions/methods
+          let cfg: any;
+          let dfg: any;
+          if ((enableCfg || enableDfg) && (kind === 'function' || kind === 'method')) {
+            // Find the function definition node (parent of the name usually)
+            // The capture is on the *name*, so we need the parent which is the function_definition
+            let defNode = node.parent;
+            while (defNode && !defNode.type.includes('definition') && !defNode.type.includes('declaration')) {
+              defNode = defNode.parent;
+            }
+            if (defNode) {
+              const ext = path.extname(file);
+              // Use internal strategy by default for now
+              const graphs = await graphManager.generateGraphs(ext, { node: defNode, file, code: content }, 'internal', enableCfg, enableDfg);
+              cfg = graphs.cfg;
+              dfg = graphs.dfg;
+            }
+          }
+
           tags.push({
             file,
             name: tagName,
@@ -105,7 +146,9 @@ export class ParserManager {
             line: node.startPosition.row,
             col: node.startPosition.column,
             signature,
-            doc
+            doc,
+            cfg,
+            dfg
           });
         }
       }

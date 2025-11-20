@@ -45,25 +45,51 @@ npm run dev -- clear-cache
 
 RepoMap currently supports parsing and mapping for the following languages:
 
-- **TypeScript** (`.ts`, `.tsx`)
-- **JavaScript** (`.js`, `.jsx`)
-- **Python** (`.py`)
-- **Java** (`.java`)
+- **Bash** (`.sh`, `.bash`)
+- **C** (`.c`, `.h`)
 - **C#** (`.cs`)
 - **C++** (`.cpp`, `.hpp`)
-- **C** (`.c`, `.h`)
-- **Go** (`.go`)
-- **Rust** (`.rs`)
-- **PHP** (`.php`)
-- **Ruby** (`.rb`)
-- **Bash** (`.sh`, `.bash`)
-- **Swift** (`.swift`)
-- **Kotlin** (`.kt`)
-- **Scala** (`.scala`)
 - **Dart** (`.dart`)
-- **Lua** (`.lua`)
 - **Elixir** (`.ex`, `.exs`)
+- **Go** (`.go`)
 - **Haskell** (`.hs`)
+- **Java** (`.java`)
+- **JavaScript** (`.js`, `.jsx`)
+- **Kotlin** (`.kt`)
+- **Lua** (`.lua`)
+- **PHP** (`.php`)
+- **Python** (`.py`)
+- **Ruby** (`.rb`)
+- **Rust** (`.rs`)
+- **Scala** (`.scala`)
+- **Swift** (`.swift`)
+- **TypeScript** (`.ts`, `.tsx`)
+
+## Features
+
+### Control Flow and Data Flow Analysis
+
+RepoMap includes built-in support for Control Flow Graph (CFG) and Data Flow Graph (DFG) generation for functions and methods. This analysis is performed using Tree-sitter AST parsing and is available for:
+
+- **C** - Functions, if/else, loops, returns
+- **C++** - Functions, if/else, loops, returns, try/catch
+- **C#** - Methods, if/else, loops, returns, try/catch, foreach
+- **Go** - Functions, if/else, for loops (all variants), defer, returns
+- **Java** - Methods, if/else, loops (for/while/foreach), returns, try/catch
+- **Rust** - Functions, if/match expressions, loops (for/while/loop), returns
+- **Swift** - Functions, if/guard statements, loops (for/while/repeat), returns
+
+CFG and DFG information is automatically attached to function/method tags during parsing and can be used for advanced code analysis and visualization.
+
+#### Architecture
+
+The CFG/DFG system uses a multi-strategy architecture that allows for different generation approaches:
+
+- **Internal Strategy** (default): Uses Tree-sitter AST parsing for fast, language-aware graph generation
+- **External Strategy** (extensible): Framework ready for integration with external analysis tools
+
+All graph generators are async and context-aware, receiving the full source code and file path for comprehensive analysis.
+
 
 ## Extensibility
 

@@ -6,6 +6,8 @@ export interface Tag {
   col: number;
   signature?: string; // Optional signature for functions/methods
   doc?: string; // Optional docstring
+  cfg?: any; // Optional Control Flow Graph
+  dfg?: any; // Optional Data Flow Graph
 }
 
 export interface Import {

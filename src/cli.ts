@@ -20,6 +20,8 @@ program
   .option('--include-variables', 'Include local variables and constants in output', false)
   .option('--doc <config>', 'Include docstrings (all, none, or comma-separated list of kinds like class,function)', 'none')
   .option('--focus <path>', 'Focus on a specific file (Personalized PageRank)')
+  .option('--cfg', 'Enable Control Flow Graph (CFG) generation for functions/methods', false)
+  .option('--dfg', 'Enable Data Flow Graph (DFG) generation for functions/methods', false)
   .option('--json', 'Output raw JSON graph instead of tree')
   .action(async (options) => {
     try {
@@ -31,6 +33,8 @@ program
         includeVariables: options.includeVariables || false,
         doc: options.doc,
         focus: options.focus,
+        enableCfg: options.cfg || false,
+        enableDfg: options.dfg || false,
       });
 
       const result = await repoMap.run();

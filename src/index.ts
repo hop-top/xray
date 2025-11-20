@@ -14,6 +14,8 @@ export interface RepoMapConfig {
   includeVariables?: boolean;
   doc?: string;
   focus?: string;
+  enableCfg?: boolean;
+  enableDfg?: boolean;
 }
 
 export class RepoMap {
@@ -23,7 +25,7 @@ export class RepoMap {
   constructor(config: RepoMapConfig) {
     this.config = config;
     this.config.tokenLimit = config.tokenLimit || 4096;
-    this.cache = new SqliteCache(config.cachePath || path.join(config.root, '.repomap_cache.db'));
+    this.cache = new SqliteCache(config.cachePath || path.join(process.cwd(), '.repomap_cache.db'));
   }
 
   /**
@@ -51,7 +53,7 @@ export class RepoMap {
       } else {
         const content = fs.readFileSync(absPath, 'utf-8');
         // console.log(`Parsing ${file} with docstrings config: ${this.config.doc}`);
-        const { tags, imports } = await parser.parse(file, content, this.config.includeVariables, this.config.doc);
+        const { tags, imports } = await parser.parse(file, content, this.config.includeVariables, this.config.doc, this.config.enableCfg, this.config.enableDfg);
 
         graphBuilder.addFile(file, tags, imports);
         this.cache.set(file, stats.mtimeMs, tags, imports, this.config.doc || 'none', this.config.includeVariables || false);
