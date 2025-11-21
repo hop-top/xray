@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { RepoMap } from './index';
+import { Xray } from './index';
 import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
@@ -7,13 +7,13 @@ import chalk from 'chalk';
 const program = new Command();
 
 program
-  .name('repomap')
-  .description('Generate a token-bounded repository map using Tree-sitter and PageRank')
+  .name('xray')
+  .description('X-ray your codebase - Generate AST, CFG, and DFG visualizations')
   .version('1.0.0');
 
 program
   .command('generate')
-  .description('Generate a repository map')
+  .description('Generate a code analysis visualization')
   .option('-r, --root <path>', 'Root directory of the repository', process.cwd())
   .option('-o, --output <path>', 'Output file path')
   .option('-t, --tokens <number>', 'Token limit', '4096')
@@ -27,7 +27,7 @@ program
     try {
       console.log(chalk.blue(`Analyzing repo at: ${options.root}`));
 
-      const repoMap = new RepoMap({
+      const codegraph = new Xray({
         root: options.root,
         tokenLimit: parseInt(options.tokens),
         includeVariables: options.includeVariables || false,
@@ -37,16 +37,16 @@ program
         enableDfg: options.dfg || false,
       });
 
-      const result = await repoMap.run();
+      const result = await codegraph.run();
 
       if (options.output) {
         fs.writeFileSync(options.output, result);
-        console.log(chalk.green(`Map written to ${options.output}`));
+        console.log(chalk.green(`Analysis written to ${options.output}`));
       } else {
         console.log(result);
       }
     } catch (error) {
-      console.error(chalk.red('Error generating map:'), error);
+      console.error(chalk.red('Error generating analysis:'), error);
       process.exit(1);
     }
   });
@@ -55,7 +55,7 @@ program
   .command('clear-cache')
   .description('Clear the SQLite cache')
   .action(() => {
-    const cachePath = path.join(process.cwd(), '.repomap_cache.db');
+    const cachePath = path.join(process.cwd(), '.xray_cache.db');
     if (fs.existsSync(cachePath)) {
       fs.unlinkSync(cachePath);
       console.log(chalk.green('Cache cleared.'));

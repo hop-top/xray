@@ -7,9 +7,9 @@ out/
 build/
 
 # Generated files
-repomap.txt
-repomap_*.txt
-.repomap_cache.db
+.xray
+.xray_*
+.xray_cache.db
 
 # System files
 .DS_Store

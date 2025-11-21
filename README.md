@@ -1,6 +1,6 @@
-# RepoMap TS
+# xray.codes
 
-A TypeScript implementation of Aider-style repository mapping.
+Code mapping for codebases.
 
 ## Setup
 
@@ -17,10 +17,10 @@ A TypeScript implementation of Aider-style repository mapping.
 
 ## Usage
 
-**Generate a Map**:
+**Generate an X-ray**:
 ```bash
 # Run directly with ts-node
-npm run dev -- generate --root ./path/to/your/repo --output map.txt
+npm run dev -- generate --root ./path/to/your/repo --output .xray
 
 # Or build and run
 node dist/cli.js generate --root .
@@ -43,7 +43,7 @@ npm run dev -- clear-cache
 
 ## Supported Languages
 
-RepoMap currently supports parsing and mapping for the following languages:
+Xray currently supports parsing and analysis for the following languages:
 
 - **Bash** (`.sh`, `.bash`)
 - **C** (`.c`, `.h`)
@@ -69,7 +69,7 @@ RepoMap currently supports parsing and mapping for the following languages:
 
 ### Control Flow and Data Flow Analysis
 
-RepoMap includes built-in support for Control Flow Graph (CFG) and Data Flow Graph (DFG) generation for functions and methods. This analysis is performed using Tree-sitter AST parsing and is available for:
+Xray includes built-in support for Control Flow Graph (CFG) and Data Flow Graph (DFG) generation for functions and methods. This analysis is performed using Tree-sitter AST parsing and is available for:
 
 - **C** - Functions, if/else, loops, returns
 - **C++** - Functions, if/else, loops, returns, try/catch

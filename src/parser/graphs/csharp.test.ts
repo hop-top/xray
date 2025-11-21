@@ -33,11 +33,11 @@ describe('CSharpGraphGenerator', () => {
       throw new Error('Function definition not found');
     }
 
-    const cfg = await generator.generateCFG({ node: funcDef, file: 'test.cs', code });
+    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.cs', code });
 
-    expect(cfg.nodes.length).toBeGreaterThan(0);
-    expect(cfg.nodes.some(n => n.kind === 'entry')).toBe(true);
-    expect(cfg.nodes.some(n => n.kind === 'condition')).toBe(true);
+    expect(cflogram.nodes.length).toBeGreaterThan(0);
+    expect(cflogram.nodes.some(n => n.kind === 'entry')).toBe(true);
+    expect(cflogram.nodes.some(n => n.kind === 'condition')).toBe(true);
   });
 
   it('should generate CFG for loops', async () => {
@@ -52,8 +52,8 @@ describe('CSharpGraphGenerator', () => {
     const root = tree.rootNode;
     const funcDef = root.descendantsOfType('local_function_statement')[0];
 
-    const cfg = await generator.generateCFG({ node: funcDef, file: 'test.cs', code });
-    expect(cfg.nodes.some(n => n.kind === 'loop')).toBe(true);
+    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.cs', code });
+    expect(cflogram.nodes.some(n => n.kind === 'loop')).toBe(true);
   });
 
   it('should generate DFG for variable usage', async () => {
@@ -67,9 +67,9 @@ describe('CSharpGraphGenerator', () => {
     const root = tree.rootNode;
     const funcDef = root.descendantsOfType('local_function_statement')[0];
 
-    const dfg = await generator.generateDFG({ node: funcDef, file: 'test.cs', code });
+    const dflogram = await generator.generateDFG({ node: funcDef, file: 'test.cs', code });
 
-    expect(dfg.nodes.length).toBeGreaterThan(0);
-    expect(dfg.nodes.some(n => n.label === 'a')).toBe(true);
+    expect(dflogram.nodes.length).toBeGreaterThan(0);
+    expect(dflogram.nodes.some(n => n.label === 'a')).toBe(true);
   });
 });

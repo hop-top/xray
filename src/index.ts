@@ -7,7 +7,7 @@ import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
 import { SqliteCache } from './cache/sqlite-cache';
 
-export interface RepoMapConfig {
+export interface XrayConfig {
   root: string;
   tokenLimit?: number;
   cachePath?: string;
@@ -18,14 +18,14 @@ export interface RepoMapConfig {
   enableDfg?: boolean;
 }
 
-export class RepoMap {
-  private config: RepoMapConfig;
+export class Xray {
+  private config: XrayConfig;
   private cache: SqliteCache;
 
-  constructor(config: RepoMapConfig) {
+  constructor(config: XrayConfig) {
     this.config = config;
     this.config.tokenLimit = config.tokenLimit || 4096;
-    this.cache = new SqliteCache(config.cachePath || path.join(process.cwd(), '.repomap_cache.db'));
+    this.cache = new SqliteCache(config.cachePath || path.join(process.cwd(), '.xray_cache.db'));
   }
 
   /**

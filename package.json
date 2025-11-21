@@ -1,10 +1,10 @@
 {
-  "name": "repomap-ts",
+  "name": "xray",
   "version": "1.0.0",
-  "description": "A TypeScript Re-Implementation of Aider-Style Repository Mapping",
+  "description": "X-ray your codebase - Generate AST, CFG, and DFG visualizations",
   "main": "dist/index.js",
   "bin": {
-    "repomap": "dist/cli.js"
+    "xray": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc && cp -r src/parser/queries dist/parser/",

@@ -121,8 +121,8 @@ export class ParserManager {
           }
 
           // Generate CFG/DFG for functions/methods
-          let cfg: any;
-          let dfg: any;
+          let cflogram: any;
+          let dflogram: any;
           if ((enableCfg || enableDfg) && (kind === 'function' || kind === 'method')) {
             // Find the function definition node (parent of the name usually)
             // The capture is on the *name*, so we need the parent which is the function_definition
@@ -134,8 +134,8 @@ export class ParserManager {
               const ext = path.extname(file);
               // Use internal strategy by default for now
               const graphs = await graphManager.generateGraphs(ext, { node: defNode, file, code: content }, 'internal', enableCfg, enableDfg);
-              cfg = graphs.cfg;
-              dfg = graphs.dfg;
+              cflogram = graphs.cfg;
+              dflogram = graphs.dfg;
             }
           }
 
@@ -147,8 +147,8 @@ export class ParserManager {
             col: node.startPosition.column,
             signature,
             doc,
-            cfg,
-            dfg
+            cfg: cflogram,
+            dfg: dflogram
           });
         }
       }
