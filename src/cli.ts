@@ -24,6 +24,7 @@ program
   .option('--doc <config>', 'Include docstrings (all, none, or comma-separated list of kinds like class,function)', 'none')
   .option('--focus <path>', 'Focus on a specific file (Personalized PageRank)')
   .option('--max-depth <number>', 'Maximum depth of the tree to render')
+  .option('--with-cost', 'Estimate and display the cost of the generated output', false)
   .option('--cfg', 'Enable Control Flow Graph (CFG) generation for functions/methods', false)
   .option('--dfg', 'Enable Data Flow Graph (DFG) generation for functions/methods', false)
   .option('--json', 'Output raw JSON graph instead of tree')
@@ -51,6 +52,7 @@ program
         doc: options.doc,
         focus: options.focus,
         maxDepth: options.maxDepth ? parseInt(options.maxDepth) : undefined,
+        withCost: options.withCost || false,
         enableCfg: options.cfg || false,
         enableDfg: options.dfg || false,
         queries: queries,

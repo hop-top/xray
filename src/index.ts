@@ -17,6 +17,7 @@ export interface XrayConfig {
   doc?: string;
   focus?: string;
   maxDepth?: number;
+  withCost?: boolean;
   enableCfg?: boolean;
   enableDfg?: boolean;
   queries?: Record<string, string>;
@@ -111,6 +112,17 @@ export class Xray {
 
     // 5. Render
     const renderer = new MapRenderer(this.config.root, rankedNodes, graph);
-    return renderer.render(this.config.tokenLimit!, this.config.maxDepth);
+    const output = await renderer.render(this.config.tokenLimit!, this.config.maxDepth);
+
+    if (this.config.withCost) {
+      const { tokenizeAndEstimateCost } = await import('llm-cost');
+      const { cost } = await tokenizeAndEstimateCost({
+        model: 'gpt-4o',
+        input: output
+      });
+      Logger.info(`Estimated cost: $${(cost || 0).toFixed(6)}`);
+    }
+
+    return output;
   }
 }

@@ -34,6 +34,7 @@ node dist/cli.js generate --root .
 - `--include-variables`: Include local variables and constants in the output (default: false).
 - `--doc <config>`: Include docstrings. Values: `all`, `none`, or a comma-separated list of kinds (e.g., `class,function,method`). Default: `none`.
 - `--focus <path>`: Focus the map on a specific file (Personalized PageRank).
+- `--with-cost`: Estimate and display the cost of the generated output (requires `OPENAI_API_KEY`).
 
 ### Custom Queries
 

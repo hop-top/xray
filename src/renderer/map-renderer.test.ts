@@ -13,12 +13,12 @@ describe('MapRenderer', () => {
         renderer = new MapRenderer('/root', ranked, graph);
     });
 
-    it('should render empty map', () => {
-        const output = renderer.render(1000);
+    it('should render simple map', async () => {
+        const output = await renderer.render(1000);
         expect(output).toBe('');
     });
 
-    it('should break on small token limit', () => {
+    it('should break on small token limit', async () => {
         // Define some ranked nodes for this specific test
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
@@ -26,7 +26,7 @@ describe('MapRenderer', () => {
         ];
         // Re-instantiate renderer with the specific ranked data
         const renderer = new MapRenderer('/root', ranked, graph);
-        const output = renderer.render(1); // Very small limit
+        const output = await renderer.render(1); // Very small limit
         // Should contain at least one file header but maybe no tags?
         // File header is 2 tokens.
         // If limit is 1, it adds file header (tokens=2).
@@ -41,7 +41,7 @@ describe('MapRenderer', () => {
         expect(output.split('\n').length).toBeGreaterThan(0);
     });
 
-    it('should break after first file if limit reached', () => {
+    it('should break after first file if limit reached', async () => {
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
             { id: 'file1.ts::tag1', score: 1, data: { type: 'tag', file: 'file1.ts', kind: 'fn', label: 'tag1', line: 1 } },
@@ -54,23 +54,37 @@ describe('MapRenderer', () => {
         // If limit is 2.
         // File 1: adds 2. current=2. >= limit? Yes. Break.
         // So output should contain file1 but NOT file2.
-        const output = renderer.render(2);
+        const output = await renderer.render(2);
         expect(output).toContain('file1.ts');
         expect(output).not.toContain('file2.ts');
     });
-    it('should render files and tags', () => {
+    it('should not filter if maxDepth is undefined', async () => {
+        ranked = [
+            { id: 'file1.ts', score: 10, data: { type: 'file' } },
+            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
+        ];
+        renderer = new MapRenderer('/root', ranked, graph);
+    });
+    it('should filter by maxDepth', async () => {
+        ranked = [
+            { id: 'file1.ts', score: 10, data: { type: 'file' } },
+            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
+        ];
+        renderer = new MapRenderer('/root', ranked, graph);
+    });
+    it('should render files and tags', async () => {
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
             { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
-        const output = renderer.render(1000);
+        const output = await renderer.render(1000);
         expect(output).toContain('file1.ts:');
         expect(output).toContain('│ [L11] function tag1');
     });
 
-    it('should respect token limit', () => {
+    it('should respect token limit', async () => {
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
             { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } },
@@ -78,7 +92,7 @@ describe('MapRenderer', () => {
         ];
         // Set a very small limit to force truncation
         renderer = new MapRenderer('/root', ranked, graph);
-        const output = renderer.render(5); // Very small limit
+        const output = await renderer.render(5); // Very small limit
 
         // It might render the file header but skip tags, or render one tag.
         // The exact behavior depends on the implementation's token counting.
@@ -93,7 +107,7 @@ describe('MapRenderer', () => {
         expect(output).toContain('file1.ts:');
     });
 
-    it('should sort files by score', () => {
+    it('should prioritize files with higher score', async () => {
         ranked = [
             { id: 'fileA.ts', score: 1, data: { type: 'file' } },
             { id: 'fileB.ts', score: 10, data: { type: 'file' } },
@@ -101,7 +115,7 @@ describe('MapRenderer', () => {
             { id: 'fileB.ts::tag1', score: 1, data: { type: 'tag', file: 'fileB.ts', kind: 'fn', label: 'tag1', line: 1 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
-        const output = renderer.render(1000);
+        const output = await renderer.render(1000);
 
         const indexA = output.indexOf('fileA.ts:');
         const indexB = output.indexOf('fileB.ts:');
@@ -109,7 +123,7 @@ describe('MapRenderer', () => {
         expect(indexB).toBeLessThan(indexA); // B should come first
     });
 
-    it('should handle missing file scores', () => {
+    it('should handle missing file scores', async () => {
         ranked = [
             { id: 'fileA.ts', score: 10, data: { type: 'file' } },
             { id: 'fileB.ts', score: 5, data: { type: 'file' } }, // fileB has score
@@ -122,12 +136,12 @@ describe('MapRenderer', () => {
         ranked.push({ id: 'fileD.ts::tag1', score: 1, data: { type: 'tag', file: 'fileD.ts', kind: 'fn', label: 'tag1', line: 1 } });
 
         renderer = new MapRenderer('/root', ranked, graph);
-        const output = renderer.render(1000);
+        const output = await renderer.render(1000);
 
         expect(output).toContain('fileD.ts:');
     });
 
-    it('should sort files with missing scores correctly', () => {
+    it('should sort files with missing scores correctly', async () => {
         // fileA has score 10
         // fileB has no score (undefined) -> 0
         // fileC has no score (undefined) -> 0
@@ -139,7 +153,7 @@ describe('MapRenderer', () => {
         ];
 
         renderer = new MapRenderer('/root', ranked, graph);
-        const output = renderer.render(1000);
+        const output = await renderer.render(1000);
 
         const indexA = output.indexOf('fileA.ts:');
         const indexB = output.indexOf('fileB.ts:');
@@ -150,18 +164,18 @@ describe('MapRenderer', () => {
         // B and C order is undefined but should be present
     });
 
-    it('should include docstrings', () => {
+    it('should include docstrings if present', async () => {
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
             { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, doc: 'My Doc' } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
-        const output = renderer.render(1000);
+        const output = await renderer.render(1000);
         expect(output).toContain('# My Doc');
     });
 
-    it('should truncate long docstrings', () => {
+    it('should truncate long docstrings', async () => {
         const longDoc = 'A'.repeat(100);
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
@@ -169,7 +183,7 @@ describe('MapRenderer', () => {
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
-        const output = renderer.render(1000);
+        const output = await renderer.render(1000);
         expect(output).toContain('...');
         expect(output).not.toContain(longDoc);
     });

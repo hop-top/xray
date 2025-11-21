@@ -1,5 +1,6 @@
 import Graph from 'graphology';
 import { RankedNode } from '../graph/ranker';
+import { tokenizeAndEstimateCost } from 'llm-cost';
 
 export class MapRenderer {
   private root: string;
@@ -12,7 +13,7 @@ export class MapRenderer {
     this.graph = graph;
   }
 
-  render(tokenLimit: number, maxDepth?: number): string {
+  async render(tokenLimit: number, maxDepth?: number): Promise<string> {
     // Group tags by file
     const fileMap = new Map<string, RankedNode[]>();
 
@@ -73,7 +74,12 @@ export class MapRenderer {
         }
 
         outputLines.push(line);
-        currentTokens += line.split(' ').length;
+
+        const { inputTokens } = await tokenizeAndEstimateCost({
+          model: 'gpt-4o',
+          input: line
+        });
+        currentTokens += inputTokens;
 
         if (currentTokens >= tokenLimit) break;
       }
