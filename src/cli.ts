@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
 import { QueryResolver } from './query-resolver';
+import * as cliProgress from 'cli-progress';
 
 const program = new Command();
 
@@ -32,6 +33,15 @@ program
       // Resolve queries
       const queries = QueryResolver.resolve(options.query || []);
 
+      const progressBar = new cliProgress.SingleBar({
+        format: 'Parsing |' + chalk.cyan('{bar}') + '| {percentage}% || {value}/{total} Files || Current: {file}',
+        barCompleteChar: '\u2588',
+        barIncompleteChar: '\u2591',
+        hideCursor: true
+      });
+
+      let barStarted = false;
+
       const codegraph = new Xray({
         root: options.root,
         tokenLimit: parseInt(options.tokens),
@@ -41,6 +51,16 @@ program
         enableCfg: options.cfg || false,
         enableDfg: options.dfg || false,
         queries: queries,
+        onProgress: (current, total, file) => {
+          if (!barStarted) {
+            progressBar.start(total, 0, { file: 'Starting...' });
+            barStarted = true;
+          }
+          progressBar.update(current, { file: file });
+          if (current >= total) {
+            progressBar.stop();
+          }
+        }
       });
 
       const result = await codegraph.run();

@@ -18,6 +18,7 @@ export interface XrayConfig {
   enableCfg?: boolean;
   enableDfg?: boolean;
   queries?: Record<string, string>;
+  onProgress?: (current: number, total: number, file: string) => void;
 }
 
 export class Xray {
@@ -66,7 +67,16 @@ export class Xray {
     const parser = new ParserManager(this.config.root);
     const graphBuilder = new GraphBuilder();
 
+    if (this.config.onProgress) {
+      this.config.onProgress(0, files.length, '');
+    }
+
+    let processed = 0;
     for (const file of files) {
+      if (this.config.onProgress) {
+        this.config.onProgress(processed, files.length, file);
+      }
+
       const absPath = path.join(this.config.root, file);
       const stats = fs.statSync(absPath);
 
@@ -83,6 +93,11 @@ export class Xray {
         graphBuilder.addFile(file, tags, imports);
         this.cache.set(file, stats.mtimeMs, tags, imports, this.config.doc || 'none', this.config.includeVariables || false);
       }
+      processed++;
+    }
+
+    if (this.config.onProgress) {
+      this.config.onProgress(files.length, files.length, 'Done');
     }
 
     // 3. Build Graph
