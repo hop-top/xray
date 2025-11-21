@@ -16,6 +16,7 @@ export interface XrayConfig {
   includeVariables?: boolean;
   doc?: string;
   focus?: string;
+  maxDepth?: number;
   enableCfg?: boolean;
   enableDfg?: boolean;
   queries?: Record<string, string>;
@@ -110,6 +111,6 @@ export class Xray {
 
     // 5. Render
     const renderer = new MapRenderer(this.config.root, rankedNodes, graph);
-    return renderer.render(this.config.tokenLimit!);
+    return renderer.render(this.config.tokenLimit!, this.config.maxDepth);
   }
 }

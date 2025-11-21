@@ -12,7 +12,7 @@ export class MapRenderer {
     this.graph = graph;
   }
 
-  render(tokenLimit: number): string {
+  render(tokenLimit: number, maxDepth?: number): string {
     // Group tags by file
     const fileMap = new Map<string, RankedNode[]>();
 
@@ -48,6 +48,11 @@ export class MapRenderer {
     });
 
     for (const file of sortedFiles) {
+      if (maxDepth !== undefined) {
+        const depth = file.split('/').length;
+        if (depth > maxDepth) continue;
+      }
+
       const tags = fileMap.get(file)!;
 
       // Sort tags in file by line number for readability
