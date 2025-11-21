@@ -67,7 +67,7 @@ describe('MapRenderer', () => {
 
         const output = renderer.render(1000);
         expect(output).toContain('file1.ts:');
-        expect(output).toContain('│ function tag1');
+        expect(output).toContain('│ [L11] function tag1');
     });
 
     it('should respect token limit', () => {

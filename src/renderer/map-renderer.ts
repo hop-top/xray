@@ -58,7 +58,9 @@ export class MapRenderer {
 
       for (const tag of tags) {
         const signature = tag.data.signature ? tag.data.signature : '';
-        let line = `│ ${tag.data.kind} ${tag.data.label}${signature}`;
+        // Line numbers are 0-indexed in tree-sitter, so add 1 for display
+        const lineNum = tag.data.line + 1;
+        let line = `│ [L${lineNum}] ${tag.data.kind} ${tag.data.label}${signature}`;
 
         if (tag.data.doc) {
           const doc = tag.data.doc.length > 50 ? tag.data.doc.substring(0, 47) + '...' : tag.data.doc;
