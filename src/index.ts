@@ -7,6 +7,7 @@ import { GraphBuilder } from './graph/builder';
 import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
 import { SqliteCache } from './cache/sqlite-cache';
+import { Logger } from './logger';
 
 export interface XrayConfig {
   root: string;
@@ -38,7 +39,7 @@ export class Xray {
     // 1. Scan Files
     const scanner = new FileScanner(this.config.root);
     const files = scanner.scan();
-    console.log(`Found ${files.length} files.`);
+    Logger.info(`Found ${files.length} files.`);
 
     // 1.5 Apply Custom Queries
     if (this.config.queries) {
@@ -46,19 +47,19 @@ export class Xray {
         try {
           let queryContent: string;
           if (source.startsWith('http://') || source.startsWith('https://')) {
-            console.log(`Fetching custom query for ${ext} from ${source}...`);
+            Logger.info(`Fetching custom query for ${ext} from ${source}...`);
             const response = await fetch(source);
             if (!response.ok) {
               throw new Error(`Failed to fetch query: ${response.statusText}`);
             }
             queryContent = await response.text();
           } else {
-            console.log(`Loading custom query for ${ext} from ${source}...`);
+            Logger.info(`Loading custom query for ${ext} from ${source}...`);
             queryContent = fs.readFileSync(source, 'utf-8');
           }
           updateLanguageQuery(ext, queryContent);
         } catch (e) {
-          console.error(`Failed to load custom query for ${ext}:`, e);
+          Logger.error(`Failed to load custom query for ${ext}:`, e);
         }
       }
     }

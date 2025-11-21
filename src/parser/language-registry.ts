@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { Logger } from '../logger';
 
 // We use require for tree-sitter grammars as they are native modules
 const TypeScript = require('tree-sitter-typescript').typescript;
@@ -75,6 +76,6 @@ export function updateLanguageQuery(ext: string, query: string): void {
     // because we don't have the grammar. 
     // For now, we'll just ignore it or we could throw an error.
     // Let's warn.
-    console.warn(`Warning: Cannot update query for unknown extension '${ext}'`);
+    Logger.warn(`Warning: Cannot update query for unknown extension '${ext}'`);
   }
 }

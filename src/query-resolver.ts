@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { Logger } from './logger';
 
 export class QueryResolver {
     private static EXT_MAP: Record<string, string[]> = {
@@ -91,7 +92,7 @@ export class QueryResolver {
 
         // It's a local path
         if (!fs.existsSync(pathOrUrl)) {
-            console.warn(`Warning: Query path not found: ${pathOrUrl}`);
+            Logger.warn(`Warning: Query path not found: ${pathOrUrl}`);
             return;
         }
 
@@ -142,7 +143,7 @@ export class QueryResolver {
             }
         }
 
-        console.warn(`Warning: Could not infer language from filename '${filename}'. Use explicit mapping (e.g. .ts:${fullPath})`);
+        Logger.warn(`Warning: Could not infer language from filename '${filename}'. Use explicit mapping (e.g. .ts:${fullPath})`);
     }
 
     private static isMatch(filename: string, token: string): boolean {

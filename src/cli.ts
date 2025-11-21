@@ -5,6 +5,7 @@ import * as path from 'path';
 import chalk from 'chalk';
 import { QueryResolver } from './query-resolver';
 import * as cliProgress from 'cli-progress';
+import { Logger } from './logger';
 
 const program = new Command();
 
@@ -28,7 +29,7 @@ program
   .option('-q, --query <items...>', 'Override queries (e.g. .ts:path, path/to/dir, url)', [])
   .action(async (options) => {
     try {
-      console.log(chalk.blue(`Analyzing repo at: ${options.root}`));
+      Logger.info(`Analyzing repo at: ${options.root}`);
 
       // Resolve queries
       const queries = QueryResolver.resolve(options.query || []);
@@ -67,12 +68,12 @@ program
 
       if (options.output) {
         fs.writeFileSync(options.output, result);
-        console.log(chalk.green(`Analysis written to ${options.output}`));
+        Logger.success(`Analysis written to ${options.output}`);
       } else {
         console.log(result);
       }
     } catch (error) {
-      console.error(chalk.red('Error generating analysis:'), error);
+      Logger.error('Error generating analysis:', error);
       process.exit(1);
     }
   });
@@ -84,9 +85,9 @@ program
     const cachePath = path.join(process.cwd(), '.xray_cache.db');
     if (fs.existsSync(cachePath)) {
       fs.unlinkSync(cachePath);
-      console.log(chalk.green('Cache cleared.'));
+      Logger.success('Cache cleared.');
     } else {
-      console.log(chalk.yellow('No cache found.'));
+      Logger.warn('No cache found.');
     }
   });
 

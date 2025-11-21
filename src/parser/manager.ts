@@ -2,6 +2,7 @@ import * as path from 'path';
 import Parser from 'tree-sitter';
 import { getLanguageConfig } from './language-registry';
 import { Tag, Import } from './types';
+import { Logger } from '../logger';
 
 import { graphManager } from './flow-analysis';
 import { CGraphGenerator } from './graphs/c';
@@ -153,7 +154,7 @@ export class ParserManager {
         }
       }
     } catch (e) {
-      console.warn(`Query error in ${file}:`, e);
+      Logger.warn(`Query error in ${file}: ${e}`);
     }
 
     return tags;

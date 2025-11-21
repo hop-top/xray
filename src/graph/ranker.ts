@@ -1,5 +1,6 @@
 const Graph = require('graphology');
 import * as pagerank from 'graphology-metrics/centrality';
+import { Logger } from '../logger';
 
 export interface RankedNode {
   id: string;
@@ -54,8 +55,8 @@ export class Ranker {
     // Sort descending
     const sorted = ranked.sort((a, b) => b.score - a.score);
 
-    console.log('Top 5 ranked nodes:');
-    sorted.slice(0, 5).forEach(n => console.log(`${n.id}: ${n.score.toFixed(4)}`));
+    Logger.info('Top 5 ranked nodes:');
+    sorted.slice(0, 5).forEach(n => Logger.log(`  ${n.id}: ${n.score.toFixed(4)}`));
 
     return sorted;
   }
