@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { FileScanner } from './scanner';
 import { ParserManager } from './parser/manager';
+import { updateLanguageQuery } from './parser/language-registry';
 import { GraphBuilder } from './graph/builder';
 import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
@@ -16,6 +17,7 @@ export interface XrayConfig {
   focus?: string;
   enableCfg?: boolean;
   enableDfg?: boolean;
+  queries?: Record<string, string>;
 }
 
 export class Xray {
@@ -36,6 +38,29 @@ export class Xray {
     const scanner = new FileScanner(this.config.root);
     const files = scanner.scan();
     console.log(`Found ${files.length} files.`);
+
+    // 1.5 Apply Custom Queries
+    if (this.config.queries) {
+      for (const [ext, source] of Object.entries(this.config.queries)) {
+        try {
+          let queryContent: string;
+          if (source.startsWith('http://') || source.startsWith('https://')) {
+            console.log(`Fetching custom query for ${ext} from ${source}...`);
+            const response = await fetch(source);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch query: ${response.statusText}`);
+            }
+            queryContent = await response.text();
+          } else {
+            console.log(`Loading custom query for ${ext} from ${source}...`);
+            queryContent = fs.readFileSync(source, 'utf-8');
+          }
+          updateLanguageQuery(ext, queryContent);
+        } catch (e) {
+          console.error(`Failed to load custom query for ${ext}:`, e);
+        }
+      }
+    }
 
     // 2. Parse & Extract (with Cache)
     const parser = new ParserManager(this.config.root);

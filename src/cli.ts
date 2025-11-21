@@ -3,6 +3,7 @@ import { Xray } from './index';
 import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
+import { QueryResolver } from './query-resolver';
 
 const program = new Command();
 
@@ -23,9 +24,13 @@ program
   .option('--cfg', 'Enable Control Flow Graph (CFG) generation for functions/methods', false)
   .option('--dfg', 'Enable Data Flow Graph (DFG) generation for functions/methods', false)
   .option('--json', 'Output raw JSON graph instead of tree')
+  .option('-q, --query <items...>', 'Override queries (e.g. .ts:path, path/to/dir, url)', [])
   .action(async (options) => {
     try {
       console.log(chalk.blue(`Analyzing repo at: ${options.root}`));
+
+      // Resolve queries
+      const queries = QueryResolver.resolve(options.query || []);
 
       const codegraph = new Xray({
         root: options.root,
@@ -35,6 +40,7 @@ program
         focus: options.focus,
         enableCfg: options.cfg || false,
         enableDfg: options.dfg || false,
+        queries: queries,
       });
 
       const result = await codegraph.run();

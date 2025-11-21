@@ -66,3 +66,15 @@ registry['.hs'] = { grammar: Haskell, tagsQuery: loadQuery('haskell.scm') };
 export function getLanguageConfig(ext: string): LanguageConfig | undefined {
   return registry[ext];
 }
+
+export function updateLanguageQuery(ext: string, query: string): void {
+  if (registry[ext]) {
+    registry[ext].tagsQuery = query;
+  } else {
+    // If the language isn't registered, we can't really add a query for it 
+    // because we don't have the grammar. 
+    // For now, we'll just ignore it or we could throw an error.
+    // Let's warn.
+    console.warn(`Warning: Cannot update query for unknown extension '${ext}'`);
+  }
+}

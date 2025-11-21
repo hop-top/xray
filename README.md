@@ -34,6 +34,39 @@ node dist/cli.js generate --root .
 - `--include-variables`: Include local variables and constants in the output (default: false).
 - `--doc <config>`: Include docstrings. Values: `all`, `none`, or a comma-separated list of kinds (e.g., `class,function,method`). Default: `none`.
 - `--focus <path>`: Focus the map on a specific file (Personalized PageRank).
+
+### Custom Queries
+
+You can override the default Tree-sitter queries for any language using the `--query` (or `-q`) flag. This allows you to customize exactly what gets extracted (e.g., only classes, specific function patterns, etc.).
+
+You can provide:
+- **Explicit Mapping**: `.ext:path` (e.g., `.ts:./custom.scm`)
+- **File Path**: Language inferred from filename (e.g., `python.scm` -> `.py`)
+- **Directory**: Scans for `.scm` files and infers language
+- **URL**: Fetches query from URL (inferred from filename)
+- **Comma-Separated List**: Combine multiple queries
+
+```bash
+# Explicit mapping
+xray generate --root . --query .ts:./my-custom-tags.scm
+
+# Auto-detect from filename (infers .py)
+xray generate --root . --query ./python.scm
+
+# Scan directory for queries
+xray generate --root . --query ./my-queries-dir
+
+# Remote URL (infers .ts)
+xray generate --root . --query https://example.com/typescript.scm
+
+# Combine multiple
+xray generate --root . --query .ts:./ts.scm,./python.scm
+```
+
+> [!WARNING]
+> **Security Note**: Tree-sitter queries are pattern-matching expressions and are generally safe to execute. They cannot access your file system or network. However, a malformed or extremely complex query could theoretically cause performance issues (DoS) during parsing. Ensure you trust the source of remote queries.
+
+### Output Format
 - `--json`: Output raw JSON graph instead of the tree representation.
 
 **Clear Cache**:
