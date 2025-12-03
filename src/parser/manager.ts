@@ -12,6 +12,9 @@ import { GoGraphGenerator } from './graphs/go';
 import { JavaGraphGenerator } from './graphs/java';
 import { RustGraphGenerator } from './graphs/rust';
 import { SwiftGraphGenerator } from './graphs/swift';
+import { PythonGraphGenerator } from './graphs/python';
+import { JavaScriptGraphGenerator } from './graphs/javascript';
+import { TypeScriptGraphGenerator } from './graphs/typescript';
 
 // Register Generators
 graphManager.register('.c', 'internal', new CGraphGenerator());
@@ -25,6 +28,11 @@ graphManager.register('.go', 'internal', new GoGraphGenerator());
 graphManager.register('.java', 'internal', new JavaGraphGenerator());
 graphManager.register('.rs', 'internal', new RustGraphGenerator());
 graphManager.register('.swift', 'internal', new SwiftGraphGenerator());
+graphManager.register('.py', 'internal', new PythonGraphGenerator());
+graphManager.register('.js', 'internal', new JavaScriptGraphGenerator());
+graphManager.register('.jsx', 'internal', new JavaScriptGraphGenerator());
+graphManager.register('.ts', 'internal', new TypeScriptGraphGenerator());
+graphManager.register('.tsx', 'internal', new TypeScriptGraphGenerator());
 
 export class ParserManager {
   private root: string;
