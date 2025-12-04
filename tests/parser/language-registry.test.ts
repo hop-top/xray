@@ -1,4 +1,4 @@
-import { getLanguageConfig } from './language-registry';
+import { getLanguageConfig } from '../../src/parser/language-registry';
 
 describe('LanguageRegistry', () => {
     it('should return config for supported extensions', () => {

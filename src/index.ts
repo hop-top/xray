@@ -14,6 +14,7 @@ export interface XrayConfig {
   tokenLimit?: number;
   cachePath?: string;
   includeVariables?: boolean;
+  includeImports?: boolean;
   doc?: string;
   focus?: string;
   maxDepth?: number;
@@ -112,7 +113,7 @@ export class Xray {
 
     // 5. Render
     const renderer = new MapRenderer(this.config.root, rankedNodes, graph);
-    const output = await renderer.render(this.config.tokenLimit!, this.config.maxDepth);
+    const output = await renderer.render(this.config.tokenLimit!, this.config.maxDepth, this.config.includeImports);
 
     if (this.config.withCost) {
       const { tokenizeAndEstimateCost } = await import('llm-cost');

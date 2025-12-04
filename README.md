@@ -32,6 +32,7 @@ node dist/cli.js generate --root .
 - `-o, --output <path>`: Output file path. If not specified, prints to stdout.
 - `-t, --tokens <number>`: Token limit for the output (default: 4096).
 - `--include-variables`: Include local variables and constants in the output (default: false).
+- `--include-imports`: Include imports and dependency table in the output (default: false).
 - `--doc <config>`: Include docstrings. Values: `all`, `none`, or a comma-separated list of kinds (e.g., `class,function,method`). Default: `none`.
 - `--focus <path>`: Focus the map on a specific file (Personalized PageRank).
 - `--with-cost`: Estimate and display the cost of the generated output (requires `OPENAI_API_KEY`).

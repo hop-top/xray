@@ -5,3 +5,6 @@
 (val_definition pattern: (identifier) @name.definition.constant)
 (var_definition pattern: (identifier) @name.definition.variable)
 (type_definition name: (identifier) @name.definition.type)
+
+; Imports
+(import_declaration) @import.statement @import.source

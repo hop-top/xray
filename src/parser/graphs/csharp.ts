@@ -38,7 +38,7 @@ export class CSharpGraphGenerator implements GraphGenerator {
                     const alternative = n.childForFieldName('alternative');
 
                     if (condition) {
-                        const condNode = createNode(`if (${condition.text})`, 'condition', condition);
+                        const condNode = createNode(`if (${condition.text || ''})`, 'condition', condition);
                         edges.push({ from: current.id, to: condNode.id });
 
                         current = condNode;
@@ -62,10 +62,10 @@ export class CSharpGraphGenerator implements GraphGenerator {
                     const loopBody = n.childForFieldName('body');
 
                     let label = 'loop';
-                    if (loopCond) label = `loop (${loopCond.text})`;
+                    if (loopCond) label = `loop (${loopCond.text || ''})`;
                     else if (n.type === 'foreach_statement') {
                         const collection = n.childForFieldName('collection');
-                        if (collection) label = `foreach (${collection.text})`;
+                        if (collection) label = `foreach (${collection.text || ''})`;
                     }
 
                     const loopNode = createNode(label, 'loop', n);
@@ -74,13 +74,13 @@ export class CSharpGraphGenerator implements GraphGenerator {
                     if (loopBody) traverse(loopBody);
                     break;
                 case 'return_statement':
-                    const retNode = createNode(n.text, 'exit', n);
+                    const retNode = createNode(n.text || 'return', 'exit', n);
                     edges.push({ from: current.id, to: retNode.id });
                     current = retNode;
                     break;
                 case 'expression_statement':
                 case 'local_declaration_statement':
-                    const step = createNode(n.text, 'basic_block', n);
+                    const step = createNode(n.text || 'stmt', 'basic_block', n);
                     edges.push({ from: current.id, to: step.id });
                     current = step;
                     break;

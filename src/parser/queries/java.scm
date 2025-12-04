@@ -6,3 +6,10 @@
 (field_declaration 
   declarator: (variable_declarator 
     name: (identifier) @name.definition.field))
+
+; Imports
+(import_declaration
+  (scoped_identifier) @import.source) @import.statement
+
+(import_declaration
+  (identifier) @import.source) @import.statement

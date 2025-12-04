@@ -1,22 +1,22 @@
 
 import Parser from 'tree-sitter';
-import { RustGraphGenerator } from './rust';
-const Rust = require('tree-sitter-rust');
+import { CPPGraphGenerator } from '../../../src/parser/graphs/cpp';
+const CPP = require('tree-sitter-cpp');
 
-describe('RustGraphGenerator', () => {
+describe('CPPGraphGenerator', () => {
   let parser: Parser;
-  let generator: RustGraphGenerator;
+  let generator: CPPGraphGenerator;
 
   beforeAll(() => {
     parser = new Parser();
-    parser.setLanguage(Rust);
-    generator = new RustGraphGenerator();
+    parser.setLanguage(CPP);
+    generator = new CPPGraphGenerator();
   });
 
   it('should generate CFG for a simple function', async () => {
     const code = `
-      fn test(x: i32) -> i32 {
-        if x > 0 {
+      void test(int x) {
+        if (x > 0) {
           return 1;
         } else {
           return 0;
@@ -25,9 +25,9 @@ describe('RustGraphGenerator', () => {
     `;
     const tree = parser.parse(code);
     const root = tree.rootNode;
-    const funcDef = root.descendantsOfType('function_item')[0];
+    const funcDef = root.descendantsOfType('function_definition')[0];
 
-    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.rs', code });
+    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.cpp', code });
 
     expect(cflogram.nodes.length).toBeGreaterThan(0);
     expect(cflogram.nodes.some(n => n.kind === 'entry')).toBe(true);
@@ -36,32 +36,32 @@ describe('RustGraphGenerator', () => {
 
   it('should generate CFG for loops', async () => {
     const code = `
-        fn loop_test() {
-            for i in 0..10 {
-                do_something();
+        void loopTest() {
+            for (int i = 0; i < 10; i++) {
+                doSomething();
             }
         }
       `;
     const tree = parser.parse(code);
     const root = tree.rootNode;
-    const funcDef = root.descendantsOfType('function_item')[0];
+    const funcDef = root.descendantsOfType('function_definition')[0];
 
-    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.rs', code });
+    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.cpp', code });
     expect(cflogram.nodes.some(n => n.kind === 'loop')).toBe(true);
   });
 
   it('should generate DFG for variable usage', async () => {
     const code = `
-      fn test() {
-        let a = 1;
-        let b = a + 1;
+      void test() {
+        int a = 1;
+        int b = a + 1;
       }
     `;
     const tree = parser.parse(code);
     const root = tree.rootNode;
-    const funcDef = root.descendantsOfType('function_item')[0];
+    const funcDef = root.descendantsOfType('function_definition')[0];
 
-    const dflogram = await generator.generateDFG({ node: funcDef, file: 'test.rs', code });
+    const dflogram = await generator.generateDFG({ node: funcDef, file: 'test.cpp', code });
 
     expect(dflogram.nodes.length).toBeGreaterThan(0);
     expect(dflogram.nodes.some(n => n.label === 'a')).toBe(true);

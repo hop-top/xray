@@ -1,20 +1,20 @@
 import Parser from 'tree-sitter';
-import { TypeScriptGraphGenerator } from './typescript';
-const TypeScript = require('tree-sitter-typescript').typescript;
+import { JavaScriptGraphGenerator } from '../../../src/parser/graphs/javascript';
+const JavaScript = require('tree-sitter-javascript');
 
-describe('TypeScriptGraphGenerator', () => {
+describe('JavaScriptGraphGenerator', () => {
   let parser: Parser;
-  let generator: TypeScriptGraphGenerator;
+  let generator: JavaScriptGraphGenerator;
 
   beforeAll(() => {
     parser = new Parser();
-    parser.setLanguage(TypeScript);
-    generator = new TypeScriptGraphGenerator();
+    parser.setLanguage(JavaScript);
+    generator = new JavaScriptGraphGenerator();
   });
 
   it('should generate CFG for a simple function', async () => {
     const code = `
-function test(x: number): number {
+function test(x) {
   if (x > 0) {
     return 1;
   } else {
@@ -26,7 +26,7 @@ function test(x: number): number {
     const root = tree.rootNode;
     const funcDef = root.descendantsOfType('function_declaration')[0];
 
-    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.ts', code });
+    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.js', code });
 
     expect(cflogram.nodes.length).toBeGreaterThan(0);
     expect(cflogram.nodes.some(n => n.kind === 'entry')).toBe(true);
@@ -45,7 +45,7 @@ function test() {
     const root = tree.rootNode;
     const funcDef = root.descendantsOfType('function_declaration')[0];
 
-    const dflogram = await generator.generateDFG({ node: funcDef, file: 'test.ts', code });
+    const dflogram = await generator.generateDFG({ node: funcDef, file: 'test.js', code });
 
     expect(dflogram.nodes.length).toBeGreaterThan(0);
     expect(dflogram.nodes.some(n => n.label === 'a')).toBe(true);

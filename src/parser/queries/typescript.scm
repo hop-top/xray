@@ -51,3 +51,10 @@
 ; Fields and properties
 (public_field_definition name: (property_identifier) @name.definition.field)
 (property_signature name: (property_identifier) @name.definition.field)
+
+; Imports
+(import_statement
+  source: (string) @import.source) @import.statement
+
+(import_require_clause
+  source: (string) @import.source) @import.statement

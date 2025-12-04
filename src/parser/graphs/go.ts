@@ -25,19 +25,23 @@ export class GoGraphGenerator implements GraphGenerator {
         let current = entry;
 
         const traverse = (n: Parser.SyntaxNode) => {
+            // console.log('Traversing:', n.type);
             switch (n.type) {
                 case 'block':
+                case 'statement_list':
                     for (const child of n.children) {
                         traverse(child);
                     }
                     break;
                 case 'if_statement':
                     const condition = n.childForFieldName('condition');
+                    // console.log('If statement found. Condition:', condition ? condition.type : 'NONE');
                     const consequence = n.childForFieldName('consequence');
                     const alternative = n.childForFieldName('alternative');
 
                     if (condition) {
-                        const condNode = createNode(`if (${condition.text})`, 'condition', condition);
+                        // console.log('Creating condition node');
+                        const condNode = createNode(`if (${condition.text || ''})`, 'condition', condition);
                         edges.push({ from: current.id, to: condNode.id });
 
                         current = condNode;
@@ -63,11 +67,21 @@ export class GoGraphGenerator implements GraphGenerator {
                     break;
                 case 'for_statement':
                     // Go only has 'for', which handles while/foreach/c-style for
-                    const loopCond = n.childForFieldName('condition');
+                    let loopCond = n.childForFieldName('condition');
                     const loopBody = n.childForFieldName('body');
 
+                    // Handle for_clause (new in tree-sitter-go 0.25)
+                    if (!loopCond) {
+                        // console.log('No direct condition, checking for_clause');
+                        const forClause = n.children.find(c => c.type === 'for_clause');
+                        if (forClause) {
+                            loopCond = forClause.childForFieldName('condition');
+                            // console.log('Found condition via for_clause:', loopCond ? loopCond.type : 'NONE');
+                        }
+                    }
+
                     let label = 'loop';
-                    if (loopCond) label = `loop (${loopCond.text})`;
+                    if (loopCond) label = `loop (${loopCond.text || ''})`;
 
                     const loopNode = createNode(label, 'loop', n);
                     edges.push({ from: current.id, to: loopNode.id });
@@ -75,7 +89,7 @@ export class GoGraphGenerator implements GraphGenerator {
                     if (loopBody) traverse(loopBody);
                     break;
                 case 'return_statement':
-                    const retNode = createNode(n.text, 'exit', n);
+                    const retNode = createNode(n.text || 'return', 'exit', n);
                     edges.push({ from: current.id, to: retNode.id });
                     current = retNode;
                     break;
@@ -84,7 +98,7 @@ export class GoGraphGenerator implements GraphGenerator {
                 case 'var_declaration':
                 case 'assignment_statement':
                 case 'defer_statement':
-                    const step = createNode(n.text, 'basic_block', n);
+                    const step = createNode(n.text || n.type, 'basic_block', n);
                     edges.push({ from: current.id, to: step.id });
                     current = step;
                     break;

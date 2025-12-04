@@ -1,6 +1,6 @@
 
 import Parser from 'tree-sitter';
-import { CSharpGraphGenerator } from './csharp';
+import { CSharpGraphGenerator } from '../../../src/parser/graphs/csharp';
 const CSharp = require('tree-sitter-c-sharp');
 
 describe('CSharpGraphGenerator', () => {
@@ -15,16 +15,20 @@ describe('CSharpGraphGenerator', () => {
 
   it('should generate CFG for a simple function', async () => {
     const code = `
-      public void Test(int x) {
-        if (x > 0) {
-          return 1;
-        } else {
-          return 0;
-        }
+      public class TestClass {
+          public void Test(int x) {
+            if (x > 0) {
+              return 1;
+            } else {
+              return 0;
+            }
+          }
       }
     `;
     const tree = parser.parse(code);
     const root = tree.rootNode;
+    if (!root) throw new Error('Failed to parse C# code: rootNode is missing');
+
     // console.log(root.toString());
     const funcDef = root.descendantsOfType('method_declaration')[0] || root.descendantsOfType('local_function_statement')[0];
 

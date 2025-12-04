@@ -8,3 +8,7 @@
 (property_declaration name: (identifier) @name.definition.field)
 (event_declaration name: (identifier) @name.definition.event)
 (delegate_declaration name: (identifier) @name.definition.type)
+
+; Imports
+(using_directive
+  [(identifier) (qualified_name)] @import.source) @import.statement

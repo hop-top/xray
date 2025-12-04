@@ -15,4 +15,5 @@ export interface Tag {
 export interface Import {
   file: string;
   source: string; // The module being imported
+  text?: string; // The full import statement text
 }

@@ -1,5 +1,5 @@
 const Graph = require('graphology');
-import { Ranker } from './ranker';
+import { Ranker } from '../../src/graph/ranker';
 
 describe('Ranker', () => {
     let graph: any;

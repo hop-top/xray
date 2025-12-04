@@ -35,6 +35,38 @@ describe('CLI E2E', () => {
         }
     });
 
+    test('should generate output with imports and dependency table', () => {
+        const root = path.join(__dirname, 'manual-imports');
+        const output = path.join(root, 'imports-output.txt');
+
+        if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
+
+        // Create test files
+        fs.writeFileSync(path.join(root, 'utils.ts'), `export const PI = 3.14;`);
+        fs.writeFileSync(path.join(root, 'main.ts'), `
+            import { PI } from './utils';
+            import * as fs from 'fs';
+            
+            console.log(PI);
+        `);
+
+        execSync(`node ${CLI_PATH} generate --root ${root} --include-imports --output ${output}`);
+
+        expect(fs.existsSync(output)).toBe(true);
+        const content = fs.readFileSync(output, 'utf-8');
+
+        // Check for imports in file section
+        expect(content).toContain('import { PI } from \'./utils\'');
+        expect(content).toContain('import * as fs from \'fs\'');
+
+        // Check for dependency table
+        expect(content).toContain('## External Dependencies');
+        expect(content).toContain('| fs | main.ts |');
+
+        // Cleanup
+        fs.rmSync(root, { recursive: true, force: true });
+    });
+
     test('should generate output for manual test', () => {
         const root = path.join(__dirname, 'manual');
         const query = path.join(root, 'custom-tags.scm');

@@ -1,33 +1,33 @@
 
 import Parser from 'tree-sitter';
-import { CPPGraphGenerator } from './cpp';
-const CPP = require('tree-sitter-cpp');
+import { SwiftGraphGenerator } from '../../../src/parser/graphs/swift';
+const Swift = require('tree-sitter-swift');
 
-describe('CPPGraphGenerator', () => {
+describe('SwiftGraphGenerator', () => {
   let parser: Parser;
-  let generator: CPPGraphGenerator;
+  let generator: SwiftGraphGenerator;
 
   beforeAll(() => {
     parser = new Parser();
-    parser.setLanguage(CPP);
-    generator = new CPPGraphGenerator();
+    parser.setLanguage(Swift);
+    generator = new SwiftGraphGenerator();
   });
 
   it('should generate CFG for a simple function', async () => {
     const code = `
-      void test(int x) {
-        if (x > 0) {
-          return 1;
+      func test(x: Int) -> Int {
+        if x > 0 {
+          return 1
         } else {
-          return 0;
+          return 0
         }
       }
     `;
     const tree = parser.parse(code);
     const root = tree.rootNode;
-    const funcDef = root.descendantsOfType('function_definition')[0];
+    const funcDef = root.descendantsOfType('function_declaration')[0];
 
-    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.cpp', code });
+    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.swift', code });
 
     expect(cflogram.nodes.length).toBeGreaterThan(0);
     expect(cflogram.nodes.some(n => n.kind === 'entry')).toBe(true);
@@ -36,32 +36,32 @@ describe('CPPGraphGenerator', () => {
 
   it('should generate CFG for loops', async () => {
     const code = `
-        void loopTest() {
-            for (int i = 0; i < 10; i++) {
-                doSomething();
+        func loopTest() {
+            for i in 0..<10 {
+                doSomething()
             }
         }
       `;
     const tree = parser.parse(code);
     const root = tree.rootNode;
-    const funcDef = root.descendantsOfType('function_definition')[0];
+    const funcDef = root.descendantsOfType('function_declaration')[0];
 
-    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.cpp', code });
+    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.swift', code });
     expect(cflogram.nodes.some(n => n.kind === 'loop')).toBe(true);
   });
 
   it('should generate DFG for variable usage', async () => {
     const code = `
-      void test() {
-        int a = 1;
-        int b = a + 1;
+      func test() {
+        let a = 1
+        let b = a + 1
       }
     `;
     const tree = parser.parse(code);
     const root = tree.rootNode;
-    const funcDef = root.descendantsOfType('function_definition')[0];
+    const funcDef = root.descendantsOfType('function_declaration')[0];
 
-    const dflogram = await generator.generateDFG({ node: funcDef, file: 'test.cpp', code });
+    const dflogram = await generator.generateDFG({ node: funcDef, file: 'test.swift', code });
 
     expect(dflogram.nodes.length).toBeGreaterThan(0);
     expect(dflogram.nodes.some(n => n.label === 'a')).toBe(true);

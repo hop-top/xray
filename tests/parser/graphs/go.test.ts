@@ -1,21 +1,21 @@
 
 import Parser from 'tree-sitter';
-import { SwiftGraphGenerator } from './swift';
-const Swift = require('tree-sitter-swift');
+import { GoGraphGenerator } from '../../../src/parser/graphs/go';
+const Go = require('tree-sitter-go');
 
-describe('SwiftGraphGenerator', () => {
+describe('GoGraphGenerator', () => {
   let parser: Parser;
-  let generator: SwiftGraphGenerator;
+  let generator: GoGraphGenerator;
 
   beforeAll(() => {
     parser = new Parser();
-    parser.setLanguage(Swift);
-    generator = new SwiftGraphGenerator();
+    parser.setLanguage(Go);
+    generator = new GoGraphGenerator();
   });
 
   it('should generate CFG for a simple function', async () => {
     const code = `
-      func test(x: Int) -> Int {
+      func test(x int) int {
         if x > 0 {
           return 1
         } else {
@@ -27,7 +27,7 @@ describe('SwiftGraphGenerator', () => {
     const root = tree.rootNode;
     const funcDef = root.descendantsOfType('function_declaration')[0];
 
-    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.swift', code });
+    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.go', code });
 
     expect(cflogram.nodes.length).toBeGreaterThan(0);
     expect(cflogram.nodes.some(n => n.kind === 'entry')).toBe(true);
@@ -37,7 +37,7 @@ describe('SwiftGraphGenerator', () => {
   it('should generate CFG for loops', async () => {
     const code = `
         func loopTest() {
-            for i in 0..<10 {
+            for i := 0; i < 10; i++ {
                 doSomething()
             }
         }
@@ -46,22 +46,22 @@ describe('SwiftGraphGenerator', () => {
     const root = tree.rootNode;
     const funcDef = root.descendantsOfType('function_declaration')[0];
 
-    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.swift', code });
+    const cflogram = await generator.generateCFG({ node: funcDef, file: 'test.go', code });
     expect(cflogram.nodes.some(n => n.kind === 'loop')).toBe(true);
   });
 
   it('should generate DFG for variable usage', async () => {
     const code = `
       func test() {
-        let a = 1
-        let b = a + 1
+        a := 1
+        b := a + 1
       }
     `;
     const tree = parser.parse(code);
     const root = tree.rootNode;
     const funcDef = root.descendantsOfType('function_declaration')[0];
 
-    const dflogram = await generator.generateDFG({ node: funcDef, file: 'test.swift', code });
+    const dflogram = await generator.generateDFG({ node: funcDef, file: 'test.go', code });
 
     expect(dflogram.nodes.length).toBeGreaterThan(0);
     expect(dflogram.nodes.some(n => n.label === 'a')).toBe(true);

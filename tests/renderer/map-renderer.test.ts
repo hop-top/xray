@@ -1,6 +1,6 @@
-import { MapRenderer } from './map-renderer';
+import { MapRenderer } from '../../src/renderer/map-renderer';
 import Graph from 'graphology';
-import { RankedNode } from '../graph/ranker';
+import { RankedNode } from '../../src/graph/ranker';
 
 describe('MapRenderer', () => {
     let graph: Graph;
@@ -186,5 +186,99 @@ describe('MapRenderer', () => {
         const output = await renderer.render(1000);
         expect(output).toContain('...');
         expect(output).not.toContain(longDoc);
+    });
+
+    it('should include imports when requested', async () => {
+        (graph as any).addNode('file1.ts', {
+            type: 'file', label: 'file1.ts', imports: [
+                { source: 'fs', line: 1, file: 'file1.ts' },
+                { source: './utils', line: 2, file: 'file1.ts' }
+            ]
+        });
+
+        ranked = [
+            { id: 'file1.ts', score: 10, data: { type: 'file' } },
+            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
+        ];
+        renderer = new MapRenderer('/root', ranked, graph);
+
+        const output = await renderer.render(1000, undefined, true);
+        expect(output).toContain('import fs');
+        expect(output).toContain('import ./utils');
+    });
+
+    it('should filter by maxDepth', async () => {
+        ranked = [
+            { id: 'file1.ts', score: 10, data: { type: 'file' } },
+            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } },
+            { id: 'deep/nested/file2.ts', score: 8, data: { type: 'file' } },
+            { id: 'deep/nested/file2.ts::tag2', score: 4, data: { type: 'tag', file: 'deep/nested/file2.ts', kind: 'function', label: 'tag2', line: 10 } }
+        ];
+        renderer = new MapRenderer('/root', ranked, graph);
+
+        const output = await renderer.render(1000, 1); // maxDepth = 1
+        expect(output).toContain('file1.ts');
+        expect(output).not.toContain('deep/nested/file2.ts');
+    });
+
+    it('should display cross-file references', async () => {
+        // Set up graph with cross-file call edges
+        (graph as any).addNode('file1.ts::caller', { type: 'tag', file: 'file1.ts', label: 'caller', line: 5, endLine: 8 });
+        (graph as any).addNode('file2.ts::callee', { type: 'tag', file: 'file2.ts', label: 'callee', line: 10, endLine: 12 });
+        (graph as any).addEdge('file1.ts::caller', 'file2.ts::callee', { type: 'calls' });
+
+        ranked = [
+            { id: 'file1.ts', score: 10, data: { type: 'file' } },
+            { id: 'file2.ts', score: 9, data: { type: 'file' } },
+            { id: 'file2.ts::callee', score: 5, data: { type: 'tag', file: 'file2.ts', kind: 'function', label: 'callee', line: 10, endLine: 12 } }
+        ];
+        renderer = new MapRenderer('/root', ranked, graph);
+
+        const output = await renderer.render(1000);
+        expect(output).toContain('used by: [file1.ts:L6](L6-L9)');
+    });
+
+    it('should generate external dependencies table', async () => {
+        (graph as any).addNode('file1.ts', {
+            type: 'file', label: 'file1.ts', imports: [
+                { source: 'fs', line: 1, file: 'file1.ts' },
+                { source: './utils', line: 2, file: 'file1.ts' }, // internal
+                { source: 'express', line: 3, file: 'file1.ts' }
+            ]
+        });
+        (graph as any).addNode('file2.ts', {
+            type: 'file', label: 'file2.ts', imports: [
+                { source: 'fs', line: 1, file: 'file2.ts' }
+            ]
+        });
+
+        ranked = [
+            { id: 'file1.ts', score: 10, data: { type: 'file' } },
+            { id: 'file2.ts', score: 9, data: { type: 'file' } }
+        ];
+        renderer = new MapRenderer('/root', ranked, graph);
+
+        const output = await renderer.render(10000, undefined, true);
+        expect(output).toContain('## External Dependencies');
+        expect(output).toContain('| fs | file1.ts, file2.ts |');
+        expect(output).toContain('| express | file1.ts |');
+        // Note: ./utils appears in imports list but not in dependencies table (correct behavior)
+    });
+
+    it('should include file nodes when includeImports is true and file has imports', async () => {
+        (graph as any).addNode('fileWithImports.ts', {
+            type: 'file', label: 'fileWithImports.ts', imports: [
+                { source: 'lodash', line: 1, file: 'fileWithImports.ts' }
+            ]
+        });
+
+        ranked = [
+            { id: 'fileWithImports.ts', score: 10, data: { type: 'file' } }
+        ];
+        renderer = new MapRenderer('/root', ranked, graph);
+
+        const output = await renderer.render(1000, undefined, true);
+        expect(output).toContain('fileWithImports.ts');
+        expect(output).toContain('import lodash');
     });
 });

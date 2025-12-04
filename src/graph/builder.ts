@@ -41,6 +41,12 @@ export class GraphBuilder {
 
     // Note: In a full implementation, we would resolve imports to files
     // and add edges: file -> imported_file
+
+    // Store imports as an attribute on the file node
+    if (imports && imports.length > 0) {
+      // Store full import objects
+      this.graph.mergeNodeAttributes(file, { imports: imports });
+    }
   }
 
   loadFromCache(file: string, tags: Tag[], imports: Import[]) {

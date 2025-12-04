@@ -1,5 +1,5 @@
-(function_declaration name: (variable) @name.definition.function)
-(type_alias name: (type) @name.definition.type)
-(data_type name: (type) @name.definition.type)
-(newtype_declaration name: (type) @name.definition.type)
-(class_declaration name: (type) @name.definition.interface)
+; Haskell imports are parsed as (import module: (module ...))
+; Imports
+(import
+  module: (module) @import.source) @import.statement
+

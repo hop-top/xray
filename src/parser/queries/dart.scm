@@ -8,3 +8,7 @@
 (setter_signature name: (identifier) @name.definition.method)
 (constructor_signature name: (identifier) @name.definition.method)
 (global_variable_declaration name: (identifier) @name.definition.variable)
+
+; Imports
+(import_or_export_part
+  (string_literal) @import.source) @import.statement

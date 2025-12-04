@@ -66,9 +66,11 @@ export class ParserManager {
     const tree = parser.parse(content);
 
     const tags = await this.extractTags(tree, langConfig.grammar, langConfig.tagsQuery, relPath, content, includeVariables, docConfig, enableCfg, enableDfg);
-    // Note: Import extraction logic would go here similarly using refsQuery
-    // For this MVP, we focus on Definitions (Tags)
-    const imports: Import[] = [];
+
+    let imports: Import[] = [];
+    if (langConfig.importsQuery) {
+      imports = await this.extractImports(tree, langConfig.grammar, langConfig.importsQuery, relPath);
+    }
 
     return { tags, imports };
   }
@@ -344,5 +346,105 @@ export class ParserManager {
 
     traverse(defNode);
     return Array.from(references);
+  }
+
+  private async extractImports(tree: Parser.Tree, language: any, queryStr: string, file: string): Promise<Import[]> {
+    const imports: Import[] = [];
+    if (!queryStr) return imports;
+
+    try {
+      const query = new Parser.Query(language, queryStr);
+      const captures = query.captures(tree.rootNode);
+
+      // Map to store imports by range to combine source and text
+      const importMap = new Map<string, { source?: string, text?: string }>();
+
+      for (const capture of captures) {
+        const id = `${capture.node.startIndex}-${capture.node.endIndex}`;
+        if (!importMap.has(id)) {
+          importMap.set(id, {});
+        }
+        const entry = importMap.get(id)!;
+
+        if (capture.name === 'import.source') {
+          let source = capture.node.text;
+          // Clean up quotes
+          if ((source.startsWith("'") && source.endsWith("'")) ||
+            (source.startsWith('"') && source.endsWith('"'))) {
+            source = source.slice(1, -1);
+          }
+          entry.source = source;
+        } else if (capture.name === 'import.statement') {
+          entry.text = capture.node.text;
+        }
+      }
+
+      // Process map into array
+      // We need to associate source with statement. 
+      // The source node is a child of the statement node.
+      // So the ranges will be different.
+      // Strategy: 
+      // 1. Collect all statements.
+      // 2. Collect all sources.
+      // 3. For each source, find the parent statement.
+
+      // Let's retry the loop strategy.
+
+      const statements: { node: Parser.SyntaxNode, text: string }[] = [];
+      const sources: { node: Parser.SyntaxNode, source: string }[] = [];
+
+      for (const capture of captures) {
+        if (capture.name === 'import.statement') {
+          statements.push({ node: capture.node, text: capture.node.text });
+        } else if (capture.name === 'import.source') {
+          let source = capture.node.text;
+          if ((source.startsWith("'") && source.endsWith("'")) ||
+            (source.startsWith('"') && source.endsWith('"'))) {
+            source = source.slice(1, -1);
+          }
+          sources.push({ node: capture.node, source });
+        }
+      }
+
+      // Match sources to statements
+      for (const src of sources) {
+        // Find parent statement
+        // Simple check: source node range is within statement node range
+        const stmt = statements.find(s =>
+          src.node.startIndex >= s.node.startIndex &&
+          src.node.endIndex <= s.node.endIndex
+        );
+
+        if (stmt) {
+          let source = src.source;
+          // Clean up Scala imports which capture the whole declaration
+          if (file.endsWith('.scala') && source.startsWith('import ')) {
+            source = source.replace(/^import\s+/, '').trim();
+          }
+
+          imports.push({
+            file,
+            source,
+            text: stmt.text
+          });
+        } else {
+          let source = src.source;
+          if (file.endsWith('.scala') && source.startsWith('import ')) {
+            source = source.replace(/^import\s+/, '').trim();
+          }
+          // Fallback if no statement captured (shouldn't happen with correct queries)
+          imports.push({
+            file,
+            source,
+            text: `import ${source}` // approximate
+          });
+        }
+      }
+
+    } catch (e) {
+      Logger.warn(`Import query error in ${file}: ${e}`);
+    }
+
+    return imports;
   }
 }

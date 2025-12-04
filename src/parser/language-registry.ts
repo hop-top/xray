@@ -18,14 +18,15 @@ const Bash = require('tree-sitter-bash');
 const Swift = require('tree-sitter-swift');
 const Kotlin = require('tree-sitter-kotlin');
 const Scala = require('tree-sitter-scala');
-const Dart = require('tree-sitter-dart');
-const Lua = require('tree-sitter-lua');
+// const Dart = require('tree-sitter-dart');
+// const Lua = require('tree-sitter-lua');
 const Elixir = require('tree-sitter-elixir');
 const Haskell = require('tree-sitter-haskell');
 
 interface LanguageConfig {
   grammar: any;
   tagsQuery: string;
+  importsQuery?: string;
 }
 
 const registry: Record<string, LanguageConfig> = {};
@@ -38,31 +39,32 @@ function loadQuery(name: string): string {
 }
 
 // Initialize Registry
-registry['.ts'] = { grammar: TypeScript, tagsQuery: loadQuery('typescript.scm') };
-registry['.tsx'] = { grammar: TypeScript, tagsQuery: loadQuery('typescript.scm') };
-registry['.js'] = { grammar: JavaScript, tagsQuery: loadQuery('javascript.scm') };
-registry['.jsx'] = { grammar: JavaScript, tagsQuery: loadQuery('javascript.scm') };
-registry['.py'] = { grammar: Python, tagsQuery: loadQuery('python.scm') };
-registry['.java'] = { grammar: Java, tagsQuery: loadQuery('java.scm') };
-registry['.cs'] = { grammar: CSharp, tagsQuery: loadQuery('c_sharp.scm') };
-registry['.cpp'] = { grammar: CPP, tagsQuery: loadQuery('cpp.scm') };
-registry['.hpp'] = { grammar: CPP, tagsQuery: loadQuery('cpp.scm') };
-registry['.c'] = { grammar: C, tagsQuery: loadQuery('c.scm') };
-registry['.h'] = { grammar: C, tagsQuery: loadQuery('c.scm') };
-registry['.go'] = { grammar: Go, tagsQuery: loadQuery('go.scm') };
-registry['.rs'] = { grammar: Rust, tagsQuery: loadQuery('rust.scm') };
-registry['.php'] = { grammar: PHP, tagsQuery: loadQuery('php.scm') };
-registry['.rb'] = { grammar: Ruby, tagsQuery: loadQuery('ruby.scm') };
-registry['.sh'] = { grammar: Bash, tagsQuery: loadQuery('bash.scm') };
-registry['.bash'] = { grammar: Bash, tagsQuery: loadQuery('bash.scm') };
-registry['.swift'] = { grammar: Swift, tagsQuery: loadQuery('swift.scm') };
-registry['.kt'] = { grammar: Kotlin, tagsQuery: loadQuery('kotlin.scm') };
-registry['.scala'] = { grammar: Scala, tagsQuery: loadQuery('scala.scm') };
-registry['.dart'] = { grammar: Dart, tagsQuery: loadQuery('dart.scm') };
-registry['.lua'] = { grammar: Lua, tagsQuery: loadQuery('lua.scm') };
-registry['.ex'] = { grammar: Elixir, tagsQuery: loadQuery('elixir.scm') };
-registry['.exs'] = { grammar: Elixir, tagsQuery: loadQuery('elixir.scm') };
-registry['.hs'] = { grammar: Haskell, tagsQuery: loadQuery('haskell.scm') };
+// Note: We reuse tagsQuery for importsQuery for now as we added import captures to the same files
+registry['.ts'] = { grammar: TypeScript, tagsQuery: loadQuery('typescript.scm'), importsQuery: loadQuery('typescript.scm') };
+registry['.tsx'] = { grammar: TypeScript, tagsQuery: loadQuery('typescript.scm'), importsQuery: loadQuery('typescript.scm') };
+registry['.js'] = { grammar: JavaScript, tagsQuery: loadQuery('javascript.scm'), importsQuery: loadQuery('javascript.scm') };
+registry['.jsx'] = { grammar: JavaScript, tagsQuery: loadQuery('javascript.scm'), importsQuery: loadQuery('javascript.scm') };
+registry['.py'] = { grammar: Python, tagsQuery: loadQuery('python.scm'), importsQuery: loadQuery('python.scm') };
+registry['.java'] = { grammar: Java, tagsQuery: loadQuery('java.scm'), importsQuery: loadQuery('java.scm') };
+registry['.cs'] = { grammar: CSharp, tagsQuery: loadQuery('c_sharp.scm'), importsQuery: loadQuery('c_sharp.scm') };
+registry['.cpp'] = { grammar: CPP, tagsQuery: loadQuery('cpp.scm'), importsQuery: loadQuery('cpp.scm') };
+registry['.hpp'] = { grammar: CPP, tagsQuery: loadQuery('cpp.scm'), importsQuery: loadQuery('cpp.scm') };
+registry['.c'] = { grammar: C, tagsQuery: loadQuery('c.scm'), importsQuery: loadQuery('c.scm') };
+registry['.h'] = { grammar: C, tagsQuery: loadQuery('c.scm'), importsQuery: loadQuery('c.scm') };
+registry['.go'] = { grammar: Go, tagsQuery: loadQuery('go.scm'), importsQuery: loadQuery('go.scm') };
+registry['.rs'] = { grammar: Rust, tagsQuery: loadQuery('rust.scm'), importsQuery: loadQuery('rust.scm') };
+registry['.php'] = { grammar: PHP.php, tagsQuery: loadQuery('php.scm'), importsQuery: loadQuery('php.scm') };
+registry['.rb'] = { grammar: Ruby, tagsQuery: loadQuery('ruby.scm'), importsQuery: loadQuery('ruby.scm') };
+registry['.sh'] = { grammar: Bash, tagsQuery: loadQuery('bash.scm'), importsQuery: loadQuery('bash.scm') };
+registry['.bash'] = { grammar: Bash, tagsQuery: loadQuery('bash.scm'), importsQuery: loadQuery('bash.scm') };
+registry['.swift'] = { grammar: Swift, tagsQuery: loadQuery('swift.scm'), importsQuery: loadQuery('swift.scm') };
+registry['.kt'] = { grammar: Kotlin, tagsQuery: loadQuery('kotlin.scm'), importsQuery: loadQuery('kotlin.scm') };
+registry['.scala'] = { grammar: Scala, tagsQuery: loadQuery('scala.scm'), importsQuery: loadQuery('scala.scm') };
+// registry['.dart'] = { grammar: Dart, tagsQuery: loadQuery('dart.scm'), importsQuery: loadQuery('dart.scm') };
+// registry['.lua'] = { grammar: Lua, tagsQuery: loadQuery('lua.scm'), importsQuery: loadQuery('lua.scm') };
+registry['.ex'] = { grammar: Elixir, tagsQuery: loadQuery('elixir.scm'), importsQuery: loadQuery('elixir.scm') };
+registry['.exs'] = { grammar: Elixir, tagsQuery: loadQuery('elixir.scm'), importsQuery: loadQuery('elixir.scm') };
+registry['.hs'] = { grammar: Haskell, tagsQuery: loadQuery('haskell.scm'), importsQuery: loadQuery('haskell.scm') };
 
 export function getLanguageConfig(ext: string): LanguageConfig | undefined {
   return registry[ext];

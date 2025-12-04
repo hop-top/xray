@@ -13,7 +13,7 @@ export class MapRenderer {
     this.graph = graph;
   }
 
-  async render(tokenLimit: number, maxDepth?: number): Promise<string> {
+  async render(tokenLimit: number, maxDepth?: number, includeImports?: boolean): Promise<string> {
     // Group tags by file
     const fileMap = new Map<string, RankedNode[]>();
 
@@ -36,6 +36,14 @@ export class MapRenderer {
         const file = node.data.file;
         if (!fileMap.has(file)) fileMap.set(file, []);
         fileMap.get(file)?.push(node);
+      } else if (node.data.type === 'file') {
+        // Ensure file is in map if it has imports and we are including them
+        if (includeImports) {
+          const imports = (this.graph as any).getNodeAttribute(node.id, 'imports');
+          if (imports && imports.length > 0) {
+            if (!fileMap.has(node.id)) fileMap.set(node.id, []);
+          }
+        }
       }
     }
 
@@ -81,6 +89,25 @@ export class MapRenderer {
 
       outputLines.push(`${file} ${fileRange}:`);
       currentTokens += 4; // rough estimate
+
+      // Display imports if requested
+      if (includeImports) {
+        const fileNode = this.ranked.find(n => n.id === file);
+        if (fileNode) {
+          const imports = (this.graph as any).getNodeAttribute(file, 'imports') as any[];
+          if (imports && imports.length > 0) {
+            for (const imp of imports) {
+              // Use text if available, otherwise construct simple import
+              const importText = imp.text || `import ${imp.source}`;
+              // Clean up newlines in import text to keep it on one line if possible or indent properly
+              const formattedImport = importText.replace(/\n/g, ' ').replace(/\s+/g, ' ');
+
+              outputLines.push(`│ [L1] ${formattedImport}`);
+              currentTokens += 4;
+            }
+          }
+        }
+      }
 
       for (const tag of tags) {
         const signature = tag.data.signature ? tag.data.signature : '';
@@ -142,6 +169,57 @@ export class MapRenderer {
       }
       outputLines.push(''); // spacer
       if (currentTokens >= tokenLimit) break;
+    }
+
+    // Generate Dependency Table if requested
+    if (includeImports) {
+      outputLines.push('## External Dependencies');
+      outputLines.push('| Library | Used By |');
+      outputLines.push('|---------|---------|');
+
+      const dependencies = new Map<string, Set<string>>();
+      const allFiles = new Set<string>();
+
+      // Collect all known files in the repo to filter internal imports
+      this.ranked.forEach(node => {
+        if (node.data.type === 'file') {
+          allFiles.add(node.id);
+        }
+      });
+
+      // Iterate over all files to find imports
+      this.ranked.forEach(node => {
+        if (node.data.type === 'file') {
+          const imports = (this.graph as any).getNodeAttribute(node.id, 'imports') as any[];
+          if (imports) {
+            for (const imp of imports) {
+              const source = imp.source;
+              // Simple heuristic to check if it's external
+              // 1. Not starting with . or / (absolute paths shouldn't happen in imports usually)
+              // 2. Not in the list of files (approximate matching needed?)
+              // For now, assume if it starts with ., it's internal.
+
+              let isExternal = true;
+              if (source.startsWith('.')) isExternal = false;
+
+              if (isExternal) {
+                if (!dependencies.has(source)) {
+                  dependencies.set(source, new Set());
+                }
+                dependencies.get(source)!.add(node.id);
+              }
+            }
+          }
+        }
+      });
+
+      // Sort dependencies
+      const sortedDeps = Array.from(dependencies.keys()).sort();
+
+      for (const dep of sortedDeps) {
+        const users = Array.from(dependencies.get(dep)!).sort().join(', ');
+        outputLines.push(`| ${dep} | ${users} |`);
+      }
     }
 
     return outputLines.join('\n');

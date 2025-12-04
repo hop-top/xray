@@ -1,4 +1,4 @@
-import { ParserManager } from './manager';
+import { ParserManager } from '../../src/parser/manager';
 import * as path from 'path';
 
 describe('ParserManager', () => {
