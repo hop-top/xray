@@ -148,14 +148,30 @@ export class ParserManager {
             }
           }
 
+          // Find definition node for endLine
+          let defNodeForLine = node.parent;
+          while (defNodeForLine && !defNodeForLine.type.includes('definition') && !defNodeForLine.type.includes('declaration')) {
+            defNodeForLine = defNodeForLine.parent;
+          }
+          // Fallback to name node if no definition found (e.g. variable declarator might be tricky)
+          if (!defNodeForLine) defNodeForLine = node;
+
+          // Extract function call references for functions/methods
+          let references: string[] | undefined;
+          if (kind === 'function' || kind === 'method') {
+            references = this.extractReferences(defNodeForLine);
+          }
+
           tags.push({
             file,
             name: tagName,
             kind,
             line: node.startPosition.row,
+            endLine: defNodeForLine.endPosition.row,
             col: node.startPosition.column,
             signature,
             doc,
+            references,
             cfg: cflogram,
             dfg: dflogram
           });
@@ -294,5 +310,39 @@ export class ParserManager {
     }
 
     return false;
+  }
+
+  private extractReferences(defNode: Parser.SyntaxNode): string[] {
+    const references = new Set<string>();
+
+    // Recursively traverse the function body to find call expressions
+    const traverse = (node: Parser.SyntaxNode) => {
+      // Check for call expressions (covers most languages)
+      if (node.type === 'call_expression') {
+        // Try to get the function name being called
+        const funcNode = node.childForFieldName('function');
+        if (funcNode) {
+          // Handle simple function calls: foo()
+          if (funcNode.type === 'identifier') {
+            references.add(funcNode.text);
+          }
+          // Handle member expressions: obj.method()
+          else if (funcNode.type === 'member_expression' || funcNode.type === 'attribute') {
+            const property = funcNode.childForFieldName('property') || funcNode.childForFieldName('attribute');
+            if (property) {
+              references.add(property.text);
+            }
+          }
+        }
+      }
+
+      // Recurse into children
+      for (const child of node.children) {
+        traverse(child);
+      }
+    };
+
+    traverse(defNode);
+    return Array.from(references);
   }
 }

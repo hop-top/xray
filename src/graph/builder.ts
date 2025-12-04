@@ -3,6 +3,7 @@ import { Tag, Import } from '../parser/types';
 
 export class GraphBuilder {
   private graph: any;
+  private pendingReferences: Map<string, { tagId: string, references: string[] }> = new Map();
 
   constructor() {
     this.graph = new Graph({ multi: true, type: 'directed' });
@@ -24,12 +25,18 @@ export class GraphBuilder {
           kind: tag.kind,
           file: file,
           line: tag.line,
+          endLine: tag.endLine,
           signature: tag.signature,
           doc: tag.doc
         });
       }
       // Edge: File defines Tag
       this.graph.addEdge(file, tagId, { type: 'defines' });
+
+      // Store references for later edge creation
+      if (tag.references && tag.references.length > 0) {
+        this.pendingReferences.set(tagId, { tagId, references: tag.references });
+      }
     }
 
     // Note: In a full implementation, we would resolve imports to files
@@ -41,6 +48,40 @@ export class GraphBuilder {
   }
 
   getGraph(): any {
+    // Build reference edges before returning graph
+    this.buildReferenceEdges();
     return this.graph;
+  }
+
+  private buildReferenceEdges() {
+    // Create a map of tag names to tag IDs for efficient lookups
+    const tagNameMap = new Map<string, string[]>();
+    this.graph.forEachNode((nodeId: string, attrs: any) => {
+      if (attrs.type === 'tag') {
+        const tagName = attrs.label;
+        if (!tagNameMap.has(tagName)) {
+          tagNameMap.set(tagName, []);
+        }
+        tagNameMap.get(tagName)!.push(nodeId);
+      }
+    });
+
+    // For each tag with references, create edges to matching tags
+    for (const { tagId, references } of this.pendingReferences.values()) {
+      for (const refName of references) {
+        const targetTags = tagNameMap.get(refName);
+        if (targetTags) {
+          for (const targetTagId of targetTags) {
+            // Avoid self-references
+            if (targetTagId !== tagId) {
+              // Only add edge if it doesn't already exist
+              if (!this.graph.hasEdge(tagId, targetTagId)) {
+                this.graph.addEdge(tagId, targetTagId, { type: 'calls' });
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

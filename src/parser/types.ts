@@ -3,9 +3,11 @@ export interface Tag {
   name: string;
   kind: string;
   line: number;
+  endLine?: number;
   col: number;
   signature?: string; // Optional signature for functions/methods
   doc?: string; // Optional docstring
+  references?: string[]; // Function names called by this tag
   cfg?: any; // Optional Control Flow Graph
   dfg?: any; // Optional Data Flow Graph
 }

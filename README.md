@@ -124,6 +124,47 @@ The CFG/DFG system uses a multi-strategy architecture that allows for different 
 
 All graph generators are async and context-aware, receiving the full source code and file path for comprehensive analysis.
 
+### Map Output Features
+
+#### Line Range Display
+
+The map output includes precise line ranges for both files and code elements, making it easy to locate and extract specific code:
+
+```
+utils.ts (L5-L50):
+│ [L5-L12] function helper
+│ [L15-L20] function validate
+│ [L25] const API_KEY
+```
+
+- **File headers** show the range of lines covered by displayed tags: `file.ts (L1-L100):`
+- **Tags** show their exact line ranges: `[L5-L12]` or `[L25]` for single-line items
+- Line numbers are 1-indexed for easy navigation in editors
+
+#### Cross-File Reference Tracking
+
+Xray automatically extracts and displays function call relationships across files:
+
+```
+helper.ts (L5-L20):
+│ [L5-L12] function formatData
+│       → used by: [main.ts:L15](L10-L25)
+│       → used by: [router.ts:L8](L5-L18)
+```
+
+**How it works:**
+- During parsing, Tree-sitter extracts `call_expression` nodes from function bodies
+- Function names are matched across the codebase to build a call graph
+- References are stored in SQLite cache for fast reuse
+- Only **cross-file references** are shown to reduce noise
+- Up to **3 callers** displayed per function
+
+**Format:** `→ used by: [file:L#](L#-L#)`
+- First `L#` is the call location
+- Range `(L#-L#)` shows the entire calling function's extent
+
+This makes it easy to understand dependencies and extract the exact code context for any reference.
+
 
 ## Extensibility
 

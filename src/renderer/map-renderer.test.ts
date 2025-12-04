@@ -75,20 +75,20 @@ describe('MapRenderer', () => {
     it('should render files and tags', async () => {
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
+            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, endLine: 14 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
         const output = await renderer.render(1000);
-        expect(output).toContain('file1.ts:');
-        expect(output).toContain('│ [L11] function tag1');
+        expect(output).toContain('file1.ts (L11-L15):');
+        expect(output).toContain('│ [L11-L15] function tag1');
     });
 
     it('should respect token limit', async () => {
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } },
-            { id: 'file1.ts::tag2', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag2', line: 20 } }
+            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, endLine: 14 } },
+            { id: 'file1.ts::tag2', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag2', line: 20, endLine: 20 } }
         ];
         // Set a very small limit to force truncation
         renderer = new MapRenderer('/root', ranked, graph);
@@ -104,21 +104,21 @@ describe('MapRenderer', () => {
         // "│ function tag1" is ~3 tokens.
         // So it might print one tag and then stop.
 
-        expect(output).toContain('file1.ts:');
+        expect(output).toContain('file1.ts (L11-L21):');
     });
 
     it('should prioritize files with higher score', async () => {
         ranked = [
             { id: 'fileA.ts', score: 1, data: { type: 'file' } },
             { id: 'fileB.ts', score: 10, data: { type: 'file' } },
-            { id: 'fileA.ts::tag1', score: 1, data: { type: 'tag', file: 'fileA.ts', kind: 'fn', label: 'tag1', line: 1 } },
-            { id: 'fileB.ts::tag1', score: 1, data: { type: 'tag', file: 'fileB.ts', kind: 'fn', label: 'tag1', line: 1 } }
+            { id: 'fileA.ts::tag1', score: 1, data: { type: 'tag', file: 'fileA.ts', kind: 'fn', label: 'tag1', line: 1, endLine: 1 } },
+            { id: 'fileB.ts::tag1', score: 1, data: { type: 'tag', file: 'fileB.ts', kind: 'fn', label: 'tag1', line: 1, endLine: 1 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
         const output = await renderer.render(1000);
 
-        const indexA = output.indexOf('fileA.ts:');
-        const indexB = output.indexOf('fileB.ts:');
+        const indexA = output.indexOf('fileA.ts (L2):');
+        const indexB = output.indexOf('fileB.ts (L2):');
 
         expect(indexB).toBeLessThan(indexA); // B should come first
     });
@@ -133,12 +133,12 @@ describe('MapRenderer', () => {
         // Actually, the renderer iterates ranked nodes to build fileMap.
         // If a file node is missing but tag exists, it creates entry in fileMap.
         // But fileScores won't have it.
-        ranked.push({ id: 'fileD.ts::tag1', score: 1, data: { type: 'tag', file: 'fileD.ts', kind: 'fn', label: 'tag1', line: 1 } });
+        ranked.push({ id: 'fileD.ts::tag1', score: 1, data: { type: 'tag', file: 'fileD.ts', kind: 'fn', label: 'tag1', line: 1, endLine: 1 } });
 
         renderer = new MapRenderer('/root', ranked, graph);
         const output = await renderer.render(1000);
 
-        expect(output).toContain('fileD.ts:');
+        expect(output).toContain('fileD.ts (L2):');
     });
 
     it('should sort files with missing scores correctly', async () => {
@@ -155,9 +155,9 @@ describe('MapRenderer', () => {
         renderer = new MapRenderer('/root', ranked, graph);
         const output = await renderer.render(1000);
 
-        const indexA = output.indexOf('fileA.ts:');
-        const indexB = output.indexOf('fileB.ts:');
-        const indexC = output.indexOf('fileC.ts:');
+        const indexA = output.indexOf('fileA.ts (L2):');
+        const indexB = output.indexOf('fileB.ts (L2):');
+        const indexC = output.indexOf('fileC.ts (L2):');
 
         expect(indexA).toBeLessThan(indexB);
         expect(indexA).toBeLessThan(indexC);
