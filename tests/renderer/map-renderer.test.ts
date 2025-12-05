@@ -258,10 +258,10 @@ describe('MapRenderer', () => {
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
-        const output = await renderer.render(10000, undefined, true);
-        expect(output).toContain('## External Dependencies');
-        expect(output).toContain('| fs | file1.ts, file2.ts |');
-        expect(output).toContain('| express | file1.ts |');
+        const output = await renderer.render(10000, undefined, true, false);
+        expect(output).not.toContain('## External Dependencies');
+        expect(output).not.toContain('| fs | file1.ts, file2.ts |');
+        expect(output).not.toContain('| express | file1.ts |');
         // Note: ./utils appears in imports list but not in dependencies table (correct behavior)
     });
 
@@ -280,5 +280,44 @@ describe('MapRenderer', () => {
         const output = await renderer.render(1000, undefined, true);
         expect(output).toContain('fileWithImports.ts');
         expect(output).toContain('import lodash');
+    });
+
+    it('should include imports and dependencies table when includeDeps is true', async () => {
+        (graph as any).addNode('main.ts', {
+            type: 'file', label: 'main.ts', imports: [
+                { source: 'fs', line: 1, file: 'main.ts' },
+                { source: 'lodash', line: 2, file: 'main.ts' },
+                { source: './utils', line: 3, file: 'main.ts' }
+            ]
+        });
+        (graph as any).addNode('utils.ts', {
+            type: 'file', label: 'utils.ts', imports: [
+                { source: 'fs', line: 1, file: 'utils.ts' }
+            ]
+        });
+
+        ranked = [
+            { id: 'main.ts', score: 10, data: { type: 'file' } },
+            { id: 'main.ts::handler', score: 5, data: { type: 'tag', file: 'main.ts', kind: 'function', label: 'handler', line: 10, endLine: 15 } },
+            { id: 'utils.ts', score: 9, data: { type: 'file' } },
+            { id: 'utils.ts::helper', score: 4, data: { type: 'tag', file: 'utils.ts', kind: 'function', label: 'helper', line: 1, endLine: 5 } }
+        ];
+        renderer = new MapRenderer('/root', ranked, graph);
+
+        // Render with includeImports = true to simulate --include-deps behavior
+        const output = await renderer.render(10000, undefined, false, true);
+        
+        // Should contain imports in file sections
+        expect(output).toContain('import fs');
+        expect(output).toContain('import lodash');
+        expect(output).toContain('import ./utils');
+        
+        // Should contain external dependencies table
+        expect(output).toContain('## External Dependencies');
+        expect(output).toContain('| fs |');
+        expect(output).toContain('| lodash |');
+        
+        // Internal import should NOT appear in dependencies table
+        expect(output).not.toContain('| ./utils |');
     });
 });

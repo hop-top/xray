@@ -13,7 +13,7 @@ export class MapRenderer {
     this.graph = graph;
   }
 
-  async render(tokenLimit: number, maxDepth?: number, includeImports?: boolean): Promise<string> {
+  async render(tokenLimit: number, maxDepth?: number, includeImports?: boolean, includeDeps?: boolean): Promise<string> {
     // Group tags by file
     const fileMap = new Map<string, RankedNode[]>();
 
@@ -29,6 +29,10 @@ export class MapRenderer {
 
     const outputLines: string[] = [];
     let currentTokens = 0;
+    
+    if (includeDeps === true) {
+      includeImports = true;
+    }
 
     // Organize data
     for (const node of this.ranked) {
@@ -172,7 +176,7 @@ export class MapRenderer {
     }
 
     // Generate Dependency Table if requested
-    if (includeImports) {
+    if (includeDeps) {
       outputLines.push('## External Dependencies');
       outputLines.push('| Library | Used By |');
       outputLines.push('|---------|---------|');

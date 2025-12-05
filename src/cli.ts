@@ -22,6 +22,7 @@ program
   .option('-t, --tokens <number>', 'Token limit', '4096')
   .option('--include-variables', 'Include local variables and constants in output', false)
   .option('--include-imports', 'Include imports and dependency table in output', false)
+  .option('--include-deps', 'Include dependencies (implies --include-imports)', false)
   .option('--doc <config>', 'Include docstrings (all, none, or comma-separated list of kinds like class,function)', 'none')
   .option('--focus <path>', 'Focus on a specific file (Personalized PageRank)')
   .option('--max-depth <number>', 'Maximum depth of the tree to render')
@@ -51,6 +52,7 @@ program
         tokenLimit: parseInt(options.tokens),
         includeVariables: options.includeVariables || false,
         includeImports: options.includeImports || false,
+        includeDeps: options.includeDeps || false,
         doc: options.doc,
         focus: options.focus,
         maxDepth: options.maxDepth ? parseInt(options.maxDepth) : undefined,
