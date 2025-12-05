@@ -10,6 +10,10 @@ Code mapping for codebases.
    ```
    *Note: This requires a C++ compiler environment (like build-essential on Linux or Xcode on macOS) because `tree-sitter` and `better-sqlite3` are native modules.*
 
+   ```bash
+   CXXFLAGS="-std=c++20" npm install
+   ```
+
 2. **Build**:
    ```bash
    npm run build
