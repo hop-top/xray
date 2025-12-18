@@ -1,5 +1,9 @@
 # xray.codes
 
+![npm version](https://img.shields.io/npm/v/xray.svg) ![build status](https://img.shields.io/github/actions/workflow/status/yourusername/xray/build.yml) ![license](https://img.shields.io/npm/l/xray)
+
+**⚠️ ALPHA RELEASE** - This is an early alpha version of xray. Features may be incomplete, unstable, or subject to breaking changes.
+
 Code mapping for codebases.
 
 ## Setup
