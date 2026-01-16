@@ -10,12 +10,14 @@ Code mapping for codebases.
 
 1. **Install Dependencies**:
    ```bash
-   npm install
+   npm install --legacy-peer-deps
    ```
-   *Note: This requires a C++ compiler environment (like build-essential on Linux or Xcode on macOS) because `tree-sitter` and `better-sqlite3` are native modules.*
+   *Note: The `--legacy-peer-deps` flag is required due to a peer dependency conflict with `tree-sitter`.*
+
+   *This also requires a C++ compiler environment (like build-essential on Linux or Xcode on macOS) because `tree-sitter` and `better-sqlite3` are native modules. If you encounter C++ compilation errors, try:*
 
    ```bash
-   CXXFLAGS="-std=c++20" npm install
+   CXXFLAGS="-std=c++20" npm install --legacy-peer-deps
    ```
 
 2. **Build**:
