@@ -17,8 +17,59 @@ npm install -g xray
 xray map
 
 # Focus on specific directory with imports and variables
-xray map -p ./src -w incs -w vars -o codebase-map.txt
+xray map --path ./src --with incs --with vars --output codebase-map.txt
 ```
+
+### Configuration & Automation
+
+Set up xray once and keep your codebase maps always up-to-date:
+
+**1. Create a config file (`.xrayrc.json`):**
+
+```json
+{
+  "paths": ["./src"],
+  "output": "docs/codebase-map.txt",
+  "limit": 8000,
+  "features": {
+    "vars": true,
+    "incs": true
+  }
+}
+```
+
+**2. Add GitHub Action** (automatically updates maps on PRs):
+
+Create `.github/workflows/xray-regenerate.yml`:
+
+```yaml
+name: Regenerate Xray Maps
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  xray:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: IdeaCraftersLabs/oss-xray-codes@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**3. Add pre-commit hook** (updates maps before each commit):
+
+```bash
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+See [Configuration](#configuration) and [Automation](#automation) sections for detailed setup.
 
 ## What is xray?
 
@@ -101,13 +152,13 @@ xray map [options]
 xray map
 
 # Specify custom path and output
-xray map -p ./src -o codebase-map.txt
+xray map --path ./src --output codebase-map.txt
 
 # Focus on specific file with extended features
-xray map -a src/main.ts -w vars -w incs -w cost
+xray map --anchor src/main.ts --with vars --with incs --with cost
 
 # Multiple paths with depth limit
-xray map -p ./src -p ./lib -d 3 -o analysis.txt
+xray map --path ./src --path ./lib --depth 3 --output analysis.txt
 ```
 
 ### `xray scan`
@@ -121,10 +172,10 @@ xray scan [options]
 **Examples:**
 ```bash
 # Scan specific directory
-xray scan -p ./src
+xray scan --path ./src
 
 # Filter by file patterns
-xray scan -p ./src -m "*.ts" -m "!*.test.ts"
+xray scan --path ./src --match "*.ts" --match "!*.test.ts"
 ```
 
 ### `xray graph`
@@ -138,10 +189,10 @@ xray graph [options]
 **Examples:**
 ```bash
 # Generate both CFG and DFG
-xray graph -w cf -w df -o graphs.txt
+xray graph --with cf --with df --output graphs.txt
 
 # Focus on specific directory
-xray graph -p ./src/services -w cf -w df
+xray graph --path ./src/services --with cf --with df
 ```
 
 ### `xray clear-cache`
@@ -152,6 +203,27 @@ Clear the SQLite cache used for parsed AST data.
 xray clear-cache
 ```
 
+### `xray completion`
+
+Generate shell completion scripts for bash, zsh, or fish.
+
+```bash
+# For bash - add to ~/.bashrc or ~/.bash_profile
+eval "$(xray completion bash)"
+
+# For zsh - add to ~/.zshrc
+eval "$(xray completion zsh)"
+
+# For fish - save to completions directory
+xray completion fish > ~/.config/fish/completions/xray.fish
+```
+
+After enabling completions, you can press Tab to autocomplete:
+- Commands: `map`, `scan`, `graph`, `clear-cache`, etc.
+- Options: `--path`, `--output`, `--with`, etc.
+- Feature values: `vars`, `incs`, `docs`, `cost`, `cf`, `df`
+- File paths for options like `--path`, `--output`, `--anchor`
+
 ## Flags & Options
 
 ### Core Options
@@ -159,8 +231,18 @@ xray clear-cache
 | Flag | Description | Default |
 |------|-------------|---------|
 | `-p, --path <paths...>` | Root directories to analyze (repeatable) | current directory |
-| `-o, --output <path>` | Output file path | stdout |
+| `-o, --output <path>` | Output file path | `.xray` |
 | `-l, --limit <number>` | Token limit for output | 4096 |
+
+**Output File Behavior:**
+- **No output specified**: Writes to `.xray` in current directory
+- **Output with dot prefix** (e.g., `.myoutput`): Used as-is, no extension added
+- **Output with extension** (e.g., `analysis.txt`): Used as-is
+- **Output without extension** (e.g., `mymap`): Auto-appends format extension
+  - `--txt` → `mymap.txt`
+  - `--csv` → `mymap.csv`
+  - `--xml` → `mymap.xml`
+  - `--json` → `mymap.json`
 
 **Note:** Multiple paths are analyzed separately and compacted together with clear separators.
 
@@ -179,7 +261,7 @@ Enable additional analysis features (repeatable):
 
 **Example:**
 ```bash
-xray map -w vars -w incs -w cost
+xray map --with vars --with incs --with cost
 ```
 
 ### Filtering
@@ -194,10 +276,10 @@ xray map -w vars -w incs -w cost
 **Examples:**
 ```bash
 # Filter files
-xray map -m "*.ts" -m "*.tsx" -m "!*.test.ts"
+xray map --match "*.ts" --match "*.tsx" --match "!*.test.ts"
 
 # Filter by function names
-xray map -c "User*" -c "!UserTest"
+xray map --catch "User*" --catch "!UserTest"
 ```
 
 ### Output Formats
@@ -220,25 +302,362 @@ xray map -c "User*" -c "!UserTest"
 
 ## Configuration
 
+xray supports configuration files to define default settings for your project. This is especially useful for:
+- **Automation**: GitHub Actions and pre-commit hooks can regenerate xray maps automatically
+- **Consistency**: Team members get the same analysis without remembering CLI flags
+- **Multiple Views**: Define presets for different analysis needs (quick overview, detailed analysis, etc.)
+
+### Configuration Files
+
+xray searches for configuration in this order:
+
+1. `.xrayrc` (JSON)
+2. `.xrayrc.json`
+3. `.xrayrc.js` (CommonJS module)
+4. `xray.config.json`
+5. `xray.config.js` (CommonJS module)
+6. `package.json` (under `"xray"` field)
+
+You can also specify a custom config file with `--config <path>`.
+
+### Configuration Format
+
+**JSON Example (.xrayrc.json):**
+
+```json
+{
+  "paths": ["./src"],
+  "output": "docs/codebase-map.txt",
+  "limit": 8000,
+  "features": {
+    "vars": true,
+    "incs": true,
+    "docs": false,
+    "cf": false,
+    "df": false
+  },
+  "depth": 5,
+  "match": ["*.ts", "*.tsx", "!*.test.ts"],
+  "format": "txt",
+  "diagram": "mermaid"
+}
+```
+
+**JavaScript Example (xray.config.js):**
+
+```javascript
+module.exports = {
+  paths: ['./src'],
+  output: 'docs/codebase-map.txt',
+  limit: 8000,
+  features: {
+    vars: true,
+    incs: true,
+  },
+  presets: {
+    quick: {
+      limit: 4000,
+      depth: 3,
+    },
+    detailed: {
+      limit: 16000,
+      features: {
+        vars: true,
+        incs: true,
+        docs: true,
+        cf: true,
+        df: true,
+      },
+    },
+  },
+};
+```
+
+### Configuration Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `paths` | `string[]` | Default paths to analyze |
+| `output` | `string` | Default output file path |
+| `limit` | `number` | Token limit for output |
+| `features` | `object` | Features to enable: `vars`, `incs`, `docs`, `cost`, `cf`, `df` |
+| `anchor` | `string` | Focus file for Personalized PageRank |
+| `depth` | `number` | Maximum depth of tree to render |
+| `match` | `string[]` | File name patterns (glob) |
+| `catch` | `string[]` | Function/class name patterns |
+| `format` | `'txt' \| 'csv' \| 'xml'` | Output format |
+| `diagram` | `'mermaid' \| 'dot'` | Diagram type |
+| `queries` | `string[]` | Custom Tree-sitter query paths/URLs |
+| `json` | `boolean` | Output raw JSON graph |
+| `scopes` | `object` | Named scoped xray configurations (multiple independent outputs) |
+| `presets` | `object` | Named configuration presets (legacy) |
+
+### Using Scoped Configurations
+
+**Scopes** allow you to define multiple independent xray configurations that generate different outputs. This is perfect for:
+- Generating different views of your codebase (overview, API, frontend, etc.)
+- Creating focused maps for different teams or purposes
+- Running multiple analyses in a single command
+
+**Example:**
+
+```json
+{
+  "paths": ["./src"],
+  "limit": 8000,
+  "features": {
+    "incs": true
+  },
+  "scopes": {
+    "overview": {
+      "output": "docs/overview.txt",
+      "limit": 4000,
+      "depth": 3
+    },
+    "api": {
+      "paths": ["./src/api"],
+      "anchor": "src/api/index.ts",
+      "output": "docs/api-map.txt",
+      "features": {
+        "vars": true,
+        "incs": true
+      },
+      "catch": ["*Controller", "*Service"]
+    },
+    "frontend": {
+      "paths": ["./src/components"],
+      "output": "docs/frontend-map.txt",
+      "match": ["*.tsx", "*.jsx"]
+    }
+  }
+}
+```
+
+**Usage:**
+
+```bash
+# Run a specific scope
+xray map --scope api
+
+# Run all scopes
+xray map --all-scopes
+
+# Scopes inherit base config but can override any setting
+```
+
+### Using Presets (Legacy)
+
+Presets are similar to scopes but run with CLI options:
+
+```json
+{
+  "paths": ["./src"],
+  "limit": 8000,
+  "presets": {
+    "quick": {
+      "output": "docs/quick-map.txt",
+      "limit": 4000,
+      "depth": 3
+    }
+  }
+}
+```
+
+Use presets with the `--preset` flag:
+
+```bash
+xray map --preset quick
+```
+
+**Scopes vs Presets:**
+- **Scopes**: Multiple independent outputs, can run all at once with `--all-scopes`
+- **Presets**: Single output, used for quick CLI shortcuts
+
+### CLI Precedence
+
+Command-line flags always override configuration file settings:
+
+```bash
+# Config specifies output: "docs/map.txt"
+# This command overrides it:
+xray map --output custom-output.txt
+```
+
+## Automation
+
+### GitHub Action
+
+Automatically regenerate xray maps when code changes in pull requests.
+
+**Quick Setup:**
+
+1. Create `.xrayrc.json` in your repository root (see [Configuration](#configuration))
+
+2. Create `.github/workflows/xray-regenerate.yml`:
+
+```yaml
+name: Regenerate Xray Maps
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.ts'
+      - '**.js'
+      - '**.py'
+      # Add other source file extensions
+
+jobs:
+  regenerate-xray:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - uses: IdeaCraftersLabs/oss-xray-codes@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Action Inputs:**
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `github-token` | GitHub token for commits | `${{ github.token }}` |
+| `config-path` | Custom config file path | Auto-detect |
+| `xray-version` | xray version to install | `latest` |
+| `commit-message` | Custom commit message | `chore: regenerate xray maps` |
+
+**What it does:**
+- ✅ Triggers on PR creation and updates
+- ✅ Auto-detects xray configuration files
+- ✅ Regenerates xray maps based on your config
+- ✅ Only commits when maps actually change
+- ✅ Works with presets and multiple configurations
+
+**Example workflow template:** `.github/workflows/xray-example.yml.template`
+
+**Full documentation:** [GitHub Action Guide](docs/github-action.md)
+
+### Pre-commit Hook
+
+Ensure xray maps are always up-to-date before committing locally.
+
+**Installation:**
+
+```bash
+# Copy the pre-commit hook to your .git/hooks directory
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+**Pre-commit hook source:** [`hooks/pre-commit`](hooks/pre-commit)
+
+**What it does:**
+- ✅ Runs automatically before each commit
+- ✅ Only runs if a configuration file exists
+- ✅ Only triggers when source files are staged
+- ✅ Regenerates xray maps based on your config
+- ✅ Automatically stages updated maps
+- ✅ Gracefully skips if xray is not installed
+
+**Manual Installation:**
+
+If you prefer to manually create the hook, save this to `.git/hooks/pre-commit`:
+
+```bash
+#!/bin/sh
+# Xray pre-commit hook - regenerates xray maps before committing
+
+# Check if xray config exists
+if [ ! -f ".xrayrc" ] && [ ! -f ".xrayrc.json" ] && \
+   [ ! -f "xray.config.json" ] && [ ! -f "xray.config.js" ]; then
+  exit 0
+fi
+
+# Check if xray is installed
+if ! command -v xray &> /dev/null; then
+  echo "⚠️  Xray not installed. Run: npm install -g xray"
+  exit 0
+fi
+
+# Get staged source files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | \
+  grep -E '\.(ts|tsx|js|jsx|py|java|go|rs|rb|php|swift|kt|cs|cpp|c|h|lua|dart|ex|hs|scala)$' || true)
+
+# Skip if no source files
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+echo "🔍 Regenerating xray maps..."
+xray map
+
+# Stage any changes
+if [ -n "$(git status --porcelain)" ]; then
+  git add -A
+  echo "✓ Xray maps updated and staged"
+fi
+
+exit 0
+```
+
+Then make it executable: `chmod +x .git/hooks/pre-commit`
+
+**Using with Husky:**
+
+If you use [Husky](https://typicode.github.io/husky/) for git hooks:
+
+```bash
+# Install husky
+npm install -D husky
+npx husky init
+
+# Add xray to pre-commit hook
+echo "npx xray map && git add -A" > .husky/pre-commit
+```
+
+**Using with pre-commit framework:**
+
+For the [pre-commit](https://pre-commit.com/) framework, add to `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: xray-regenerate
+        name: Regenerate xray maps
+        entry: bash -c 'xray map && git add -A'
+        language: system
+        pass_filenames: false
+        files: \.(ts|tsx|js|jsx|py|java|go|rs)$
+```
+
+**Complete automation guide:** [Automation Documentation](docs/automation.md)
+
 ### Custom Queries
 
 Override default Tree-sitter queries for any language:
 
 ```bash
 # Explicit mapping
-xray map -q .ts:./custom-typescript.scm
+xray map --query .ts:./custom-typescript.scm
 
 # Auto-detect from filename (infers .py)
-xray map -q ./python.scm
+xray map --query ./python.scm
 
 # Scan directory for queries
-xray map -q ./my-queries-dir
+xray map --query ./my-queries-dir
 
 # Remote URL (infers .ts from filename)
-xray map -q https://example.com/typescript.scm
+xray map --query https://example.com/typescript.scm
 
 # Combine multiple
-xray map -q .ts:./ts.scm,./python.scm
+xray map --query .ts:./ts.scm --query ./python.scm
 ```
 
 **Query Format:** Tree-sitter S-expression patterns
@@ -298,14 +717,14 @@ xray supports 19 programming languages:
 xray map
 
 # Save to file
-xray map -o analysis.txt
+xray map --output analysis.txt
 ```
 
 ### Multi-Path Analysis
 
 ```bash
 # Analyze multiple directories
-xray map -p ./src -p ./lib -p ./tests -o full-analysis.txt
+xray map --path ./src --path ./lib --path ./tests --output full-analysis.txt
 ```
 
 Output:
@@ -326,22 +745,22 @@ Path: /project/lib
 ```bash
 # Complete analysis with all features
 xray map \
-  -p ./src \
-  -a src/main.ts \
-  -w vars -w incs -w cf -w df \
-  -m "*.ts" -m "!*.test.ts" \
-  -d 5 \
-  -o detailed-map.txt
+  --path ./src \
+  --anchor src/main.ts \
+  --with vars --with incs --with cf --with df \
+  --match "*.ts" --match "!*.test.ts" \
+  --depth 5 \
+  --output detailed-map.txt
 ```
 
 ### Focus Analysis
 
 ```bash
 # Focus on specific entry point
-xray map -a src/index.ts -w incs -o focused.txt
+xray map --anchor src/index.ts --with incs --output focused.txt
 
 # Analyze only shallow structure
-xray map -d 2 -o shallow.txt
+xray map --depth 2 --output shallow.txt
 ```
 
 ### Cost Estimation
@@ -349,7 +768,7 @@ xray map -d 2 -o shallow.txt
 ```bash
 # Estimate LLM token cost
 export OPENAI_API_KEY=your-key
-xray map -w cost
+xray map --with cost
 ```
 
 Output:
@@ -365,7 +784,7 @@ Estimated cost: $0.001234
 
 ```bash
 # 1. Generate a focused map for your current task
-xray map -a src/api/routes.ts -w incs -o context.txt
+xray map --anchor src/api/routes.ts --with incs --output context.txt
 
 # 2. Share context.txt with your AI assistant
 # "Here's a map of my codebase. I need to add authentication to the API routes."
@@ -397,8 +816,8 @@ AI: "I can see routes.ts imports middleware.ts and auth.ts doesn't exist yet.
 ```
 
 **Pro Tips:**
-- Use `-a` to focus on your current work area
-- Include `-w incs` to show dependencies
+- Use `--anchor` to focus on your current work area
+- Include `--with incs` to show dependencies
 - Keep maps under 10k tokens for best AI performance
 - Regenerate maps when architecture changes significantly
 
@@ -450,7 +869,7 @@ When using `-w incs`:
 Available for: C, C++, C#, Go, Java, Rust, Swift
 
 ```bash
-xray graph -w cf -p ./src
+xray graph --with cf --path ./src
 ```
 
 Generates flow analysis for:
@@ -465,7 +884,7 @@ Generates flow analysis for:
 Available for: C, C++, C#, Go, Java, Rust, Swift
 
 ```bash
-xray graph -w df -p ./src
+xray graph --with df --path ./src
 ```
 
 Tracks:
@@ -521,10 +940,10 @@ xray clear-cache
 **Token limit errors:**
 ```bash
 # Increase token limit
-xray map -l 10000
+xray map --limit 10000
 
 # Or reduce scope
-xray map -d 3 -m "!*.test.ts"
+xray map --depth 3 --match "!*.test.ts"
 ```
 
 ## Contributing
@@ -544,6 +963,10 @@ MIT License - see [LICENSE](LICENSE) file for details
 ## Sponsors
 
 Sponsored by [Idea Crafters LLC](https://ideacrafters.com)
+
+**Support xray development!** If you find this tool valuable, consider [becoming a sponsor](https://github.com/sponsors/IdeaCraftersLabs) to help us maintain and improve it. Your sponsorship enables us to dedicate more time to new features, bug fixes, and community support.
+
+See our [full list of sponsors](SPONSORS.md) and sponsorship tiers.
 
 ## Links
 

@@ -1,6 +1,6 @@
 {
   "name": "xray",
-  "version": "1.0.0",
+  "version": "0.0.1-alpha.1",
   "description": "X-ray your codebase - Generate AST, CFG, and DFG visualizations",
   "main": "bin/index.js",
   "bin": {
