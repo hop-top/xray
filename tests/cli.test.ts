@@ -16,14 +16,14 @@ describe('CLI E2E', () => {
         test('should show help with all options', () => {
             const output = execSync(`node ${CLI_PATH} map --help`).toString();
             expect(output).toContain('Usage: xray map [options]');
-            expect(output).toContain('-p, --path <paths...>');
+            expect(output).toContain('-p, --path <path>');
             expect(output).toContain('-o, --output <path>');
             expect(output).toContain('-l, --limit <number>');
             expect(output).toContain('-w, --with <feature>');
             expect(output).toContain('-a, --anchor <path>');
-            expect(output).toContain('-q, --query <items...>');
-            expect(output).toContain('-m, --match <patterns...>');
-            expect(output).toContain('-c, --catch <patterns...>');
+            expect(output).toContain('-q, --query <item>');
+            expect(output).toContain('-m, --match <pattern>');
+            expect(output).toContain('-c, --catch <pattern>');
             expect(output).toContain('--json');
             expect(output).toContain('--csv');
             expect(output).toContain('--xml');
@@ -151,7 +151,7 @@ describe('CLI E2E', () => {
         test('should show help', () => {
             const output = execSync(`node ${CLI_PATH} scan --help`).toString();
             expect(output).toContain('Usage: xray scan [options]');
-            expect(output).toContain('Scan and discover files in your codebase');
+            expect(output).toContain('Scan and discover files in codebase');
         });
 
         test('should scan directory', () => {
@@ -180,7 +180,7 @@ describe('CLI E2E', () => {
         test('should show help', () => {
             const output = execSync(`node ${CLI_PATH} graph --help`).toString();
             expect(output).toContain('Usage: xray graph [options]');
-            expect(output).toContain('Generate control flow and data flow graphs');
+            expect(output).toContain('Generate control flow (CFG) and data flow (DFG) graphs');
         });
 
         test('should generate graphs with -w cf and -w df', () => {
@@ -298,6 +298,92 @@ describe('CLI E2E', () => {
             fs.rmSync(root1, { recursive: true, force: true });
             fs.rmSync(root2, { recursive: true, force: true });
             fs.unlinkSync(output);
+        });
+    });
+
+    describe('completion command', () => {
+        test('should show help', () => {
+            const output = execSync(`node ${CLI_PATH} completion --help`).toString();
+            expect(output).toContain('Usage: xray completion [options] <shell>');
+            expect(output).toContain('Generate shell completion script');
+        });
+
+        test('should generate bash completion script', () => {
+            const output = execSync(`node ${CLI_PATH} completion bash`).toString();
+
+            // Check for bash completion structure
+            expect(output).toContain('# xray completion for bash');
+            expect(output).toContain('_xray_completions()');
+            expect(output).toContain('complete -F _xray_completions xray');
+
+            // Check for commands
+            expect(output).toContain('map scan graph generate clear-cache completion help');
+
+            // Check for option completion
+            expect(output).toContain('vars incs docs cost cf df');
+            expect(output).toContain('--path --output --limit --with');
+        });
+
+        test('should generate zsh completion script', () => {
+            const output = execSync(`node ${CLI_PATH} completion zsh`).toString();
+
+            // Check for zsh completion structure
+            expect(output).toContain('# xray completion for zsh');
+            expect(output).toContain('#compdef xray');
+            expect(output).toContain('_xray()');
+            expect(output).toContain('_xray');
+
+            // Check for commands with descriptions
+            expect(output).toContain('map:Generate visual map of codebase');
+            expect(output).toContain('scan:Scan and discover files in codebase');
+            expect(output).toContain('completion:Generate shell completion script');
+
+            // Check for options
+            expect(output).toContain('--path');
+            expect(output).toContain('--with');
+            expect(output).toContain('vars incs docs cost cf df');
+        });
+
+        test('should generate fish completion script', () => {
+            const output = execSync(`node ${CLI_PATH} completion fish`).toString();
+
+            // Check for fish completion structure
+            expect(output).toContain('# xray completion for fish');
+            expect(output).toContain('complete -c xray');
+
+            // Check for commands
+            expect(output).toContain('-a map -d \'Generate visual map of codebase\'');
+            expect(output).toContain('-a scan -d \'Scan and discover files in codebase\'');
+            expect(output).toContain('-a completion -d \'Generate shell completion script\'');
+
+            // Check for options
+            expect(output).toContain('-s p -l path');
+            expect(output).toContain('-s w -l with');
+            expect(output).toContain('\'vars incs docs cost cf df\'');
+        });
+
+        test('should fail with unsupported shell', () => {
+            try {
+                execSync(`node ${CLI_PATH} completion invalid 2>&1`, { stdio: 'pipe', encoding: 'utf-8' });
+                fail('Should have thrown an error');
+            } catch (e: any) {
+                expect(e.status).toBe(1);
+                const output = e.stdout.toString();
+                expect(output).toContain('Unsupported shell: invalid');
+                expect(output).toContain('Supported shells: bash, zsh, fish');
+            }
+        });
+
+        test('should show usage instructions on error', () => {
+            try {
+                execSync(`node ${CLI_PATH} completion powershell 2>&1`, { stdio: 'pipe', encoding: 'utf-8' });
+                fail('Should have thrown an error');
+            } catch (e: any) {
+                const output = e.stdout.toString();
+                expect(output).toContain('eval "$(xray completion bash)"');
+                expect(output).toContain('eval "$(xray completion zsh)"');
+                expect(output).toContain('xray completion fish > ~/.config/fish/completions/xray.fish');
+            }
         });
     });
 });
