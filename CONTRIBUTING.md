@@ -1,130 +1,182 @@
 # Contributing to xray
 
-Thank you for your interest in contributing to xray! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to xray! This document provides guidelines and instructions for contributing to the project.
+
+## Table of Contents
+
+- [Code of Conduct](#code-of-conduct)
+- [Getting Started](#getting-started)
+- [Development Setup](#development-setup)
+- [Project Structure](#project-structure)
+- [Development Workflow](#development-workflow)
+- [Testing](#testing)
+- [Coding Standards](#coding-standards)
+- [Commit Guidelines](#commit-guidelines)
+- [Pull Request Process](#pull-request-process)
+- [Adding Language Support](#adding-language-support)
+- [Release Process](#release-process)
+
+## Code of Conduct
+
+This project adheres to a code of conduct that all contributors are expected to follow. Please be respectful, constructive, and professional in all interactions.
+
+## Getting Started
+
+Before contributing, please:
+
+1. Check existing [issues](https://github.com/IdeaCraftersLabs/xray/issues) to see if your contribution is already being discussed
+2. For major changes, open an issue first to discuss what you would like to change
+3. Fork the repository and create a feature branch
 
 ## Development Setup
 
 ### Prerequisites
 
-- Node.js >= 18
-- npm
-- C++ compiler (for native dependencies)
-  - Linux: `build-essential`
-  - macOS: Xcode Command Line Tools
-  - Windows: Visual Studio Build Tools
+- Node.js 20+ (LTS recommended)
+- npm or yarn
+- C++ build tools (for tree-sitter compilation)
+  - **macOS**: Xcode Command Line Tools (\`xcode-select --install\`)
+  - **Linux**: build-essential (\`sudo apt-get install build-essential\`)
+  - **Windows**: Visual Studio Build Tools
 
-### Getting Started
+### Installation
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/jadb/xray.git
-   cd xray
-   ```
+\`\`\`bash
+# Clone your fork
+git clone https://github.com/YOUR-USERNAME/xray.git
+cd xray
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-   
-   On systems requiring C++20:
-   ```bash
-   CXXFLAGS="-std=c++20" npm install
-   ```
+# Install dependencies
+npm install --legacy-peer-deps
 
-3. **Build the project**:
-   ```bash
-   npm run build
-   ```
+# Build the project
+npm run build
 
-4. **Run tests**:
-   ```bash
-   npm test
-   ```
+# Link for local development
+npm link
+
+# Verify installation
+xray --version
+\`\`\`
+
+### Development Commands
+
+\`\`\`bash
+# Build TypeScript to JavaScript
+npm run build
+
+# Run in development mode (with ts-node)
+npm run dev
+
+# Run tests
+npm test
+
+# Run tests with coverage
+npm test:coverage
+
+# Run specific test file
+npm test -- tests/cli.test.ts
+
+# Watch mode for development
+npm test -- --watch
+\`\`\`
+
+## Project Structure
+
+This repository contains the xray CLI tool, GitHub Action, and Git Hook all in one place.
+
+\`\`\`
+xray/
+├── src/
+│   ├── cli.ts                     # CLI entry point
+│   ├── index.ts                   # Main Xray class
+│   ├── config.ts                  # Configuration handling
+│   ├── parser/                    # AST parsing
+│   ├── graph/                     # Graph analysis
+│   └── renderer/                  # Output formatting
+├── tests/                         # Test files
+├── docs/                          # Documentation
+├── hooks/                         # Git hooks
+├── .github/workflows/             # CI/CD
+├── action.yaml                    # GitHub Action
+└── README.md
+\`\`\`
+
+**What's in this repo:**
+- **CLI tool**: \`npm install -g xray\`
+- **GitHub Action**: \`uses: IdeaCraftersLabs/xray@v1\`
+- **Git Hooks**: Pre-commit hook
 
 ## Development Workflow
 
-### Running in Development Mode
+### 1. Create a Feature Branch
 
-Use `ts-node` to run without building:
-```bash
-npm run dev -- generate --root ./test-repo
-```
+\`\`\`bash
+git checkout -b feature/your-feature-name
+\`\`\`
 
-### Testing
+### 2. Make Your Changes
 
-- **Run all tests**: `npm test`
-- **Run with coverage**: `npm run test:coverage`
-- **Watch mode**: `npm test -- --watch`
+- Write clean, readable code
+- Follow existing patterns
+- Add tests for new functionality
+- Update documentation
 
-### Code Quality
+### 3. Test Your Changes
 
-- Write tests for new features
-- Ensure all tests pass before submitting a PR
-- Follow existing code style and patterns
-- Add JSDoc comments for public APIs
+\`\`\`bash
+npm test
+npm run build
+\`\`\`
+
+## Testing
+
+Place test files in \`tests/\` directory. Follow existing patterns in \`tests/cli.test.ts\`.
+
+**Test categories:**
+1. Unit tests
+2. Integration tests
+3. E2E CLI tests
+
+## Coding Standards
+
+- Use TypeScript strict mode
+- Prefer \`const\` over \`let\`
+- Add JSDoc for public APIs
+- Use descriptive names
+- Handle errors properly
+
+## Commit Guidelines
+
+Follow conventional commits:
+
+\`\`\`
+feat(cli): add completion command
+fix(parser): handle empty files
+docs: update README
+test: add completion tests
+\`\`\`
+
+## Pull Request Process
+
+1. Update your branch with main
+2. Run tests and build
+3. Update documentation
+4. Use conventional commit format for PR title
+5. Wait for review approval
 
 ## Adding Language Support
 
-To add support for a new language:
+1. Install tree-sitter parser
+2. Update \`src/parser/language-registry.ts\`
+3. Create query file in \`src/parser/queries/\`
+4. Add tests
+5. Update README
 
-1. **Install the Tree-sitter grammar**:
-   ```bash
-   npm install --save-dev tree-sitter-yourlang
-   ```
+## License
 
-2. **Update the language registry** (`src/parser/language-registry.ts`):
-   - Import the language
-   - Add file extension mappings
-   - Register the language parser
+By contributing, you agree your contributions will be licensed under the MIT License.
 
-3. **Create a query file** (`src/parser/queries/yourlang.scm`):
-   - Define patterns for extracting tags (functions, classes, etc.)
-   - See existing `.scm` files for examples
+---
 
-4. **Add tests** (`tests/imports.test.ts` or similar):
-   - Create test fixtures
-   - Verify parsing works correctly
-
-## Submitting Changes
-
-1. **Fork the repository** and create a feature branch:
-   ```bash
-   git checkout -b feature/my-new-feature
-   ```
-
-2. **Make your changes** with clear, descriptive commits:
-   ```bash
-   git commit -m "Add support for XYZ language"
-   ```
-
-3. **Push to your fork**:
-   ```bash
-   git push origin feature/my-new-feature
-   ```
-
-4. **Open a Pull Request**:
-   - Describe what your changes do
-   - Reference any related issues
-   - Ensure CI checks pass
-
-## Pull Request Guidelines
-
-- One feature/fix per PR
-- Include tests for new functionality
-- Update documentation (README, JSDoc) as needed
-- Keep commits focused and atomic
-- Rebase on main before submitting if needed
-
-## Reporting Issues
-
-When reporting bugs, please include:
-- xray version (`npm list xray`)
-- Node.js version (`node --version`)
-- Operating system
-- Steps to reproduce
-- Expected vs actual behavior
-- Sample code/repository if possible
-
-## Questions?
-
-Feel free to open an issue for questions or discussions about development!
+Thank you for contributing to xray! 🎉

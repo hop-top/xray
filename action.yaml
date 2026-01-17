@@ -1,0 +1,135 @@
+name: 'Xray Code Regenerator'
+description: 'Automatically regenerate xray code maps when source files change in pull requests'
+author: 'Idea Crafters LLC'
+branding:
+  icon: 'activity'
+  color: 'blue'
+
+inputs:
+  config-path:
+    description: 'Path to xray configuration file (default: auto-detect .xrayrc, .xrayrc.json, xray.config.json, xray.config.js)'
+    required: false
+    default: ''
+  xray-version:
+    description: 'Version of xray to install (default: latest)'
+    required: false
+    default: 'latest'
+  commit-message:
+    description: 'Commit message for xray updates'
+    required: false
+    default: 'chore: regenerate xray maps'
+  github-token:
+    description: 'GitHub token for committing changes'
+    required: false
+    default: ${{ github.token }}
+  skip-if-no-changes:
+    description: 'Skip commit and push if no changes detected (default: true)'
+    required: false
+    default: 'true'
+  scope:
+    description: 'Run a specific scope from config file'
+    required: false
+    default: ''
+  all-scopes:
+    description: 'Run all scopes defined in config file (default: true if scopes exist)'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install xray
+      shell: bash
+      run: |
+        if [ "${{ inputs.xray-version }}" = "latest" ]; then
+          npm install -g xray@latest
+        else
+          npm install -g xray@${{ inputs.xray-version }}
+        fi
+        echo "✓ Installed xray $(xray --version)"
+
+    - name: Check for xray config
+      id: check-config
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.config-path }}" ]; then
+          if [ -f "${{ inputs.config-path }}" ]; then
+            echo "config_exists=true" >> $GITHUB_OUTPUT
+            echo "config_path=${{ inputs.config-path }}" >> $GITHUB_OUTPUT
+            echo "✓ Using config file: ${{ inputs.config-path }}"
+          else
+            echo "config_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Config file not found: ${{ inputs.config-path }}"
+            exit 1
+          fi
+        elif [ -f ".xrayrc" ] || [ -f ".xrayrc.json" ] || [ -f "xray.config.json" ] || [ -f "xray.config.js" ]; then
+          echo "config_exists=true" >> $GITHUB_OUTPUT
+          echo "config_path=" >> $GITHUB_OUTPUT
+          echo "✓ Found xray configuration file"
+        else
+          echo "config_exists=false" >> $GITHUB_OUTPUT
+          echo "⚠️  No xray configuration file found. Skipping regeneration."
+        fi
+
+    - name: Regenerate xray maps
+      if: steps.check-config.outputs.config_exists == 'true'
+      id: regenerate
+      shell: bash
+      run: |
+        echo "🔍 Regenerating xray maps..."
+
+        # Build xray command
+        CMD="xray map"
+
+        if [ -n "${{ steps.check-config.outputs.config_path }}" ]; then
+          CMD="$CMD --config \"${{ steps.check-config.outputs.config_path }}\""
+        fi
+
+        # Handle scope options
+        if [ -n "${{ inputs.scope }}" ]; then
+          CMD="$CMD --scope ${{ inputs.scope }}"
+          echo "Running scope: ${{ inputs.scope }}"
+        elif [ "${{ inputs.all-scopes }}" = "true" ]; then
+          CMD="$CMD --all-scopes"
+          echo "Running all configured scopes"
+        fi
+
+        eval $CMD
+
+        # Check if any files were created or modified
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "changes_detected=true" >> $GITHUB_OUTPUT
+          echo "✓ Xray maps were updated"
+          git status --short
+        else
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
+          echo "✓ Xray maps are already up to date"
+        fi
+
+    - name: Commit and push changes
+      if: steps.regenerate.outputs.changes_detected == 'true' && inputs.skip-if-no-changes != 'true'
+      shell: bash
+      env:
+        COMMIT_MSG: ${{ inputs.commit-message }}
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add .
+        git commit -m "$COMMIT_MSG" || echo "No changes to commit"
+        git push || echo "Failed to push changes"
+
+    - name: Summary
+      shell: bash
+      run: |
+        echo "## Xray Regeneration Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ steps.regenerate.outputs.changes_detected }}" == "true" ]; then
+          echo "✅ Xray maps were updated and committed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ Xray maps are already up to date" >> $GITHUB_STEP_SUMMARY
+        fi
