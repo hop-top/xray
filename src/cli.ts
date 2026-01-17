@@ -7,6 +7,7 @@ import chalk from 'chalk';
 import { QueryResolver } from './query-resolver';
 import * as cliProgress from 'cli-progress';
 import { Logger } from './logger';
+import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase, XrayScopeConfig } from './config';
 
 const program = new Command();
 
@@ -18,99 +19,133 @@ program
 // Common options for all commands
 const addCommonOptions = (cmd: Command) => {
   return cmd
-    .option('-p, --path <paths...>', 'Root directories of the repository (repeatable)', [process.cwd()])
-    .option('-o, --output <path>', 'Output file path')
-    .option('-l, --limit <number>', 'Token limit', '4096')
-    .option('-w, --with <feature>', 'Include features: vars, incs, cost, docs, df, cf (repeatable)', (value: string, previous: string[]) => {
+    .option('-p, --path <path>', 'Root directory to analyze (repeatable) [default: current directory]', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
-    .option('-a, --anchor <path>', 'Focus on a specific file (Personalized PageRank)')
-    .option('-d, --depth <number>', 'Maximum depth of the tree to render')
-    .option('--json', 'Output raw JSON graph instead of tree')
-    .option('-q, --query <items...>', 'Override queries (e.g. .ts:path, path/to/dir, url)', [])
-    .option('-m, --match <patterns...>', 'Match filename patterns (repeatable, prefix with ! to negate)', [])
-    .option('-c, --catch <patterns...>', 'Match function/class names (repeatable, prefix with ! to negate)', [])
+    .option('-o, --output <path>', 'Output file path [default: .xray, auto-appends format extension if no extension given]')
+    .option('-l, --limit <number>', 'Token limit [default: 4096]')
+    .option('-w, --with <feature>', 'Include feature: vars, incs, cost, docs, df, cf (repeatable)', (value: string, previous: string[]) => {
+      return previous.concat([value]);
+    }, [])
+    .option('-a, --anchor <path>', 'Focus on specific file (Personalized PageRank)')
+    .option('-d, --depth <number>', 'Maximum depth of tree to render')
+    .option('-q, --query <item>', 'Override query (e.g. .ts:path, path/to/dir, url) (repeatable)', (value: string, previous: string[]) => {
+      return previous.concat([value]);
+    }, [])
+    .option('-m, --match <pattern>', 'Match filename pattern (prefix ! to negate) (repeatable)', (value: string, previous: string[]) => {
+      return previous.concat([value]);
+    }, [])
+    .option('-c, --catch <pattern>', 'Match function/class name (prefix ! to negate) (repeatable)', (value: string, previous: string[]) => {
+      return previous.concat([value]);
+    }, [])
+    .option('--txt', 'Output in text format (default)')
     .option('--csv', 'Output in CSV format')
     .option('--xml', 'Output in XML format')
-    .option('--txt', 'Output in text format (default)')
+    .option('--json', 'Output raw JSON graph')
     .option('--mermaid', 'Generate Mermaid diagram (default)')
-    .option('--dot', 'Generate DOT diagram');
+    .option('--dot', 'Generate DOT diagram')
+    .option('--config <path>', 'Path to config file (auto-detect if not specified)')
+    .option('--preset <name>', 'Use named preset from config file')
+    .option('--scope <name>', 'Use specific scope from config file')
+    .option('--all-scopes', 'Run all scopes defined in config file');
 };
 
-// Shared action handler for all generation commands
-const handleGenerateAction = async (options: any) => {
-  try {
-    // Resolve paths relative to PWD
-    const paths = (options.path || [process.cwd()]).map((p: string) =>
-      path.isAbsolute(p) ? p : path.resolve(process.cwd(), p)
-    );
-    const anchor = options.anchor ?
-      (path.isAbsolute(options.anchor) ? options.anchor : path.resolve(process.cwd(), options.anchor)) :
-      undefined;
-    const outputPath = options.output ?
-      (path.isAbsolute(options.output) ? options.output : path.resolve(process.cwd(), options.output)) :
-      undefined;
+// Helper to resolve paths relative to PWD
+const resolvePath = (p: string | undefined): string | undefined => {
+  if (!p) return undefined;
+  return path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
+};
 
-    Logger.info(`Analyzing repo at: ${paths.join(', ')}`);
+// Helper to determine output path with smart extension handling
+const resolveOutputPath = (outputOption: string | undefined, format: 'txt' | 'csv' | 'xml' | 'json'): string | undefined => {
+  if (!outputOption) {
+    // No output specified - use default .xray
+    return path.resolve(process.cwd(), '.xray');
+  }
 
-    // Parse --with features
-    const withFeatures = options.with || [];
-    const includeVariables = withFeatures.includes('vars');
-    const includeImports = withFeatures.includes('incs');
-    const includeDocs = withFeatures.includes('docs');
-    const withCost = withFeatures.includes('cost');
-    const enableDfg = withFeatures.includes('df');
-    const enableCfg = withFeatures.includes('cf');
+  // If output starts with '.', use it as-is (e.g., .xray, .output)
+  if (outputOption.startsWith('.')) {
+    return resolvePath(outputOption);
+  }
 
-    // Resolve queries
-    const queries = QueryResolver.resolve(options.query || []);
+  // If output has an extension, use it as-is
+  if (path.extname(outputOption)) {
+    return resolvePath(outputOption);
+  }
 
-    // Determine format (only one allowed)
-    let format: 'txt' | 'csv' | 'xml' = 'txt'; // default
-    if (options.csv) format = 'csv';
-    else if (options.xml) format = 'xml';
+  // No extension - append format-based extension
+  const extensions: Record<string, string> = {
+    txt: '.txt',
+    csv: '.csv',
+    xml: '.xml',
+    json: '.json'
+  };
 
-    // Determine diagram type (only one allowed)
-    let diagram: 'mermaid' | 'dot' = 'mermaid'; // default
-    if (options.dot) diagram = 'dot';
+  return resolvePath(outputOption + extensions[format]);
+};
 
-    const progressBar = new cliProgress.SingleBar({
-      format: 'Parsing |' + chalk.cyan('{bar}') + '| {percentage}% || {value}/{total} Files || Current: {file}',
-      barCompleteChar: '\u2588',
-      barIncompleteChar: '\u2591',
-      hideCursor: true
-    });
+// Helper function to run a single xray generation
+const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
+  // Resolve paths relative to PWD
+  const paths = (mergedOptions.path || [process.cwd()]).map(resolvePath).filter(Boolean) as string[];
+  const anchor = resolvePath(mergedOptions.anchor);
 
-    let barStarted = false;
+  // Determine format first (needed for output path resolution)
+  const format: 'txt' | 'csv' | 'xml' | 'json' =
+    mergedOptions.json ? 'json' :
+    mergedOptions.csv ? 'csv' :
+    mergedOptions.xml ? 'xml' : 'txt';
 
-    // Process multiple paths
-    const results: string[] = [];
+  const outputPath = resolveOutputPath(mergedOptions.output, format);
 
-    for (let i = 0; i < paths.length; i++) {
-      const currentPath = paths[i];
+  if (scopeName) {
+    Logger.info(`Running scope: ${chalk.bold(scopeName)}`);
+  }
+  Logger.info(`Analyzing repo at: ${paths.join(', ')}`);
 
+  // Parse features from --with flags
+  const withFeatures = new Set(mergedOptions.with || []);
+  const features = {
+    vars: withFeatures.has('vars'),
+    incs: withFeatures.has('incs'),
+    docs: withFeatures.has('docs'),
+    cost: withFeatures.has('cost'),
+    cf: withFeatures.has('cf'),
+    df: withFeatures.has('df'),
+  };
+
+  // Resolve queries
+  const queries = QueryResolver.resolve(mergedOptions.query || []);
+
+  // Determine diagram type
+  const diagram: 'mermaid' | 'dot' = mergedOptions.dot ? 'dot' : 'mermaid';
+
+  // Setup progress bar
+  const progressBar = new cliProgress.SingleBar({
+    format: 'Parsing |' + chalk.cyan('{bar}') + '| {percentage}% || {value}/{total} Files || Current: {file}',
+    barCompleteChar: '\u2588',
+    barIncompleteChar: '\u2591',
+    hideCursor: true
+  });
+
+  // Process each path and collect results
+  const results = await Promise.all(
+    paths.map(async (currentPath, i) => {
       if (paths.length > 1) {
         Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${currentPath}`);
       }
 
-      barStarted = false; // Reset for each path
+      let barStarted = false;
 
-      const codegraph = new Xray({
+      const xray = new Xray({
         path: currentPath,
-        limit: parseInt(options.limit),
+        limit: parseInt(mergedOptions.limit),
         anchor,
-        depth: options.depth ? parseInt(options.depth) : undefined,
-        features: {
-          vars: includeVariables,
-          incs: includeImports,
-          docs: includeDocs,
-          cost: withCost,
-          cf: enableCfg,
-          df: enableDfg,
-        },
-        queries: queries,
-        match: options.match || [],
-        catch: options.catch || [],
+        depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
+        features,
+        queries,
+        match: mergedOptions.match || [],
+        catch: mergedOptions.catch || [],
         format,
         diagram,
         onProgress: (current, total, file) => {
@@ -118,34 +153,77 @@ const handleGenerateAction = async (options: any) => {
             progressBar.start(total, 0, { file: 'Starting...' });
             barStarted = true;
           }
-          progressBar.update(current, { file: file });
+          progressBar.update(current, { file });
           if (current >= total) {
             progressBar.stop();
           }
         }
       });
 
-      const result = await codegraph.run();
+      const result = await xray.run();
 
       // Add path header for multi-path output
       if (paths.length > 1) {
-        results.push(`\n${'='.repeat(80)}`);
-        results.push(`Path: ${currentPath}`);
-        results.push('='.repeat(80));
-        results.push(result);
-      } else {
-        results.push(result);
+        return `\n${'='.repeat(80)}\nPath: ${currentPath}\n${'='.repeat(80)}\n${result}`;
       }
+      return result;
+    })
+  );
+
+  const finalOutput = results.join('\n');
+
+  fs.writeFileSync(outputPath!, finalOutput);
+  Logger.success(`Analysis written to ${outputPath}`);
+};
+
+// Shared action handler for all generation commands
+const handleGenerateAction = async (options: any) => {
+  try {
+    // Load config file
+    const config = loadConfig(options.config);
+
+    // Handle --all-scopes flag
+    if (options.allScopes) {
+      const scopes = getScopes(config);
+      const scopeNames = Object.keys(scopes);
+
+      if (scopeNames.length === 0) {
+        Logger.error('No scopes defined in config file');
+        process.exit(1);
+      }
+
+      Logger.info(`Running ${scopeNames.length} scopes: ${scopeNames.join(', ')}`);
+
+      for (const scopeName of scopeNames) {
+        const scopeConfig = scopes[scopeName];
+        const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
+        const mergedOptions = mergeConfig({ ...mergedScope } as any, {}, undefined);
+        await runSingleXray(mergedOptions, scopeName);
+      }
+
+      return;
     }
 
-    const finalOutput = results.join('\n');
+    // Handle --scope flag
+    if (options.scope) {
+      const scopeConfig = getScope(config, options.scope);
 
-    if (outputPath) {
-      fs.writeFileSync(outputPath, finalOutput);
-      Logger.success(`Analysis written to ${outputPath}`);
-    } else {
-      console.log(finalOutput);
+      if (!scopeConfig) {
+        Logger.error(`Scope "${options.scope}" not found in config file`);
+        process.exit(1);
+      }
+
+      const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
+      const mergedOptions = mergeConfig({ ...mergedScope } as any, options, undefined);
+      await runSingleXray(mergedOptions, options.scope);
+
+      return;
     }
+
+    // Regular flow: merge config with CLI options
+    const mergedOptions = mergeConfig(config, options, options.preset);
+    await runSingleXray(mergedOptions);
+
   } catch (error) {
     Logger.error('Error generating analysis:', error);
     process.exit(1);
@@ -154,27 +232,27 @@ const handleGenerateAction = async (options: any) => {
 
 // Map command (most commonly used - generates visual map)
 addCommonOptions(program.command('map'))
-  .description('Generate a visual map of your codebase (most common)')
+  .description('Generate visual map of codebase [default command]')
   .action(handleGenerateAction);
 
 // Scan command - file system discovery
 addCommonOptions(program.command('scan'))
-  .description('Scan and discover files in your codebase')
+  .description('Scan and discover files in codebase')
   .action(handleGenerateAction);
 
 // Graph command - generate graph structures (CFG/DFG)
 addCommonOptions(program.command('graph'))
-  .description('Generate control flow and data flow graphs')
+  .description('Generate control flow (CFG) and data flow (DFG) graphs')
   .action(handleGenerateAction);
 
 // Generate command (kept for backwards compatibility)
 addCommonOptions(program.command('generate'))
-  .description('Generate a code analysis visualization (alias for map)')
+  .description('Generate code analysis visualization [alias: map]')
   .action(handleGenerateAction);
 
 program
   .command('clear-cache')
-  .description('Clear the SQLite cache')
+  .description('Clear SQLite cache (.xray_cache.db)')
   .action(() => {
     const cachePath = path.join(process.cwd(), '.xray_cache.db');
     if (fs.existsSync(cachePath)) {

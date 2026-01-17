@@ -1,0 +1,67 @@
+{
+  "paths": ["./src"],
+  "limit": 8000,
+  "features": {
+    "vars": true,
+    "incs": true
+  },
+  "match": [
+    "*.ts",
+    "*.tsx",
+    "!*.test.ts",
+    "!*.spec.ts"
+  ],
+  "scopes": {
+    "overview": {
+      "output": "docs/overview.txt",
+      "limit": 4000,
+      "depth": 3,
+      "features": {
+        "incs": true
+      }
+    },
+    "api": {
+      "paths": ["./src/api"],
+      "anchor": "src/api/index.ts",
+      "output": "docs/api-map.txt",
+      "limit": 8000,
+      "features": {
+        "vars": true,
+        "incs": true
+      },
+      "catch": [
+        "*Controller",
+        "*Service",
+        "*Handler"
+      ]
+    },
+    "frontend": {
+      "paths": ["./src/components", "./src/pages"],
+      "output": "docs/frontend-map.txt",
+      "limit": 6000,
+      "match": ["*.tsx", "*.jsx"],
+      "catch": ["*Component", "*Page"]
+    },
+    "detailed": {
+      "output": "docs/detailed-map.txt",
+      "limit": 16000,
+      "features": {
+        "vars": true,
+        "incs": true,
+        "docs": true,
+        "cf": true,
+        "df": true
+      }
+    }
+  },
+  "presets": {
+    "quick": {
+      "output": "docs/quick-map.txt",
+      "limit": 4000,
+      "depth": 3,
+      "features": {
+        "incs": true
+      }
+    }
+  }
+}

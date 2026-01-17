@@ -1,0 +1,70 @@
+#!/bin/sh
+#
+# Xray Pre-commit Hook
+#
+# This hook automatically regenerates xray maps based on your configuration
+# when you commit changes to source code files.
+#
+# Installation:
+#   Copy this file to .git/hooks/pre-commit and make it executable:
+#   cp hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+
+# Check if xray config exists
+CONFIG_EXISTS=false
+if [ -f ".xrayrc" ] || [ -f ".xrayrc.json" ] || [ -f "xray.config.json" ] || [ -f "xray.config.js" ]; then
+  CONFIG_EXISTS=true
+fi
+
+# Skip if no config found
+if [ "$CONFIG_EXISTS" = false ]; then
+  exit 0
+fi
+
+# Check if xray is installed
+if ! command -v xray &> /dev/null; then
+  echo "⚠️  Xray is not installed. Skipping xray regeneration."
+  echo "   Install it with: npm install -g xray"
+  exit 0
+fi
+
+# Get list of staged source files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|js|py|java|go|rs|rb|php|swift|kt|cs|cpp|c|h|hpp|lua|dart|ex|exs|hs|scala)$' || true)
+
+# Skip if no source files are being committed
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+echo "🔍 Regenerating xray maps..."
+
+# Store the current stash state
+STASH_NAME="pre-commit-$(date +%s)"
+git stash push -k -u -m "$STASH_NAME" > /dev/null 2>&1
+STASHED=$?
+
+# Run xray map (reads from config file)
+# This will automatically run all scopes if defined in config
+xray map --all-scopes 2>/dev/null || xray map
+
+# Check if xray generated any changes
+XRAY_CHANGES=$(git status --porcelain)
+
+if [ -n "$XRAY_CHANGES" ]; then
+  echo "✓ Xray maps updated. Adding to commit..."
+
+  # Add any new or modified xray output files
+  git add -A
+
+  echo "✓ Xray maps have been regenerated and added to your commit."
+else
+  echo "✓ Xray maps are already up to date."
+fi
+
+# Restore the stash if we created one
+if [ $STASHED -eq 0 ]; then
+  git stash pop -q > /dev/null 2>&1 || true
+fi
+
+exit 0

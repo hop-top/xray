@@ -32,7 +32,7 @@ export interface XrayConfig {
   };
 
   // Output options
-  format?: 'txt' | 'csv' | 'xml';
+  format?: 'txt' | 'csv' | 'xml' | 'json';
   diagram?: 'mermaid' | 'dot';
 
   // Advanced
