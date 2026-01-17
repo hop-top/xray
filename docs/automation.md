@@ -1,0 +1,506 @@
+# Xray Automation Guide
+
+This guide covers automated xray map regeneration using GitHub Actions and pre-commit hooks.
+
+## Overview
+
+Keep your xray code maps automatically synchronized with your codebase changes using:
+
+- **GitHub Action**: Auto-regenerates maps on pull requests
+- **Pre-commit Hook**: Auto-regenerates maps before local commits
+- **Configuration Files**: Define your xray settings once, use everywhere
+
+## Quick Start
+
+### 1. Configuration File
+
+Create `.xrayrc.json` in your repository root:
+
+```json
+{
+  "paths": ["./src"],
+  "output": "docs/codebase-map.txt",
+  "limit": 8000,
+  "features": {
+    "vars": true,
+    "incs": true
+  },
+  "match": ["*.ts", "*.tsx", "!*.test.ts"]
+}
+```
+
+See the [Configuration](#configuration-reference) section for all options.
+
+### 2. GitHub Action (CI/CD)
+
+Create `.github/workflows/xray-regenerate.yml`:
+
+```yaml
+name: Regenerate Xray Maps
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.ts'
+      - '**.js'
+      - '**.py'
+
+jobs:
+  regenerate-xray:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - uses: IdeaCraftersLabs/oss-xray-codes@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### 3. Pre-commit Hook (Local Development)
+
+```bash
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+## Configuration Reference
+
+### File Locations
+
+xray searches for configuration files in this order:
+
+1. `.xrayrc` (JSON)
+2. `.xrayrc.json`
+3. `.xrayrc.js` (CommonJS module)
+4. `xray.config.json`
+5. `xray.config.js` (CommonJS module)
+6. `package.json` (under `"xray"` field)
+
+You can also specify `--config <path>` to use a custom location.
+
+### Configuration Schema
+
+```typescript
+{
+  // Paths to analyze (default: current directory)
+  "paths": ["./src", "./lib"],
+
+  // Output file path
+  "output": "docs/codebase-map.txt",
+
+  // Token limit for output
+  "limit": 8000,
+
+  // Features to enable
+  "features": {
+    "vars": true,    // Include variables
+    "incs": true,    // Include imports
+    "docs": false,   // Include docstrings
+    "cost": false,   // Estimate cost (requires OPENAI_API_KEY)
+    "cf": false,     // Control flow graph
+    "df": false      // Data flow graph
+  },
+
+  // Focus file for Personalized PageRank
+  "anchor": "src/main.ts",
+
+  // Maximum depth of tree to render
+  "depth": 5,
+
+  // File name patterns (glob)
+  "match": ["*.ts", "*.tsx", "!*.test.ts"],
+
+  // Function/class name patterns
+  "catch": ["*Controller", "*Service"],
+
+  // Output format: "txt", "csv", "xml"
+  "format": "txt",
+
+  // Diagram type: "mermaid", "dot"
+  "diagram": "mermaid",
+
+  // Custom Tree-sitter query paths
+  "queries": ["./custom-queries"],
+
+  // Output raw JSON graph
+  "json": false,
+
+  // Named presets
+  "presets": {
+    "quick": {
+      "output": "docs/quick-map.txt",
+      "limit": 4000,
+      "depth": 3
+    },
+    "detailed": {
+      "output": "docs/detailed-map.txt",
+      "limit": 16000,
+      "features": {
+        "vars": true,
+        "incs": true,
+        "docs": true,
+        "cf": true,
+        "df": true
+      }
+    }
+  }
+}
+```
+
+### Using Presets
+
+Define multiple configurations for different scenarios:
+
+```bash
+# Use the "quick" preset
+xray map --preset quick
+
+# Use the "detailed" preset
+xray map --preset detailed
+```
+
+### CLI Override
+
+Command-line flags always override configuration:
+
+```bash
+# Config says output: "docs/map.txt"
+# This overrides to stdout:
+xray map
+
+# Config says limit: 8000
+# This overrides to 4000:
+xray map -l 4000
+```
+
+## GitHub Action Details
+
+### Inputs
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `github-token` | GitHub token for committing | `${{ github.token }}` |
+| `config-path` | Custom config file path | Auto-detect |
+| `xray-version` | xray version to install | `latest` |
+| `commit-message` | Custom commit message | `chore: regenerate xray maps` |
+| `skip-if-no-changes` | Skip commit if no changes | `true` |
+
+### Advanced Examples
+
+#### Custom Config Path
+
+```yaml
+- uses: IdeaCraftersLabs/oss-xray-codes@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    config-path: './config/xray.json'
+```
+
+#### Custom Commit Message
+
+```yaml
+- uses: IdeaCraftersLabs/oss-xray-codes@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    commit-message: |
+      docs: update xray visualizations
+
+      Auto-generated from latest code changes
+```
+
+#### Multiple Presets
+
+Run different configurations in parallel:
+
+```yaml
+jobs:
+  regenerate-xray:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        preset: [quick, detailed, api]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g xray
+      - run: xray map --preset ${{ matrix.preset }}
+      - run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add .
+          git commit -m "docs: update ${{ matrix.preset }} xray map" || exit 0
+          git push
+```
+
+#### Trigger on Push to Main
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - '.xrayrc*'
+```
+
+## Pre-commit Hook Details
+
+### Installation Methods
+
+#### Method 1: Direct Copy (Recommended)
+
+```bash
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+#### Method 2: Manual Creation
+
+Create `.git/hooks/pre-commit`:
+
+```bash
+#!/bin/sh
+# Check if xray config exists
+if [ ! -f ".xrayrc" ] && [ ! -f ".xrayrc.json" ]; then
+  exit 0
+fi
+
+# Check if xray is installed
+if ! command -v xray &> /dev/null; then
+  echo "⚠️  Xray not installed. Run: npm install -g xray"
+  exit 0
+fi
+
+# Get staged source files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | \
+  grep -E '\.(ts|tsx|js|jsx|py|java|go|rs)$' || true)
+
+# Skip if no source files
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+echo "🔍 Regenerating xray maps..."
+xray map
+
+# Stage any changes
+if [ -n "$(git status --porcelain)" ]; then
+  git add -A
+  echo "✓ Xray maps updated and staged"
+fi
+
+exit 0
+```
+
+Then: `chmod +x .git/hooks/pre-commit`
+
+#### Method 3: Using Husky
+
+```bash
+npm install -D husky
+npx husky init
+echo "xray map && git add -A" > .husky/pre-commit
+```
+
+#### Method 4: Using pre-commit Framework
+
+Add to `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: xray-regenerate
+        name: Regenerate xray maps
+        entry: bash -c 'xray map && git add -A'
+        language: system
+        pass_filenames: false
+        files: \.(ts|tsx|js|jsx|py|java|go|rs)$
+```
+
+### Behavior
+
+The pre-commit hook:
+
+1. Checks if xray config exists (exits if not)
+2. Checks if xray is installed (warns and exits if not)
+3. Checks for staged source files (exits if none)
+4. Runs `xray map` using your config
+5. Stages any generated/updated files
+6. Allows commit to proceed
+
+### Skipping the Hook
+
+To skip the hook for a single commit:
+
+```bash
+git commit --no-verify -m "commit message"
+```
+
+## Example Configurations
+
+### Basic Configuration
+
+```json
+{
+  "paths": ["./src"],
+  "output": "docs/codebase-map.txt",
+  "features": {
+    "incs": true
+  }
+}
+```
+
+### Multi-Path Configuration
+
+```json
+{
+  "paths": ["./src", "./lib", "./packages"],
+  "output": "docs/full-map.txt",
+  "limit": 16000,
+  "features": {
+    "vars": true,
+    "incs": true
+  }
+}
+```
+
+### Scoped Configuration (Multiple Outputs)
+
+**Best for automation** - define multiple independent xray outputs:
+
+```json
+{
+  "paths": ["./src"],
+  "limit": 8000,
+  "features": {
+    "incs": true
+  },
+  "scopes": {
+    "overview": {
+      "output": "docs/overview.txt",
+      "limit": 4000,
+      "depth": 3
+    },
+    "api": {
+      "paths": ["./src/api"],
+      "anchor": "src/api/index.ts",
+      "output": "docs/api-map.txt",
+      "features": {
+        "vars": true,
+        "incs": true
+      },
+      "catch": ["*Controller", "*Service", "*Handler"]
+    },
+    "frontend": {
+      "paths": ["./src/components"],
+      "output": "docs/frontend-map.txt",
+      "match": ["*.tsx", "*.jsx"],
+      "catch": ["*Component", "*Page"]
+    },
+    "detailed": {
+      "output": "docs/detailed-analysis.txt",
+      "limit": 16000,
+      "features": {
+        "vars": true,
+        "incs": true,
+        "docs": true,
+        "cf": true,
+        "df": true
+      }
+    }
+  }
+}
+```
+
+**Usage:**
+
+```bash
+# Run a specific scope
+xray map --scope api
+
+# Run all scopes (default for automation)
+xray map --all-scopes
+```
+
+### Language-Specific Configuration
+
+```json
+{
+  "paths": ["./src"],
+  "output": "docs/typescript-map.txt",
+  "match": [
+    "*.ts",
+    "*.tsx",
+    "!*.test.ts",
+    "!*.spec.ts",
+    "!*.d.ts"
+  ],
+  "features": {
+    "vars": true,
+    "incs": true
+  }
+}
+```
+
+## Troubleshooting
+
+### GitHub Action Issues
+
+**"No config file found"**
+- Ensure `.xrayrc.json` or similar exists in repository root
+- Check file is committed and pushed
+
+**"Changes not being committed"**
+- Verify workflow has `contents: write` permission
+- Check `ref: ${{ github.head_ref }}` is set in checkout step
+
+**"Action runs but maps don't update"**
+- Run `xray map` locally to verify config
+- Check action logs for error messages
+- Verify output path is correct
+
+### Pre-commit Hook Issues
+
+**"Xray not installed"**
+- Install globally: `npm install -g xray`
+- Or use npx: modify hook to use `npx xray map`
+
+**"Hook not running"**
+- Check file exists: `ls -la .git/hooks/pre-commit`
+- Check executable: `chmod +x .git/hooks/pre-commit`
+- Verify config file exists
+
+**"Maps not being staged"**
+- Hook automatically stages changes with `git add -A`
+- Check output path in config is correct
+- Verify xray map command succeeds
+
+## Best Practices
+
+1. **Start with defaults**: Begin with a simple config, add features as needed
+2. **Use presets**: Define multiple views (quick, detailed, api-focused)
+3. **Commit maps**: Check generated maps into version control
+4. **Test locally**: Run `xray map` before pushing to verify config
+5. **Use both hooks**: GitHub Action for CI, pre-commit for local development
+6. **Ignore sensitive files**: Use `.match` patterns to exclude config/secrets
+7. **Set appropriate limits**: Balance detail vs. token usage (4000-16000 range)
+8. **Version your action**: Use `@v1` instead of `@main` for stability
+
+## Resources
+
+- [xray Documentation](../README.md)
+- [GitHub Action Documentation](./github-action.md)
+- [Configuration Examples](../.xrayrc.example)
+- [Example Workflow Template](../.github/workflows/xray-example.yml.template)
+- [Pre-commit Hook Source](../hooks/pre-commit)
