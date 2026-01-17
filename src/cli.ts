@@ -8,6 +8,7 @@ import { QueryResolver } from './query-resolver';
 import * as cliProgress from 'cli-progress';
 import { Logger } from './logger';
 import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase, XrayScopeConfig } from './config';
+import { FileScanner } from './scanner';
 
 const program = new Command();
 
@@ -230,9 +231,9 @@ const handleGenerateAction = async (options: any) => {
   }
 };
 
-// Map command (most commonly used - generates visual map)
+// Map command - generates visual map
 addCommonOptions(program.command('map'))
-  .description('Generate visual map of codebase [default command]')
+  .description('Generate visual map of codebase')
   .action(handleGenerateAction);
 
 // Scan command - file system discovery
@@ -263,6 +264,189 @@ program
     }
   });
 
+// Explore command action handler
+const handleExploreAction = async (options: any) => {
+    try {
+      const paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()])
+        .map(resolvePath)
+        .filter(Boolean) as string[];
+
+      // Validate all paths exist
+      for (const p of paths) {
+        if (!fs.existsSync(p)) {
+          Logger.error(`Path does not exist: ${p}`);
+          process.exit(1);
+        }
+      }
+
+      // Scan all paths and collect files
+      let files: string[] = [];
+      for (const p of paths) {
+        const scanner = new FileScanner(p);
+        const scannedFiles = scanner.scan().map((f: string) => path.join(p, f));
+        files = files.concat(scannedFiles);
+      }
+
+      // Filter by type if specified
+      if (options.type && options.type.length > 0) {
+        const exts = options.type.map((t: string) => t.startsWith('.') ? t : `.${t}`);
+        files = files.filter(f => exts.includes(path.extname(f)));
+      }
+
+      // Find files by pattern
+      if (options.match && options.match.length > 0) {
+        files = files.filter(f => {
+          const fileName = path.basename(f).toLowerCase();
+          const filePath = f.toLowerCase();
+
+          return options.match.some((pattern: string) => {
+            const isNegated = pattern.startsWith('!');
+            const actualPattern = (isNegated ? pattern.slice(1) : pattern).toLowerCase();
+
+            let matches = false;
+
+            // Support glob-like patterns
+            if (actualPattern.includes('*')) {
+              const regex = new RegExp(actualPattern.replace(/\*/g, '.*'));
+              matches = regex.test(filePath);
+            } else {
+              matches = fileName.includes(actualPattern) || filePath.includes(actualPattern);
+            }
+
+            return isNegated ? !matches : matches;
+          });
+        });
+
+        Logger.info(`Found ${files.length} file(s) matching pattern(s):\n`);
+        files.forEach(f => console.log(`  ${f}`));
+        return;
+      }
+
+      // Search for keyword in code
+      if (options.search && options.search.length > 0) {
+        const keywords = options.search;
+        Logger.info(`Searching for ${keywords.length} keyword(s) in ${files.length} files...\n`);
+
+        const matches: Array<{ file: string; lines: Array<{ lineNum: number; content: string; keyword: string }> }> = [];
+
+        for (const file of files) {
+          try {
+            const content = fs.readFileSync(file, 'utf-8');
+            const lines = content.split('\n');
+            const matchingLines: Array<{ lineNum: number; content: string; keyword: string }> = [];
+
+            lines.forEach((line, idx) => {
+              keywords.forEach((keyword: string) => {
+                if (line.toLowerCase().includes(keyword.toLowerCase())) {
+                  matchingLines.push({ lineNum: idx + 1, content: line.trim(), keyword });
+                }
+              });
+            });
+
+            if (matchingLines.length > 0) {
+              matches.push({ file, lines: matchingLines });
+            }
+          } catch (error) {
+            // Skip files that can't be read
+          }
+        }
+
+        if (matches.length === 0) {
+          Logger.warn(`No matches found for keyword(s): ${keywords.join(', ')}`);
+          return;
+        }
+
+        Logger.success(`Found matches in ${matches.length} file(s):\n`);
+        matches.forEach(({ file, lines }) => {
+          console.log(chalk.cyan(`${file}:`));
+          lines.slice(0, 5).forEach(({ lineNum, content, keyword }) => {
+            console.log(`  ${chalk.gray(`${lineNum}:`)} ${chalk.yellow(`[${keyword}]`)} ${content}`);
+          });
+          if (lines.length > 5) {
+            console.log(chalk.gray(`  ... and ${lines.length - 5} more matches`));
+          }
+          console.log('');
+        });
+        return;
+      }
+
+      // Show statistics
+      if (options.stats) {
+        const extStats: Record<string, number> = {};
+        let totalLines = 0;
+
+        files.forEach(file => {
+          const ext = path.extname(file);
+          extStats[ext] = (extStats[ext] || 0) + 1;
+
+          try {
+            const content = fs.readFileSync(file, 'utf-8');
+            totalLines += content.split('\n').length;
+          } catch (error) {
+            // Skip files that can't be read
+          }
+        });
+
+        Logger.info('Codebase Statistics:\n');
+        console.log(`  ${chalk.bold('Total Files:')} ${files.length}`);
+        console.log(`  ${chalk.bold('Total Lines:')} ${totalLines.toLocaleString()}\n`);
+        console.log(`  ${chalk.bold('Files by Type:')}`);
+
+        Object.entries(extStats)
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([ext, count]) => {
+            console.log(`    ${ext.padEnd(10)} ${count}`);
+          });
+        return;
+      }
+
+      // Default: list all files
+      Logger.info(`Found ${files.length} file(s):\n`);
+
+      // Group by extension
+      const byExt: Record<string, string[]> = {};
+      files.forEach(f => {
+        const ext = path.extname(f);
+        if (!byExt[ext]) byExt[ext] = [];
+        byExt[ext].push(f);
+      });
+
+      Object.entries(byExt)
+        .sort((a, b) => b[1].length - a[1].length)
+        .forEach(([ext, fileList]) => {
+          console.log(chalk.cyan(`${ext} (${fileList.length}):`));
+          fileList.slice(0, 10).forEach(f => console.log(`  ${f}`));
+          if (fileList.length > 10) {
+            console.log(chalk.gray(`  ... and ${fileList.length - 10} more`));
+          }
+          console.log('');
+        });
+
+    } catch (error) {
+      Logger.error('Error exploring codebase:', error);
+      process.exit(1);
+    }
+};
+
+// Explore command (default command)
+program
+  .command('explore', { isDefault: true })
+  .description('Quickly find files by patterns, search code for keywords, or explore the codebase [default command]')
+  .option('-p, --path <path>', 'Root directory to explore (repeatable) [default: current directory]', (value: string, previous: string[]) => {
+    return previous.concat([value]);
+  }, [])
+  .option('-m, --match <pattern>', 'Find files matching pattern (e.g., "*.ts", "**/*test*") (repeatable)', (value: string, previous: string[]) => {
+    return previous.concat([value]);
+  }, [])
+  .option('-s, --search <keyword>', 'Search for keyword in code (repeatable)', (value: string, previous: string[]) => {
+    return previous.concat([value]);
+  }, [])
+  .option('-t, --type <ext>', 'Filter by file extension (e.g., ts, js, py) (repeatable)', (value: string, previous: string[]) => {
+    return previous.concat([value]);
+  }, [])
+  .option('--stats', 'Show codebase statistics')
+  .action(handleExploreAction);
+
 // Completion command
 program
   .command('completion')
@@ -279,7 +463,7 @@ _xray_completions() {
   COMPREPLY=()
   cur="\${COMP_WORDS[COMP_CWORD]}"
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
-  commands="map scan graph generate clear-cache completion help"
+  commands="map scan graph generate explore clear-cache completion help"
 
   if [ $COMP_CWORD -eq 1 ]; then
     COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
@@ -325,6 +509,7 @@ _xray() {
     'scan:Scan and discover files in codebase'
     'graph:Generate control flow and data flow graphs'
     'generate:Generate code analysis visualization'
+    'explore:Quickly find files and search code'
     'clear-cache:Clear SQLite cache'
     'completion:Generate shell completion script'
     'help:Display help for command'
@@ -375,6 +560,7 @@ complete -c xray -n '__fish_use_subcommand' -a map -d 'Generate visual map of co
 complete -c xray -n '__fish_use_subcommand' -a scan -d 'Scan and discover files in codebase'
 complete -c xray -n '__fish_use_subcommand' -a graph -d 'Generate control flow and data flow graphs'
 complete -c xray -n '__fish_use_subcommand' -a generate -d 'Generate code analysis visualization'
+complete -c xray -n '__fish_use_subcommand' -a explore -d 'Quickly find files and search code'
 complete -c xray -n '__fish_use_subcommand' -a clear-cache -d 'Clear SQLite cache'
 complete -c xray -n '__fish_use_subcommand' -a completion -d 'Generate shell completion script'
 complete -c xray -n '__fish_use_subcommand' -a help -d 'Display help for command'
