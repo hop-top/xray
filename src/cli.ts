@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Command } from 'commander';
 import { Xray } from './index';
 import * as fs from 'fs';

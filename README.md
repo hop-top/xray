@@ -6,9 +6,31 @@
 
 Code mapping for codebases.
 
-## Setup
+## Installation
 
-1. **Install Dependencies**:
+### Quick Install (Recommended)
+
+Install xray globally via npm:
+
+```bash
+npm install -g xray
+```
+
+Or use the installation script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/IdeaCraftersLabs/oss-xray-codes/main/install.sh | bash
+```
+
+### From Source
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/IdeaCraftersLabs/oss-xray-codes.git xray
+   cd xray
+   ```
+
+2. **Install Dependencies**:
    ```bash
    npm install --legacy-peer-deps
    ```
@@ -20,20 +42,28 @@ Code mapping for codebases.
    CXXFLAGS="-std=c++20" npm install --legacy-peer-deps
    ```
 
-2. **Build**:
+3. **Build**:
    ```bash
    npm run build
+   ```
+
+4. **Link globally** (optional):
+   ```bash
+   npm link
    ```
 
 ## Usage
 
 **Generate an X-ray**:
 ```bash
-# Run directly with ts-node
+# If installed globally
+xray generate --root ./path/to/your/repo --output .xray
+
+# Or run directly with ts-node (from source)
 npm run dev -- generate --root ./path/to/your/repo --output .xray
 
-# Or build and run
-node dist/cli.js generate --root .
+# Or build and run (from source)
+node bin/cli.js generate --root .
 ```
 
 ### Options
@@ -83,6 +113,10 @@ xray generate --root . --query .ts:./ts.scm,./python.scm
 
 **Clear Cache**:
 ```bash
+# If installed globally
+xray clear-cache
+
+# Or with npm run dev
 npm run dev -- clear-cache
 ```
 
