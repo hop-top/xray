@@ -13,7 +13,7 @@ export class MapRenderer {
     this.graph = graph;
   }
 
-  async render(tokenLimit: number, maxDepth?: number, includeImports?: boolean, includeDeps?: boolean): Promise<string> {
+  async render(tokenLimit: number, depth?: number, includeImports?: boolean): Promise<string> {
     // Group tags by file
     const fileMap = new Map<string, RankedNode[]>();
 
@@ -29,10 +29,6 @@ export class MapRenderer {
 
     const outputLines: string[] = [];
     let currentTokens = 0;
-    
-    if (includeDeps === true) {
-      includeImports = true;
-    }
 
     // Organize data
     for (const node of this.ranked) {
@@ -67,9 +63,9 @@ export class MapRenderer {
     });
 
     for (const file of sortedFiles) {
-      if (maxDepth !== undefined) {
-        const depth = file.split('/').length;
-        if (depth > maxDepth) continue;
+      if (depth !== undefined) {
+        const fileDepth = file.split('/').length;
+        if (fileDepth > depth) continue;
       }
 
       const tags = fileMap.get(file)!;
@@ -175,8 +171,8 @@ export class MapRenderer {
       if (currentTokens >= tokenLimit) break;
     }
 
-    // Generate Dependency Table if requested
-    if (includeDeps) {
+    // Generate Dependency Table when imports are included
+    if (includeImports) {
       outputLines.push('## External Dependencies');
       outputLines.push('| Library | Used By |');
       outputLines.push('|---------|---------|');

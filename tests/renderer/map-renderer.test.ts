@@ -58,14 +58,14 @@ describe('MapRenderer', () => {
         expect(output).toContain('file1.ts');
         expect(output).not.toContain('file2.ts');
     });
-    it('should not filter if maxDepth is undefined', async () => {
+    it('should not filter if depth is undefined', async () => {
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
             { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
     });
-    it('should filter by maxDepth', async () => {
+    it('should filter by depth', async () => {
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
             { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
@@ -207,7 +207,7 @@ describe('MapRenderer', () => {
         expect(output).toContain('import ./utils');
     });
 
-    it('should filter by maxDepth', async () => {
+    it('should filter by depth', async () => {
         ranked = [
             { id: 'file1.ts', score: 10, data: { type: 'file' } },
             { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } },
@@ -216,7 +216,7 @@ describe('MapRenderer', () => {
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
-        const output = await renderer.render(1000, 1); // maxDepth = 1
+        const output = await renderer.render(1000, 1); // depth = 1
         expect(output).toContain('file1.ts');
         expect(output).not.toContain('deep/nested/file2.ts');
     });
@@ -238,7 +238,7 @@ describe('MapRenderer', () => {
         expect(output).toContain('used by: [file1.ts:L6](L6-L9)');
     });
 
-    it('should generate external dependencies table', async () => {
+    it('should generate external dependencies table when imports are included', async () => {
         (graph as any).addNode('file1.ts', {
             type: 'file', label: 'file1.ts', imports: [
                 { source: 'fs', line: 1, file: 'file1.ts' },
@@ -258,10 +258,11 @@ describe('MapRenderer', () => {
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
-        const output = await renderer.render(10000, undefined, true, false);
-        expect(output).not.toContain('## External Dependencies');
-        expect(output).not.toContain('| fs | file1.ts, file2.ts |');
-        expect(output).not.toContain('| express | file1.ts |');
+        const output = await renderer.render(10000, undefined, true);
+        // When imports are included, dependency table should also appear
+        expect(output).toContain('## External Dependencies');
+        expect(output).toContain('| fs |');
+        expect(output).toContain('| express |');
         // Note: ./utils appears in imports list but not in dependencies table (correct behavior)
     });
 
@@ -282,7 +283,7 @@ describe('MapRenderer', () => {
         expect(output).toContain('import lodash');
     });
 
-    it('should include imports and dependencies table when includeDeps is true', async () => {
+    it('should include imports and dependencies table when includeImports is true', async () => {
         (graph as any).addNode('main.ts', {
             type: 'file', label: 'main.ts', imports: [
                 { source: 'fs', line: 1, file: 'main.ts' },
@@ -304,8 +305,8 @@ describe('MapRenderer', () => {
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
-        // Render with includeImports = true to simulate --include-deps behavior
-        const output = await renderer.render(10000, undefined, false, true);
+        // Render with includeImports = true
+        const output = await renderer.render(10000, undefined, true);
         
         // Should contain imports in file sections
         expect(output).toContain('import fs');

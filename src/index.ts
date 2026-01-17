@@ -10,19 +10,35 @@ import { SqliteCache } from './cache/sqlite-cache';
 import { Logger } from './logger';
 
 export interface XrayConfig {
-  root: string;
-  tokenLimit?: number;
+  // Core options
+  path: string;
+  limit?: number;
   cachePath?: string;
-  includeVariables?: boolean;
-  includeImports?: boolean;
-  includeDeps?: boolean;
-  doc?: string;
-  focus?: string;
-  maxDepth?: number;
-  withCost?: boolean;
-  enableCfg?: boolean;
-  enableDfg?: boolean;
+
+  // Focus and filtering
+  anchor?: string;
+  depth?: number;
+  match?: string[];
+  catch?: string[];
+
+  // Features (grouped, matching --with flag)
+  features?: {
+    vars?: boolean;      // include variables
+    incs?: boolean;      // include imports
+    docs?: boolean;      // include docstrings
+    cost?: boolean;      // estimate cost
+    df?: boolean;        // data flow graph
+    cf?: boolean;        // control flow graph
+  };
+
+  // Output options
+  format?: 'txt' | 'csv' | 'xml';
+  diagram?: 'mermaid' | 'dot';
+
+  // Advanced
   queries?: Record<string, string>;
+
+  // Internal
   onProgress?: (current: number, total: number, file: string) => void;
 }
 
@@ -32,7 +48,9 @@ export class Xray {
 
   constructor(config: XrayConfig) {
     this.config = config;
-    this.config.tokenLimit = config.tokenLimit || 4096;
+    // Set defaults
+    this.config.limit = config.limit || 4096;
+    this.config.features = config.features || {};
     this.cache = new SqliteCache(config.cachePath || path.join(process.cwd(), '.xray_cache.db'));
   }
 
@@ -41,7 +59,7 @@ export class Xray {
    */
   async run(): Promise<string> {
     // 1. Scan Files
-    const scanner = new FileScanner(this.config.root);
+    const scanner = new FileScanner(this.config.path);
     const files = scanner.scan();
     Logger.info(`Found ${files.length} files.`);
 
@@ -69,12 +87,17 @@ export class Xray {
     }
 
     // 2. Parse & Extract (with Cache)
-    const parser = new ParserManager(this.config.root);
+    const parser = new ParserManager(this.config.path);
     const graphBuilder = new GraphBuilder();
 
     if (this.config.onProgress) {
       this.config.onProgress(0, files.length, '');
     }
+
+    const includeVars = this.config.features?.vars || false;
+    const includeDocs = this.config.features?.docs ? 'all' : 'none';
+    const enableCfg = this.config.features?.cf || false;
+    const enableDfg = this.config.features?.df || false;
 
     let processed = 0;
     for (const file of files) {
@@ -82,21 +105,20 @@ export class Xray {
         this.config.onProgress(processed, files.length, file);
       }
 
-      const absPath = path.join(this.config.root, file);
+      const absPath = path.join(this.config.path, file);
       const stats = fs.statSync(absPath);
 
       // Check cache
-      const cached = this.cache.get(file, stats.mtimeMs, this.config.doc || 'none', this.config.includeVariables || false);
+      const cached = this.cache.get(file, stats.mtimeMs, includeDocs, includeVars);
 
       if (cached) {
         graphBuilder.loadFromCache(file, cached.tags, cached.imports);
       } else {
         const content = fs.readFileSync(absPath, 'utf-8');
-        // console.log(`Parsing ${file} with docstrings config: ${this.config.doc}`);
-        const { tags, imports } = await parser.parse(file, content, this.config.includeVariables, this.config.doc, this.config.enableCfg, this.config.enableDfg);
+        const { tags, imports } = await parser.parse(file, content, includeVars, includeDocs, enableCfg, enableDfg);
 
         graphBuilder.addFile(file, tags, imports);
-        this.cache.set(file, stats.mtimeMs, tags, imports, this.config.doc || 'none', this.config.includeVariables || false);
+        this.cache.set(file, stats.mtimeMs, tags, imports, includeDocs, includeVars);
       }
       processed++;
     }
@@ -110,13 +132,14 @@ export class Xray {
 
     // 4. Rank (PageRank + Heuristics)
     const ranker = new Ranker(graph);
-    const rankedNodes = ranker.rank(this.config.focus);
+    const rankedNodes = ranker.rank(this.config.anchor);
 
     // 5. Render
-    const renderer = new MapRenderer(this.config.root, rankedNodes, graph);
-    const output = await renderer.render(this.config.tokenLimit!, this.config.maxDepth, this.config.includeImports, this.config.includeDeps);
+    const renderer = new MapRenderer(this.config.path, rankedNodes, graph);
+    const includeIncs = this.config.features?.incs || false;
+    const output = await renderer.render(this.config.limit!, this.config.depth, includeIncs);
 
-    if (this.config.withCost) {
+    if (this.config.features?.cost) {
       const { tokenizeAndEstimateCost } = await import('llm-cost');
       const { cost } = await tokenizeAndEstimateCost({
         model: 'gpt-4o',
