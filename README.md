@@ -33,13 +33,13 @@ cat .xray
 
 ## Key Features
 
-🎯 **Intelligent Ranking** - PageRank algorithm surfaces the most important files and functions first
-🤖 **AI-Optimized** - Token-efficient output designed for Claude, GPT, and other LLMs
-📊 **Multi-Language** - Supports 19+ programming languages via tree-sitter
-🔍 **Framework-Aware** - Built-in strategies for React, Express, Go CLI, and more
-⚡ **Smart Caching** - SQLite cache for fast subsequent runs
-🔗 **Dependency Tracking** - Shows imports, exports, and cross-file relationships
-⚙️ **Automation Ready** - GitHub Actions and pre-commit hooks included
+- 🎯 **Intelligent Ranking** - PageRank algorithm surfaces the most important files and functions first
+- 🤖 **AI-Optimized** - Token-efficient output designed for Claude, GPT, and other LLMs
+- 📊 **Multi-Language** - Supports 19+ programming languages via tree-sitter
+- 🔍 **Framework-Aware** - Built-in strategies for React, Express, Go CLI, and more
+- ⚡ **Smart Caching** - SQLite cache for fast subsequent runs
+- 🔗 **Dependency Tracking** - Shows imports, exports, and cross-file relationships
+- ⚙️  **Automation Ready** - GitHub Actions and pre-commit hooks included
 
 ## Core Commands
 
@@ -208,7 +208,23 @@ utils.ts (L5-L50):
 
 ## Supported Languages
 
-Bash • C • C# • C++ • Elixir • Go • Haskell • Java • JavaScript • Kotlin • PHP • Python • Ruby • Rust • Scala • Swift • TypeScript
+- Bash
+- C
+- C#
+- C++
+- Elixir
+- Go
+- Haskell
+- Java
+- JavaScript
+- Kotlin
+- PHP
+- Python
+- Ruby
+- Rust
+- Scala
+- Swift
+- TypeScript
 
 **Note:** Dart and Lua currently unsupported due to tree-sitter version incompatibility ([#6](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues/6))
 
