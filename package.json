@@ -7,12 +7,15 @@
     "xray": "bin/cli.js"
   },
   "scripts": {
-    "build": "tsc && cp -r src/parser/queries bin/parser/",
+    "build": "tsc && tsc --project tsconfig.strategies.json && cp -r src/parser/queries bin/parser/",
     "start": "node bin/cli.js",
     "dev": "ts-node src/cli.ts",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
-    "prepare-public": "./scripts/prepare-public.sh"
+    "test": "./scripts/test-sequential.sh",
+    "test:parallel": "jest",
+    "test:coverage": "./scripts/test-coverage.sh",
+    "prepare-public": "./scripts/prepare-public.sh",
+    "prepare": "husky install",
+    "strategy:detect": "node bin/cli.js strategy:detect"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",
@@ -23,6 +26,7 @@
     "graphology": "^0.25.4",
     "graphology-metrics": "^2.2.0",
     "ignore": "^5.3.0",
+    "js-yaml": "^4.1.1",
     "llm-cost": "^1.0.5"
   },
   "devDependencies": {
@@ -31,7 +35,9 @@
     "@types/cli-progress": "^3.11.6",
     "@types/glob": "^8.1.0",
     "@types/jest": "^30.0.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.10.0",
+    "husky": "^9.1.7",
     "jest": "^30.2.0",
     "tree-sitter": "^0.25.0",
     "tree-sitter-bash": "^0.25.1",

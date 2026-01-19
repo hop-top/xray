@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./bin"
+  },
+  "include": ["strategies/**/*", "src/strategy/types.ts"],
+  "exclude": ["node_modules", "bin", "tests"]
+}

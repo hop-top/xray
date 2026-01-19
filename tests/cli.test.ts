@@ -301,6 +301,74 @@ describe('CLI E2E', () => {
         });
     });
 
+    describe('strategy meta-commands via explore', () => {
+        test('should list all available strategies', () => {
+            const output = execSync(`node ${CLI_PATH} strategy:list`).toString();
+            expect(output).toContain('Available Strategies');
+            expect(output).toContain('react');
+        });
+
+        test('should list strategies with explore prefix', () => {
+            const output = execSync(`node ${CLI_PATH} explore strategy:list`).toString();
+            expect(output).toContain('Available Strategies');
+            expect(output).toContain('react');
+        });
+
+        test('should detect strategies in current project', () => {
+            // Create a temp React project for detection
+            const tempDir = path.join(__dirname, 'temp-react-detect');
+            if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+            const pkgJson = {
+                name: 'test-project',
+                version: '1.0.0',
+                dependencies: {
+                    'react': '^18.2.0',
+                    'react-dom': '^18.2.0'
+                }
+            };
+
+            fs.writeFileSync(
+                path.join(tempDir, 'package.json'),
+                JSON.stringify(pkgJson, null, 2)
+            );
+
+            const output = execSync(`node ${CLI_PATH} strategy:detect -p ${tempDir}`).toString();
+            expect(output).toContain('Detected Strategies');
+            expect(output).toContain('react');
+
+            // Cleanup
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        });
+
+        test('should detect strategies with explore prefix', () => {
+            // Create a temp React project for detection
+            const tempDir = path.join(__dirname, 'temp-react-detect-2');
+            if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+            const pkgJson = {
+                name: 'test-project',
+                version: '1.0.0',
+                dependencies: {
+                    'react': '^18.2.0',
+                    'react-dom': '^18.2.0'
+                }
+            };
+
+            fs.writeFileSync(
+                path.join(tempDir, 'package.json'),
+                JSON.stringify(pkgJson, null, 2)
+            );
+
+            const output = execSync(`node ${CLI_PATH} explore strategy:detect -p ${tempDir}`).toString();
+            expect(output).toContain('Detected Strategies');
+            expect(output).toContain('react');
+
+            // Cleanup
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        });
+    });
+
     describe('completion command', () => {
         test('should show help', () => {
             const output = execSync(`node ${CLI_PATH} completion --help`).toString();
@@ -317,7 +385,7 @@ describe('CLI E2E', () => {
             expect(output).toContain('complete -F _xray_completions xray');
 
             // Check for commands
-            expect(output).toContain('map scan graph generate clear-cache completion help');
+            expect(output).toContain('map scan graph generate explore clear-cache completion help');
 
             // Check for option completion
             expect(output).toContain('vars incs docs cost cf df');
@@ -336,6 +404,7 @@ describe('CLI E2E', () => {
             // Check for commands with descriptions
             expect(output).toContain('map:Generate visual map of codebase');
             expect(output).toContain('scan:Scan and discover files in codebase');
+            expect(output).toContain('explore:Quickly find files and search code');
             expect(output).toContain('completion:Generate shell completion script');
 
             // Check for options
@@ -354,6 +423,7 @@ describe('CLI E2E', () => {
             // Check for commands
             expect(output).toContain('-a map -d \'Generate visual map of codebase\'');
             expect(output).toContain('-a scan -d \'Scan and discover files in codebase\'');
+            expect(output).toContain('-a explore -d \'Quickly find files and search code\'');
             expect(output).toContain('-a completion -d \'Generate shell completion script\'');
 
             // Check for options
@@ -384,6 +454,227 @@ describe('CLI E2E', () => {
                 expect(output).toContain('eval "$(xray completion zsh)"');
                 expect(output).toContain('xray completion fish > ~/.config/fish/completions/xray.fish');
             }
+        });
+    });
+
+    describe('strategy commands via explore', () => {
+        const testRoot = path.join(__dirname, 'react-cli-test');
+
+        beforeAll(() => {
+            // Create test React project
+            if (fs.existsSync(testRoot)) {
+                fs.rmSync(testRoot, { recursive: true, force: true });
+            }
+            fs.mkdirSync(testRoot, { recursive: true });
+
+            // Create package.json with React
+            fs.writeFileSync(
+                path.join(testRoot, 'package.json'),
+                JSON.stringify({
+                    name: 'test-react-app',
+                    dependencies: {
+                        react: '^18.0.0',
+                        'react-dom': '^18.0.0'
+                    }
+                })
+            );
+
+            // Create test components
+            fs.mkdirSync(path.join(testRoot, 'src'), { recursive: true });
+
+            // Note: execSync used here is safe as it's in a controlled test environment
+            fs.writeFileSync(
+                path.join(testRoot, 'src', 'Button.tsx'),
+                `import React from 'react';
+
+export function Button() {
+  return <button>Click me</button>;
+}`
+            );
+
+            fs.writeFileSync(
+                path.join(testRoot, 'src', 'Card.tsx'),
+                `import React from 'react';
+
+export class Card extends React.Component {
+  render() {
+    return <div>Card</div>;
+  }
+}`
+            );
+
+            // Create custom hooks
+            fs.writeFileSync(
+                path.join(testRoot, 'src', 'useCounter.ts'),
+                `import { useState } from 'react';
+
+export function useCounter(initialValue: number = 0) {
+  const [count, setCount] = useState(initialValue);
+  return { count, setCount };
+}`
+            );
+
+            fs.writeFileSync(
+                path.join(testRoot, 'src', 'useToggle.ts'),
+                `import { useState } from 'react';
+
+export const useToggle = (initialValue: boolean = false) => {
+  const [value, setValue] = useState(initialValue);
+  const toggle = () => setValue(!value);
+  return { value, toggle };
+}`
+            );
+
+            // Create contexts
+            fs.writeFileSync(
+                path.join(testRoot, 'src', 'ThemeContext.ts'),
+                `import { createContext } from 'react';
+
+export const ThemeContext = createContext({
+  theme: 'light',
+  toggleTheme: () => {}
+});`
+            );
+
+            fs.writeFileSync(
+                path.join(testRoot, 'src', 'AuthContext.ts'),
+                `import { createContext } from 'react';
+
+export const AuthContext = createContext(null);`
+            );
+        });
+
+        afterAll(() => {
+            // Cleanup
+            if (fs.existsSync(testRoot)) {
+                fs.rmSync(testRoot, { recursive: true, force: true });
+            }
+        });
+
+        test('should list React components with react:components', () => {
+            const output = execSync(`node ${CLI_PATH} react:components -p ${testRoot}`).toString();
+
+            expect(output).toContain('React Components:');
+            expect(output).toContain('Button');
+            expect(output).toContain('(function)');
+            expect(output).toContain('Card');
+            expect(output).toContain('(class)');
+        });
+
+        test('should list React components with explore react:components', () => {
+            const output = execSync(`node ${CLI_PATH} explore react:components -p ${testRoot}`).toString();
+
+            expect(output).toContain('React Components:');
+            expect(output).toContain('Button');
+            expect(output).toContain('(function)');
+            expect(output).toContain('Card');
+            expect(output).toContain('(class)');
+        });
+
+        test('should list React hooks with react:hooks', () => {
+            const output = execSync(`node ${CLI_PATH} react:hooks -p ${testRoot}`).toString();
+
+            expect(output).toContain('Custom React Hooks:');
+            expect(output).toContain('useCounter');
+            expect(output).toContain('useToggle');
+        });
+
+        test('should list React hooks with explore react:hooks', () => {
+            const output = execSync(`node ${CLI_PATH} explore react:hooks -p ${testRoot}`).toString();
+
+            expect(output).toContain('Custom React Hooks:');
+            expect(output).toContain('useCounter');
+            expect(output).toContain('useToggle');
+        });
+
+        test('should list React contexts with react:contexts', () => {
+            const output = execSync(`node ${CLI_PATH} react:contexts -p ${testRoot}`).toString();
+
+            expect(output).toContain('React Contexts:');
+            expect(output).toContain('ThemeContext');
+            expect(output).toContain('AuthContext');
+        });
+
+        test('should list React contexts with explore react:contexts', () => {
+            const output = execSync(`node ${CLI_PATH} explore react:contexts -p ${testRoot}`).toString();
+
+            expect(output).toContain('React Contexts:');
+            expect(output).toContain('ThemeContext');
+            expect(output).toContain('AuthContext');
+        });
+    });
+
+    describe('Go CLI strategy commands', () => {
+        const testRoot = path.join(__dirname, 'go-cli-test');
+
+        beforeAll(() => {
+            // Create test Go CLI project
+            if (fs.existsSync(testRoot)) {
+                fs.rmSync(testRoot, { recursive: true, force: true });
+            }
+            fs.mkdirSync(testRoot, { recursive: true });
+
+            // Create go.mod
+            fs.writeFileSync(
+                path.join(testRoot, 'go.mod'),
+                `module example.com/testcli
+
+go 1.21
+
+require github.com/spf13/cobra v1.8.0`
+            );
+
+            // Create cmd directory
+            fs.mkdirSync(path.join(testRoot, 'cmd'), { recursive: true });
+
+            // Create root command
+            fs.writeFileSync(
+                path.join(testRoot, 'cmd', 'root.go'),
+                `package cmd
+
+import "github.com/spf13/cobra"
+
+var rootCmd = &cobra.Command{
+    Use:   "testcli",
+    Short: "A test CLI application",
+}
+
+var serveCmd = &cobra.Command{
+    Use:   "serve",
+    Short: "Start the server",
+}
+
+func init() {
+    rootCmd.AddCommand(serveCmd)
+    rootCmd.Flags().StringP("config", "c", "", "config file")
+}`
+            );
+        });
+
+        afterAll(() => {
+            if (fs.existsSync(testRoot)) {
+                fs.rmSync(testRoot, { recursive: true, force: true });
+            }
+        });
+
+        test('should list Go CLI commands with go-cli:commands', () => {
+            const output = execSync(`node ${CLI_PATH} go-cli:commands -p ${testRoot}`).toString();
+
+            expect(output).toContain('testcli');
+            expect(output).toContain('serve');
+        });
+
+        test('should list Go CLI flags with go-cli:flags', () => {
+            const output = execSync(`node ${CLI_PATH} go-cli:flags -p ${testRoot}`).toString();
+
+            expect(output).toContain('config');
+        });
+
+        test('should show command tree with go-cli:tree', () => {
+            const output = execSync(`node ${CLI_PATH} go-cli:tree -p ${testRoot}`).toString();
+
+            expect(output).toContain('testcli');
+            expect(output).toContain('serve');
         });
     });
 });

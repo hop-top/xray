@@ -22,6 +22,12 @@ export class SqliteCache {
         data JSON,
         FOREIGN KEY(file) REFERENCES files_v2(path) ON DELETE CASCADE
       );
+      CREATE TABLE IF NOT EXISTS file_analysis (
+        path TEXT PRIMARY KEY,
+        mtime REAL,
+        hash TEXT,
+        analysis JSON
+      );
     `);
   }
 
@@ -52,5 +58,45 @@ export class SqliteCache {
     });
 
     transaction();
+  }
+
+  // File analysis cache methods
+  setFileAnalysis(file: string, data: { mtime: number; hash: string; analysis: any }) {
+    const stmt = this.db.prepare(
+      'INSERT OR REPLACE INTO file_analysis (path, mtime, hash, analysis) VALUES (?, ?, ?, ?)'
+    );
+    stmt.run(file, data.mtime, data.hash, JSON.stringify(data.analysis));
+  }
+
+  getFileAnalysis(file: string): { mtime: number; hash: string; analysis: any } | null {
+    const row = this.db.prepare(
+      'SELECT mtime, hash, analysis FROM file_analysis WHERE path = ?'
+    ).get(file) as any;
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      mtime: row.mtime,
+      hash: row.hash,
+      analysis: JSON.parse(row.analysis)
+    };
+  }
+
+  isFileAnalysisValid(file: string, mtime: number, hash: string): boolean {
+    const row = this.db.prepare(
+      'SELECT mtime, hash FROM file_analysis WHERE path = ?'
+    ).get(file) as any;
+
+    if (!row) {
+      return false;
+    }
+
+    return row.mtime === mtime && row.hash === hash;
+  }
+
+  clearFileAnalysis(file: string) {
+    this.db.prepare('DELETE FROM file_analysis WHERE path = ?').run(file);
   }
 }

@@ -497,10 +497,12 @@ xray map --all-scopes
 7. **Set appropriate limits**: Balance detail vs. token usage (4000-16000 range)
 8. **Version your action**: Use `@v1` instead of `@main` for stability
 
-## Resources
+## See Also
 
-- [xray Documentation](../README.md)
-- [GitHub Action Documentation](./github-action.md)
-- [Configuration Examples](../.xrayrc.example)
-- [Example Workflow Template](../.github/workflows/xray-example.yml.template)
-- [Pre-commit Hook Source](../hooks/pre-commit)
+- [Configuration Guide](configuration.md) - Config file options
+- [Getting Started](getting-started.md) - Installation and setup
+- [Commands Reference](commands.md) - All available commands
+
+---
+
+For questions or issues, please visit: https://github.com/IdeaCraftersLabs/oss-xray-codes/issues

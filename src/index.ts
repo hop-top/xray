@@ -9,6 +9,9 @@ import { MapRenderer } from './renderer/map-renderer';
 import { SqliteCache } from './cache/sqlite-cache';
 import { Logger } from './logger';
 
+// Export strategy module
+export * as strategy from './strategy';
+
 export interface XrayConfig {
   // Core options
   path: string;
