@@ -14,6 +14,7 @@ module.exports = {
         },
     },
     testMatch: ['**/*.test.ts'],
+    roots: ['<rootDir>/__tests__'],
     verbose: true,
     resetModules: true,
     // Run tests sequentially to avoid tree-sitter parser interference

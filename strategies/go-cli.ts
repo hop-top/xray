@@ -1,5 +1,5 @@
 // strategies/go-cli.ts
-import { Strategy, StrategyContext, FileMetadata } from '../src/strategy/types';
+import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import Parser from 'tree-sitter';
 
 // Use require for tree-sitter grammars as they are native modules

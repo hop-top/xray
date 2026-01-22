@@ -2,20 +2,20 @@
   "name": "xray",
   "version": "0.0.1-alpha.1",
   "description": "X-ray your codebase - Generate AST, CFG, and DFG visualizations",
-  "main": "bin/index.js",
+  "main": "dist/index.js",
   "bin": {
-    "xray": "bin/cli.js"
+    "xray": "bin/xray"
   },
   "scripts": {
-    "build": "tsc && tsc --project tsconfig.strategies.json && cp -r src/parser/queries bin/parser/",
-    "start": "node bin/cli.js",
-    "dev": "ts-node src/cli.ts",
+    "build": "tsc && tsc --project tsconfig.strategies.json && cp -r src/lib/parser/queries dist/lib/parser/",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
     "test": "./scripts/test-sequential.sh",
     "test:parallel": "jest",
     "test:coverage": "./scripts/test-coverage.sh",
     "prepare-public": "./scripts/prepare-public.sh",
     "prepare": "husky install",
-    "strategy:detect": "node bin/cli.js strategy:detect"
+    "strategy:detect": "node dist/index.js strategy:detect"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",

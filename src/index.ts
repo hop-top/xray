@@ -1,156 +1,16 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { FileScanner } from './scanner';
-import { ParserManager } from './parser/manager';
-import { updateLanguageQuery } from './parser/language-registry';
-import { GraphBuilder } from './graph/builder';
-import { Ranker } from './graph/ranker';
-import { MapRenderer } from './renderer/map-renderer';
-import { SqliteCache } from './cache/sqlite-cache';
-import { Logger } from './logger';
+#!/usr/bin/env node
+import { registerCommands } from './commands';
 
-// Export strategy module
-export * as strategy from './strategy';
+// Initialize and register all commands
+const program = registerCommands();
 
-export interface XrayConfig {
-  // Core options
-  path: string;
-  limit?: number;
-  cachePath?: string;
-
-  // Focus and filtering
-  anchor?: string;
-  depth?: number;
-  match?: string[];
-  catch?: string[];
-
-  // Features (grouped, matching --with flag)
-  features?: {
-    vars?: boolean;      // include variables
-    incs?: boolean;      // include imports
-    docs?: boolean;      // include docstrings
-    cost?: boolean;      // estimate cost
-    df?: boolean;        // data flow graph
-    cf?: boolean;        // control flow graph
-  };
-
-  // Output options
-  format?: 'txt' | 'csv' | 'xml' | 'json';
-  diagram?: 'mermaid' | 'dot';
-
-  // Advanced
-  queries?: Record<string, string>;
-
-  // Internal
-  onProgress?: (current: number, total: number, file: string) => void;
+// Handle CLI execution
+if (require.main === module) {
+  program.parse();
+} else {
+  // For when module is required (like from bin/xray)
+  // Parse the arguments that were passed to the process
+  program.parse(process.argv);
 }
 
-export class Xray {
-  private config: XrayConfig;
-  private cache: SqliteCache;
-
-  constructor(config: XrayConfig) {
-    this.config = config;
-    // Set defaults
-    this.config.limit = config.limit || 4096;
-    this.config.features = config.features || {};
-    this.cache = new SqliteCache(config.cachePath || path.join(process.cwd(), '.xray_cache.db'));
-  }
-
-  /**
-   * Main entry point to generate the repository map.
-   */
-  async run(): Promise<string> {
-    // 1. Scan Files
-    const scanner = new FileScanner(this.config.path);
-    const files = scanner.scan();
-    Logger.info(`Found ${files.length} files.`);
-
-    // 1.5 Apply Custom Queries
-    if (this.config.queries) {
-      for (const [ext, source] of Object.entries(this.config.queries)) {
-        try {
-          let queryContent: string;
-          if (source.startsWith('http://') || source.startsWith('https://')) {
-            Logger.info(`Fetching custom query for ${ext} from ${source}...`);
-            const response = await fetch(source);
-            if (!response.ok) {
-              throw new Error(`Failed to fetch query: ${response.statusText}`);
-            }
-            queryContent = await response.text();
-          } else {
-            Logger.info(`Loading custom query for ${ext} from ${source}...`);
-            queryContent = fs.readFileSync(source, 'utf-8');
-          }
-          updateLanguageQuery(ext, queryContent);
-        } catch (e) {
-          Logger.error(`Failed to load custom query for ${ext}:`, e);
-        }
-      }
-    }
-
-    // 2. Parse & Extract (with Cache)
-    const parser = new ParserManager(this.config.path);
-    const graphBuilder = new GraphBuilder();
-
-    if (this.config.onProgress) {
-      this.config.onProgress(0, files.length, '');
-    }
-
-    const includeVars = this.config.features?.vars || false;
-    const includeDocs = this.config.features?.docs ? 'all' : 'none';
-    const enableCfg = this.config.features?.cf || false;
-    const enableDfg = this.config.features?.df || false;
-
-    let processed = 0;
-    for (const file of files) {
-      if (this.config.onProgress) {
-        this.config.onProgress(processed, files.length, file);
-      }
-
-      const absPath = path.join(this.config.path, file);
-      const stats = fs.statSync(absPath);
-
-      // Check cache
-      const cached = this.cache.get(file, stats.mtimeMs, includeDocs, includeVars);
-
-      if (cached) {
-        graphBuilder.loadFromCache(file, cached.tags, cached.imports);
-      } else {
-        const content = fs.readFileSync(absPath, 'utf-8');
-        const { tags, imports } = await parser.parse(file, content, includeVars, includeDocs, enableCfg, enableDfg);
-
-        graphBuilder.addFile(file, tags, imports);
-        this.cache.set(file, stats.mtimeMs, tags, imports, includeDocs, includeVars);
-      }
-      processed++;
-    }
-
-    if (this.config.onProgress) {
-      this.config.onProgress(files.length, files.length, 'Done');
-    }
-
-    // 3. Build Graph
-    const graph = graphBuilder.getGraph();
-
-    // 4. Rank (PageRank + Heuristics)
-    const ranker = new Ranker(graph);
-    const rankedNodes = ranker.rank(this.config.anchor);
-
-    // 5. Render
-    const renderer = new MapRenderer(this.config.path, rankedNodes, graph);
-    const includeIncs = this.config.features?.incs || false;
-    const output = await renderer.render(this.config.limit!, this.config.depth, includeIncs);
-
-    if (this.config.features?.cost) {
-      const { tokenizeAndEstimateCost } = await import('llm-cost');
-      const { cost } = await tokenizeAndEstimateCost({
-        model: 'gpt-4o',
-        input: output
-      });
-      Logger.info(`Estimated cost: $${(cost || 0).toFixed(6)}`);
-    }
-
-    return output;
-  }
-}
+export { program };

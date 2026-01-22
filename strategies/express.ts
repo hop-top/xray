@@ -1,5 +1,5 @@
 // strategies/express.ts
-import { Strategy, StrategyContext, FileMetadata, StrategyCommand } from '../src/strategy/types';
+import { Strategy, StrategyContext, FileMetadata, StrategyCommand } from '../src/lib/strategy/types';
 
 export default class ExpressStrategy implements Strategy {
   name = 'express';

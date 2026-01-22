@@ -1,5 +1,5 @@
 // strategies/react.ts
-import { Strategy, StrategyContext, FileMetadata } from '../src/strategy/types';
+import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import Parser from 'tree-sitter';
 
 export default class ReactStrategy implements Strategy {

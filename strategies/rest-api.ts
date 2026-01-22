@@ -1,5 +1,5 @@
 // strategies/rest-api.ts
-import { Strategy, StrategyContext, FileMetadata } from '../src/strategy/types';
+import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 
 export default class RestApiStrategy implements Strategy {
   name = 'rest-api';

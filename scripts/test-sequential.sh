@@ -21,7 +21,7 @@ echo "Running test suites sequentially..."
 echo ""
 
 # Find all test files
-test_files=$(find tests -name "*.test.ts" -type f | sort)
+test_files=$(find __tests__ -name "*.test.ts" -type f | sort)
 
 # Counters
 total_suites=0
