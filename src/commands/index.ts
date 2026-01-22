@@ -1,8 +1,9 @@
 import { Command } from 'commander';
 import { addCommonOptions } from './common';
 import { handleGenerateAction } from './generate';
-import { handleStrategyCommand } from './strategy';
+import { handleStrategyCommand, handleMetaStrategyCommand } from './strategy';
 import { handleExploreAction } from './explore';
+import { registerStrategyCommand } from './strategy-cmd';
 import { handleClearCacheAction } from './clear-cache';
 import { handleCompletionAction } from './completion';
 import * as path from 'path';
@@ -58,11 +59,17 @@ program
   .option('-t, --type <ext>', 'Filter by file extension (e.g., ts, js, py) (repeatable)', (value: string, previous: string[]) => {
     return previous.concat([value]);
   }, [])
-  .option('--stats', 'Show codebase statistics')
+  .option('--list-strategies', 'List all available strategies')
   .action(async (query: string | undefined, options: any) => {
     // Handle strategy:command queries (e.g., react:components)
     if (query && query.includes(':')) {
       await handleStrategyCommand(query, options);
+      return;
+    }
+
+    // List available strategies
+    if (options.listStrategies) {
+      await handleMetaStrategyCommand('list', options);
       return;
     }
 
@@ -76,6 +83,9 @@ program
   .description('Generate shell completion script')
   .argument('<shell>', 'Shell type: bash, zsh, or fish')
   .action(handleCompletionAction);
+
+// Strategy management command
+program.addCommand(registerStrategyCommand());
 
 export function registerCommands() {
   // For consistency with expected interface

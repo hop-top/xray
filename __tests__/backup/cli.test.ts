@@ -320,7 +320,7 @@ describe('CLI E2E', () => {
 
             fs.writeFileSync(path.join(root, 'app.ts'), 'const app = 1;\nconst x = 2;');
             fs.writeFileSync(path.join(root, 'utils.js'), 'const y = 3;');
-            fs.writeFileSync(path.join(root, 'config.json', '{});
+            fs.writeFileSync(path.join(root, 'config.json'), '{}');
 
             const output = execSync(`node ${CLI_PATH} explore -p ${root} --stats`).toString();
 
@@ -352,6 +352,12 @@ describe('CLI E2E', () => {
 
             // Cleanup
             fs.rmSync(root, { recursive: true, force: true });
+        });
+
+        test('should list available strategies with --list-strategies', () => {
+            const output = execSync(`node ${CLI_PATH} explore --list-strategies`).toString();
+            expect(output).toContain('Available Strategies');
+            expect(output).toContain('react');
         });
     });
 
