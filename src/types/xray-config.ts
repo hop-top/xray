@@ -18,6 +18,8 @@ export interface XrayScopeConfig {
   diagram?: 'mermaid' | 'dot';
   queries?: string[];
   json?: boolean;
+  chunked?: boolean;
+  skipDetect?: boolean;
 }
 
 export interface XrayConfig extends XrayScopeConfig {

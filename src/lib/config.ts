@@ -14,7 +14,7 @@ const CONFIG_FILENAMES = [
 /**
  * Load configuration from the project directory
  */
-export function loadConfig(configPath?: string): XrayConfig | null {
+export function loadConfig(configPath?: string, searchPath?: string): XrayConfig | null {
   // If explicit path provided, use it
   if (configPath) {
     const absPath = path.isAbsolute(configPath) ? configPath : path.resolve(process.cwd(), configPath);
@@ -26,18 +26,18 @@ export function loadConfig(configPath?: string): XrayConfig | null {
     }
   }
 
-  // Search for config files in project root
-  const cwd = process.cwd();
+  // Search for config files in specified path or current directory
+  const searchDir = searchPath || process.cwd();
   for (const filename of CONFIG_FILENAMES) {
-    const filepath = path.join(cwd, filename);
+    const filepath = path.join(searchDir, filename);
     if (fs.existsSync(filepath)) {
       Logger.info(`Using config file: ${filename}`);
       return loadConfigFile(filepath);
     }
   }
 
-  // Check package.json for xray config
-  const packageJsonPath = path.join(cwd, 'package.json');
+  // Check package.json in specified path or current directory
+  const packageJsonPath = path.join(searchDir, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
     try {
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
@@ -113,6 +113,7 @@ export function mergeScopeWithBase(baseConfig: XrayConfig, scopeConfig: XrayScop
     diagram: scopeConfig.diagram || baseConfig.diagram,
     queries: scopeConfig.queries || baseConfig.queries,
     json: scopeConfig.json !== undefined ? scopeConfig.json : baseConfig.json,
+    chunked: scopeConfig.chunked !== undefined ? scopeConfig.chunked : (baseConfig.chunked !== undefined ? baseConfig.chunked : true),
   };
 }
 
@@ -165,6 +166,8 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, preset?:
     txt: cliOptions.txt || baseConfig.format === 'txt',
     dot: cliOptions.dot || baseConfig.diagram === 'dot',
     mermaid: cliOptions.mermaid || baseConfig.diagram === 'mermaid',
+    chunked: cliOptions.chunk !== false && (cliOptions.chunk ?? (baseConfig.chunked !== false)),
+    skipDetect: cliOptions.skipDetect ?? baseConfig.skipDetect ?? false,
     with: Object.entries(features)
       .filter(([_, enabled]) => enabled)
       .map(([feature, _]) => feature),

@@ -13,11 +13,115 @@ import { StrategyContextImpl } from '../lib/strategy/context';
 import { StrategyRunner } from '../lib/strategy/runner';
 import { XrayScopeConfig } from '../types/xray-config';
 import { resolvePath, resolveOutputPath } from './common';
+import { ChunkedRenderer } from '../lib/renderer/chunked-renderer';
+
+// Helper function to configure options based on detected strategies
+const configureFromStrategies = async (options: any): Promise<{
+  match: string[];
+  catch: string[];
+  detectedStrategies: string[];
+}> => {
+  const match: string[] = [];
+  const catchPatterns: string[] = [];
+  const detectedStrategies: string[] = [];
+
+  const paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()]).map(resolvePath).filter(Boolean) as string[];
+
+  if (paths.length === 0) {
+    return { match, catch: catchPatterns, detectedStrategies };
+  }
+
+  const projectPath = paths[0];
+  const loader = new StrategyLoader();
+  const context = new StrategyContextImpl(projectPath);
+  const detector = new StrategyDetector(loader, context);
+
+  const detected = await detector.runDetection();
+
+  if (detected.length === 0) {
+    return { match, catch: catchPatterns, detectedStrategies };
+  }
+
+  for (const strategy of detected) {
+    detectedStrategies.push(strategy.name);
+
+    const fullStrategy = loader.discoverStrategies().then(strategies =>
+      strategies.find(s => s.name === strategy.name)
+    );
+
+    const resolvedStrategy = await fullStrategy;
+    if (!resolvedStrategy) continue;
+
+    if (resolvedStrategy.fileTypes) {
+      const fileTypes = resolvedStrategy.fileTypes();
+      for (const ext of fileTypes) {
+        const pattern = `*${ext}`;
+        if (!match.includes(pattern)) {
+          match.push(pattern);
+        }
+      }
+    }
+
+    if (resolvedStrategy.ignorePatterns) {
+      const ignorePatterns = resolvedStrategy.ignorePatterns();
+      for (const pattern of ignorePatterns) {
+        if (!catchPatterns.includes(pattern)) {
+          catchPatterns.push(pattern);
+        }
+      }
+    }
+  }
+
+  return { match, catch: catchPatterns, detectedStrategies };
+};
 
 // Helper function to run a single xray generation
 export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
+  // Auto-configure from detected strategies if enabled
+  // Only auto-detect when no path is explicitly provided (unless --detect is used)
+  const hasExplicitPath = mergedOptions.path && mergedOptions.path.length > 0;
+  const shouldAutoDetect = !hasExplicitPath || mergedOptions.detect;
+
+  let autoConfigured = false;
+  let detectedStrategies: string[] = [];
+
+  if (shouldAutoDetect && !mergedOptions.skipDetect) {
+    const { match, catch: catchPatterns, detectedStrategies: strategies } = await configureFromStrategies(mergedOptions);
+
+    if (strategies.length > 0) {
+      detectedStrategies = strategies;
+
+      // Merge auto-configured patterns with existing ones
+      if (match.length > 0) {
+        const existingMatch = mergedOptions.match || [];
+        const newMatchPatterns = match.filter(p => !existingMatch.includes(p));
+        if (newMatchPatterns.length > 0) {
+          mergedOptions.match = existingMatch.concat(newMatchPatterns);
+          autoConfigured = true;
+        }
+      }
+
+      if (catchPatterns.length > 0) {
+        const existingCatch = mergedOptions.catch || [];
+        const newCatchPatterns = catchPatterns.filter(p => !existingCatch.includes(p));
+        if (newCatchPatterns.length > 0) {
+          mergedOptions.catch = existingCatch.concat(newCatchPatterns);
+          autoConfigured = true;
+        }
+      }
+    }
+  }
+
+  // Log detected strategies and auto-configuration status
+  if (detectedStrategies.length > 0) {
+    Logger.info(`Detected strategies: ${detectedStrategies.join(', ')}`);
+    if (autoConfigured) {
+      Logger.info('Auto-configured paths from detected strategies');
+    }
+  }
+
   // Resolve paths relative to PWD
-  const paths = (mergedOptions.path || [process.cwd()]).map(resolvePath).filter(Boolean) as string[];
+  const paths = (mergedOptions.path && mergedOptions.path.length > 0 ? mergedOptions.path : [process.cwd()]).map(resolvePath).filter(Boolean) as string[];
   const anchor = resolvePath(mergedOptions.anchor);
 
   // Determine format first (needed for output path resolution)
@@ -58,9 +162,14 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
     hideCursor: true
   });
 
+  // Determine if chunked output is enabled
+  const chunkedEnabled = mergedOptions.chunked !== false;
+
   // Process each path and collect results
-  const results = await Promise.all(
-    paths.map(async (currentPath, i) => {
+  if (chunkedEnabled) {
+    // Chunked output mode - generate multiple files per directory
+    for (let i = 0; i < paths.length; i++) {
+      const currentPath = paths[i];
       if (paths.length > 1) {
         Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${currentPath}`);
       }
@@ -78,6 +187,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         catch: mergedOptions.catch || [],
         format,
         diagram,
+        chunked: true,
         onProgress: (current, total, file) => {
           if (!barStarted) {
             progressBar.start(total, 0, { file: 'Starting...' });
@@ -90,27 +200,105 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         }
       });
 
-      const result = await xray.run();
+      // Build the graph
+      const { rankedNodes, graph } = await xray.buildGraph();
 
-      // Add path header for multi-path output
-      if (paths.length > 1) {
-        return `\n${'='.repeat(80)}\nPath: ${currentPath}\n${'='.repeat(80)}\n${result}`;
+      // Use chunked renderer
+      const includeIncs = features.incs || false;
+      const chunkedRenderer = new ChunkedRenderer(
+        currentPath,
+        rankedNodes,
+        graph,
+        parseInt(mergedOptions.limit),
+        mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
+        includeIncs
+      );
+
+      const { chunks, metadata, rootChunk } = await chunkedRenderer.renderChunked(outputPath!);
+
+      // Write all chunks to disk
+      let filesWritten = 0;
+      for (const [chunkPath, content] of chunks.entries()) {
+        fs.writeFileSync(chunkPath, content);
+        filesWritten++;
       }
-      return result;
-    })
-  );
 
-  const finalOutput = results.join('\n');
+      Logger.success(`Analysis written to ${filesWritten} chunk files`);
+      Logger.info(`Root chunk: ${rootChunk}`);
+      Logger.info(`Total chunks: ${metadata.length}`);
 
-  fs.writeFileSync(outputPath!, finalOutput);
-  Logger.success(`Analysis written to ${outputPath}`);
+      // Display summary
+      if (metadata.length > 0) {
+        Logger.info('\nChunk Summary:');
+        metadata.forEach(m => {
+          const indent = '  '.repeat(m.depth);
+          Logger.info(`${indent}${m.directory} (${m.fileCount} files, ${m.tokenCount} tokens)`);
+        });
+      }
+    }
+  } else {
+    // Single file output mode (original behavior)
+    const results = await Promise.all(
+      paths.map(async (currentPath, i) => {
+        if (paths.length > 1) {
+          Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${currentPath}`);
+        }
+
+        let barStarted = false;
+
+        const xray = new Xray({
+          path: currentPath,
+          limit: parseInt(mergedOptions.limit),
+          anchor,
+          depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
+          features,
+          queries,
+          match: mergedOptions.match || [],
+          catch: mergedOptions.catch || [],
+          format,
+          diagram,
+          chunked: false,
+          onProgress: (current, total, file) => {
+            if (!barStarted) {
+              progressBar.start(total, 0, { file: 'Starting...' });
+              barStarted = true;
+            }
+            progressBar.update(current, { file });
+            if (current >= total) {
+              progressBar.stop();
+            }
+          }
+        });
+
+        const result = await xray.run();
+
+        // Add path header for multi-path output
+        if (paths.length > 1) {
+          return `\n${'='.repeat(80)}\nPath: ${currentPath}\n${'='.repeat(80)}\n${result}`;
+        }
+        return result as string;
+      })
+    );
+
+    const finalOutput = results.join('\n');
+
+    fs.writeFileSync(outputPath!, finalOutput);
+    Logger.success(`Analysis written to ${outputPath}`);
+  }
 };
 
 // Shared action handler for all generation commands
 export const handleGenerateAction = async (options: any) => {
   try {
+    // Set verbose level if provided
+    if (options.verbose) {
+      Logger.setLevel(options.verbose);
+    }
+
+    Logger.debug('Generate action started', { options });
+
     // Load config file
-    const config = loadConfig(options.config);
+    const config = loadConfig(options.config, options.path?.[0]);
 
     // Handle --all-scopes flag
     if (options.allScopes) {

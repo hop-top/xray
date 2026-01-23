@@ -35,6 +35,7 @@ cat .xray
 
 - 🎯 **Intelligent Ranking** - PageRank algorithm surfaces the most important files and functions first
 - 🤖 **AI-Optimized** - Token-efficient output designed for Claude, GPT, and other LLMs
+- 📦 **Chunked Output** - Automatically splits large codebases into navigable chunks (NEW!)
 - 📊 **Multi-Language** - Supports 19+ programming languages via tree-sitter
 - 🔍 **Framework-Aware** - Built-in strategies for React, Express, Go CLI, and more
 - ⚡ **Smart Caching** - SQLite cache for fast subsequent runs
@@ -46,15 +47,30 @@ cat .xray
 ### `xray map` - Generate Code Maps
 
 ```bash
-# Basic usage
+# Basic usage (generates chunked output by default)
 xray map
 
 # Focused analysis
 xray map --path ./src --with incs --with vars --output codebase-map.txt
 
-# Focus on specific file
-xray map --anchor src/main.ts --with incs
+# Single file output (disable chunking)
+xray map --no-chunk --output single-file.txt
+
+# Focus on specific file with custom token limit
+xray map --anchor src/main.ts --with incs --limit 8192
 ```
+
+**NEW: Chunked Output**
+
+By default, xray generates multiple files organized by directory structure:
+- `.xray_root.md` - Root directory
+- `.xray_src.md` - src/ directory
+- `.xray_src_lib.md` - src/lib/ directory
+- etc.
+
+Each chunk includes parent ↔ child navigation links. Use `--no-chunk` for single-file output.
+
+[Learn more about chunked output →](docs/chunked-output.md)
 
 ### `xray explore` - Framework-Specific Analysis
 
@@ -162,8 +178,10 @@ Now just run `xray map` - no flags needed!
 | Flag | Description | Default |
 |------|-------------|---------|
 | `-p, --path <paths...>` | Directories to analyze | current directory |
-| `-o, --output <path>` | Output file | `.xray` |
-| `-l, --limit <number>` | Token limit | 4096 |
+| `-o, --output <path>` | Output file (base name for chunks) | `.xray` |
+| `-l, --limit <number>` | Token limit per chunk | 4096 |
+| `--no-chunk` | Disable chunked output | false (chunking enabled) |
+| `-d, --depth <number>` | Maximum directory depth | unlimited |
 
 ### Features (`--with`)
 
@@ -261,6 +279,7 @@ CXXFLAGS="-std=c++20" npm install --legacy-peer-deps
 
 ### User Documentation
 - [Getting Started](docs/user/getting-started.md) - Installation and first steps
+- [Chunked Output Guide](docs/chunked-output.md) - **NEW:** Multi-file output system
 - [Commands Reference](docs/user/commands.md) - All commands and options
 - [Configuration](docs/user/configuration.md) - Config files and presets
 - [Strategies](docs/user/strategies.md) - Framework-specific analysis

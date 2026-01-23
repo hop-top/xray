@@ -41,17 +41,24 @@ Technical overview of xray's design and implementation.
 
 ## Core Components
 
-### 1. CLI Interface (`src/cli.ts`)
+### 1. CLI Interface (`src/index.ts` and `src/commands/`)
 
-Entry point for all xray commands. Uses Commander.js for command parsing and orchestrates:
-- Command routing
-- Option parsing
-- Configuration loading
+Modern command-based architecture using Commander.js. Commands are organized in separate modules:
+- Command routing and registration
+- Option parsing and validation
+- Configuration loading and merging
 - Output coordination
 
 **Key Files:**
-- `src/cli.ts` - Main CLI entry point
-- `src/index.ts` - Programmatic API exports
+- `src/index.ts` - Lightweight CLI bootstrap
+- `src/commands/index.ts` - Command registration
+- `src/commands/common.ts` - Shared CLI utilities and common options
+- `src/commands/generate.ts` - Map, scan, graph commands
+- `src/commands/explore.ts` - Strategy-based exploration
+- `src/commands/strategy.ts` - Strategy system commands
+- `src/commands/strategy-cmd.ts` - Strategy command runner
+- `src/commands/clear-cache.ts` - Cache management
+- `src/commands/completion.ts` - Shell completion
 
 ### 2. File Scanner
 
@@ -172,11 +179,15 @@ SQLite-based caching for parsed ASTs and analysis results.
 - Strategy detection results
 - Parsed AST structures
 
-### 8. Output Formatters
+### 8. Output Formatters and Rendering
 
-Renders analysis results in various formats.
+Renders analysis results in various formats with support for both single-file and chunked output.
 
-**Formats:**
+**Components:**
+- `src/lib/renderer/map-renderer.ts` - Single-file tree-structured output
+- `src/lib/renderer/chunked-renderer.ts` - Multi-file chunked output (default)
+
+**Output Formats:**
 - **Text**: Tree-structured output (default)
 - **JSON**: Raw graph data
 - **CSV**: Tabular data
@@ -184,11 +195,19 @@ Renders analysis results in various formats.
 - **Mermaid**: Diagram DSL
 - **DOT**: Graphviz format
 
+**Chunked Renderer Features:**
+- Automatic directory-based chunking
+- Parent-child navigation links
+- Token limit enforcement per chunk
+- Depth-based filtering
+- Single-file fallback (--no-chunk flag)
+
 **Key Features:**
-- Token limit enforcement
+- Token limit enforcement (per chunk or global)
 - Depth limiting
 - Cross-reference generation
 - External dependency tables
+- Relative path navigation for chunk linking
 
 ## Data Flow
 
@@ -200,33 +219,48 @@ Renders analysis results in various formats.
    ├─ Parse command-line options
    └─ Merge config with CLI options
 
-2. File Discovery
+2. Strategy Auto-Configuration (if --auto-configure)
+   ├─ Detect applicable strategies
+   ├─ Apply strategy-specific file patterns
+   └─ Configure match/catch patterns
+
+3. File Discovery
    ├─ Glob pattern matching (--path)
    ├─ Apply ignore patterns
    ├─ Filter by file patterns (--match)
    └─ Generate file list
 
-3. AST Parsing
+4. AST Parsing
    ├─ For each file:
    │  ├─ Check cache (file path + mtime)
    │  ├─ If cached: retrieve AST
    │  └─ If not: parse with tree-sitter
    └─ Store results in cache
 
-4. Graph Construction
+5. Graph Construction
    ├─ Extract symbols from ASTs
    ├─ Build dependency edges (imports)
    ├─ Build call edges (function calls)
    ├─ Apply PageRank scoring
    └─ Filter by depth and patterns (--catch)
 
-5. Output Generation
-   ├─ Apply token limit (--limit)
-   ├─ Sort by importance (PageRank)
-   ├─ Render tree structure
-   ├─ Add cross-references (--with incs)
-   ├─ Add dependency table (--with incs)
-   └─ Write to output file (--output)
+6. Output Generation
+   ├─ If --no-chunk: Single-file output
+   │  ├─ Apply token limit (--limit)
+   │  ├─ Sort by importance (PageRank)
+   │  ├─ Render tree structure
+   │  ├─ Add cross-references (--with incs)
+   │  └─ Write to output file (--output)
+   │
+   └─ If chunked (default): Multi-file output
+      ├─ Organize files by directory
+      ├─ For each directory chunk:
+      │  ├─ Apply token limit per chunk
+      │  ├─ Sort files by importance
+      │  ├─ Render tree structure
+      │  ├─ Add parent-child navigation
+      │  └─ Write to chunk file
+      └─ Display summary with chunk tree
 ```
 
 ### Strategy Command Flow

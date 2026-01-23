@@ -1,6 +1,21 @@
 # Commands Reference
 
-Complete reference for all xray commands, flags, and options.
+Complete guide to every xray command and option. Start with the decision tree to find what you need, then dive into details.
+
+## Quick Decision Tree
+
+**What do you want to do?**
+
+- **Understand your codebase structure** → [`xray map`](#xray-map)
+- **Find something specific (components, routes, functions)** → [`xray explore` / Strategies](#xray-explore)
+- **Scan for files matching a pattern** → [`xray scan`](#xray-scan)
+- **See control flow or data flow** → [`xray graph`](#xray-graph)
+- **Detect what frameworks are used** → [`xray strategy:detect`](#xray-strategydetect)
+- **See all available strategies** → [`xray strategy:list`](#xray-strategylist)
+- **Fix stale results** → [`xray clear-cache`](#xray-clear-cache)
+- **Enable shell completion** → [`xray completion`](#xray-completion)
+
+---
 
 ## Core Commands
 

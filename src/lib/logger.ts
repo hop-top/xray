@@ -1,26 +1,71 @@
 import chalk from 'chalk';
 
+export enum LogLevel {
+  SILENT = 0,
+  ERROR = 1,
+  WARN = 2,
+  INFO = 3,
+  DEBUG = 4
+}
+
 export class Logger {
-    static info(message: string) {
-        console.log(chalk.blue('ℹ') + ' ' + message);
-    }
+  private static level: LogLevel = LogLevel.INFO;
 
-    static success(message: string) {
-        console.log(chalk.green('✔') + ' ' + message);
+  static setLevel(level: LogLevel | string): void {
+    if (typeof level === 'string') {
+      const levelMap: Record<string, LogLevel> = {
+        'silent': LogLevel.SILENT,
+        'error': LogLevel.ERROR,
+        'warn': LogLevel.WARN,
+        'info': LogLevel.INFO,
+        'debug': LogLevel.DEBUG
+      };
+      this.level = levelMap[level.toLowerCase()] ?? LogLevel.INFO;
+    } else {
+      this.level = level;
     }
+  }
 
-    static warn(message: string) {
-        console.warn(chalk.yellow('⚠') + ' ' + message);
-    }
+  static getLevel(): LogLevel {
+    return this.level;
+  }
 
-    static error(message: string, error?: any) {
-        console.error(chalk.red('✖') + ' ' + message);
-        if (error) {
-            console.error(chalk.red(error));
-        }
+  static debug(message: string, ...args: any[]): void {
+    if (this.level >= LogLevel.DEBUG) {
+      console.log(chalk.gray('◆') + ' ' + message, ...args);
     }
+  }
 
-    static log(message: string) {
-        console.log(message);
+  static info(message: string): void {
+    if (this.level >= LogLevel.INFO) {
+      console.log(chalk.blue('ℹ') + ' ' + message);
     }
+  }
+
+  static success(message: string): void {
+    if (this.level >= LogLevel.INFO) {
+      console.log(chalk.green('✔') + ' ' + message);
+    }
+  }
+
+  static warn(message: string): void {
+    if (this.level >= LogLevel.WARN) {
+      console.warn(chalk.yellow('⚠') + ' ' + message);
+    }
+  }
+
+  static error(message: string, error?: any): void {
+    if (this.level >= LogLevel.ERROR) {
+      console.error(chalk.red('✖') + ' ' + message);
+      if (error) {
+        console.error(chalk.red(error));
+      }
+    }
+  }
+
+  static log(message: string): void {
+    if (this.level >= LogLevel.INFO) {
+      console.log(message);
+    }
+  }
 }

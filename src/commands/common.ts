@@ -43,7 +43,7 @@ export const addCommonOptions = (cmd: Command) => {
       return previous.concat([value]);
     }, [])
     .option('-o, --output <path>', 'Output file path [default: .xray, auto-appends format extension if no extension given]')
-    .option('-l, --limit <number>', 'Token limit [default: 4096]')
+    .option('-l, --limit <number>', 'Token limit per chunk [default: 4096]')
     .option('-w, --with <feature>', 'Include feature: vars, incs, cost, docs, df, cf (repeatable)', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
@@ -64,8 +64,11 @@ export const addCommonOptions = (cmd: Command) => {
     .option('--json', 'Output raw JSON graph')
     .option('--mermaid', 'Generate Mermaid diagram (default)')
     .option('--dot', 'Generate DOT diagram')
+    .option('--no-chunk', 'Disable chunked output (single file output)')
     .option('--config <path>', 'Path to config file (auto-detect if not specified)')
     .option('--preset <name>', 'Use named preset from config file')
     .option('--scope <name>', 'Use specific scope from config file')
-    .option('--all-scopes', 'Run all scopes defined in config file');
+    .option('--all-scopes', 'Run all scopes defined in config file')
+    .option('--detect', 'Enable strategy detection (auto-detects when no path is provided)')
+    .option('--skip-detect', 'Skip strategy detection and auto-configuration');
 };

@@ -33,27 +33,54 @@ npm link
 
 ### Project Structure
 
+Following Node.js/TypeScript best practices, the project is organized as:
+
 ```
 oss-xray-codes/
 ├── src/                    # Source code
-│   ├── cli.ts             # CLI entry point
-│   ├── index.ts           # Programmatic API
-│   ├── parser/            # AST parsing
-│   ├── cache/             # SQLite caching
-│   └── strategy/          # Strategy system
+│   ├── index.ts           # CLI bootstrap entry point
+│   ├── commands/          # CLI command definitions
+│   │   ├── index.ts       # Command registration
+│   │   ├── common.ts      # Shared utilities and options
+│   │   ├── generate.ts    # map, scan, graph commands
+│   │   ├── explore.ts     # explore command
+│   │   ├── strategy.ts    # strategy:* commands
+│   │   ├── strategy-cmd.ts # Strategy command execution
+│   │   ├── clear-cache.ts # Cache commands
+│   │   └── completion.ts  # Completion commands
+│   ├── types/             # TypeScript type definitions
+│   │   ├── index.ts       # Barrel export
+│   │   ├── xray-config.ts # Configuration types
+│   │   └── cli-options.ts # CLI option types
+│   └── lib/               # Core business logic
+│       ├── xray.ts        # Main Xray analysis class
+│       ├── config.ts      # Configuration loading/merging
+│       ├── scanner.ts     # File system scanning
+│       ├── query-resolver.ts # Custom query handling
+│       ├── logger.ts      # Logging utilities
+│       ├── parser/        # AST parsing components
+│       ├── graph/         # Graph building and ranking
+│       ├── renderer/      # Output rendering
+│       │   ├── map-renderer.ts      # Single-file renderer
+│       │   └── chunked-renderer.ts  # Multi-file chunked renderer
+│       ├── cache/         # SQLite caching
+│       └── strategy/      # Strategy framework
 ├── strategies/            # Strategy implementations
 │   ├── react.ts          # React strategy
 │   ├── express.ts        # Express strategy
-│   └── ...
-├── tests/                 # Test files
-│   ├── cli.test.ts       # CLI tests
+│   ├── rest-api.ts       # REST API strategy
+│   └── go-cli.ts         # Go CLI strategy
+├── __tests__/            # Test files (Jest convention)
+│   ├── chunked-renderer.test.ts
+│   ├── auto-configure.test.ts
 │   ├── strategy/         # Strategy tests
 │   └── integration/      # Integration tests
-├── bin/                   # Compiled output
-├── docs/                  # Documentation
+├── dist/                 # Compiled output (built by npm run build)
+├── docs/                 # Documentation
 │   ├── user/             # User documentation
 │   └── dev/              # Developer documentation
-└── hooks/                 # Git hooks
+├── hooks/                # Git hooks
+└── .xray_cache.db        # SQLite cache (generated at runtime)
 ```
 
 ## Development Workflow
@@ -66,79 +93,145 @@ git checkout -b feature/your-feature-name
 
 ### 2. Make Your Changes
 
-Follow the project's coding style and conventions.
+Follow the project's coding style and conventions. The codebase enforces:
+- TypeScript strict mode
+- 120 character line length (enforced by prettier)
+- Async/await patterns (no promises)
+- Proper error handling with meaningful messages
 
-### 3. Write Tests
+### 3. Update Types (if needed)
 
-Add tests for new functionality:
+If your changes introduce new configuration or options:
+
+1. Add types to `src/types/xray-config.ts` or `src/types/cli-options.ts`
+2. Export from `src/types/index.ts`
+3. Update affected commands in `src/commands/`
+
+### 4. Update Command Options (if needed)
+
+If adding new CLI options:
+
+1. Add option to `addCommonOptions()` in `src/commands/common.ts`
+2. Update type definitions in `src/types/`
+3. Handle option merging in `src/lib/config.ts`
+4. Document in user-facing docs and command reference
+
+### 5. Write Tests
+
+Add tests for new functionality. Follow Jest conventions:
 
 ```typescript
-// tests/your-feature.test.ts
+// __tests__/my-feature.test.ts
 import { describe, it, expect } from '@jest/globals';
+import { myFunction } from '../src/lib/my-module';
 
-describe('YourFeature', () => {
-  it('should do something', () => {
-    // Your test
-    expect(true).toBe(true);
+describe('MyFeature', () => {
+  it('should handle basic case', () => {
+    const result = myFunction('input');
+    expect(result).toBe('expected');
+  });
+
+  it('should handle edge cases', () => {
+    expect(myFunction('')).toBe('default');
   });
 });
 ```
 
-### 4. Run Tests
+**Test File Locations:**
+- Command tests: `__tests__/commands/`
+- Library tests: `__tests__/lib/`
+- Strategy tests: `__tests__/strategies/`
+- Integration tests: `__tests__/integration/`
+
+### 6. Run Tests Locally
 
 ```bash
 # Run all tests sequentially (recommended)
 npm test
 
-# Run tests in parallel (faster but may have race conditions)
-npm run test:parallel
+# Run specific test file
+npm test -- chunked-renderer
+
+# Run in watch mode (during development)
+npm test -- --watch
 
 # Run with coverage
 npm run test:coverage
+
+# Run tests in parallel (faster, use for CI/CD)
+npm run test:parallel
 ```
 
-### 5. Build the Project
+### 7. Build the Project
 
 ```bash
 npm run build
 ```
 
-### 6. Test Locally
+Verify the build completes without errors and examine `dist/` directory contains compiled output.
+
+### 8. Test Locally
 
 ```bash
-# Test the CLI
+# Test the CLI with built version
+node dist/index.js map --path ./test-project
+
+# Or link for testing globally
+npm link
 xray map --path ./test-project
 
-# Or use the dev command
-npm run dev -- map --path ./test-project
+# Unlink when done
+npm unlink -g xray
 ```
 
-### 7. Commit Your Changes
+### 9. Verify Specific Features
+
+For chunked output:
+```bash
+xray map --path ./src
+# Check: .xray_root.md, .xray_src.md, etc. are created with navigation links
+```
+
+For strategy auto-configuration:
+```bash
+xray map --path ./test-react-app
+# Check: React files are automatically included
+```
+
+For config file support:
+```bash
+echo '{"chunked": false, "limit": 8192}' > .xrayrc.json
+xray map  # Should use config
+```
+
+### 10. Commit Your Changes
 
 Follow conventional commit format:
 
 ```bash
 git commit -m "feat: add new feature"
 git commit -m "fix: resolve bug in parser"
-git commit -m "docs: update README"
+git commit -m "docs: update contributing guide"
+git commit -m "test: add chunked renderer tests"
+git commit -m "refactor: improve command structure"
 ```
 
 **Commit Types:**
-- `feat:` - New feature
+- `feat:` - New feature or capability
 - `fix:` - Bug fix
 - `docs:` - Documentation changes
-- `style:` - Code style changes (formatting, etc.)
-- `refactor:` - Code refactoring
+- `style:` - Code style/formatting (prettier)
+- `refactor:` - Code refactoring without behavior change
 - `test:` - Adding or updating tests
-- `chore:` - Maintenance tasks
+- `chore:` - Maintenance, dependencies, tooling
 
-### 8. Push and Create Pull Request
+### 11. Push and Create Pull Request
 
 ```bash
 git push origin feature/your-feature-name
 ```
 
-Then create a pull request on GitHub.
+Then create a pull request on GitHub with a clear description of changes.
 
 ## Testing
 
@@ -197,6 +290,45 @@ describe('React Strategy Integration', () => {
 
 ## Adding New Features
 
+### Adding a New Command
+
+1. **Create command file** in `src/commands/`:
+```typescript
+// src/commands/my-command.ts
+import { Command } from 'commander';
+import { addCommonOptions } from './common';
+
+export const registerMyCommand = (program: Command) => {
+  const cmd = program
+    .command('my-command')
+    .description('What this command does');
+
+  addCommonOptions(cmd);
+
+  cmd.action(async (options) => {
+    // Command implementation
+    console.log('Command executed');
+  });
+
+  return cmd;
+};
+```
+
+2. **Register the command** in `src/commands/index.ts`:
+```typescript
+export const registerCommands = (program: Command) => {
+  // ... existing commands
+  registerMyCommand(program);
+};
+```
+
+3. **Add tests** in `__tests__/commands/`:
+```typescript
+// __tests__/commands/my-command.test.ts
+import { describe, it, expect } from '@jest/globals';
+// Test implementation
+```
+
 ### Adding a New Language
 
 1. **Install tree-sitter parser:**
@@ -229,6 +361,7 @@ export const languages = {
 4. **Test with sample files:**
 ```bash
 xray map --path ./test-files/<language>
+npm test
 ```
 
 ### Creating a New Strategy
@@ -237,33 +370,43 @@ See [Strategy Development Guide](strategy-development.md) for detailed instructi
 
 **Quick Start:**
 
-1. **Create strategy file:**
+1. **Create strategy file** in `strategies/`:
 ```typescript
 // strategies/my-framework.ts
-import { Strategy, StrategyContext } from '../src/strategy/types';
+import { Strategy, StrategyContext, FileMetadata } from '../src/strategy/types';
 
 export default class MyFrameworkStrategy implements Strategy {
   name = 'my-framework';
   version = '1.0.0';
 
   async detect(ctx: StrategyContext): Promise<boolean> {
-    return ctx.hasDependency('my-framework');
+    return ctx.hasDependency('my-framework') || ctx.hasFiles('**/*.myf');
   }
 
   fileTypes(): string[] {
-    return ['.mf'];
+    return ['.myf'];
   }
 
-  async analyze(file: string, ctx: StrategyContext) {
-    // Analysis logic
-    return { tags: [], metadata: {} };
+  ignorePatterns(): string[] {
+    return ['**/*.test.myf'];
+  }
+
+  async analyze(file: string, ctx: StrategyContext): Promise<FileMetadata> {
+    const content = await ctx.readFile(file);
+    const tags: string[] = [];
+
+    if (content.includes('export')) {
+      tags.push('my-framework:public');
+    }
+
+    return { tags, metadata: {} };
   }
 }
 ```
 
-2. **Add tests:**
+2. **Add tests** in `__tests__/strategies/`:
 ```typescript
-// tests/strategies/my-framework.test.ts
+// __tests__/strategies/my-framework.test.ts
 import { describe, it, expect } from '@jest/globals';
 import MyFrameworkStrategy from '../../strategies/my-framework';
 
@@ -271,14 +414,63 @@ describe('MyFrameworkStrategy', () => {
   it('should detect my-framework projects', async () => {
     // Test detection logic
   });
+
+  it('should analyze files correctly', async () => {
+    // Test analysis logic
+  });
 });
 ```
 
 3. **Test the strategy:**
 ```bash
-xray strategy:detect
-xray my-framework:commands
+xray strategy:detect                    # Should list your strategy
+xray my-framework:commands              # Run strategy commands
+npm test -- my-framework.test.ts        # Run strategy tests
 ```
+
+### Adding Configuration Options
+
+1. **Define type** in `src/types/xray-config.ts`:
+```typescript
+export interface XrayScopeConfig {
+  // ... existing fields
+  myOption?: string;  // Your new option
+}
+```
+
+2. **Update CLI option** in `src/commands/common.ts`:
+```typescript
+export const addCommonOptions = (cmd: Command) => {
+  return cmd
+    // ... existing options
+    .option('--my-option <value>', 'Description of option')
+    // ... rest of options
+};
+```
+
+3. **Handle merging** in `src/lib/config.ts`:
+```typescript
+export const mergeConfig = (baseConfig: any, cliOptions: any) => {
+  return {
+    ...baseConfig,
+    ...cliOptions,  // CLI takes precedence
+    myOption: cliOptions.myOption || baseConfig.myOption || defaultValue
+  };
+};
+```
+
+4. **Use in command**:
+```typescript
+cmd.action(async (options) => {
+  const config = mergeConfig(loadedConfig, options);
+  console.log(config.myOption);  // Your option value
+});
+```
+
+5. **Document in**:
+   - `README.md` - Options table
+   - `docs/user/commands.md` - Command reference
+   - `docs/user/configuration.md` - Config file guide
 
 ## Code Style
 

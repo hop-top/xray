@@ -1,0 +1,1 @@
+(class_declaration name: (type_identifier) @name.definition.class) @definition.class

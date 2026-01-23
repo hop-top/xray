@@ -14,7 +14,14 @@ const program = new Command();
 program
   .name('xray')
   .description('X-ray your codebase - Generate AST, CFG, and DFG visualizations')
-  .version('0.0.1-alpha.1');
+  .version('0.0.1-alpha.1')
+  .option('-v, --verbose [level]', 'Set verbosity level: silent, error, warn, info (default), debug', 'info')
+  .hook('preAction', (thisCommand) => {
+    const options = thisCommand.opts();
+    if (options.verbose) {
+      Logger.setLevel(options.verbose);
+    }
+  });
 
 // Register all commands
 addCommonOptions(program.command('map'))
