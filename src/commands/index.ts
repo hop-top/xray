@@ -6,6 +6,7 @@ import { handleExploreAction } from './explore';
 import { registerStrategyCommand } from './strategy-cmd';
 import { handleClearCacheAction } from './clear-cache';
 import { handleCompletionAction } from './completion';
+import { Logger } from '../lib/logger';
 import * as path from 'path';
 import * as fs from 'fs';
 
