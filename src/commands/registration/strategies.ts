@@ -50,9 +50,25 @@ export async function registerStrategyCommands(program: Command): Promise<void> 
     Logger.debug(`Registered ${strategies.length} strategies with dynamic commands`);
   } catch (error: any) {
     // Strategy discovery failed - continue with static commands only
-    Logger.warn(`Strategy discovery failed: ${error.message}`);
-    Logger.info('Continuing with built-in commands only');
+    handleStrategyDiscoveryError(error);
   }
+}
+
+/**
+ * Handle strategy discovery errors gracefully
+ */
+function handleStrategyDiscoveryError(error: any): void {
+  if (error.code === 'ENOENT') {
+    Logger.debug('Strategy directory not found - no custom strategies available');
+  } else if (error.code === 'EACCES') {
+    Logger.warn('Permission denied reading strategies - continuing with built-in commands');
+  } else if (error.message?.includes('Cannot find module')) {
+    Logger.debug(`Strategy module loading failed: ${error.message}`);
+  } else {
+    Logger.warn(`Strategy discovery failed: ${error.message}`);
+  }
+
+  Logger.info('Continuing with built-in commands only');
 }
 
 /**
@@ -102,9 +118,9 @@ async function executeStrategyCommand(
   command: Command
 ): Promise<void> {
   const projectPath = options.path || process.cwd();
-  const context = new StrategyContextImpl(projectPath);
 
   try {
+    const context = new StrategyContextImpl(projectPath);
     Logger.info(`Executing ${strategy.name}:${cmdName}...`);
 
     // Execute the command handler
@@ -113,14 +129,62 @@ async function executeStrategyCommand(
     // Display results
     displayStrategyResult(strategy.name, cmdName, result);
   } catch (error: any) {
-    Logger.error(`Error executing ${strategy.name}:${cmdName}: ${error.message}`);
-    // Show stack trace in debug mode
-    const { LogLevel } = await import('../../lib/logger');
-    if (Logger.getLevel() === LogLevel.DEBUG) {
-      console.error(error.stack);
-    }
-    process.exit(1);
+    handleStrategyCommandError(error, strategy.name, cmdName, projectPath);
   }
+}
+
+/**
+ * Handle strategy command execution errors with helpful messages
+ */
+async function handleStrategyCommandError(
+  error: any,
+  strategyName: string,
+  cmdName: string,
+  projectPath: string
+): Promise<never> {
+  const { LogLevel } = await import('../../lib/logger');
+
+  // Categorize and provide helpful error messages
+  if (error.code === 'ENOENT') {
+    Logger.error(`Project path not found: ${projectPath}`);
+    Logger.info('');
+    Logger.info('Tip: Use the -p option to specify a valid project directory');
+    Logger.info(`Example: xray ${strategyName} ${cmdName} -p /path/to/project`);
+  } else if (error.code === 'EACCES') {
+    Logger.error(`Permission denied accessing: ${error.path || projectPath}`);
+    Logger.info('');
+    Logger.info('Tip: Check file permissions or run with appropriate privileges');
+  } else if (error.message?.includes('package.json')) {
+    Logger.error(`Failed to read package.json in: ${projectPath}`);
+    Logger.info('');
+    Logger.info('Tip: Ensure you\'re running this command in a valid project directory');
+    Logger.info(`Current path: ${projectPath}`);
+  } else if (error.message?.includes('not found') || error.message?.includes('Cannot find')) {
+    Logger.error(`Resource not found: ${error.message}`);
+    Logger.info('');
+    Logger.info(`Command: xray ${strategyName} ${cmdName}`);
+    Logger.info(`Path: ${projectPath}`);
+  } else {
+    // Generic error with helpful context
+    Logger.error(`Error executing ${strategyName}:${cmdName}: ${error.message}`);
+    Logger.info('');
+    Logger.info(`Project: ${projectPath}`);
+
+    if (error.cause) {
+      Logger.info(`Cause: ${error.cause}`);
+    }
+  }
+
+  // Show stack trace in debug mode
+  if (Logger.getLevel() === LogLevel.DEBUG) {
+    Logger.debug('Stack trace:');
+    Logger.debug(error.stack);
+  } else {
+    Logger.info('');
+    Logger.info('Run with -v debug for detailed error information');
+  }
+
+  process.exit(1);
 }
 
 /**
