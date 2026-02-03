@@ -118,6 +118,18 @@ export function mergeScopeWithBase(baseConfig: XrayConfig, scopeConfig: XrayScop
 }
 
 /**
+ * Save config to .xrayrc.json
+ */
+export function saveConfig(config: XrayConfig, configPath?: string): void {
+  const resolvedPath = configPath || path.join(process.cwd(), '.xrayrc.json');
+
+  // Pretty print with 2-space indent
+  const json = JSON.stringify(config, null, 2);
+
+  fs.writeFileSync(resolvedPath, json, 'utf-8');
+}
+
+/**
  * Merge CLI options with config file, with CLI taking precedence
  */
 export function mergeConfig(config: XrayConfig | null, cliOptions: any, preset?: string): any {

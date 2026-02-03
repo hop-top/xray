@@ -12,6 +12,7 @@ Complete guide to every xray command and option. Start with the decision tree to
 - **See control flow or data flow** → [`xray graph`](#xray-graph)
 - **Detect what frameworks are used** → [`xray strategy:detect`](#xray-strategydetect)
 - **See all available strategies** → [`xray strategy:list`](#xray-strategylist)
+- **Create command shortcuts** → [`xray alias`](#xray-alias)
 - **Fix stale results** → [`xray clear-cache`](#xray-clear-cache)
 - **Enable shell completion** → [`xray completion`](#xray-completion)
 
@@ -114,6 +115,46 @@ List all available strategies.
 ```bash
 xray strategy:list
 ```
+
+### `xray alias`
+
+Manage command aliases - create shortcuts for frequently-used strategy commands.
+
+```bash
+# List all configured aliases
+xray alias list
+
+# Create a new alias
+xray alias set <name> "<strategy> <command>"
+
+# Remove an alias
+xray alias remove <name>
+```
+
+**Examples:**
+```bash
+# Create shortcuts
+xray alias set comp "react components"
+xray alias set routes "express routes"
+xray alias set api "rest-api endpoints"
+
+# List configured aliases
+xray alias list
+
+# Use the alias (restart xray after creating)
+xray comp
+
+# Remove an alias
+xray alias remove comp
+```
+
+**Notes:**
+- Aliases are stored in `.xrayrc.json`
+- Target must include both strategy and command name
+- Cannot override built-in commands
+- Requires restart after creating/modifying aliases
+
+See [Command Aliases Guide](aliases.md) for detailed documentation.
 
 ### `xray clear-cache`
 

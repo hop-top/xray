@@ -41,7 +41,11 @@ You can also specify a custom config file with `--config <path>`.
   "depth": 5,
   "match": ["*.ts", "*.tsx", "!*.test.ts"],
   "format": "txt",
-  "diagram": "mermaid"
+  "diagram": "mermaid",
+  "aliases": {
+    "comp": "react components",
+    "routes": "express routes"
+  }
 }
 ```
 
@@ -91,8 +95,49 @@ module.exports = {
 | `diagram` | `'mermaid' \| 'dot'` | Diagram type |
 | `queries` | `string[]` | Custom Tree-sitter query paths/URLs |
 | `json` | `boolean` | Output raw JSON graph |
+| `aliases` | `object` | Command aliases - shortcuts for strategy commands |
 | `scopes` | `object` | Named scoped xray configurations (multiple independent outputs) |
 | `presets` | `object` | Named configuration presets (legacy) |
+
+## Using Command Aliases
+
+**Aliases** let you create shortcuts for frequently-used strategy commands.
+
+### Example Configuration
+
+```json
+{
+  "paths": ["./src"],
+  "aliases": {
+    "comp": "react components",
+    "hooks": "react hooks",
+    "routes": "express routes",
+    "api": "rest-api endpoints"
+  }
+}
+```
+
+### Using Aliases
+
+```bash
+# Instead of typing the full command
+xray react components
+
+# Use your alias
+xray comp
+```
+
+**Benefits:**
+- **Save typing** - `xray comp` instead of `xray react components`
+- **Team consistency** - Share aliases via `.xrayrc.json`
+- **Framework-agnostic** - Name aliases however makes sense for your team
+
+**Restrictions:**
+- Cannot override built-in commands (map, scan, graph, etc.)
+- Must include both strategy and command name
+- Requires restart after creating/modifying
+
+See [Command Aliases Guide](aliases.md) for complete documentation.
 
 ## Using Scoped Configurations
 

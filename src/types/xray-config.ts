@@ -29,4 +29,7 @@ export interface XrayConfig extends XrayScopeConfig {
   scopes?: {
     [name: string]: XrayScopeConfig;
   };
+  aliases?: {
+    [name: string]: string;
+  };
 }

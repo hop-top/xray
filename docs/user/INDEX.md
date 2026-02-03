@@ -195,6 +195,7 @@ Start here, then pick your next path based on what you want to do.
 
 ### Using Features
 - [Configuration Guide](configuration.md) - Setup .xrayrc.json
+- [Command Aliases](aliases.md) - Create shortcuts for frequently-used commands
 - [Chunked Output Guide](chunked-output.md) - Multi-file output
 - [Automation Guide](automation.md) - GitHub Actions & hooks
 
@@ -370,6 +371,7 @@ xray User Manual
 │   ├── xray scan
 │   ├── xray graph
 │   ├── xray strategy:detect/list
+│   ├── xray alias (manage shortcuts)
 │   ├── xray clear-cache
 │   └── xray completion
 │

@@ -6,6 +6,8 @@ import { handleExploreAction } from './explore';
 import { registerStrategyCommand } from './strategy-cmd';
 import { handleClearCacheAction } from './clear-cache';
 import { handleCompletionAction } from './completion';
+import { registerAliases } from './registration/aliases';
+import { registerAliasCommand } from './alias';
 import { Logger } from '../lib/logger';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -95,7 +97,13 @@ program
 // Strategy management command
 program.addCommand(registerStrategyCommand());
 
-export function registerCommands() {
+// Alias management command
+program.addCommand(registerAliasCommand());
+
+export async function registerCommands() {
+  // Register user-defined aliases from config
+  await registerAliases(program);
+
   // For consistency with expected interface
   return program;
 }
