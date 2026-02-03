@@ -41,6 +41,7 @@ cat .xray
 - ⚡ **Smart Caching** - SQLite cache for fast subsequent runs
 - 🔗 **Dependency Tracking** - Shows imports, exports, and cross-file relationships
 - ⚙️  **Automation Ready** - GitHub Actions and pre-commit hooks included
+- 🔌 **Plugin System** - Extensible event-driven architecture for custom workflows (NEW!)
 
 ## Core Commands
 
@@ -171,6 +172,62 @@ Now just run `xray map` - no flags needed!
 
 [Configuration guide →](docs/user/configuration.md)
 
+## Plugin System
+
+**NEW:** xray now features an event-driven plugin system that lets you hook into the analysis pipeline and customize behavior.
+
+### Using Plugins
+
+```typescript
+import { Xray } from 'xray';
+import { ProgressLoggerPlugin, FilterPrivatePlugin } from 'xray/plugins';
+
+const xray = new Xray({ path: './src' });
+
+// Register plugins
+await xray.use(new ProgressLoggerPlugin());
+await xray.use(new FilterPrivatePlugin());
+
+// Run analysis with plugins active
+await xray.run();
+```
+
+### Built-in Plugins
+
+- **ProgressLoggerPlugin** - Colored console output with progress bars and timing
+- **FilterPrivatePlugin** - Filters underscore-prefixed private functions
+- **SkipTestsPlugin** - Skips test files using glob patterns
+- **MetricsCollectorPlugin** - Comprehensive metrics tracking
+- **SanitizerPlugin** - Redacts sensitive information (tokens, API keys, passwords)
+
+### Creating Custom Plugins
+
+```typescript
+import { XrayPlugin } from 'xray';
+
+export class MyPlugin implements XrayPlugin {
+  name = 'my-plugin';
+  version = '1.0.0';
+
+  apply(xray: Xray): void {
+    // Listen to lifecycle events
+    xray.on('scan:complete', (event) => {
+      console.log(`Found ${event.files.length} files`);
+    });
+
+    // Transform data during analysis
+    xray.on('parse:after', (event) => {
+      event.tags = event.tags.filter(tag => tag.exported);
+    });
+  }
+}
+```
+
+**Learn more:**
+- [Plugin Development Guide](docs/plugin-development-guide.md) - Complete guide to creating plugins
+- [Event Reference](docs/event-reference.md) - All lifecycle events and their payloads
+- [Plugin Examples](examples/README.md) - Working examples and patterns
+
 ## Options & Flags
 
 ### Core Options
@@ -288,9 +345,14 @@ CXXFLAGS="-std=c++20" npm install --legacy-peer-deps
 
 ### Developer Documentation
 - [Architecture](docs/dev/architecture.md) - System design and internals
+- [Plugin Development Guide](docs/plugin-development-guide.md) - **NEW:** Creating custom plugins
+- [Event Reference](docs/event-reference.md) - **NEW:** Complete lifecycle event documentation
 - [Strategy Development](docs/dev/strategy-development.md) - Creating custom strategies
 - [Strategy API](docs/dev/strategy-api.md) - Strategy command reference
 - [Contributing](docs/dev/contributing.md) - Development setup and workflow
+
+### Plugin Examples
+- [Usage Examples](examples/README.md) - **NEW:** Plugin examples and patterns
 
 ## Advanced Features
 

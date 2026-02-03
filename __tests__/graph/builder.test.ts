@@ -8,20 +8,20 @@ describe('GraphBuilder', () => {
         builder = new GraphBuilder();
     });
 
-    it('should create an empty graph', () => {
-        const graph = builder.getGraph();
+    it('should create an empty graph', async () => {
+        const graph = await builder.getGraph();
         expect(graph.order).toBe(0);
         expect(graph.size).toBe(0);
     });
 
-    it('should add a file node', () => {
-        builder.addFile('test.ts', [], []);
-        const graph = builder.getGraph();
+    it('should add a file node', async () => {
+        await builder.addFile('test.ts', [], []);
+        const graph = await builder.getGraph();
         expect(graph.hasNode('test.ts')).toBe(true);
         expect(graph.getNodeAttribute('test.ts', 'type')).toBe('file');
     });
 
-    it('should add tag nodes and edges', () => {
+    it('should add tag nodes and edges', async () => {
         const tags: Tag[] = [
             {
                 name: 'myFunction',
@@ -33,8 +33,8 @@ describe('GraphBuilder', () => {
                 doc: 'A test function'
             }
         ];
-        builder.addFile('test.ts', tags, []);
-        const graph = builder.getGraph();
+        await builder.addFile('test.ts', tags, []);
+        const graph = await builder.getGraph();
 
         const tagId = 'test.ts::myFunction';
         expect(graph.hasNode(tagId)).toBe(true);
@@ -51,14 +51,14 @@ describe('GraphBuilder', () => {
         expect(graph.getEdgeAttribute(edge, 'type')).toBe('defines');
     });
 
-    it('should not duplicate file nodes', () => {
-        builder.addFile('test.ts', [], []);
-        builder.addFile('test.ts', [], []);
-        const graph = builder.getGraph();
+    it('should not duplicate file nodes', async () => {
+        await builder.addFile('test.ts', [], []);
+        await builder.addFile('test.ts', [], []);
+        const graph = await builder.getGraph();
         expect(graph.order).toBe(1);
     });
 
-    it('should not duplicate tag nodes', () => {
+    it('should not duplicate tag nodes', async () => {
         const tags: Tag[] = [
             {
                 name: 'myFunction',
@@ -70,19 +70,19 @@ describe('GraphBuilder', () => {
                 doc: 'A test function'
             }
         ];
-        builder.addFile('test.ts', tags, []);
-        builder.addFile('test.ts', tags, []);
-        const graph = builder.getGraph();
+        await builder.addFile('test.ts', tags, []);
+        await builder.addFile('test.ts', tags, []);
+        const graph = await builder.getGraph();
         expect(graph.order).toBe(2); // 1 file + 1 tag
     });
 
-    it('should store imports on file node', () => {
+    it('should store imports on file node', async () => {
         const imports = [
             { source: 'fs', line: 1, file: 'test.ts' },
             { source: './utils', line: 2, file: 'test.ts' }
         ];
-        builder.addFile('test.ts', [], imports);
-        const graph = builder.getGraph();
+        await builder.addFile('test.ts', [], imports);
+        const graph = await builder.getGraph();
 
         const fileImports = graph.getNodeAttribute('test.ts', 'imports');
         expect(fileImports).toBeDefined();
@@ -90,7 +90,7 @@ describe('GraphBuilder', () => {
         expect(fileImports[0].source).toBe('fs');
     });
 
-    it('should create reference edges between tags', () => {
+    it('should create reference edges between tags', async () => {
         const tags: Tag[] = [
             {
                 name: 'caller',
@@ -108,8 +108,8 @@ describe('GraphBuilder', () => {
                 file: 'test.ts'
             }
         ];
-        builder.addFile('test.ts', tags, []);
-        const graph = builder.getGraph();
+        await builder.addFile('test.ts', tags, []);
+        const graph = await builder.getGraph();
 
         const callerId = 'test.ts::caller';
         const calleeId = 'test.ts::callee';
@@ -120,7 +120,7 @@ describe('GraphBuilder', () => {
         expect(graph.getEdgeAttribute(edges[0], 'type')).toBe('calls');
     });
 
-    it('should avoid self-references', () => {
+    it('should avoid self-references', async () => {
         const tags: Tag[] = [
             {
                 name: 'recursive',
@@ -131,14 +131,14 @@ describe('GraphBuilder', () => {
                 references: ['recursive']
             }
         ];
-        builder.addFile('test.ts', tags, []);
-        const graph = builder.getGraph();
+        await builder.addFile('test.ts', tags, []);
+        const graph = await builder.getGraph();
 
         const tagId = 'test.ts::recursive';
         expect(graph.hasEdge(tagId, tagId)).toBe(false);
     });
 
-    it('should handle multiple references from one tag', () => {
+    it('should handle multiple references from one tag', async () => {
         const tags: Tag[] = [
             {
                 name: 'caller',
@@ -163,15 +163,15 @@ describe('GraphBuilder', () => {
                 file: 'test.ts'
             }
         ];
-        builder.addFile('test.ts', tags, []);
-        const graph = builder.getGraph();
+        await builder.addFile('test.ts', tags, []);
+        const graph = await builder.getGraph();
 
         const callerId = 'test.ts::caller';
         expect(graph.hasEdge(callerId, 'test.ts::funcA')).toBe(true);
         expect(graph.hasEdge(callerId, 'test.ts::funcB')).toBe(true);
     });
 
-    it('should use loadFromCache method', () => {
+    it('should use loadFromCache method', async () => {
         const tags: Tag[] = [
             {
                 name: 'cachedFunc',
@@ -181,8 +181,8 @@ describe('GraphBuilder', () => {
                 file: 'cached.ts'
             }
         ];
-        builder.loadFromCache('cached.ts', tags, []);
-        const graph = builder.getGraph();
+        await builder.loadFromCache('cached.ts', tags, []);
+        const graph = await builder.getGraph();
 
         expect(graph.hasNode('cached.ts')).toBe(true);
         expect(graph.hasNode('cached.ts::cachedFunc')).toBe(true);
