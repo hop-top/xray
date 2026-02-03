@@ -73,27 +73,40 @@ Each chunk includes parent ↔ child navigation links. Use `--no-chunk` for sing
 
 [Learn more about chunked output →](docs/chunked-output.md)
 
-### `xray explore` - Framework-Specific Analysis
+### Strategy Commands - Framework-Specific Analysis
+
+xray includes **dynamic strategy commands** that provide framework-specific insights:
 
 ```bash
-# React components
-xray react:components
+# React - List components, hooks, contexts
+xray react components
+xray react hooks
+xray react contexts
 
-# Express routes
-xray express:routes
+# Express - Analyze routes and middleware
+xray express routes
+xray express middleware
+xray express error-handlers
 
-# Go CLI commands
-xray go-cli:commands
+# REST API - Cross-framework endpoint analysis
+xray rest-api endpoints
+xray rest-api methods
 
-# Detect available strategies
-xray strategy:detect
+# See all available strategies
+xray strategy list
+
+# Detect applicable strategies for current project
+xray strategy detect
 ```
 
 **Built-in Strategies:**
 - **React** - Components, hooks, contexts
-- **Express** - Routes, middleware, error handlers
+- **Express** - Routes, routers, middleware, error handlers
 - **REST API** - Cross-framework endpoint analysis (Node.js, Python, Go)
 - **Go CLI** - Commands, flags, hierarchy (Cobra, urfave/cli)
+- **Next.js** - Pages, API routes, components
+
+Strategy commands are **dynamically discovered** - new strategies auto-register without code changes.
 
 [See all strategies →](docs/user/strategies.md)
 
@@ -331,6 +344,30 @@ CXXFLAGS="-std=c++20" npm install --legacy-peer-deps
 ```
 
 [Full installation guide →](docs/user/getting-started.md)
+
+### Shell Completion (Optional)
+
+Enable tab completion for commands, strategies, and options:
+
+**Bash:**
+```bash
+# Add to ~/.bashrc or ~/.bash_profile
+eval "$(xray completion bash)"
+```
+
+**Zsh:**
+```bash
+# Add to ~/.zshrc
+eval "$(xray completion zsh)"
+```
+
+**Fish:**
+```bash
+# Save to completions directory
+xray completion fish > ~/.config/fish/completions/xray.fish
+```
+
+Completion scripts are **generated dynamically** and include all available strategy commands. After installing new strategies, simply regenerate completion to get tab completion for new commands.
 
 ## Documentation
 
