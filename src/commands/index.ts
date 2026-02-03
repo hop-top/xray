@@ -6,6 +6,7 @@ import { handleExploreAction } from './explore';
 import { registerStrategyCommand } from './strategy-cmd';
 import { handleClearCacheAction } from './clear-cache';
 import { handleCompletionAction } from './completion';
+import { handleQueryAction } from './query';
 import { registerAliases } from './registration/aliases';
 import { registerAliasCommand } from './alias';
 import { Logger } from '../lib/logger';
@@ -93,6 +94,16 @@ program
   .description('Generate shell completion script')
   .argument('<shell>', 'Shell type: bash, zsh, or fish')
   .action(handleCompletionAction);
+
+// Query command
+program
+  .command('query')
+  .description('Query call graph using function-based syntax')
+  .argument('[query]', 'Query string (e.g., "calls(main)", "callers(processData)")')
+  .option('--graph <file>', 'Path to saved graph JSON file')
+  .option('--format <format>', 'Output format: json, table, tree (default: table)', 'table')
+  .option('--list-adapters', 'List available query adapters')
+  .action(handleQueryAction);
 
 // Strategy management command
 program.addCommand(registerStrategyCommand());
