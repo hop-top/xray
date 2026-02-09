@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { Logger } from './logger';
 import { XrayScopeConfig, XrayConfig } from '../types/xray-config';
 
@@ -12,10 +13,130 @@ const CONFIG_FILENAMES = [
 ];
 
 /**
+ * Find config file by walking up the directory tree
+ * Stops BEFORE entering home directory to avoid treating global configs as project configs
+ * Returns the absolute path to the config file, or null if not found
+ */
+export function findConfigPath(startDir?: string): string | null {
+  const searchDir = startDir || process.cwd();
+  let currentDir = path.resolve(searchDir);
+  const root = path.parse(currentDir).root;
+  // Resolve symlinks to ensure proper comparison (e.g., /var vs /private/var on macOS)
+  const homeDir = fs.realpathSync(os.homedir());
+
+  // Walk up directory tree
+  while (currentDir !== root) {
+    // Get the real path for comparison (resolve symlinks)
+    const realCurrentDir = fs.existsSync(currentDir) ? fs.realpathSync(currentDir) : currentDir;
+
+    // Skip searching in home directory itself (those are global configs)
+    if (realCurrentDir !== homeDir) {
+      // Check all config filenames
+      for (const filename of CONFIG_FILENAMES) {
+        const filepath = path.join(currentDir, filename);
+        if (fs.existsSync(filepath)) {
+          return filepath;
+        }
+      }
+
+      // Check package.json
+      const packageJsonPath = path.join(currentDir, 'package.json');
+      if (fs.existsSync(packageJsonPath)) {
+        try {
+          const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+          if (packageJson.xray) {
+            return packageJsonPath;
+          }
+        } catch (error) {
+          // Ignore package.json parsing errors
+        }
+      }
+    }
+
+    // Stop if we've reached home directory
+    if (realCurrentDir === homeDir) {
+      break;
+    }
+
+    // Move up one directory
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      break; // Reached root
+    }
+    currentDir = parentDir;
+  }
+
+  return null;
+}
+
+/**
+ * Find global config file in user's home directory
+ * Follows XDG Base Directory specification
+ * Returns the absolute path to the global config, or null if not found
+ */
+export function findGlobalConfigPath(): string | null {
+  const homeDir = os.homedir();
+  const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config');
+
+  // Check XDG config directory first
+  for (const filename of ['config.json', 'config.js']) {
+    const filepath = path.join(xdgConfigHome, 'xray', filename);
+    if (fs.existsSync(filepath)) {
+      return filepath;
+    }
+  }
+
+  // Fallback to home directory dotfiles
+  for (const filename of ['.xrayrc.json', '.xrayrc']) {
+    const filepath = path.join(homeDir, filename);
+    if (fs.existsSync(filepath)) {
+      return filepath;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Deep merge two config objects
+ * Project config takes precedence over global config
+ */
+function mergeConfigs(global: XrayConfig | null, project: XrayConfig | null): XrayConfig | null {
+  if (!global && !project) return null;
+  if (!global) return project;
+  if (!project) return global;
+
+  // Deep merge logic
+  const merged: XrayConfig = { ...global };
+
+  // Merge top-level properties
+  Object.keys(project).forEach(key => {
+    const projectValue = (project as any)[key];
+    const globalValue = (merged as any)[key];
+
+    if (projectValue === undefined || projectValue === null) {
+      return; // Keep global value
+    }
+
+    // Deep merge for objects
+    if (typeof projectValue === 'object' && !Array.isArray(projectValue) &&
+        typeof globalValue === 'object' && !Array.isArray(globalValue)) {
+      (merged as any)[key] = { ...globalValue, ...projectValue };
+    } else {
+      // Override for primitives and arrays
+      (merged as any)[key] = projectValue;
+    }
+  });
+
+  return merged;
+}
+
+/**
  * Load configuration from the project directory
+ * Supports directory tree walking and global config merging
  */
 export function loadConfig(configPath?: string, searchPath?: string): XrayConfig | null {
-  // If explicit path provided, use it
+  // If explicit path provided, use it (no merging)
   if (configPath) {
     const absPath = path.isAbsolute(configPath) ? configPath : path.resolve(process.cwd(), configPath);
     if (fs.existsSync(absPath)) {
@@ -26,31 +147,22 @@ export function loadConfig(configPath?: string, searchPath?: string): XrayConfig
     }
   }
 
-  // Search for config files in specified path or current directory
-  const searchDir = searchPath || process.cwd();
-  for (const filename of CONFIG_FILENAMES) {
-    const filepath = path.join(searchDir, filename);
-    if (fs.existsSync(filepath)) {
-      Logger.info(`Using config file: ${filename}`);
-      return loadConfigFile(filepath);
-    }
+  // Find global config
+  const globalConfigPath = findGlobalConfigPath();
+  const globalConfig = globalConfigPath ? loadConfigFile(globalConfigPath) : null;
+
+  // Find project config by walking up directory tree
+  const projectConfigPath = findConfigPath(searchPath);
+  const projectConfig = projectConfigPath ? loadConfigFile(projectConfigPath) : null;
+
+  if (projectConfigPath && !searchPath) {
+    const relativePath = path.relative(process.cwd(), projectConfigPath);
+    const displayPath = relativePath.startsWith('..') ? projectConfigPath : relativePath;
+    Logger.info(`Using config file: ${displayPath}`);
   }
 
-  // Check package.json in specified path or current directory
-  const packageJsonPath = path.join(searchDir, 'package.json');
-  if (fs.existsSync(packageJsonPath)) {
-    try {
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-      if (packageJson.xray) {
-        Logger.info('Using config from package.json');
-        return packageJson.xray as XrayConfig;
-      }
-    } catch (error) {
-      // Ignore package.json parsing errors
-    }
-  }
-
-  return null;
+  // Merge configs (project overrides global)
+  return mergeConfigs(globalConfig, projectConfig);
 }
 
 /**

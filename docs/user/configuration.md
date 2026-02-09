@@ -8,10 +8,16 @@ Configuration files are especially useful for:
 - **Automation**: GitHub Actions and pre-commit hooks can regenerate xray maps automatically
 - **Consistency**: Team members get the same analysis without remembering CLI flags
 - **Multiple Views**: Define presets for different analysis needs (quick overview, detailed analysis, etc.)
+- **Personal Defaults**: Set global preferences that apply to all your projects
+- **Team Standards**: Share project-level configs while respecting personal preferences
 
 ## Configuration Files
 
-xray searches for configuration in this order:
+xray supports both **project-level** and **global** configuration files.
+
+### Project Configuration
+
+xray searches for project configuration by **walking up the directory tree** from the current directory. It checks for these files in order:
 
 1. `.xrayrc` (JSON)
 2. `.xrayrc.json`
@@ -20,7 +26,70 @@ xray searches for configuration in this order:
 5. `xray.config.js` (CommonJS module)
 6. `package.json` (under `"xray"` field)
 
-You can also specify a custom config file with `--config <path>`.
+The search stops at the first config file found or at the filesystem root.
+
+### Global Configuration
+
+You can create a global configuration that applies to all projects. xray follows the **XDG Base Directory specification** and searches these locations:
+
+1. `$XDG_CONFIG_HOME/xray/config.json` (or `~/.config/xray/config.json` if `XDG_CONFIG_HOME` is not set)
+2. `$XDG_CONFIG_HOME/xray/config.js` (or `~/.config/xray/config.js`)
+3. `~/.xrayrc.json` (fallback)
+4. `~/.xrayrc` (fallback)
+
+### Config Merging
+
+When both global and project configs exist, they are **deep merged** with project config taking precedence:
+
+- **Top-level values** (paths, output, limit): Project overrides global
+- **Nested objects** (features, telemetry): Properties are merged, project values win on conflicts
+- **Arrays** (match, catch): Project config completely replaces global (no merging)
+
+**Example:**
+
+```json
+// ~/.config/xray/config.json (global)
+{
+  "limit": 4096,
+  "features": {
+    "incs": true,
+    "vars": false
+  },
+  "telemetry": {
+    "enabled": true
+  }
+}
+
+// ./project/.xrayrc.json (project)
+{
+  "limit": 8192,
+  "features": {
+    "vars": true
+  }
+}
+
+// Merged result when running from ./project:
+{
+  "limit": 8192,           // from project
+  "features": {
+    "incs": true,          // from global
+    "vars": true           // overridden by project
+  },
+  "telemetry": {
+    "enabled": true        // from global
+  }
+}
+```
+
+### Explicit Config Path
+
+You can bypass automatic resolution and merging with `--config <path>`:
+
+```bash
+xray map --config /path/to/custom-config.json
+```
+
+When using an explicit path, **no merging occurs** - only that config file is used.
 
 ## Basic Configuration
 
@@ -98,6 +167,60 @@ module.exports = {
 | `aliases` | `object` | Command aliases - shortcuts for strategy commands |
 | `scopes` | `object` | Named scoped xray configurations (multiple independent outputs) |
 | `presets` | `object` | Named configuration presets (legacy) |
+
+## Global Configuration Use Cases
+
+Global configuration is useful for personal preferences that should apply across all projects:
+
+### Personal Token Limits
+
+```json
+// ~/.config/xray/config.json (recommended)
+// or ~/.xrayrc.json (legacy)
+{
+  "limit": 8000
+}
+```
+
+### Default Features
+
+```json
+// ~/.config/xray/config.json
+{
+  "features": {
+    "incs": true,
+    "vars": true
+  }
+}
+```
+
+### Telemetry Preferences
+
+```json
+// ~/.config/xray/config.json
+{
+  "telemetry": {
+    "enabled": false
+  }
+}
+```
+
+### Personal Aliases
+
+```json
+// ~/.config/xray/config.json
+{
+  "aliases": {
+    "comp": "react components",
+    "hooks": "react hooks"
+  }
+}
+```
+
+**Benefits:**
+- Set once, applies to all projects
+- Project configs can still override when needed
+- Keep personal preferences out of team repositories
 
 ## Using Command Aliases
 
@@ -328,10 +451,14 @@ xray map --output custom-output.txt
 
 1. **Start with defaults**: Begin with a simple config, add features as needed
 2. **Use scopes**: Define multiple views (quick, detailed, api-focused)
-3. **Commit config**: Check configuration into version control
+3. **Commit config**: Check project configuration into version control
 4. **Test locally**: Run `xray map` before pushing to verify config
 5. **Set appropriate limits**: Balance detail vs. token usage (4000-16000 range)
 6. **Ignore sensitive files**: Use `match` patterns to exclude config/secrets
+7. **Global vs. Project**:
+   - **Global**: Personal preferences (token limits, telemetry, personal aliases)
+   - **Project**: Team standards (paths, output locations, scopes, team aliases)
+8. **Config walking**: Place config at repository root to work from any subdirectory
 
 ## See Also
 
