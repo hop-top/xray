@@ -12,6 +12,8 @@ import { Logger } from './logger';
 import { AsyncEventEmitter } from './events/async-emitter';
 import { XrayEvents } from './events/types';
 import { PluginManager, XrayPlugin } from './events/plugin';
+import { TelemetryPlugin } from './plugins/telemetry-plugin';
+import { loadConfig } from './config';
 
 // Export strategy module
 export * as strategy from './strategy';
@@ -66,6 +68,18 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     this.config.chunked = config.chunked !== false; // default to true
     this.cache = new SqliteCache(config.cachePath || path.join(process.cwd(), '.xray_cache.db'));
     this.pluginManager = new PluginManager();
+
+    // Auto-register telemetry plugin if enabled
+    const fileConfig = loadConfig(undefined, config.path);
+    const telemetryConfig = fileConfig?.telemetry;
+    if (telemetryConfig?.enabled) {
+      const telemetryPlugin = new TelemetryPlugin({
+        enabled: true,
+        projectRoot: config.path,
+        ...telemetryConfig
+      });
+      this.pluginManager.register(telemetryPlugin, this);
+    }
 
     // Backward compatibility: convert onProgress to event listener
     if (config.onProgress) {

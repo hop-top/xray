@@ -3,24 +3,9 @@ import * as path from 'path';
 import { Logger } from '../lib/logger';
 import { FileScanner } from '../lib/scanner';
 import { resolvePath } from './common';
-import { getTelemetryTracker } from '../lib/telemetry';
 
 export const handleExploreAction = async (query: string | undefined, options: any) => {
-  const telemetry = getTelemetryTracker();
-  const startTime = Date.now();
-  const startMemory = process.memoryUsage().heapUsed;
-
-  try {
-    if (telemetry) {
-      telemetry.trackCommand('explore', {
-        hasQuery: !!query,
-        hasMatch: !!(options.match && options.match.length > 0),
-        hasSearch: !!(options.search && options.search.length > 0),
-        hasStats: !!options.stats,
-        hasType: !!(options.type && options.type.length > 0)
-      });
-    }
-    const paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()])
+  const paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()])
       .map(resolvePath)
       .filter(Boolean) as string[];
 
@@ -174,19 +159,4 @@ export const handleExploreAction = async (query: string | undefined, options: an
         }
         console.log('');
       });
-
-  } catch (error) {
-    if (telemetry) {
-      telemetry.trackError('ExploreError', error instanceof Error ? error : new Error(String(error)));
-    }
-    Logger.error('Error exploring codebase:', error);
-    process.exit(1);
-  } finally {
-    if (telemetry) {
-      const duration = Date.now() - startTime;
-      const memoryUsed = process.memoryUsage().heapUsed - startMemory;
-      telemetry.trackStat('execution.time', duration, { command: 'explore' });
-      telemetry.trackStat('memory.delta', memoryUsed, { command: 'explore' });
-    }
-  }
 };

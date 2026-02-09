@@ -4,60 +4,33 @@ import { GraphSerializer } from '../lib/graph/serializer';
 import { QueryAdapterRegistry } from '../lib/query/registry';
 import { FunctionAdapter } from '../lib/query/adapters/function';
 import type { QueryResult } from '../lib/query/types';
-import { getTelemetryTracker } from '../lib/telemetry';
 
 export async function handleQueryAction(query: string, options: any): Promise<any> {
-  const telemetry = getTelemetryTracker();
-  const startTime = Date.now();
-
-  try {
-    if (options.listAdapters) {
-      if (telemetry) {
-        telemetry.trackCommand('query', { action: 'list-adapters' });
-      }
-      return listAdapters();
-    }
-
-    if (!query || !query.trim()) {
-      throw new Error('Query is required');
-    }
-
-    if (!options.graph) {
-      throw new Error('--graph flag is required');
-    }
-
-    if (telemetry) {
-      telemetry.trackCommand('query', {
-        hasQuery: true,
-        format: options.format || 'table'
-      });
-    }
-
-    const graph = await loadGraph(options.graph);
-    const registry = new QueryAdapterRegistry();
-    registry.register(new FunctionAdapter());
-
-    const adapter = registry.find(query);
-    if (!adapter) {
-      throw new Error('No query adapter found');
-    }
-
-    const result = adapter.execute(query, graph);
-    const outputFormat = options.format || 'table';
-
-    if (telemetry) {
-      const duration = Date.now() - startTime;
-      telemetry.trackStat('execution.time', duration, { command: 'query' });
-      telemetry.trackStat('query.results', result.nodes.length, { command: 'query' });
-    }
-
-    return formatOutput(result, outputFormat);
-  } catch (error) {
-    if (telemetry) {
-      telemetry.trackError('QueryError', error instanceof Error ? error : new Error(String(error)));
-    }
-    throw error;
+  if (options.listAdapters) {
+    return listAdapters();
   }
+
+  if (!query || !query.trim()) {
+    throw new Error('Query is required');
+  }
+
+  if (!options.graph) {
+    throw new Error('--graph flag is required');
+  }
+
+  const graph = await loadGraph(options.graph);
+  const registry = new QueryAdapterRegistry();
+  registry.register(new FunctionAdapter());
+
+  const adapter = registry.find(query);
+  if (!adapter) {
+    throw new Error('No query adapter found');
+  }
+
+  const result = adapter.execute(query, graph);
+  const outputFormat = options.format || 'table';
+
+  return formatOutput(result, outputFormat);
 }
 
 async function loadGraph(graphPath: string): Promise<any> {

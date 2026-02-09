@@ -15,7 +15,6 @@ import { XrayScopeConfig } from '../types/xray-config';
 import { resolvePath, resolveOutputPath } from './common';
 import { ChunkedRenderer } from '../lib/renderer/chunked-renderer';
 import { buildShareSummary, resolveShareOutputPath } from '../lib/share-summary';
-import { getTelemetryTracker } from '../lib/telemetry';
 
 // Helper function to configure options based on detected strategies
 const configureFromStrategies = async (options: any): Promise<{
@@ -242,15 +241,6 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
       }
 
       if (shareRequested) {
-        const telemetry = getTelemetryTracker();
-        if (telemetry) {
-          telemetry.trackCommand('share_requested', {
-            command: commandUsed,
-            chunked: true,
-            outputPath
-          });
-        }
-
         const sharePath = resolveShareOutputPath({
           outputPath: outputPath!,
           projectPath: currentPath,
@@ -275,14 +265,6 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         fs.writeFileSync(sharePath, summary);
         Logger.success(`Share summary written to ${sharePath}`);
         Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
-
-        if (telemetry) {
-          telemetry.trackCommand('share_generated', {
-            sharePath,
-            chunked: true,
-            chunks: metadata.length
-          });
-        }
       }
     }
   } else {
@@ -334,15 +316,6 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
       if (shareRequested) {
         const { graph, rankedNodes } = xray.getLastGraph();
         if (graph && rankedNodes) {
-          const telemetry = getTelemetryTracker();
-          if (telemetry) {
-            telemetry.trackCommand('share_requested', {
-              command: commandUsed,
-              chunked: false,
-              outputPath
-            });
-          }
-
           const sharePath = resolveShareOutputPath({
             outputPath: outputPath!,
             projectPath: currentPath,
@@ -379,14 +352,6 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         fs.writeFileSync(share.sharePath, share.summary);
         Logger.success(`Share summary written to ${share.sharePath}`);
         Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
-
-        const telemetry = getTelemetryTracker();
-        if (telemetry) {
-          telemetry.trackCommand('share_generated', {
-            sharePath: share.sharePath,
-            chunked: false
-          });
-        }
       }
     }
   }

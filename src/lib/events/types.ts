@@ -137,4 +137,37 @@ export interface XrayEvents {
     total: number;
     message: string;
   };
+
+  // Command lifecycle events (for telemetry and other observers)
+  'command:start': {
+    command: string;
+    options: Record<string, any>;
+    timestamp: number;
+    traceId: string;
+  };
+
+  'command:complete': {
+    command: string;
+    duration: number;
+    success: boolean;
+    timestamp: number;
+    traceId: string;
+  };
+
+  'command:error': {
+    command: string;
+    error: Error;
+    errorType: string;
+    timestamp: number;
+    traceId: string;
+    context?: Record<string, any>;
+  };
+
+  'stat:recorded': {
+    name: string;
+    value: number;
+    unit: string;
+    context?: Record<string, any>;
+    timestamp: number;
+  };
 }
