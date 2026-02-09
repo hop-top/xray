@@ -10,6 +10,7 @@ export class StrategyContextImpl implements StrategyContext {
   private cache: Map<string, any> = new Map();
   private fileTags: Map<string, Set<string>> = new Map();
   private fileMetadata: Map<string, Map<string, any>> = new Map();
+  private globCache: Map<string, string[]> = new Map();
 
   constructor(root: string) {
     this.root = root;
@@ -49,29 +50,40 @@ export class StrategyContextImpl implements StrategyContext {
   }
 
   async findFiles(query: FileQuery): Promise<string[]> {
-    const allFiles = globSync('**/*', {
+    // Build targeted glob pattern when possible
+    let pattern = '**/*';
+    let needsFiltering = false;
+
+    if (query.extension) {
+      // Use glob pattern for extension filtering (much faster)
+      pattern = `**/*${query.extension}`;
+    }
+
+    // Get files using targeted pattern
+    const files = globSync(pattern, {
       cwd: this.root,
       nodir: true,
       ignore: ['node_modules/**', '.git/**']
     });
 
-    return allFiles.filter(file => {
-      if (query.extension && !file.endsWith(query.extension)) {
-        return false;
-      }
+    // Only apply complex filters that can't be done by glob
+    if (query.pattern || query.tagged) {
+      return files.filter(file => {
+        if (query.pattern && !file.includes(query.pattern)) {
+          return false;
+        }
 
-      if (query.pattern && !file.includes(query.pattern)) {
-        return false;
-      }
+        if (query.tagged) {
+          const tags = Array.isArray(query.tagged) ? query.tagged : [query.tagged];
+          const fileTags = this.getTags(file);
+          return tags.every(tag => fileTags.includes(tag));
+        }
 
-      if (query.tagged) {
-        const tags = Array.isArray(query.tagged) ? query.tagged : [query.tagged];
-        const fileTags = this.getTags(file);
-        return tags.every(tag => fileTags.includes(tag));
-      }
+        return true;
+      });
+    }
 
-      return true;
-    });
+    return files;
   }
 
   hasTag(file: string, tag: string): boolean {
@@ -95,7 +107,18 @@ export class StrategyContextImpl implements StrategyContext {
   }
 
   globFiles(pattern: string): string[] {
-    return globSync(pattern, { cwd: this.root });
+    // Check cache first
+    if (this.globCache.has(pattern)) {
+      return this.globCache.get(pattern)!;
+    }
+
+    // Perform glob operation
+    const files = globSync(pattern, { cwd: this.root });
+
+    // Cache the result
+    this.globCache.set(pattern, files);
+
+    return files;
   }
 
   getProjectRoot(): string {
@@ -120,5 +143,19 @@ export class StrategyContextImpl implements StrategyContext {
       this.fileMetadata.set(file, new Map());
     }
     this.fileMetadata.get(file)!.set(strategy, metadata);
+  }
+
+  /**
+   * Clear the glob cache. Useful when file system changes are detected.
+   */
+  clearGlobCache(): void {
+    this.globCache.clear();
+  }
+
+  /**
+   * Clear a specific cached glob pattern
+   */
+  clearCachedPattern(pattern: string): void {
+    this.globCache.delete(pattern);
   }
 }

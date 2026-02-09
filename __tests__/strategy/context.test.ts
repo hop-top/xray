@@ -25,4 +25,38 @@ describe('StrategyContext', () => {
     const content = await ctx.readFile('package.json');
     expect(content).toContain('"name"');
   });
+
+  it('should cache file lists for repeated glob patterns', () => {
+    // First call should populate cache
+    const files1 = ctx.globFiles('**/*');
+
+    // Second call with same pattern should use cache
+    const files2 = ctx.globFiles('**/*');
+
+    // Results should be identical
+    expect(files1).toEqual(files2);
+    expect(files1.length).toBeGreaterThan(0);
+  });
+
+  it('should use targeted glob patterns in findFiles', async () => {
+    // Query with extension should use targeted pattern
+    const tsxFiles = await ctx.findFiles({ extension: '.tsx' });
+
+    expect(tsxFiles.length).toBeGreaterThan(0);
+    expect(tsxFiles.every(f => f.endsWith('.tsx'))).toBe(true);
+  });
+
+  it('should handle findFiles performance efficiently', async () => {
+    const start = performance.now();
+
+    // Run multiple queries
+    await ctx.findFiles({ extension: '.tsx' });
+    await ctx.findFiles({ extension: '.ts' });
+    await ctx.findFiles({ pattern: 'test' });
+
+    const duration = performance.now() - start;
+
+    // Should complete quickly (< 100ms for small test project)
+    expect(duration).toBeLessThan(100);
+  });
 });
