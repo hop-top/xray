@@ -7,10 +7,16 @@ import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { StrategyRunner } from '../lib/strategy/runner';
 import { resolvePath } from './common';
+import { getTelemetryTracker } from '../lib/telemetry';
 
 // Handle meta-strategy commands (strategy:list, strategy:detect)
 export const handleMetaStrategyCommand = async (commandName: string, options: any) => {
+  const telemetry = getTelemetryTracker();
+
   if (commandName === 'list') {
+    if (telemetry) {
+      telemetry.trackCommand('strategy:list', {});
+    }
     const loader = new StrategyLoader();
     const strategies = await loader.discoverStrategies();
 
@@ -22,7 +28,12 @@ export const handleMetaStrategyCommand = async (commandName: string, options: an
     if (strategies.length === 0) {
       Logger.warn('No strategies found.');
     }
+
+    if (telemetry) {
+      telemetry.trackStat('strategies.available', strategies.length, { command: 'strategy:list' });
+    }
   } else if (commandName === 'detect') {
+    const startTime = Date.now();
     const projectPath = options.path && options.path.length > 0
       ? resolvePath(options.path[0])
       : process.cwd();
@@ -47,6 +58,13 @@ export const handleMetaStrategyCommand = async (commandName: string, options: an
         console.log(chalk.cyan(`  ${strategy.name}`), chalk.gray(`v${strategy.version}`));
       });
     }
+
+    if (telemetry) {
+      const duration = Date.now() - startTime;
+      telemetry.trackCommand('strategy:detect', { detected: detected.length });
+      telemetry.trackStat('execution.time', duration, { command: 'strategy:detect' });
+      telemetry.trackStat('strategies.detected', detected.length, { command: 'strategy:detect' });
+    }
   } else {
     Logger.error(`Unknown meta-strategy command: "${commandName}"`);
     Logger.info('\nAvailable meta-strategy commands:');
@@ -58,6 +76,8 @@ export const handleMetaStrategyCommand = async (commandName: string, options: an
 
 // Handle strategy:command queries
 export const handleStrategyCommand = async (query: string, options: any) => {
+  const telemetry = getTelemetryTracker();
+  const startTime = Date.now();
   const [strategyName, commandName] = query.split(':');
 
   if (!commandName) {
@@ -157,6 +177,21 @@ export const handleStrategyCommand = async (query: string, options: any) => {
   runner.register(strategy);
 
   const result = await runner.execute(strategyName, commandName, context, options);
+
+  if (telemetry) {
+    const duration = Date.now() - startTime;
+    telemetry.trackCommand(`strategy:${strategyName}:${commandName}`, {
+      strategy: strategyName,
+      command: commandName,
+      filesAnalyzed: strategyFiles.length,
+      resultCount: Array.isArray(result) ? result.length : 0
+    });
+    telemetry.trackStat('execution.time', duration, { command: `${strategyName}:${commandName}` });
+    telemetry.trackStat('codebase.files', strategyFiles.length, { strategy: strategyName });
+    if (Array.isArray(result)) {
+      telemetry.trackStat('strategy.results', result.length, { strategy: strategyName, command: commandName });
+    }
+  }
 
   // Display results based on command type
   displayStrategyCommandResult(strategyName, commandName, result);

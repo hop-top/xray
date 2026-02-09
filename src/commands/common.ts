@@ -70,5 +70,7 @@ export const addCommonOptions = (cmd: Command) => {
     .option('--scope <name>', 'Use specific scope from config file')
     .option('--all-scopes', 'Run all scopes defined in config file')
     .option('--detect', 'Enable strategy detection (auto-detects when no path is provided)')
-    .option('--skip-detect', 'Skip strategy detection and auto-configuration');
+    .option('--skip-detect', 'Skip strategy detection and auto-configuration')
+    .option('--share [path]', 'Generate a shareable summary markdown (optional path override)')
+    .option('--no-telemetry', 'Disable telemetry for this session');
 };

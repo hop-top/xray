@@ -180,6 +180,7 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, preset?:
     mermaid: cliOptions.mermaid || baseConfig.diagram === 'mermaid',
     chunked: cliOptions.chunk !== false && (cliOptions.chunk ?? (baseConfig.chunked !== false)),
     skipDetect: cliOptions.skipDetect ?? baseConfig.skipDetect ?? false,
+    share: cliOptions.share ?? baseConfig.share ?? false,
     with: Object.entries(features)
       .filter(([_, enabled]) => enabled)
       .map(([feature, _]) => feature),

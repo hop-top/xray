@@ -20,6 +20,10 @@ export interface XrayScopeConfig {
   json?: boolean;
   chunked?: boolean;
   skipDetect?: boolean;
+  share?: boolean | string;
+  telemetry?: {
+    enabled?: boolean;
+  };
 }
 
 export interface XrayConfig extends XrayScopeConfig {

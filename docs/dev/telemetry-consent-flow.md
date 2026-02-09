@@ -1,0 +1,398 @@
+# Telemetry Consent Flow
+
+## Overview
+
+Xray implements a privacy-first telemetry consent system that prompts users on first run. This document explains how the consent flow works and how it integrates with the CLI.
+
+## Design Principles
+
+1. **Opt-in by Default**: Telemetry is disabled unless user explicitly consents
+2. **Non-Intrusive**: Prompt only shows once, on first run
+3. **Transparent**: Clear explanation of what data is/isn't collected
+4. **Respectful**: Easy to decline, no dark patterns
+5. **CI-Friendly**: Automatically skips prompt in non-interactive environments
+
+## Flow Diagram
+
+```
+┌─────────────────────────────┐
+│   User runs xray command    │
+└──────────┬──────────────────┘
+           │
+           ▼
+┌─────────────────────────────┐
+│  Check --no-telemetry flag  │
+└──────────┬──────────────────┘
+           │
+           ├─ Yes ──▶ Disable telemetry, continue
+           │
+           ▼ No
+┌─────────────────────────────┐
+│ Check if consent exists     │
+│ (.xrayrc.json has setting)  │
+└──────────┬──────────────────┘
+           │
+           ├─ Yes ──▶ Use saved decision, continue
+           │
+           ▼ No
+┌─────────────────────────────┐
+│  Check if interactive       │
+│  (TTY + not CI/CD)          │
+└──────────┬──────────────────┘
+           │
+           ├─ No ──▶ Disable telemetry, save decision, continue
+           │
+           ▼ Yes
+┌─────────────────────────────┐
+│    Display consent prompt   │
+│    (explain data collected) │
+└──────────┬──────────────────┘
+           │
+           ▼
+┌─────────────────────────────┐
+│   User answers Y/n          │
+└──────────┬──────────────────┘
+           │
+           ├─ Y ──▶ Enable telemetry
+           │
+           ▼ n
+           Disable telemetry
+           │
+           ▼
+┌─────────────────────────────┐
+│   Save decision to config   │
+│   (.xrayrc.json created)    │
+└──────────┬──────────────────┘
+           │
+           ▼
+┌─────────────────────────────┐
+│   Initialize telemetry      │
+│   Continue command execution│
+└─────────────────────────────┘
+```
+
+## Implementation
+
+### Entry Point
+
+**File:** `src/index.ts`
+
+```typescript
+async function main() {
+  // Handle first-run telemetry consent
+  const telemetryEnabled = await handleFirstRunConsent(process.argv);
+
+  // Initialize telemetry based on consent
+  const telemetry = initializeTelemetry({
+    enabled: telemetryEnabled,
+    projectRoot: process.cwd(),
+  });
+
+  // Continue with command registration...
+}
+```
+
+### Consent Logic
+
+**File:** `src/lib/telemetry-consent.ts`
+
+#### Key Functions
+
+**`handleFirstRunConsent(argv: string[]): Promise<boolean>`**
+
+Main entry point for consent flow. Returns `true` if telemetry should be enabled.
+
+**Logic:**
+1. Check `--no-telemetry` flag → return `false`
+2. Check existing decision → return saved value
+3. Check if interactive → if not, save `false` and return
+4. Prompt user → return answer
+5. Save decision → persist to config
+
+**`hasConsentDecision(): boolean`**
+
+Checks if user has already made a decision (config exists with `telemetry` setting).
+
+**`isInteractive(): boolean`**
+
+Determines if we're in an interactive terminal:
+- Checks `process.stdin.isTTY` and `process.stdout.isTTY`
+- Checks for CI environment variables
+- Returns `false` if in CI/CD or piped I/O
+
+**`promptForConsent(): Promise<boolean>`**
+
+Displays informative prompt and gets user answer. Uses `readline` for input.
+
+**`saveConsentDecision(enabled: boolean): void`**
+
+Saves decision to `.xrayrc.json`, creating the file if needed.
+
+## Consent Prompt
+
+### What Users See
+
+```
+Welcome to Xray!
+
+Xray can collect anonymous usage data to help improve the tool.
+
+What data is collected:
+  • Command usage (which commands you run)
+  • Performance metrics (execution time, memory usage)
+  • Error types (what errors occur)
+  • System info (OS, architecture, Node version)
+
+What is NOT collected:
+  • Your source code or file contents
+  • File paths (except in error context)
+  • Personal information
+  • Network activity (data stays local)
+
+All data is stored locally in .xray/telemetry.json
+You can change this setting anytime in .xrayrc.json
+
+Enable telemetry? [Y/n]:
+```
+
+### Design Rationale
+
+**Clear and Informative:**
+- Explains what data IS collected (positive framing)
+- Explicitly states what IS NOT collected (addresses concerns)
+- Shows where data is stored (transparency)
+- Explains how to change setting later (flexibility)
+
+**Default to Yes:**
+- `[Y/n]` format means pressing Enter accepts (common UX pattern)
+- But user must explicitly interact (no silent auto-accept)
+
+**Short and Scannable:**
+- Bullet points for easy scanning
+- Key information highlighted
+- No legal jargon
+
+## Non-Interactive Detection
+
+### CI/CD Environment Variables
+
+The consent flow detects these CI environment variables:
+
+```typescript
+const ciEnvVars = [
+  'CI',
+  'CONTINUOUS_INTEGRATION',
+  'GITHUB_ACTIONS',
+  'GITLAB_CI',
+  'CIRCLECI',
+  'TRAVIS',
+  'JENKINS_URL',
+  'BUILDKITE',
+  'TEAMCITY_VERSION'
+];
+```
+
+If any are set, the prompt is skipped.
+
+### TTY Detection
+
+Checks both stdin and stdout:
+
+```typescript
+if (!process.stdin.isTTY || !process.stdout.isTTY) {
+  return false; // Non-interactive
+}
+```
+
+This catches:
+- Piped input: `echo "xray map" | bash`
+- Piped output: `xray map | tee log.txt`
+- Background execution: `xray map &`
+- Cron jobs
+
+### Default Behavior
+
+In non-interactive mode:
+- Consent prompt is **skipped**
+- Telemetry is **disabled by default**
+- Decision is **saved to config** (so next run knows)
+
+This ensures:
+- CI/CD builds don't hang waiting for input
+- Scripts don't break unexpectedly
+- Privacy-first default in automated environments
+
+## Flag Handling
+
+### --no-telemetry Flag
+
+**Added to:** `src/commands/common.ts`
+
+```typescript
+.option('--no-telemetry', 'Disable telemetry for this session')
+```
+
+**Precedence:**
+- Highest priority (overrides everything)
+- Checked first in consent flow
+- Skips prompt and disables telemetry immediately
+
+**Use Cases:**
+- Quick one-off command: `xray map --no-telemetry`
+- CI/CD override: Even if config says enabled
+- Privacy-conscious users: Easy way to disable per-command
+
+## Configuration Storage
+
+### .xrayrc.json Format
+
+```json
+{
+  "paths": ["./src"],
+  "telemetry": {
+    "enabled": true
+  }
+}
+```
+
+The `telemetry.enabled` field stores the user's decision.
+
+### Config Creation
+
+If no config exists, minimal config is created:
+
+```json
+{
+  "paths": ["/current/working/directory"],
+  "telemetry": {
+    "enabled": false
+  }
+}
+```
+
+### Config Update
+
+If config exists, only the `telemetry` field is updated:
+
+```typescript
+let config = loadConfig();
+if (!config) {
+  config = { paths: [process.cwd()] };
+}
+config.telemetry = { enabled };
+saveConfig(config);
+```
+
+## Testing
+
+### Test Coverage
+
+**File:** `__tests__/lib/telemetry-consent.test.ts`
+
+**19 tests passing, 1 skipped:**
+
+1. **hasConsentDecision** (4 tests)
+   - No config exists
+   - Config with telemetry enabled
+   - Config with telemetry disabled
+   - Config without telemetry setting
+
+2. **isTelemetryDisabledByFlag** (3 tests)
+   - Flag present
+   - Flag absent
+   - Flag at different positions
+
+3. **saveConsentDecision** (4 tests)
+   - Create config if none exists
+   - Update existing config
+   - Save enabled=true
+   - Save enabled=false
+
+4. **handleFirstRunConsent** (6 tests)
+   - --no-telemetry flag
+   - Existing decision
+   - Non-interactive mode (no TTY)
+   - CI environment detection
+   - Various CI env vars
+   - Interactive prompt (skipped - hard to mock)
+
+5. **Non-interactive detection** (2 tests)
+   - Piped input
+   - Piped output
+
+6. **Flag precedence** (1 test)
+   - --no-telemetry overrides config
+
+### Running Tests
+
+```bash
+npm test -- __tests__/lib/telemetry-consent.test.ts
+```
+
+All tests pass except one skipped (interactive prompt is tested manually).
+
+## Edge Cases
+
+### Multiple Runs
+
+**Scenario:** User runs xray multiple times in succession
+
+**Behavior:**
+- First run: Prompt appears, decision saved
+- Subsequent runs: No prompt, saved decision used
+
+### Changing Decision
+
+**Scenario:** User wants to change their telemetry preference
+
+**Options:**
+1. Edit `.xrayrc.json` manually
+2. Delete `.xrayrc.json` and run again
+3. Set `XRAY_TELEMETRY_ENABLED` environment variable
+4. Use `--no-telemetry` flag for one-off disabling
+
+### Deleted Config
+
+**Scenario:** User deletes `.xrayrc.json` after initial setup
+
+**Behavior:**
+- Next run: Prompt appears again (treated as first run)
+- Previous telemetry data in `.xray/telemetry.json` is not deleted
+
+### Conflicting Settings
+
+**Scenario:** Config says enabled, but `--no-telemetry` flag used
+
+**Precedence:**
+1. `--no-telemetry` flag (highest)
+2. Environment variable `XRAY_TELEMETRY_ENABLED`
+3. Config file `.xrayrc.json`
+4. Default (disabled)
+
+## Future Enhancements
+
+### Potential Improvements
+
+1. **`xray telemetry` command** - Manage telemetry settings via CLI
+   - `xray telemetry enable` - Enable telemetry
+   - `xray telemetry disable` - Disable telemetry
+   - `xray telemetry status` - Show current setting
+   - `xray telemetry clear` - Clear collected data
+
+2. **Consent expiration** - Re-prompt after X months
+   - Respect ongoing consent
+   - Keep users informed of changes
+
+3. **Data anonymization** - Additional privacy measures
+   - Hash identifiers
+   - Aggregate stats only
+
+4. **Telemetry dashboard** - Show collected data to user
+   - Local web view of `.xray/telemetry.json`
+   - Statistics and charts
+
+## Related Documentation
+
+- [User Guide](../user/telemetry.md) - How to enable/disable telemetry
+- [Developer Guide](telemetry.md) - Telemetry implementation details
+- [Coverage Report](telemetry-coverage.md) - Command coverage

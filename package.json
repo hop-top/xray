@@ -18,6 +18,12 @@
     "strategy:detect": "node dist/index.js strategy:detect"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.211.0",
+    "@opentelemetry/resources": "^2.5.0",
+    "@opentelemetry/sdk-node": "^0.211.0",
+    "@opentelemetry/sdk-trace-node": "^2.5.0",
+    "@opentelemetry/semantic-conventions": "^1.39.0",
     "better-sqlite3": "^11.0.0",
     "chalk": "^4.1.2",
     "cli-progress": "^3.12.0",

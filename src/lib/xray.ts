@@ -54,6 +54,8 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
   private config: XrayConfig;
   private cache: SqliteCache;
   private pluginManager: PluginManager;
+  private lastGraph?: any;
+  private lastRankedNodes?: any[];
 
   constructor(config: XrayConfig) {
     super();
@@ -86,6 +88,13 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
 
   plugins(): XrayPlugin[] {
     return this.pluginManager.list();
+  }
+
+  getLastGraph(): { graph?: any; rankedNodes?: any[] } {
+    return {
+      graph: this.lastGraph,
+      rankedNodes: this.lastRankedNodes
+    };
   }
 
   /**
@@ -305,6 +314,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     const rankCompleteEvent = { rankedNodes };
     await this.emitAsync('rank:complete', rankCompleteEvent);
 
+    this.lastGraph = graph;
+    this.lastRankedNodes = rankCompleteEvent.rankedNodes;
+
     return { rankedNodes: rankCompleteEvent.rankedNodes, graph };
   }
 
@@ -400,6 +412,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     // 4. Rank (PageRank + Heuristics)
     const ranker = new Ranker(graph);
     const rankedNodes = ranker.rank(this.config.anchor);
+
+    this.lastGraph = graph;
+    this.lastRankedNodes = rankedNodes;
 
     return { rankedNodes, graph };
   }

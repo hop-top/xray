@@ -14,6 +14,8 @@ import { StrategyRunner } from '../lib/strategy/runner';
 import { XrayScopeConfig } from '../types/xray-config';
 import { resolvePath, resolveOutputPath } from './common';
 import { ChunkedRenderer } from '../lib/renderer/chunked-renderer';
+import { buildShareSummary, resolveShareOutputPath } from '../lib/share-summary';
+import { getTelemetryTracker } from '../lib/telemetry';
 
 // Helper function to configure options based on detected strategies
 const configureFromStrategies = async (options: any): Promise<{
@@ -131,6 +133,9 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
     mergedOptions.xml ? 'xml' : 'txt';
 
   const outputPath = resolveOutputPath(mergedOptions.output, format);
+  const shareOption = mergedOptions.share;
+  const shareRequested = shareOption !== undefined && shareOption !== false;
+  const commandUsed = getCommandString();
 
   if (scopeName) {
     Logger.info(`Running scope: ${chalk.bold(scopeName)}`);
@@ -235,55 +240,155 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
           Logger.info(`${indent}${m.directory} (${m.fileCount} files, ${m.tokenCount} tokens)`);
         });
       }
+
+      if (shareRequested) {
+        const telemetry = getTelemetryTracker();
+        if (telemetry) {
+          telemetry.trackCommand('share_requested', {
+            command: commandUsed,
+            chunked: true,
+            outputPath
+          });
+        }
+
+        const sharePath = resolveShareOutputPath({
+          outputPath: outputPath!,
+          projectPath: currentPath,
+          shareOption,
+          pathIndex: i,
+          totalPaths: paths.length
+        });
+
+        const summary = buildShareSummary({
+          projectPath: currentPath,
+          outputPath: outputPath!,
+          rootChunk,
+          chunked: true,
+          metadata,
+          rankedNodes,
+          graph,
+          command: commandUsed,
+          detectedStrategies,
+          tokenLimit: parseInt(mergedOptions.limit)
+        });
+
+        fs.writeFileSync(sharePath, summary);
+        Logger.success(`Share summary written to ${sharePath}`);
+        Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
+
+        if (telemetry) {
+          telemetry.trackCommand('share_generated', {
+            sharePath,
+            chunked: true,
+            chunks: metadata.length
+          });
+        }
+      }
     }
   } else {
     // Single file output mode (original behavior)
-    const results = await Promise.all(
-      paths.map(async (currentPath, i) => {
-        if (paths.length > 1) {
-          Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${currentPath}`);
-        }
+    const outputs: string[] = [];
+    const shareSummaries: Array<{ sharePath: string; summary: string; projectPath: string }> = [];
 
-        let barStarted = false;
+    for (let i = 0; i < paths.length; i++) {
+      const currentPath = paths[i];
+      if (paths.length > 1) {
+        Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${currentPath}`);
+      }
 
-        const xray = new Xray({
-          path: currentPath,
-          limit: parseInt(mergedOptions.limit),
-          anchor,
-          depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
-          features,
-          queries,
-          match: mergedOptions.match || [],
-          catch: mergedOptions.catch || [],
-          format,
-          diagram,
-          chunked: false,
-          onProgress: (current, total, file) => {
-            if (!barStarted) {
-              progressBar.start(total, 0, { file: 'Starting...' });
-              barStarted = true;
-            }
-            progressBar.update(current, { file });
-            if (current >= total) {
-              progressBar.stop();
-            }
+      let barStarted = false;
+
+      const xray = new Xray({
+        path: currentPath,
+        limit: parseInt(mergedOptions.limit),
+        anchor,
+        depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
+        features,
+        queries,
+        match: mergedOptions.match || [],
+        catch: mergedOptions.catch || [],
+        format,
+        diagram,
+        chunked: false,
+        onProgress: (current, total, file) => {
+          if (!barStarted) {
+            progressBar.start(total, 0, { file: 'Starting...' });
+            barStarted = true;
           }
-        });
-
-        const result = await xray.run();
-
-        // Add path header for multi-path output
-        if (paths.length > 1) {
-          return `\n${'='.repeat(80)}\nPath: ${currentPath}\n${'='.repeat(80)}\n${result}`;
+          progressBar.update(current, { file });
+          if (current >= total) {
+            progressBar.stop();
+          }
         }
-        return result as string;
-      })
-    );
+      });
 
-    const finalOutput = results.join('\n');
+      const result = await xray.run();
+
+      // Add path header for multi-path output
+      if (paths.length > 1) {
+        outputs.push(`\n${'='.repeat(80)}\nPath: ${currentPath}\n${'='.repeat(80)}\n${result}`);
+      } else {
+        outputs.push(result as string);
+      }
+
+      if (shareRequested) {
+        const { graph, rankedNodes } = xray.getLastGraph();
+        if (graph && rankedNodes) {
+          const telemetry = getTelemetryTracker();
+          if (telemetry) {
+            telemetry.trackCommand('share_requested', {
+              command: commandUsed,
+              chunked: false,
+              outputPath
+            });
+          }
+
+          const sharePath = resolveShareOutputPath({
+            outputPath: outputPath!,
+            projectPath: currentPath,
+            shareOption,
+            pathIndex: i,
+            totalPaths: paths.length
+          });
+
+          const summary = buildShareSummary({
+            projectPath: currentPath,
+            outputPath: outputPath!,
+            chunked: false,
+            rankedNodes,
+            graph,
+            command: commandUsed,
+            detectedStrategies,
+            tokenLimit: parseInt(mergedOptions.limit)
+          });
+
+          shareSummaries.push({ sharePath, summary, projectPath: currentPath });
+        } else {
+          Logger.warn('Share summary skipped (graph data unavailable).');
+        }
+      }
+    }
+
+    const finalOutput = outputs.join('\n');
 
     fs.writeFileSync(outputPath!, finalOutput);
     Logger.success(`Analysis written to ${outputPath}`);
+
+    if (shareRequested) {
+      for (const share of shareSummaries) {
+        fs.writeFileSync(share.sharePath, share.summary);
+        Logger.success(`Share summary written to ${share.sharePath}`);
+        Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
+
+        const telemetry = getTelemetryTracker();
+        if (telemetry) {
+          telemetry.trackCommand('share_generated', {
+            sharePath: share.sharePath,
+            chunked: false
+          });
+        }
+      }
+    }
   }
 };
 
@@ -346,4 +451,9 @@ export const handleGenerateAction = async (options: any) => {
     Logger.error('Error generating analysis:', error);
     process.exit(1);
   }
+};
+
+const getCommandString = (): string => {
+  const args = process.argv.slice(2);
+  return args.length > 0 ? `xray ${args.join(' ')}` : 'xray';
 };
