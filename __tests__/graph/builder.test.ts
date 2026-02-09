@@ -187,4 +187,67 @@ describe('GraphBuilder', () => {
         expect(graph.hasNode('cached.ts')).toBe(true);
         expect(graph.hasNode('cached.ts::cachedFunc')).toBe(true);
     });
+
+    it('should handle large number of tags efficiently', async () => {
+        // Generate 100 tags to test batching performance
+        const tags: Tag[] = [];
+        for (let i = 0; i < 100; i++) {
+            tags.push({
+                name: `func${i}`,
+                kind: 'function',
+                line: i * 10,
+                col: 0,
+                file: 'large.ts',
+                references: i > 0 ? [`func${i - 1}`] : undefined
+            });
+        }
+
+        const start = performance.now();
+        await builder.addFile('large.ts', tags, []);
+        const graph = await builder.getGraph();
+        const duration = performance.now() - start;
+
+        // Should complete in reasonable time (< 1 second for 100 tags)
+        expect(duration).toBeLessThan(1000);
+        expect(graph.hasNode('large.ts')).toBe(true);
+        expect(graph.order).toBe(101); // 1 file + 100 tags
+    });
+
+    it('should handle large number of references efficiently', async () => {
+        // Create a tag that references many other tags
+        const tags: Tag[] = [
+            {
+                name: 'mainFunc',
+                kind: 'function',
+                line: 1,
+                col: 0,
+                file: 'test.ts',
+                references: Array.from({ length: 50 }, (_, i) => `helper${i}`)
+            }
+        ];
+
+        // Add the referenced tags
+        for (let i = 0; i < 50; i++) {
+            tags.push({
+                name: `helper${i}`,
+                kind: 'function',
+                line: (i + 2) * 10,
+                col: 0,
+                file: 'test.ts'
+            });
+        }
+
+        const start = performance.now();
+        await builder.addFile('test.ts', tags, []);
+        const graph = await builder.getGraph();
+        const duration = performance.now() - start;
+
+        // Should complete in reasonable time (< 500ms for 50 references)
+        expect(duration).toBeLessThan(500);
+
+        const mainFuncId = 'test.ts::mainFunc';
+        // Verify all reference edges were created
+        const outEdges = graph.outEdges(mainFuncId);
+        expect(outEdges.length).toBe(50);
+    });
 });

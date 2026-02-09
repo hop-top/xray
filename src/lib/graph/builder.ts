@@ -50,12 +50,16 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
       }
     }
 
-    // Add Tag Nodes and Edges
+    // Collect all node events first
+    const nodeEvents: Array<{ nodeId: string, attrs: any, skip: boolean, tagId: string }> = [];
+    const edgeEvents: Array<{ source: string, target: string, type: 'defines', attrs: any, skip: boolean }> = [];
+
     for (const tag of tags) {
       const tagId = `${file}::${tag.name}`;
       if (!this.graph.hasNode(tagId)) {
-        const nodeEvent = {
+        nodeEvents.push({
           nodeId: tagId,
+          tagId,
           attrs: {
             type: 'tag',
             label: tag.name,
@@ -67,28 +71,53 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
             doc: tag.doc
           },
           skip: false
-        };
-
-        await this.emitAsync('node:add', nodeEvent);
-
-        if (!nodeEvent.skip) {
-          this.graph.addNode(tagId, nodeEvent.attrs);
-        }
-      }
-
-      // Edge: File defines Tag
-      if (this.graph.hasNode(file) && this.graph.hasNode(tagId)) {
-        const edgeEvent = { source: file, target: tagId, type: 'defines' as const, attrs: { type: 'defines' }, skip: false };
-        await this.emitAsync('edge:add', edgeEvent);
-
-        if (!edgeEvent.skip) {
-          this.graph.addEdge(file, tagId, edgeEvent.attrs);
-        }
+        });
       }
 
       // Store references for later edge creation
       if (tag.references && tag.references.length > 0) {
         this.pendingReferences.set(tagId, { tagId, references: tag.references });
+      }
+    }
+
+    // Emit all node events in parallel
+    if (nodeEvents.length > 0) {
+      await Promise.all(nodeEvents.map(event =>
+        this.emitAsync('node:add', event)
+      ));
+
+      // Add nodes that weren't skipped
+      for (const event of nodeEvents) {
+        if (!event.skip) {
+          this.graph.addNode(event.nodeId, event.attrs);
+        }
+      }
+    }
+
+    // Now collect edge events for tags that were added
+    for (const event of nodeEvents) {
+      if (!event.skip && this.graph.hasNode(file) && this.graph.hasNode(event.tagId)) {
+        edgeEvents.push({
+          source: file,
+          target: event.tagId,
+          type: 'defines',
+          attrs: { type: 'defines' },
+          skip: false
+        });
+      }
+    }
+
+    // Emit all edge events in parallel
+    if (edgeEvents.length > 0) {
+      await Promise.all(edgeEvents.map(event =>
+        this.emitAsync('edge:add', event)
+      ));
+
+      // Add edges that weren't skipped
+      for (const event of edgeEvents) {
+        if (!event.skip) {
+          this.graph.addEdge(event.source, event.target, event.attrs);
+        }
       }
     }
 
@@ -125,29 +154,61 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
       }
     });
 
-    // For each tag with references, create edges to matching tags
+    // Collect all reference resolution events first
+    const resolveEvents: Array<{ sourceTag: string, targetName: string, resolved: string[] }> = [];
+
     for (const { tagId, references } of this.pendingReferences.values()) {
       for (const refName of references) {
         const targetTags = tagNameMap.get(refName);
         if (targetTags) {
           // Event: Reference resolution (listeners can modify targets)
-          const resolveEvent = { sourceTag: tagId, targetName: refName, resolved: [...targetTags] };
-          await this.emitAsync('reference:resolve', resolveEvent);
+          resolveEvents.push({
+            sourceTag: tagId,
+            targetName: refName,
+            resolved: [...targetTags]
+          });
+        }
+      }
+    }
 
-          for (const targetTagId of resolveEvent.resolved) {
-            // Avoid self-references
-            if (targetTagId !== tagId) {
-              // Only add edge if it doesn't already exist
-              if (!this.graph.hasEdge(tagId, targetTagId)) {
-                const edgeEvent = { source: tagId, target: targetTagId, type: 'calls' as const, attrs: { type: 'calls' }, skip: false };
-                await this.emitAsync('edge:add', edgeEvent);
+    // Emit all reference resolution events in parallel
+    if (resolveEvents.length > 0) {
+      await Promise.all(resolveEvents.map(event =>
+        this.emitAsync('reference:resolve', event)
+      ));
+    }
 
-                if (!edgeEvent.skip) {
-                  this.graph.addEdge(tagId, targetTagId, edgeEvent.attrs);
-                }
-              }
-            }
+    // Now collect all edge events based on resolved references
+    const edgeEvents: Array<{ source: string, target: string, type: 'calls', attrs: any, skip: boolean }> = [];
+
+    for (const resolveEvent of resolveEvents) {
+      for (const targetTagId of resolveEvent.resolved) {
+        // Avoid self-references
+        if (targetTagId !== resolveEvent.sourceTag) {
+          // Only add edge if it doesn't already exist
+          if (!this.graph.hasEdge(resolveEvent.sourceTag, targetTagId)) {
+            edgeEvents.push({
+              source: resolveEvent.sourceTag,
+              target: targetTagId,
+              type: 'calls',
+              attrs: { type: 'calls' },
+              skip: false
+            });
           }
+        }
+      }
+    }
+
+    // Emit all edge events in parallel
+    if (edgeEvents.length > 0) {
+      await Promise.all(edgeEvents.map(event =>
+        this.emitAsync('edge:add', event)
+      ));
+
+      // Add edges that weren't skipped
+      for (const event of edgeEvents) {
+        if (!event.skip) {
+          this.graph.addEdge(event.source, event.target, event.attrs);
         }
       }
     }

@@ -317,8 +317,12 @@ export class ParserManager {
   private extractReferences(defNode: Parser.SyntaxNode): string[] {
     const references = new Set<string>();
 
-    // Recursively traverse the function body to find call expressions
-    const traverse = (node: Parser.SyntaxNode) => {
+    // Iterative traversal with stack to avoid stack overflow
+    const stack: Parser.SyntaxNode[] = [defNode];
+
+    while (stack.length > 0) {
+      const node = stack.pop()!;
+
       // Check for call expressions (covers most languages)
       if (node.type === 'call_expression') {
         // Try to get the function name being called
@@ -338,13 +342,15 @@ export class ParserManager {
         }
       }
 
-      // Recurse into children
-      for (const child of node.children) {
-        traverse(child);
+      // Add children to stack in reverse order to maintain depth-first traversal order
+      for (let i = node.childCount - 1; i >= 0; i--) {
+        const child = node.child(i);
+        if (child) {
+          stack.push(child);
+        }
       }
-    };
+    }
 
-    traverse(defNode);
     return Array.from(references);
   }
 
