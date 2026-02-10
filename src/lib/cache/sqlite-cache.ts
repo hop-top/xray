@@ -1,5 +1,7 @@
 import Database from 'better-sqlite3';
 import { Tag, Import } from '../parser/types';
+import { CacheReadError, CacheWriteError } from '../error/types';
+import { Logger } from '../logger';
 
 export class SqliteCache {
   private db: Database.Database;
@@ -32,71 +34,117 @@ export class SqliteCache {
   }
 
   get(file: string, mtime: number, docConfig: string, includeVariables: boolean): { tags: Tag[], imports: Import[] } | null {
-    const row = this.db.prepare('SELECT mtime, doc_config, include_variables FROM files_v2 WHERE path = ?').get(file) as any;
+    try {
+      const row = this.db.prepare('SELECT mtime, doc_config, include_variables FROM files_v2 WHERE path = ?').get(file) as any;
 
-    if (!row || row.mtime !== mtime || row.doc_config !== docConfig || Boolean(row.include_variables) !== includeVariables) {
-      return null; // Cache miss or stale or config mismatch
+      if (!row || row.mtime !== mtime || row.doc_config !== docConfig || Boolean(row.include_variables) !== includeVariables) {
+        return null; // Cache miss or stale or config mismatch
+      }
+
+      const tagRows = this.db.prepare('SELECT data FROM tags WHERE file = ?').all(file) as any[];
+
+      // Parse tags with error handling for corrupted entries
+      const tags: Tag[] = [];
+      for (const row of tagRows) {
+        try {
+          tags.push(JSON.parse(row.data));
+        } catch (err) {
+          // Skip corrupted cache entry but continue processing
+          Logger.warn(`Corrupted cache entry for ${file}, skipping tag`);
+        }
+      }
+
+      return { tags, imports: [] }; // Imports caching omitted for brevity
+    } catch (err) {
+      // Cache read failure shouldn't crash the application
+      Logger.warn(`Failed to read from cache for ${file}: ${(err as Error).message}`);
+      return null; // Treat as cache miss
     }
-
-    const tagRows = this.db.prepare('SELECT data FROM tags WHERE file = ?').all(file) as any[];
-    const tags = tagRows.map(r => JSON.parse(r.data));
-
-    return { tags, imports: [] }; // Imports caching omitted for brevity
   }
 
   set(file: string, mtime: number, tags: Tag[], imports: Import[], docConfig: string, includeVariables: boolean) {
-    const insertFile = this.db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables) VALUES (?, ?, ?, ?)');
-    const insertTag = this.db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)');
-    const deleteTags = this.db.prepare('DELETE FROM tags WHERE file = ?');
+    try {
+      const insertFile = this.db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables) VALUES (?, ?, ?, ?)');
+      const insertTag = this.db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)');
+      const deleteTags = this.db.prepare('DELETE FROM tags WHERE file = ?');
 
-    const transaction = this.db.transaction(() => {
-      insertFile.run(file, mtime, docConfig, includeVariables ? 1 : 0);
-      deleteTags.run(file);
-      for (const tag of tags) {
-        insertTag.run(file, JSON.stringify(tag));
-      }
-    });
+      const transaction = this.db.transaction(() => {
+        insertFile.run(file, mtime, docConfig, includeVariables ? 1 : 0);
+        deleteTags.run(file);
+        for (const tag of tags) {
+          insertTag.run(file, JSON.stringify(tag));
+        }
+      });
 
-    transaction();
+      transaction();
+    } catch (err) {
+      // Cache write failure shouldn't crash the application
+      throw new CacheWriteError('sqlite', err as Error);
+    }
   }
 
   // File analysis cache methods
   setFileAnalysis(file: string, data: { mtime: number; hash: string; analysis: any }) {
-    const stmt = this.db.prepare(
-      'INSERT OR REPLACE INTO file_analysis (path, mtime, hash, analysis) VALUES (?, ?, ?, ?)'
-    );
-    stmt.run(file, data.mtime, data.hash, JSON.stringify(data.analysis));
+    try {
+      const stmt = this.db.prepare(
+        'INSERT OR REPLACE INTO file_analysis (path, mtime, hash, analysis) VALUES (?, ?, ?, ?)'
+      );
+      stmt.run(file, data.mtime, data.hash, JSON.stringify(data.analysis));
+    } catch (err) {
+      throw new CacheWriteError('sqlite', err as Error);
+    }
   }
 
   getFileAnalysis(file: string): { mtime: number; hash: string; analysis: any } | null {
-    const row = this.db.prepare(
-      'SELECT mtime, hash, analysis FROM file_analysis WHERE path = ?'
-    ).get(file) as any;
+    try {
+      const row = this.db.prepare(
+        'SELECT mtime, hash, analysis FROM file_analysis WHERE path = ?'
+      ).get(file) as any;
 
-    if (!row) {
+      if (!row) {
+        return null;
+      }
+
+      try {
+        return {
+          mtime: row.mtime,
+          hash: row.hash,
+          analysis: JSON.parse(row.analysis)
+        };
+      } catch (jsonErr) {
+        // Corrupted JSON in cache
+        Logger.warn(`Corrupted analysis cache for ${file}, treating as cache miss`);
+        return null;
+      }
+    } catch (err) {
+      Logger.warn(`Failed to read analysis cache for ${file}: ${(err as Error).message}`);
       return null;
     }
-
-    return {
-      mtime: row.mtime,
-      hash: row.hash,
-      analysis: JSON.parse(row.analysis)
-    };
   }
 
   isFileAnalysisValid(file: string, mtime: number, hash: string): boolean {
-    const row = this.db.prepare(
-      'SELECT mtime, hash FROM file_analysis WHERE path = ?'
-    ).get(file) as any;
+    try {
+      const row = this.db.prepare(
+        'SELECT mtime, hash FROM file_analysis WHERE path = ?'
+      ).get(file) as any;
 
-    if (!row) {
+      if (!row) {
+        return false;
+      }
+
+      return row.mtime === mtime && row.hash === hash;
+    } catch (err) {
+      Logger.warn(`Failed to validate analysis cache for ${file}: ${(err as Error).message}`);
       return false;
     }
-
-    return row.mtime === mtime && row.hash === hash;
   }
 
   clearFileAnalysis(file: string) {
-    this.db.prepare('DELETE FROM file_analysis WHERE path = ?').run(file);
+    try {
+      this.db.prepare('DELETE FROM file_analysis WHERE path = ?').run(file);
+    } catch (err) {
+      // Silently fail - clearing cache is not critical
+      Logger.warn(`Failed to clear analysis cache for ${file}: ${(err as Error).message}`);
+    }
   }
 }

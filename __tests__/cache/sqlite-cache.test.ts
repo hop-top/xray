@@ -233,4 +233,51 @@ describe('SqliteCache', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('error handling', () => {
+    it('should handle corrupted JSON in cache gracefully', () => {
+      const filePath = '/test/file.ts';
+
+      // Manually insert corrupted JSON into cache
+      const db = (cache as any).db;
+      db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables) VALUES (?, ?, ?, ?)').run(filePath, 123456, 'all', 0);
+      db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)').run(filePath, 'INVALID_JSON{{{');
+
+      // Should skip corrupted entries and return empty array instead of throwing
+      const result = cache.get(filePath, 123456, 'all', false);
+      expect(result).not.toBeNull();
+      expect(result?.tags).toEqual([]);
+    });
+
+    it('should handle corrupted analysis JSON gracefully', () => {
+      const filePath = '/test/file.ts';
+
+      // Manually insert corrupted JSON into file_analysis
+      const db = (cache as any).db;
+      db.prepare('INSERT OR REPLACE INTO file_analysis (path, mtime, hash, analysis) VALUES (?, ?, ?, ?)').run(filePath, 123456, 'abc123', 'INVALID_JSON{{{');
+
+      // Should return null instead of throwing
+      const result = cache.getFileAnalysis(filePath);
+      expect(result).toBeNull();
+    });
+
+    it('should continue operation when some tags are corrupted', () => {
+      const filePath = '/test/file.ts';
+      const db = (cache as any).db;
+
+      // Insert mix of valid and invalid tags
+      db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables) VALUES (?, ?, ?, ?)').run(filePath, 123456, 'all', 0);
+      db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)').run(filePath, JSON.stringify({ name: 'valid1', kind: 'function', line: 1, col: 0, file: filePath }));
+      db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)').run(filePath, 'INVALID_JSON');
+      db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)').run(filePath, JSON.stringify({ name: 'valid2', kind: 'class', line: 10, col: 0, file: filePath }));
+
+      const result = cache.get(filePath, 123456, 'all', false);
+
+      // Should return partial results, skipping corrupted entries
+      expect(result).not.toBeNull();
+      expect(result?.tags).toHaveLength(2);
+      expect(result?.tags[0].name).toBe('valid1');
+      expect(result?.tags[1].name).toBe('valid2');
+    });
+  });
 });
