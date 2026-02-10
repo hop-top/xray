@@ -1,6 +1,6 @@
 import { ChunkedRenderer } from '../src/lib/renderer/chunked-renderer';
 import Graph from 'graphology';
-import { RankedNode } from '../src/lib/graph/ranker';
+import { RankedNode } from '../src/types/graph';
 import * as path from 'path';
 
 describe('ChunkedRenderer', () => {
@@ -345,6 +345,100 @@ describe('ChunkedRenderer', () => {
         const importCount = (content.match(/import/g) || []).length;
         expect(importCount).toBeLessThan(5); // Arbitrary low threshold
       }
+    });
+  });
+
+  describe('cross-file references performance', () => {
+    it('should efficiently find cross-file callers using graph edges', async () => {
+      // Create a graph with cross-file references
+      const perfGraph = new Graph();
+
+      // Add two files
+      perfGraph.addNode('src/a.ts', { type: 'file', imports: [] });
+      perfGraph.addNode('src/b.ts', { type: 'file', imports: [] });
+
+      // Add tag in file A
+      perfGraph.addNode('src/a.ts::helper', {
+        type: 'tag',
+        file: 'src/a.ts',
+        label: 'helper',
+        kind: 'function',
+        line: 5,
+        endLine: 10,
+      });
+
+      // Add tag in file B that calls helper
+      perfGraph.addNode('src/b.ts::main', {
+        type: 'tag',
+        file: 'src/b.ts',
+        label: 'main',
+        kind: 'function',
+        line: 3,
+        endLine: 8,
+      });
+
+      // Add edge from B to A (B calls A)
+      perfGraph.addEdge('src/b.ts::main', 'src/a.ts::helper', { type: 'calls' });
+
+      const perfNodes: RankedNode[] = [
+        {
+          id: 'src/a.ts',
+          score: 1.0,
+          data: { type: 'file' },
+        },
+        {
+          id: 'src/b.ts',
+          score: 0.9,
+          data: { type: 'file' },
+        },
+        {
+          id: 'src/a.ts::helper',
+          score: 0.8,
+          data: {
+            type: 'tag',
+            file: 'src/a.ts',
+            label: 'helper',
+            kind: 'function',
+            line: 5,
+            endLine: 10,
+          },
+        },
+        {
+          id: 'src/b.ts::main',
+          score: 0.7,
+          data: {
+            type: 'tag',
+            file: 'src/b.ts',
+            label: 'main',
+            kind: 'function',
+            line: 3,
+            endLine: 8,
+          },
+        },
+      ];
+
+      const renderer = new ChunkedRenderer(
+        '/project',
+        perfNodes,
+        perfGraph,
+        4096,
+        undefined,
+        false
+      );
+
+      const result = await renderer.renderChunked('/output/.xray');
+
+      // Find the chunk containing src/a.ts
+      let foundReference = false;
+      for (const content of result.chunks.values()) {
+        if (content.includes('src/a.ts') && content.includes('used by')) {
+          foundReference = true;
+          expect(content).toContain('src/b.ts');
+          expect(content).toContain('L4'); // main function line (3 + 1)
+        }
+      }
+
+      expect(foundReference).toBe(true);
     });
   });
 });
