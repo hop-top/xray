@@ -15,8 +15,8 @@ export function registerAliasCommand(): Command {
     .action(async () => {
       const config = loadConfig();
       if (!config) {
-        console.log('No configuration file found.');
-        console.log('\nCreate .xrayrc.json to configure aliases.');
+        Logger.info('No configuration file found.');
+        Logger.info('\nCreate .xrayrc.json to configure aliases.');
         return;
       }
 
@@ -24,16 +24,16 @@ export function registerAliasCommand(): Command {
       const aliases = resolver.getAll();
 
       if (aliases.size === 0) {
-        console.log('No aliases configured.');
-        console.log('\nTo add aliases, use: xray alias set <name> <target>');
+        Logger.info('No aliases configured.');
+        Logger.info('\nTo add aliases, use: xray alias set <name> <target>');
         return;
       }
 
-      console.log(chalk.cyan('\nConfigured Aliases:\n'));
+      Logger.output(chalk.cyan('\nConfigured Aliases:\n'));
       for (const [alias, target] of aliases.entries()) {
-        console.log(`  ${chalk.bold(alias)} → ${chalk.gray(target)}`);
+        Logger.output(`  ${chalk.bold(alias)} → ${chalk.gray(target)}`);
       }
-      console.log(`\nTotal: ${aliases.size} alias(es)\n`);
+      Logger.output(`\nTotal: ${aliases.size} alias(es)\n`);
     });
 
   // Set alias
@@ -50,7 +50,7 @@ export function registerAliasCommand(): Command {
       // Validate target format
       if (!target.includes(' ')) {
         Logger.error('Target must be in format "<strategy> <command>"');
-        console.log('Example: xray alias set comp "react components"');
+        Logger.info('Example: xray alias set comp "react components"');
         return process.exit(1);
       }
 
@@ -74,12 +74,12 @@ export function registerAliasCommand(): Command {
       saveConfig(config);
 
       if (isUpdate) {
-        console.log(chalk.green(`✓ Updated alias "${name}" → "${target}"`));
+        Logger.success(`Updated alias "${name}" → "${target}"`);
       } else {
-        console.log(chalk.green(`✓ Created alias "${name}" → "${target}"`));
+        Logger.success(`Created alias "${name}" → "${target}"`);
       }
 
-      console.log('\nRestart xray to use the new alias.');
+      Logger.info('\nRestart xray to use the new alias.');
     });
 
   // Remove alias
@@ -103,7 +103,7 @@ export function registerAliasCommand(): Command {
 
       saveConfig(config);
 
-      console.log(chalk.green(`✓ Removed alias "${name}" (was: "${target}")`));
+      Logger.success(`Removed alias "${name}" (was: "${target}")`);
     });
 
   return program;

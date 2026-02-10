@@ -17,7 +17,7 @@ export const handleMetaStrategyCommand = async (commandName: string, options: an
 
     Logger.info('Available Strategies:\n');
     strategies.forEach(strategy => {
-      console.log(chalk.cyan(`  ${strategy.name}`), chalk.gray(`v${strategy.version}`));
+      Logger.output(chalk.cyan(`  ${strategy.name}`) + ' ' + chalk.gray(`v${strategy.version}`));
     });
 
     if (strategies.length === 0) {
@@ -47,15 +47,15 @@ export const handleMetaStrategyCommand = async (commandName: string, options: an
     } else {
       Logger.info('Detected Strategies:\n');
       detected.forEach(strategy => {
-        console.log(chalk.cyan(`  ${strategy.name}`), chalk.gray(`v${strategy.version}`));
+        Logger.output(chalk.cyan(`  ${strategy.name}`) + ' ' + chalk.gray(`v${strategy.version}`));
       });
     }
 
   } else {
     Logger.error(`Unknown meta-strategy command: "${commandName}"`);
     Logger.info('\nAvailable meta-strategy commands:');
-    console.log('  - strategy:list   - List all available strategies');
-    console.log('  - strategy:detect - Detect applicable strategies');
+    Logger.output('  - strategy:list   - List all available strategies');
+    Logger.output('  - strategy:detect - Detect applicable strategies');
     process.exit(1);
   }
 };
@@ -91,7 +91,7 @@ export const handleStrategyCommand = async (query: string, options: any) => {
   if (!strategy) {
     Logger.error(`Strategy "${strategyName}" not found.`);
     Logger.info(`\nAvailable strategies:`);
-    strategies.forEach(s => console.log(`  - ${s.name}`));
+    strategies.forEach(s => Logger.output(`  - ${s.name}`));
     process.exit(1);
   }
 
@@ -101,7 +101,7 @@ export const handleStrategyCommand = async (query: string, options: any) => {
     if (strategy.commands && Object.keys(strategy.commands).length > 0) {
       Logger.info(`\nAvailable commands for ${strategyName}:`);
       Object.keys(strategy.commands).forEach(cmd => {
-        console.log(`  - ${strategyName}:${cmd}`);
+        Logger.output(`  - ${strategyName}:${cmd}`);
       });
     }
     process.exit(1);
@@ -175,9 +175,9 @@ const displayStrategyCommandResult = (strategyName: string, commandName: string,
     } else {
       Logger.info(`\n${strategyName.charAt(0).toUpperCase() + strategyName.slice(1)} Components:\n`);
       result.forEach((comp: any) => {
-        console.log(
-          chalk.green(`  ${comp.name}`),
-          chalk.gray(`(${comp.type})`),
+        Logger.output(
+          chalk.green(`  ${comp.name}`) + ' ' +
+          chalk.gray(`(${comp.type})`) + ' ' +
           chalk.blue(`- ${comp.file}`)
         );
       });
@@ -189,7 +189,7 @@ const displayStrategyCommandResult = (strategyName: string, commandName: string,
     } else {
       Logger.info(`\nCustom ${strategyName.charAt(0).toUpperCase() + strategyName.slice(1)} Hooks:\n`);
       result.forEach((hook: any) => {
-        console.log(chalk.green(`  ${hook.name}`), chalk.blue(`- ${hook.file}`));
+        Logger.output(chalk.green(`  ${hook.name}`) + ' ' + chalk.blue(`- ${hook.file}`));
       });
       Logger.info(`\nTotal: ${result.length} hook(s)`);
     }
@@ -199,12 +199,12 @@ const displayStrategyCommandResult = (strategyName: string, commandName: string,
     } else {
       Logger.info(`\n${strategyName.charAt(0).toUpperCase() + strategyName.slice(1)} Contexts:\n`);
       result.forEach((ctx: any) => {
-        console.log(chalk.green(`  ${ctx.name}`), chalk.blue(`- ${ctx.file}`));
+        Logger.output(chalk.green(`  ${ctx.name}`) + ' ' + chalk.blue(`- ${ctx.file}`));
       });
       Logger.info(`\nTotal: ${result.length} context(s)`);
     }
   } else {
     // Generic display for unknown command types
-    console.log(JSON.stringify(result, null, 2));
+    Logger.output(JSON.stringify(result, null, 2));
   }
 };

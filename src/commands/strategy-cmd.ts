@@ -22,7 +22,7 @@ export function registerStrategyCommand(): Command {
 
       Logger.info('Available Strategies:\n');
       strategies.forEach(strategy => {
-        console.log(chalk.cyan(`  ${strategy.name}`), chalk.gray(`v${strategy.version}`));
+        Logger.output(chalk.cyan(`  ${strategy.name}`) + ' ' + chalk.gray(`v${strategy.version}`));
       });
 
       if (strategies.length === 0) {
@@ -54,7 +54,7 @@ export function registerStrategyCommand(): Command {
       } else {
         Logger.info('Detected Strategies:\n');
         detected.forEach(strategy => {
-          console.log(chalk.cyan(`  ${strategy.name}`), chalk.gray(`v${strategy.version}`));
+          Logger.output(chalk.cyan(`  ${strategy.name}`) + ' ' + chalk.gray(`v${strategy.version}`));
         });
       }
     });
@@ -74,23 +74,23 @@ export function registerStrategyCommand(): Command {
         process.exit(1);
       }
 
-      console.log(chalk.cyan(`\nStrategy: ${strategy.name}`));
-      console.log(chalk.gray(`Version: ${strategy.version}`));
+      Logger.info(`\nStrategy: ${strategy.name}`);
+      Logger.output(chalk.gray(`Version: ${strategy.version}`));
 
       if (strategy.fileTypes) {
-        console.log(`\nFile Types: ${strategy.fileTypes().join(', ')}`);
+        Logger.output(`\nFile Types: ${strategy.fileTypes().join(', ')}`);
       }
 
       if (strategy.commands) {
-        console.log('\nCommands:');
+        Logger.output('\nCommands:');
         Object.entries(strategy.commands).forEach(([cmd, details]) => {
-          console.log(`  - ${strategy.name}:${cmd}`, chalk.gray(`- ${details.description}`));
+          Logger.output(`  - ${strategy.name}:${cmd} ${chalk.gray(`- ${details.description}`)}`);
         });
       }
 
       const context = new StrategyContextImpl(process.cwd());
       const detected = await strategy.detect(context);
-      console.log(`\nDetected in current project: ${detected ? chalk.green('Yes') : chalk.red('No')}`);
+      Logger.output(`\nDetected in current project: ${detected ? chalk.green('Yes') : chalk.red('No')}`);
     });
 
   program
@@ -128,14 +128,14 @@ commands: {}
 `;
         try {
           fs.writeFileSync(filePath, template);
-          console.log(chalk.green(`\nStrategy created: ${filePath}`));
+          Logger.success(`\nStrategy created: ${filePath}`);
           Logger.info('\nNext steps:');
         } catch (err: any) {
           throw new FileWriteError(filePath, err);
         }
-        console.log(`  1. Edit the YAML file to configure detection rules`);
-        console.log(`  2. Run 'xray strategy detect' to verify it works`);
-        console.log(`  3. Test with 'xray explore ${name}:info'`);
+        Logger.output(`  1. Edit the YAML file to configure detection rules`);
+        Logger.output(`  2. Run 'xray strategy detect' to verify it works`);
+        Logger.output(`  3. Test with 'xray explore ${name}:info'`);
       } else {
         const template = `import { Strategy, StrategyContext, FileMetadata } from '../../../src/lib/strategy/types';
 
@@ -169,14 +169,14 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
 `;
         try {
           fs.writeFileSync(filePath, template);
-          console.log(chalk.green(`\nStrategy created: ${filePath}`));
+          Logger.success(`\nStrategy created: ${filePath}`);
           Logger.info('\nNext steps:');
         } catch (err: any) {
           throw new FileWriteError(filePath, err);
         }
-        console.log(`  1. Edit the strategy file to implement detection and analysis logic`);
-        console.log(`  2. Run 'xray strategy detect' to verify it works`);
-        console.log(`  3. Test with 'xray ${name}:info'`);
+        Logger.output(`  1. Edit the strategy file to implement detection and analysis logic`);
+        Logger.output(`  2. Run 'xray strategy detect' to verify it works`);
+        Logger.output(`  3. Test with 'xray ${name}:info'`);
       }
     });
 
@@ -194,7 +194,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         if (!fs.existsSync(globalPath)) {
           fs.mkdirSync(globalPath, { recursive: true });
         }
-        console.log(chalk.cyan(`Installing to global strategies: ${globalPath}`));
+        Logger.info(`Installing to global strategies: ${globalPath}`);
       }
 
       try {
@@ -210,7 +210,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
           strategyPath = absolutePath;
           strategyName = path.basename(absolutePath).replace(/\.(ts|js|yml|yaml)$/, '');
         } else {
-          console.log(chalk.yellow(`\nInstalling from npm: ${source}`));
+          Logger.warn(`\nInstalling from npm: ${source}`);
           const { execSync } = require('child_process');
           try {
             execSync(`npm install ${source}`, {
@@ -226,7 +226,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         }
 
         const strategy = await loader.loadStrategy(strategyPath);
-        console.log(chalk.green(`\nStrategy installed: ${strategy.name} v${strategy.version}`));
+        Logger.success(`\nStrategy installed: ${strategy.name} v${strategy.version}`);
       } catch (error: any) {
         Logger.error(`Failed to install strategy: ${error.message}`);
         process.exit(1);
@@ -261,7 +261,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         if (strategyFile) {
           const filePath = path.join(searchPath, strategyFile);
           fs.unlinkSync(filePath);
-          console.log(chalk.green(`Strategy removed: ${filePath}`));
+          Logger.success(`Strategy removed: ${filePath}`);
           removed = true;
           break;
         }
@@ -285,23 +285,23 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         process.exit(1);
       }
 
-      console.log(chalk.cyan(`\nValidating strategy: ${name}`));
-      console.log(`  Name: ${strategy.name}`);
-      console.log(`  Version: ${strategy.version}`);
-      console.log(`  Has detect: ${typeof strategy.detect === 'function' ? 'Yes' : 'No'}`);
-      console.log(`  Has analyze: ${typeof strategy.analyze === 'function' ? 'Yes' : 'No'}`);
-      console.log(`  Commands: ${strategy.commands ? Object.keys(strategy.commands).join(', ') : 'None'}`);
+      Logger.info(`\nValidating strategy: ${name}`);
+      Logger.output(`  Name: ${strategy.name}`);
+      Logger.output(`  Version: ${strategy.version}`);
+      Logger.output(`  Has detect: ${typeof strategy.detect === 'function' ? 'Yes' : 'No'}`);
+      Logger.output(`  Has analyze: ${typeof strategy.analyze === 'function' ? 'Yes' : 'No'}`);
+      Logger.output(`  Commands: ${strategy.commands ? Object.keys(strategy.commands).join(', ') : 'None'}`);
 
       const context = new StrategyContextImpl(process.cwd());
       try {
         const detected = await strategy.detect(context);
-        console.log(`  Detection test: ${detected ? chalk.green('Passed') : chalk.yellow('Not detected')}`);
+        Logger.output(`  Detection test: ${detected ? chalk.green('Passed') : chalk.yellow('Not detected')}`);
       } catch (error: any) {
-        console.log(`  Detection test: ${chalk.red('Error')}`);
+        Logger.output(`  Detection test: ${chalk.red('Error')}`);
         Logger.error(`  Error: ${error.message}`);
       }
 
-      console.log(chalk.green('\nValidation complete.'));
+      Logger.success('\nValidation complete.');
     });
 
   program
@@ -311,10 +311,10 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       const loader = new StrategyLoader();
       const paths = loader.getStrategyPaths();
 
-      console.log(chalk.cyan('\nStrategy Search Paths:\n'));
+      Logger.info('\nStrategy Search Paths:\n');
       paths.forEach((p, i) => {
         const exists = fs.existsSync(p);
-        console.log(`  ${i + 1}. ${p}`, chalk.gray(exists ? '' : '(not found)'));
+        Logger.output(`  ${i + 1}. ${p} ${chalk.gray(exists ? '' : '(not found)')}`);
       });
     });
 

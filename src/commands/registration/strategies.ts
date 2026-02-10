@@ -194,34 +194,34 @@ function displayStrategyResult(strategyName: string, cmdName: string, result: an
   const title = formatTitle(strategyName, cmdName);
 
   if (Array.isArray(result)) {
-    console.log(`\n${title}:\n`);
+    Logger.output(`\n${title}:\n`);
 
     if (result.length === 0) {
-      console.log('  (none found)');
+      Logger.output('  (none found)');
     } else {
       result.forEach((item: any) => {
         if (typeof item === 'object') {
           const name = item.name || item.title || item.id || JSON.stringify(item);
-          console.log(`  ${name}`);
+          Logger.output(`  ${name}`);
 
           if (item.file) {
-            console.log(`    → ${item.file}${item.line ? `:${item.line}` : ''}`);
+            Logger.output(`    → ${item.file}${item.line ? `:${item.line}` : ''}`);
           }
 
           if (item.description) {
-            console.log(`    ${item.description}`);
+            Logger.output(`    ${item.description}`);
           }
         } else {
-          console.log(`  ${item}`);
+          Logger.output(`  ${item}`);
         }
       });
     }
 
-    console.log(`\nTotal: ${result.length}\n`);
+    Logger.output(`\nTotal: ${result.length}\n`);
   } else if (typeof result === 'object' && result !== null) {
-    console.log(JSON.stringify(result, null, 2));
+    Logger.output(JSON.stringify(result, null, 2));
   } else if (result !== undefined && result !== null) {
-    console.log(result);
+    Logger.output(result);
   }
 }
 

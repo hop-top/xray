@@ -80,19 +80,19 @@ function registerAliasCommand(
 
 function displayResult(target: string, result: any): void {
   if (Array.isArray(result)) {
-    console.log(`\n${target}:\n`);
+    Logger.output(`\n${target}:\n`);
     if (result.length === 0) {
-      console.log('  (none found)');
+      Logger.output('  (none found)');
     } else {
       result.forEach((item: any) => {
-        console.log(`  ${item.name || item}`);
+        Logger.output(`  ${item.name || item}`);
         if (item.file) console.log(`    → ${item.file}`);
       });
     }
-    console.log(`\nTotal: ${result.length}\n`);
+    Logger.output(`\nTotal: ${result.length}\n`);
   } else if (typeof result === 'object') {
-    console.log(JSON.stringify(result, null, 2));
+    Logger.output(JSON.stringify(result, null, 2));
   } else {
-    console.log(result);
+    Logger.output(result);
   }
 }

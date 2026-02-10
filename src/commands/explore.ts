@@ -56,7 +56,7 @@ export const handleExploreAction = async (query: string | undefined, options: an
       });
 
       Logger.info(`Found ${files.length} file(s) matching pattern(s):\n`);
-      files.forEach(f => console.log(`  ${f}`));
+      files.forEach(f => Logger.output(`  ${f}`));
       return;
     }
 
@@ -96,14 +96,14 @@ export const handleExploreAction = async (query: string | undefined, options: an
 
       Logger.success(`Found matches in ${matches.length} file(s):\n`);
       matches.forEach(({ file, lines }) => {
-        console.log(require('chalk').cyan(`${file}:`));
+        Logger.output(require('chalk').cyan(`${file}:`));
         lines.slice(0, 5).forEach(({ lineNum, content, keyword }) => {
-          console.log(`  ${require('chalk').gray(`${lineNum}:`)} ${require('chalk').yellow(`[${keyword}]`)} ${content}`);
+          Logger.output(`  ${require('chalk').gray(`${lineNum}:`)} ${require('chalk').yellow(`[${keyword}]`)} ${content}`);
         });
         if (lines.length > 5) {
-          console.log(require('chalk').gray(`  ... and ${lines.length - 5} more matches`));
+          Logger.output(require('chalk').gray(`  ... and ${lines.length - 5} more matches`));
         }
-        console.log('');
+        Logger.output('');
       });
       return;
     }
@@ -126,14 +126,14 @@ export const handleExploreAction = async (query: string | undefined, options: an
       });
 
       Logger.info('Codebase Statistics:\n');
-      console.log(`  ${require('chalk').bold('Total Files:')} ${files.length}`);
-      console.log(`  ${require('chalk').bold('Total Lines:')} ${totalLines.toLocaleString()}\n`);
-      console.log(`  ${require('chalk').bold('Files by Type:')}`);
+      Logger.output(`  ${require('chalk').bold('Total Files:')} ${files.length}`);
+      Logger.output(`  ${require('chalk').bold('Total Lines:')} ${totalLines.toLocaleString()}\n`);
+      Logger.output(`  ${require('chalk').bold('Files by Type:')}`);
 
       Object.entries(extStats)
         .sort((a, b) => b[1] - a[1])
         .forEach(([ext, count]) => {
-          console.log(`    ${ext.padEnd(10)} ${count}`);
+          Logger.output(`    ${ext.padEnd(10)} ${count}`);
         });
       return;
     }
@@ -152,11 +152,11 @@ export const handleExploreAction = async (query: string | undefined, options: an
     Object.entries(byExt)
       .sort((a, b) => b[1].length - a[1].length)
       .forEach(([ext, fileList]) => {
-        console.log(require('chalk').cyan(`${ext} (${fileList.length}):`));
-        fileList.slice(0, 10).forEach(f => console.log(`  ${f}`));
+        Logger.output(require('chalk').cyan(`${ext} (${fileList.length}):`));
+        fileList.slice(0, 10).forEach(f => Logger.output(`  ${f}`));
         if (fileList.length > 10) {
-          console.log(require('chalk').gray(`  ... and ${fileList.length - 10} more`));
+          Logger.output(require('chalk').gray(`  ... and ${fileList.length - 10} more`));
         }
-        console.log('');
+        Logger.output('');
       });
 };

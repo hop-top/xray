@@ -68,4 +68,13 @@ export class Logger {
       console.log(message);
     }
   }
+
+  /**
+   * Unconditional output - bypasses log level filtering
+   * Use for command results, data output, and user-requested information
+   * Should NOT be used for status messages or diagnostics
+   */
+  static output(message: string): void {
+    console.log(message);
+  }
 }
