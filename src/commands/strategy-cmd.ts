@@ -6,6 +6,7 @@ import { Logger } from '../lib/logger';
 import { StrategyLoader } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
+import { FileWriteError } from '../lib/error/types';
 
 export function registerStrategyCommand(): Command {
   const program = new Command('strategy')
@@ -125,9 +126,13 @@ fileTypes: []
 tags: []
 commands: {}
 `;
-        fs.writeFileSync(filePath, template);
-        console.log(chalk.green(`\nStrategy created: ${filePath}`));
-        Logger.info('\nNext steps:');
+        try {
+          fs.writeFileSync(filePath, template);
+          console.log(chalk.green(`\nStrategy created: ${filePath}`));
+          Logger.info('\nNext steps:');
+        } catch (err: any) {
+          throw new FileWriteError(filePath, err);
+        }
         console.log(`  1. Edit the YAML file to configure detection rules`);
         console.log(`  2. Run 'xray strategy detect' to verify it works`);
         console.log(`  3. Test with 'xray explore ${name}:info'`);
@@ -162,9 +167,13 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
   }
 };
 `;
-        fs.writeFileSync(filePath, template);
-        console.log(chalk.green(`\nStrategy created: ${filePath}`));
-        Logger.info('\nNext steps:');
+        try {
+          fs.writeFileSync(filePath, template);
+          console.log(chalk.green(`\nStrategy created: ${filePath}`));
+          Logger.info('\nNext steps:');
+        } catch (err: any) {
+          throw new FileWriteError(filePath, err);
+        }
         console.log(`  1. Edit the strategy file to implement detection and analysis logic`);
         console.log(`  2. Run 'xray strategy detect' to verify it works`);
         console.log(`  3. Test with 'xray ${name}:info'`);

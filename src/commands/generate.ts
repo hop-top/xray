@@ -6,6 +6,7 @@ import { QueryResolver } from '../lib/query-resolver';
 import * as cliProgress from 'cli-progress';
 import { Logger } from '../lib/logger';
 import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase } from '../lib/config';
+import { FileWriteError } from '../lib/error/types';
 import { FileScanner } from '../lib/scanner';
 import { StrategyLoader } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
@@ -223,8 +224,12 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
       // Write all chunks to disk
       let filesWritten = 0;
       for (const [chunkPath, content] of chunks.entries()) {
-        fs.writeFileSync(chunkPath, content);
-        filesWritten++;
+        try {
+          fs.writeFileSync(chunkPath, content);
+          filesWritten++;
+        } catch (err: any) {
+          throw new FileWriteError(chunkPath, err);
+        }
       }
 
       Logger.success(`Analysis written to ${filesWritten} chunk files`);
@@ -262,9 +267,13 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
           tokenLimit: parseInt(mergedOptions.limit)
         });
 
-        fs.writeFileSync(sharePath, summary);
-        Logger.success(`Share summary written to ${sharePath}`);
-        Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
+        try {
+          fs.writeFileSync(sharePath, summary);
+          Logger.success(`Share summary written to ${sharePath}`);
+          Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
+        } catch (err: any) {
+          throw new FileWriteError(sharePath, err);
+        }
       }
     }
   } else {
@@ -344,14 +353,22 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
 
     const finalOutput = outputs.join('\n');
 
-    fs.writeFileSync(outputPath!, finalOutput);
-    Logger.success(`Analysis written to ${outputPath}`);
+    try {
+      fs.writeFileSync(outputPath!, finalOutput);
+      Logger.success(`Analysis written to ${outputPath}`);
+    } catch (err: any) {
+      throw new FileWriteError(outputPath!, err);
+    }
 
     if (shareRequested) {
       for (const share of shareSummaries) {
-        fs.writeFileSync(share.sharePath, share.summary);
-        Logger.success(`Share summary written to ${share.sharePath}`);
-        Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
+        try {
+          fs.writeFileSync(share.sharePath, share.summary);
+          Logger.success(`Share summary written to ${share.sharePath}`);
+          Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
+        } catch (err: any) {
+          throw new FileWriteError(share.sharePath, err);
+        }
       }
     }
   }

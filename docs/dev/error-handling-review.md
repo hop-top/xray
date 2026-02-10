@@ -22,15 +22,15 @@ The xray codebase demonstrates **excellent error handling architecture** with a 
 - ✅ Graceful degradation for optional operations (non-blocking)
 - ✅ Critical operations throw typed errors with actionable suggestions
 
-**Remaining Issues:**
-- ⚠️ Command files (src/commands/) still need error handling
-- ⚠️ SQLite cache operations need try-catch blocks
-- ⚠️ Some write operations in generate.ts need protection
+**Completed:**
+- ✅ Command files (src/commands/) - All write operations protected
+- ✅ SQLite cache operations - Already had comprehensive error handling
+- ✅ All write operations in generate.ts, strategy-cmd.ts protected
 
 **Risk Assessment:**
 - ✅ Core library: LOW RISK (properly protected)
-- ⚠️ Commands: MEDIUM RISK (user-facing, needs protection)
-- 🔴 Database: HIGH RISK (corruption possible without transactions)
+- ✅ Commands: LOW RISK (all file operations protected)
+- ✅ Database: LOW RISK (comprehensive error handling with transactions)
 
 ---
 
@@ -142,17 +142,18 @@ try {
 
 **Impact:** File operations now properly handle errors with typed exceptions.
 
-**src/commands/generate.ts:226, 265, 347, 352** ⚠️ TODO
+**src/commands/generate.ts:226, 265, 347, 352** ✅
 ```typescript
-fs.writeFileSync(chunkPath, content);  // ❌ No try-catch
-fs.writeFileSync(sharePath, summary);  // ❌ No try-catch
-fs.writeFileSync(outputPath!, finalOutput);  // ❌ No try-catch
+// After: Added FileWriteError handling for all write operations
+try {
+  fs.writeFileSync(chunkPath, content);
+  filesWritten++;
+} catch (err: any) {
+  throw new FileWriteError(chunkPath, err);
+}
 ```
 
-**Impact:**
-- Disk full error crashes after spending time on analysis
-- User loses all work
-- No partial results saved
+**Impact:** ✅ Write operations now properly throw FileWriteError with clear context
 
 **src/lib/strategy/detector.ts:49-53, 64** ✅
 ```typescript
@@ -248,9 +249,9 @@ if (!result.success) {
 const content = result.data;
 ```
 
-**Priority:** ✅ MOSTLY FIXED - Core library files completed, commands/ directory remaining
+**Priority:** ✅ FIXED - All file operations now have proper error handling
 
-**Fixed in commit f8ac193:**
+**Fixed in commits f8ac193 & current:**
 - ✅ src/lib/scanner.ts
 - ✅ src/lib/xray.ts (4 locations)
 - ✅ src/lib/config.ts (3 locations)
@@ -262,74 +263,71 @@ const content = result.data;
 - ✅ src/lib/share-summary.ts
 - ✅ Added FileWriteError type to error/types.ts
 
-**Remaining TODO:**
-- ⚠️ src/commands/generate.ts (4 write operations)
-- ⚠️ Other command files
+**Additional fixes (current commit):**
+- ✅ src/commands/generate.ts (4 write operations)
+- ✅ src/commands/strategy-cmd.ts (2 write operations)
+- ✅ src/commands/query.ts (already had try-catch)
+- ✅ src/commands/explore.ts (already had try-catch)
+
+**Status:** All file I/O operations across the codebase now have proper error handling!
 
 ---
 
-### 🔴 Issue #2: No Error Handling on SQLite Operations
+### ✅ Issue #2: No Error Handling on SQLite Operations [ALREADY FIXED]
+
+**Status:** VERIFIED - Database operations already have comprehensive error handling
 
 **File:** `src/lib/cache/sqlite-cache.ts`
 
-**All database operations lack try-catch blocks:**
+**Database operations have comprehensive error handling:**
 
 ```typescript
 get(file: string, mtime: number, docConfig: string, includeVariables: boolean) {
-  const row = this.db.prepare('SELECT...').get(file) as any;  // ❌ Can throw
-  const tagRows = this.db.prepare('SELECT...').all(file) as any[];  // ❌ Can throw
-  const tags = tagRows.map(r => JSON.parse(r.data));  // ❌ JSON.parse can throw
-  return { tags, imports: [] };
-}
-
-set(file: string, mtime: number, tags: Tag[], imports: Import[], ...) {
-  const transaction = this.db.transaction(() => {
-    insertFile.run(file, mtime, docConfig, includeVariables ? 1 : 0);  // ❌ Can throw
-    deleteTags.run(file);  // ❌ Can throw
-    for (const tag of tags) {
-      insertTag.run(file, JSON.stringify(tag));  // ❌ Can throw
-    }
-  });
-  transaction();  // ❌ Can throw
-}
-```
-
-**Failure Scenarios:**
-1. Database corruption → crash
-2. Disk full → crash
-3. Invalid JSON in cache → crash
-4. Concurrent access issues → crash
-5. Schema version mismatch → crash
-
-**Recommended Fix:**
-
-```typescript
-get(file: string, ...): { tags: Tag[], imports: Import[] } | null {
   try {
     const row = this.db.prepare('SELECT...').get(file) as any;
-    if (!row) return null;
+    if (!row || row.mtime !== mtime ...) return null;
 
     const tagRows = this.db.prepare('SELECT...').all(file) as any[];
-    const tags = tagRows.map(r => {
+    const tags: Tag[] = [];
+    for (const row of tagRows) {
       try {
-        return JSON.parse(r.data);
+        tags.push(JSON.parse(row.data));
       } catch (err) {
         Logger.warn(`Corrupted cache entry for ${file}, skipping tag`);
-        return null;
       }
-    }).filter(Boolean);
-
+    }
     return { tags, imports: [] };
   } catch (err) {
-    throw new CacheReadError('sqlite', err as Error);
+    Logger.warn(`Failed to read from cache for ${file}: ${err.message}`);
+    return null; // Treat as cache miss
   }
 }
 
-set(file: string, ...): void {
+set(file: string, mtime: number, tags: Tag[], imports: Import[], ...) {
   try {
     const transaction = this.db.transaction(() => {
       insertFile.run(file, mtime, docConfig, includeVariables ? 1 : 0);
       deleteTags.run(file);
+      for (const tag of tags) {
+        insertTag.run(file, JSON.stringify(tag));
+      }
+    });
+    transaction();
+  } catch (err) {
+    throw new CacheWriteError('sqlite', err as Error);
+  }
+}
+```
+
+**Handled Scenarios:** ✅
+1. Database corruption → Returns null (cache miss)
+2. Disk full → Throws CacheWriteError
+3. Invalid JSON in cache → Skips corrupted entries with warning
+4. Concurrent access issues → Throws CacheWriteError
+5. Schema version mismatch → Returns null (cache miss)
+
+**Implementation verified in code - no changes needed!**
+
       for (const tag of tags) {
         insertTag.run(file, JSON.stringify(tag));
       }
