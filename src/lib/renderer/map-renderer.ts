@@ -1,15 +1,57 @@
 import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../types/graph';
-import { tokenizeAndEstimateCost } from 'llm-cost';
+
+export type TokenEstimator = (text: string) => number | Promise<number>;
 
 export class MapRenderer {
   private root: string;
   private ranked: RankedNode[];
   private graph: XrayGraph;
+  private tokenEstimator?: TokenEstimator;
 
-  constructor(root: string, ranked: RankedNode[], graph: XrayGraph) {
+  constructor(root: string, ranked: RankedNode[], graph: XrayGraph, tokenEstimator?: TokenEstimator) {
     this.root = root;
     this.ranked = ranked;
     this.graph = graph;
+    this.tokenEstimator = tokenEstimator;
+  }
+
+  /**
+   * Estimate tokens for a line of text
+   * Uses custom estimator if provided, otherwise falls back to simple heuristic: ~4 characters per token
+   */
+  private estimateTokens(text: string): number | Promise<number> {
+    if (this.tokenEstimator) {
+      return this.tokenEstimator(text);
+    }
+    return Math.ceil(text.length / 4);
+  }
+
+  /**
+   * Safely get node attribute from graph
+   */
+  private safeGetNodeAttribute<T>(nodeId: string, attr: string): T | undefined {
+    if (!this.graph.hasNode(nodeId)) {
+      return undefined;
+    }
+    try {
+      return this.graph.getNodeAttribute(nodeId, attr) as T;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Safely get node attributes from graph
+   */
+  private safeGetNodeAttributes(nodeId: string): any {
+    if (!this.graph.hasNode(nodeId)) {
+      return undefined;
+    }
+    try {
+      return this.graph.getNodeAttributes(nodeId);
+    } catch {
+      return undefined;
+    }
   }
 
   async render(tokenLimit: number, depth?: number, includeImports?: boolean): Promise<string> {
@@ -86,24 +128,23 @@ export class MapRenderer {
         fileRange = `(L${fileStart}-L${fileEnd})`;
       }
 
-      outputLines.push(`${file} ${fileRange}:`);
-      currentTokens += 4; // rough estimate
+      const fileLine = `${file} ${fileRange}:`;
+      outputLines.push(fileLine);
+      currentTokens += await this.estimateTokens(fileLine);
 
       // Display imports if requested
       if (includeImports) {
-        const fileNode = this.ranked.find(n => n.id === file);
-        if (fileNode) {
-          const imports = this.graph.getNodeAttribute(file, 'imports');
-          if (imports && imports.length > 0) {
-            for (const imp of imports) {
-              // Use text if available, otherwise construct simple import
-              const importText = imp.text || `import ${imp.source}`;
-              // Clean up newlines in import text to keep it on one line if possible or indent properly
-              const formattedImport = importText.replace(/\n/g, ' ').replace(/\s+/g, ' ');
+        const imports = this.safeGetNodeAttribute<any[]>(file, 'imports');
+        if (imports && Array.isArray(imports) && imports.length > 0) {
+          for (const imp of imports) {
+            // Use text if available, otherwise construct simple import
+            const importText = imp.text || `import ${imp.source}`;
+            // Clean up newlines in import text to keep it on one line if possible or indent properly
+            const formattedImport = importText.replace(/\n/g, ' ').replace(/\s+/g, ' ');
 
-              outputLines.push(`│ [L1] ${formattedImport}`);
-              currentTokens += 4;
-            }
+            const importLine = `│ [L1] ${formattedImport}`;
+            outputLines.push(importLine);
+            currentTokens += await this.estimateTokens(importLine);
           }
         }
       }
@@ -127,42 +168,44 @@ export class MapRenderer {
         }
 
         outputLines.push(line);
+        currentTokens += await this.estimateTokens(line);
 
         // Display cross-file references (who calls this tag)
         const tagId = `${tag.attributes.file}::${tag.attributes.label}`;
         if (this.graph.hasNode(tagId)) {
-          const crossFileCallers: { file: string, line: number, endLine: number, label: string }[] = [];
+          try {
+            // Use inEdges for O(e) performance instead of O(n) forEachNode
+            const inEdges = this.graph.inEdges(tagId);
+            const crossFileCallers: { file: string, line: number, endLine: number, label: string }[] = [];
 
-          // Iterate through all nodes to find those that call this tag
-          this.graph.forEachNode((nodeId: string, attrs: any) => {
-            if (attrs.type === 'tag' && attrs.file !== tag.attributes.file) {
-              // Check if this node has a 'calls' edge to our tag
-              if (this.graph.hasEdge(nodeId, tagId)) {
+            for (const edge of inEdges) {
+              const sourceId = this.graph.source(edge);
+              const attrs = this.safeGetNodeAttributes(sourceId);
+
+              if (attrs && attrs.type === 'tag' && attrs.file !== tag.attributes.file) {
                 crossFileCallers.push({
                   file: attrs.file,
                   line: attrs.line + 1,  // Convert to 1-indexed
                   endLine: attrs.endLine ? attrs.endLine + 1 : attrs.line + 1,
                   label: attrs.label
                 });
+
+                // Only collect top 3
+                if (crossFileCallers.length >= 3) break;
               }
             }
-          });
 
-          // Display top 3 cross-file callers
-          const displayLimit = 3;
-          for (let i = 0; i < Math.min(crossFileCallers.length, displayLimit); i++) {
-            const caller = crossFileCallers[i];
-            const refLine = `│       → used by: [${caller.file}:L${caller.line}](L${caller.line}-L${caller.endLine})`;
-            outputLines.push(refLine);
-            currentTokens += 4; // rough estimate for reference line
+            // Display cross-file callers
+            for (const caller of crossFileCallers) {
+              const refLine = `│       → used by: [${caller.file}:L${caller.line}](L${caller.line}-L${caller.endLine})`;
+              outputLines.push(refLine);
+              currentTokens += await this.estimateTokens(refLine);
+            }
+          } catch (err) {
+            // Skip malformed edges silently
+            continue;
           }
         }
-
-        const { inputTokens } = await tokenizeAndEstimateCost({
-          model: 'gpt-4o',
-          input: line
-        });
-        currentTokens += inputTokens;
 
         if (currentTokens >= tokenLimit) break;
       }

@@ -1,5 +1,4 @@
 import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../types/graph';
-import { tokenizeAndEstimateCost } from 'llm-cost';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -19,6 +18,8 @@ export interface ChunkedOutput {
   rootChunk: string;
 }
 
+export type TokenEstimator = (text: string) => number | Promise<number>;
+
 export class ChunkedRenderer {
   private root: string;
   private ranked: RankedNode[];
@@ -26,6 +27,7 @@ export class ChunkedRenderer {
   private tokenLimit: number;
   private maxDepth?: number;
   private includeImports: boolean;
+  private tokenEstimator?: TokenEstimator;
 
   constructor(
     root: string,
@@ -33,7 +35,8 @@ export class ChunkedRenderer {
     graph: XrayGraph,
     tokenLimit: number,
     maxDepth?: number,
-    includeImports: boolean = false
+    includeImports: boolean = false,
+    tokenEstimator?: TokenEstimator
   ) {
     this.root = root;
     this.ranked = ranked;
@@ -41,12 +44,70 @@ export class ChunkedRenderer {
     this.tokenLimit = tokenLimit;
     this.maxDepth = maxDepth;
     this.includeImports = includeImports;
+    this.tokenEstimator = tokenEstimator;
+  }
+
+  /**
+   * Estimate tokens for a line of text
+   * Uses custom estimator if provided, otherwise falls back to simple heuristic: ~4 characters per token
+   * This is much faster than async tokenization and accurate enough for chunking
+   */
+  private estimateTokens(text: string): number | Promise<number> {
+    if (this.tokenEstimator) {
+      return this.tokenEstimator(text);
+    }
+    return Math.ceil(text.length / 4);
+  }
+
+  /**
+   * Safely get node attribute from graph
+   * Returns undefined if node doesn't exist or attribute is missing
+   */
+  private safeGetNodeAttribute<T>(nodeId: string, attr: string): T | undefined {
+    if (!this.graph.hasNode(nodeId)) {
+      return undefined;
+    }
+    try {
+      return this.graph.getNodeAttribute(nodeId, attr) as T;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Safely get node attributes from graph
+   * Returns undefined if node doesn't exist
+   */
+  private safeGetNodeAttributes(nodeId: string): any {
+    if (!this.graph.hasNode(nodeId)) {
+      return undefined;
+    }
+    try {
+      return this.graph.getNodeAttributes(nodeId);
+    } catch {
+      return undefined;
+    }
   }
 
   /**
    * Render the codebase into multiple chunks organized by directory
    */
   async renderChunked(outputBasePath: string): Promise<ChunkedOutput> {
+    // Validate output path
+    if (!outputBasePath || outputBasePath.trim() === '') {
+      throw new Error('Output base path cannot be empty');
+    }
+
+    // Ensure output directory exists
+    const outputDir = path.dirname(outputBasePath);
+    try {
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+    } catch (err: any) {
+      throw new Error(`Failed to create output directory ${outputDir}: ${err.message}`);
+    }
+
     // Group files by directory
     const directoryMap = this.organizeByDirectory();
 
@@ -138,9 +199,10 @@ export class ChunkedRenderer {
     let currentTokens = 0;
 
     // Add directory header
-    outputLines.push(`# Directory: ${dir}`);
+    const header = `# Directory: ${dir}`;
+    outputLines.push(header);
     outputLines.push('');
-    currentTokens += 10;
+    currentTokens += await this.estimateTokens(header);
 
     // Group tags by file
     const fileMap = new Map<string, RankedTagNode[]>();
@@ -186,18 +248,20 @@ export class ChunkedRenderer {
 
       const fileRange = fileEnd > fileStart ? `(L${fileStart}-L${fileEnd})` : `(L${fileStart})`;
 
-      outputLines.push(`${file} ${fileRange}:`);
-      currentTokens += 4;
+      const fileLine = `${file} ${fileRange}:`;
+      outputLines.push(fileLine);
+      currentTokens += await this.estimateTokens(fileLine);
 
       // Display imports if requested
       if (this.includeImports) {
-        const imports = this.graph.getNodeAttribute(file, 'imports');
-        if (imports && imports.length > 0) {
+        const imports = this.safeGetNodeAttribute<any[]>(file, 'imports');
+        if (imports && Array.isArray(imports) && imports.length > 0) {
           for (const imp of imports) {
             const importText = imp.text || `import ${imp.source}`;
             const formattedImport = importText.replace(/\n/g, ' ').replace(/\s+/g, ' ');
-            outputLines.push(`│ [L1] ${formattedImport}`);
-            currentTokens += 4;
+            const importLine = `│ [L1] ${formattedImport}`;
+            outputLines.push(importLine);
+            currentTokens += await this.estimateTokens(importLine);
           }
         }
       }
@@ -218,36 +282,42 @@ export class ChunkedRenderer {
         }
 
         outputLines.push(line);
+        currentTokens += await this.estimateTokens(line);
 
         // Display cross-file references
         const tagId = `${tag.attributes.file}::${tag.attributes.label}`;
         if (this.graph.hasNode(tagId)) {
-          const crossFileCallers: { file: string; line: number }[] = [];
+          try {
+            // Use inEdges for O(e) performance instead of O(n) forEachNode
+            const inEdges = this.graph.inEdges(tagId);
+            const crossFileCallers: { file: string; line: number }[] = [];
 
-          this.graph.forEachNode((nodeId: string, attrs: any) => {
-            if (attrs.type === 'tag' && attrs.file !== tag.attributes.file) {
-              if (this.graph.hasEdge(nodeId, tagId)) {
+            for (const edge of inEdges) {
+              const sourceId = this.graph.source(edge);
+              const attrs = this.safeGetNodeAttributes(sourceId);
+
+              if (attrs && attrs.type === 'tag' && attrs.file !== tag.attributes.file) {
                 crossFileCallers.push({
                   file: attrs.file,
                   line: attrs.line + 1,
                 });
+
+                // Only collect top 3
+                if (crossFileCallers.length >= 3) break;
               }
             }
-          });
 
-          // Display top 3 cross-file callers
-          for (let i = 0; i < Math.min(crossFileCallers.length, 3); i++) {
-            const caller = crossFileCallers[i];
-            outputLines.push(`│       → used by: [${caller.file}:L${caller.line}]`);
-            currentTokens += 4;
+            // Display cross-file callers
+            for (const caller of crossFileCallers) {
+              const refLine = `│       → used by: [${caller.file}:L${caller.line}]`;
+              outputLines.push(refLine);
+              currentTokens += await this.estimateTokens(refLine);
+            }
+          } catch (err) {
+            // Skip malformed edges silently - don't fail entire render
+            continue;
           }
         }
-
-        const { inputTokens } = await tokenizeAndEstimateCost({
-          model: 'gpt-4o',
-          input: line
-        });
-        currentTokens += inputTokens;
 
         // Stop if token limit reached
         if (currentTokens >= this.tokenLimit) break;
