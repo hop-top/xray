@@ -97,11 +97,21 @@ function registerStrategyCommand(program: Command, strategy: Strategy): void {
       continue;
     }
 
-    strategyCmd
+    const cmd = strategyCmd
       .command(cmdName)
       .description(cmdDef.description || `Execute ${cmdName} command`)
-      .option('-p, --path <path>', 'Project path to analyze', process.cwd())
-      .allowUnknownOption() // Allow strategy-specific options
+      .option('-p, --path <path>', 'Project path to analyze', process.cwd());
+
+    // Register strategy-specific options if defined
+    if (cmdDef.options) {
+      for (const [optName, optDesc] of Object.entries(cmdDef.options)) {
+        const optFlag = `--${optName} ${optName.includes('show-') ? '' : `<${optName}>`}`.trim();
+        cmd.option(optFlag, optDesc as string);
+      }
+    }
+
+    cmd
+      .allowUnknownOption() // Allow additional strategy-specific options
       .action(async (options: StrategyCommandOptions, command: Command) => {
         await executeStrategyCommand(strategy, cmdName, cmdDef, options, command);
       });
