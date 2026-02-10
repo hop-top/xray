@@ -30,14 +30,20 @@ export class StrategyLoader {
 
     // 5. Built-in strategies
     // When running from bin/strategy/loader.js, __dirname is bin/strategy/
-    // Try compiled strategies first (bin/strategies/), fall back to source (strategies/)
-    const compiledStrategiesPath = path.join(__dirname, '../strategies');
-    const sourceStrategiesPath = path.join(__dirname, '../../strategies');
+    // When running from src (TypeScript/tests), __dirname is src/lib/strategy/
+    // Try multiple locations:
+    const possiblePaths = [
+      path.join(__dirname, '../strategies'),           // From dist/lib/strategy -> dist/strategies
+      path.join(__dirname, '../../strategies'),        // From src/lib/strategy -> src/strategies (doesn't exist)
+      path.join(__dirname, '../../../strategies'),     // From src/lib/strategy -> strategies (source)
+      path.join(__dirname, '../../../dist/strategies') // From src/lib/strategy -> dist/strategies (compiled)
+    ];
 
-    if (fs.existsSync(compiledStrategiesPath)) {
-      paths.push(compiledStrategiesPath);
-    } else if (fs.existsSync(sourceStrategiesPath)) {
-      paths.push(sourceStrategiesPath);
+    for (const strategiesPath of possiblePaths) {
+      if (fs.existsSync(strategiesPath)) {
+        paths.push(strategiesPath);
+        break; // Use the first one found
+      }
     }
 
     return paths;
