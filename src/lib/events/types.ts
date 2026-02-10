@@ -1,6 +1,6 @@
 import Graph from 'graphology';
 import { Tag, Import } from '../parser/types';
-import { RankedNode } from '../graph/ranker';
+import { RankedNode } from '../../types/graph';
 import { XrayConfig } from '../xray';
 
 export interface XrayEvents {

@@ -5,6 +5,7 @@ import { StrategyContextImpl } from '../../lib/strategy/context';
 import { Strategy } from '../../lib/strategy/types';
 import { Logger } from '../../lib/logger';
 import { StrategyCacheManager } from './cache';
+import { StrategyCommandOptions } from '../../types/command-options';
 
 /**
  * Register dynamic strategy commands
@@ -101,7 +102,7 @@ function registerStrategyCommand(program: Command, strategy: Strategy): void {
       .description(cmdDef.description || `Execute ${cmdName} command`)
       .option('-p, --path <path>', 'Project path to analyze', process.cwd())
       .allowUnknownOption() // Allow strategy-specific options
-      .action(async (options: any, command: Command) => {
+      .action(async (options: StrategyCommandOptions, command: Command) => {
         await executeStrategyCommand(strategy, cmdName, cmdDef, options, command);
       });
   }
@@ -114,7 +115,7 @@ async function executeStrategyCommand(
   strategy: Strategy,
   cmdName: string,
   cmdDef: any,
-  options: any,
+  options: StrategyCommandOptions,
   command: Command
 ): Promise<void> {
   const projectPath = options.path || process.cwd();

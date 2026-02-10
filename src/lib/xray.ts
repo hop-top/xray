@@ -15,6 +15,7 @@ import { PluginManager, XrayPlugin } from './events/plugin';
 import { TelemetryPlugin } from './plugins/telemetry-plugin';
 import { loadConfig } from './config';
 import { FileReadError, FileAccessError } from './error/types';
+import { XrayGraph, RankedNode } from '../types/graph';
 
 // Export strategy module
 export * as strategy from './strategy';
@@ -57,8 +58,8 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
   private config: XrayConfig;
   private cache: SqliteCache;
   private pluginManager: PluginManager;
-  private lastGraph?: any;
-  private lastRankedNodes?: any[];
+  private lastGraph?: XrayGraph;
+  private lastRankedNodes?: RankedNode[];
 
   constructor(config: XrayConfig) {
     super();
@@ -105,7 +106,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     return this.pluginManager.list();
   }
 
-  getLastGraph(): { graph?: any; rankedNodes?: any[] } {
+  getLastGraph(): { graph?: XrayGraph; rankedNodes?: RankedNode[] } {
     return {
       graph: this.lastGraph,
       rankedNodes: this.lastRankedNodes
@@ -215,7 +216,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     await this.emitAsyncParallel('progress', { stage, current, total, message });
   }
 
-  private async buildGraphWithEvents(files: string[]): Promise<{ rankedNodes: any[]; graph: any }> {
+  private async buildGraphWithEvents(files: string[]): Promise<{ rankedNodes: RankedNode[]; graph: XrayGraph }> {
     const parser = new ParserManager(this.config.path);
     const graphBuilder = new GraphBuilder();
 
@@ -348,7 +349,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
   /**
    * Get the graph builder for external access (used by chunked rendering)
    */
-  async buildGraph(): Promise<{ rankedNodes: any[]; graph: any }> {
+  async buildGraph(): Promise<{ rankedNodes: RankedNode[]; graph: XrayGraph }> {
     // 1. Scan Files
     const scanner = new FileScanner(this.config.path);
     const files = scanner.scan();

@@ -166,4 +166,24 @@ export class StrategyContextImpl implements StrategyContext {
   clearCachedPattern(pattern: string): void {
     this.globCache.delete(pattern);
   }
+
+  /**
+   * Add a file tag to the context
+   */
+  addFileTag(file: string, tag: string): void {
+    if (!this.fileTags.has(file)) {
+      this.fileTags.set(file, new Set());
+    }
+    this.fileTags.get(file)!.add(tag);
+  }
+
+  /**
+   * Set file metadata for a strategy
+   */
+  setFileMetadata(file: string, strategy: string, metadata: any): void {
+    if (!this.fileMetadata.has(file)) {
+      this.fileMetadata.set(file, new Map());
+    }
+    this.fileMetadata.get(file)!.set(strategy, metadata);
+  }
 }

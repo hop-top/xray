@@ -1,5 +1,4 @@
-import Graph from 'graphology';
-import { RankedNode } from '../graph/ranker';
+import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../types/graph';
 import { tokenizeAndEstimateCost } from 'llm-cost';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -23,7 +22,7 @@ export interface ChunkedOutput {
 export class ChunkedRenderer {
   private root: string;
   private ranked: RankedNode[];
-  private graph: Graph;
+  private graph: XrayGraph;
   private tokenLimit: number;
   private maxDepth?: number;
   private includeImports: boolean;
@@ -31,7 +30,7 @@ export class ChunkedRenderer {
   constructor(
     root: string,
     ranked: RankedNode[],
-    graph: Graph,
+    graph: XrayGraph,
     tokenLimit: number,
     maxDepth?: number,
     includeImports: boolean = false
@@ -110,7 +109,7 @@ export class ChunkedRenderer {
     const directoryMap = new Map<string, RankedNode[]>();
 
     for (const node of this.ranked) {
-      if (node.data.type === 'file') {
+      if (node.attributes.type === 'file') {
         const dir = path.dirname(node.id);
         if (!directoryMap.has(dir)) {
           directoryMap.set(dir, []);
@@ -120,8 +119,8 @@ export class ChunkedRenderer {
 
     // Assign tags to their file's directory
     for (const node of this.ranked) {
-      if (node.data.type === 'tag') {
-        const dir = path.dirname(node.data.file);
+      if (node.attributes.type === 'tag') {
+        const dir = path.dirname(node.attributes.file);
         if (directoryMap.has(dir)) {
           directoryMap.get(dir)!.push(node);
         }
@@ -144,11 +143,11 @@ export class ChunkedRenderer {
     currentTokens += 10;
 
     // Group tags by file
-    const fileMap = new Map<string, RankedNode[]>();
+    const fileMap = new Map<string, RankedTagNode[]>();
 
     for (const node of nodes) {
-      if (node.data.type === 'tag') {
-        const file = node.data.file;
+      if (isRankedTagNode(node)) {
+        const file = node.attributes.file;
         if (!fileMap.has(file)) fileMap.set(file, []);
         fileMap.get(file)!.push(node);
       }
@@ -157,8 +156,8 @@ export class ChunkedRenderer {
     // Get file scores for sorting
     const fileScores = new Map<string, number>();
     for (const node of this.ranked) {
-      if (node.data.type === 'file' && path.dirname(node.id) === dir) {
-        fileScores.set(node.id, node.score);
+      if (node.attributes.type === 'file' && path.dirname(node.id) === dir) {
+        fileScores.set(node.id, node.rank);
       }
     }
 
@@ -174,15 +173,15 @@ export class ChunkedRenderer {
       const tags = fileMap.get(file)!;
 
       // Sort tags by line number
-      tags.sort((a, b) => a.data.line - b.data.line);
+      tags.sort((a, b) => a.attributes.line - b.attributes.line);
 
       // Calculate file line range
       let fileStart = 1;
       let fileEnd = 1;
       if (tags.length > 0) {
-        fileStart = tags[0].data.line + 1;
+        fileStart = tags[0].attributes.line + 1;
         const lastTag = tags[tags.length - 1];
-        fileEnd = lastTag.data.endLine ? lastTag.data.endLine + 1 : lastTag.data.line + 1;
+        fileEnd = lastTag.attributes.endLine ? lastTag.attributes.endLine + 1 : lastTag.attributes.line + 1;
       }
 
       const fileRange = fileEnd > fileStart ? `(L${fileStart}-L${fileEnd})` : `(L${fileStart})`;
@@ -192,7 +191,7 @@ export class ChunkedRenderer {
 
       // Display imports if requested
       if (this.includeImports) {
-        const imports = (this.graph as any).getNodeAttribute(file, 'imports') as any[];
+        const imports = this.graph.getNodeAttribute(file, 'imports');
         if (imports && imports.length > 0) {
           for (const imp of imports) {
             const importText = imp.text || `import ${imp.source}`;
@@ -205,29 +204,29 @@ export class ChunkedRenderer {
 
       // Render tags
       for (const tag of tags) {
-        const signature = tag.data.signature || '';
-        const startLine = tag.data.line + 1;
-        const endLine = tag.data.endLine ? tag.data.endLine + 1 : startLine;
+        const signature = tag.attributes.signature || '';
+        const startLine = tag.attributes.line + 1;
+        const endLine = tag.attributes.endLine ? tag.attributes.endLine + 1 : startLine;
 
         const lineRange = endLine > startLine ? `[L${startLine}-L${endLine}]` : `[L${startLine}]`;
 
-        let line = `│ ${lineRange} ${tag.data.kind} ${tag.data.label}${signature}`;
+        let line = `│ ${lineRange} ${tag.attributes.kind} ${tag.attributes.label}${signature}`;
 
-        if (tag.data.doc) {
-          const doc = tag.data.doc.length > 50 ? tag.data.doc.substring(0, 47) + '...' : tag.data.doc;
+        if (tag.attributes.doc) {
+          const doc = tag.attributes.doc.length > 50 ? tag.attributes.doc.substring(0, 47) + '...' : tag.attributes.doc;
           line += `  # ${doc}`;
         }
 
         outputLines.push(line);
 
         // Display cross-file references
-        const tagId = `${tag.data.file}::${tag.data.label}`;
-        if ((this.graph as any).hasNode(tagId)) {
+        const tagId = `${tag.attributes.file}::${tag.attributes.label}`;
+        if (this.graph.hasNode(tagId)) {
           const crossFileCallers: { file: string; line: number }[] = [];
 
-          (this.graph as any).forEachNode((nodeId: string, attrs: any) => {
-            if (attrs.type === 'tag' && attrs.file !== tag.data.file) {
-              if ((this.graph as any).hasEdge(nodeId, tagId)) {
+          this.graph.forEachNode((nodeId: string, attrs: any) => {
+            if (attrs.type === 'tag' && attrs.file !== tag.attributes.file) {
+              if (this.graph.hasEdge(nodeId, tagId)) {
                 crossFileCallers.push({
                   file: attrs.file,
                   line: attrs.line + 1,

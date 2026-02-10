@@ -1,0 +1,187 @@
+/**
+ * Command Options Type Definitions
+ * ==================================
+ *
+ * Type-safe interfaces for CLI command options.
+ *
+ * These types provide:
+ * - IntelliSense support in command handlers
+ * - Compile-time validation of option access
+ * - Self-documenting CLI interface
+ */
+
+/**
+ * Base options available to all commands
+ */
+export interface BaseCommandOptions {
+  /** Verbosity level: silent, error, warn, info (default), debug */
+  verbose?: 'silent' | 'error' | 'warn' | 'info' | 'debug';
+
+  /** Path to config file (auto-detect if not specified) */
+  config?: string;
+
+  /** Disable telemetry for this session */
+  telemetry?: boolean;
+}
+
+/**
+ * Common options shared by analysis commands (map, scan, graph, generate)
+ */
+export interface CommonAnalysisOptions extends BaseCommandOptions {
+  /** Root directory to analyze (repeatable) */
+  path?: string[];
+
+  /** Output file path */
+  output?: string;
+
+  /** Token limit per chunk (default: 4096) */
+  limit?: string | number;
+
+  /** Include features: vars, incs, cost, docs, df, cf (repeatable) */
+  with?: string[];
+
+  /** Focus on specific file (Personalized PageRank) */
+  anchor?: string;
+
+  /** Maximum depth of tree to render */
+  depth?: string | number;
+
+  /** Override query (e.g. .ts:path, path/to/dir, url) (repeatable) */
+  query?: string[];
+
+  /** Match filename pattern (prefix ! to negate) (repeatable) */
+  match?: string[];
+
+  /** Match function/class name (prefix ! to negate) (repeatable) */
+  catch?: string[];
+
+  /** Output in text format (default) */
+  txt?: boolean;
+
+  /** Output in CSV format */
+  csv?: boolean;
+
+  /** Output in XML format */
+  xml?: boolean;
+
+  /** Output raw JSON graph */
+  json?: boolean;
+
+  /** Generate Mermaid diagram (default) */
+  mermaid?: boolean;
+
+  /** Generate DOT diagram */
+  dot?: boolean;
+
+  /** Disable chunked output (single file output) */
+  chunk?: boolean;
+
+  /** Use named preset from config file */
+  preset?: string;
+
+  /** Use specific scope from config file */
+  scope?: string;
+
+  /** Run all scopes defined in config file */
+  allScopes?: boolean;
+
+  /** Enable strategy detection */
+  detect?: boolean;
+
+  /** Skip strategy detection and auto-configuration */
+  skipDetect?: boolean;
+
+  /** Generate a shareable summary markdown (optional path override) */
+  share?: boolean | string;
+}
+
+/**
+ * Options for the query command
+ */
+export interface QueryCommandOptions extends BaseCommandOptions {
+  /** Path to saved graph JSON file */
+  graph?: string;
+
+  /** Output format: json, table, tree (default: table) */
+  format?: 'json' | 'table' | 'tree';
+
+  /** List available query adapters */
+  listAdapters?: boolean;
+}
+
+/**
+ * Options for the explore command
+ */
+export interface ExploreCommandOptions extends BaseCommandOptions {
+  /** Root directory to explore (repeatable) */
+  path?: string[];
+
+  /** Find files matching pattern (e.g., wildcard patterns) (repeatable) */
+  match?: string[];
+
+  /** Search for keyword in code (repeatable) */
+  search?: string[];
+
+  /** Filter by file extension (e.g., ts, js, py) (repeatable) */
+  type?: string[];
+
+  /** List all available strategies */
+  listStrategies?: boolean;
+
+  /** Show file statistics */
+  stats?: boolean;
+}
+
+/**
+ * Options for strategy commands
+ */
+export interface StrategyCommandOptions extends BaseCommandOptions {
+  /** Output in JSON format */
+  json?: boolean;
+
+  /** Root path for strategy operations */
+  path?: string;
+}
+
+/**
+ * Options for the clear-cache command
+ */
+export interface ClearCacheCommandOptions extends BaseCommandOptions {
+  // No additional options beyond base
+}
+
+/**
+ * Options for the completion command
+ */
+export interface CompletionCommandOptions extends BaseCommandOptions {
+  // Shell type is passed as an argument, not an option
+}
+
+/**
+ * Options for alias commands
+ */
+export interface AliasCommandOptions extends BaseCommandOptions {
+  /** Root path for alias operations */
+  path?: string;
+
+  /** List all aliases */
+  list?: boolean;
+
+  /** Delete an alias */
+  delete?: string;
+
+  /** Force operation without confirmation */
+  force?: boolean;
+}
+
+/**
+ * Union type of all command options for generic handlers
+ */
+export type AnyCommandOptions =
+  | CommonAnalysisOptions
+  | QueryCommandOptions
+  | ExploreCommandOptions
+  | StrategyCommandOptions
+  | ClearCacheCommandOptions
+  | CompletionCommandOptions
+  | AliasCommandOptions;

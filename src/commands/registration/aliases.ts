@@ -4,6 +4,7 @@ import { StrategyLoader } from '../../lib/strategy/loader';
 import { StrategyContextImpl } from '../../lib/strategy/context';
 import { Logger } from '../../lib/logger';
 import { loadConfig } from '../../lib/config';
+import { AliasCommandOptions } from '../../types/command-options';
 
 export async function registerAliases(program: Command): Promise<void> {
   const config = loadConfig();
@@ -63,7 +64,7 @@ function registerAliasCommand(
     .description(`Alias for: ${target}`)
     .option('-p, --path <path>', 'Project path', process.cwd())
     .allowUnknownOption()
-    .action(async (options: any) => {
+    .action(async (options: AliasCommandOptions) => {
       Logger.debug(`Executing alias "${alias}" → "${target}"`);
 
       const context = new StrategyContextImpl(options.path || process.cwd());

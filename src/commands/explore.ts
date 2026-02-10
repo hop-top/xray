@@ -3,8 +3,9 @@ import * as path from 'path';
 import { Logger } from '../lib/logger';
 import { FileScanner } from '../lib/scanner';
 import { resolvePath } from './common';
+import { ExploreCommandOptions } from '../types/command-options';
 
-export const handleExploreAction = async (query: string | undefined, options: any) => {
+export const handleExploreAction = async (query: string | undefined, options: ExploreCommandOptions) => {
   const paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()])
       .map(resolvePath)
       .filter(Boolean) as string[];
@@ -37,7 +38,7 @@ export const handleExploreAction = async (query: string | undefined, options: an
         const fileName = path.basename(f).toLowerCase();
         const filePath = f.toLowerCase();
 
-        return options.match.some((pattern: string) => {
+        return options.match!.some((pattern: string) => {
           const isNegated = pattern.startsWith('!');
           const actualPattern = (isNegated ? pattern.slice(1) : pattern).toLowerCase();
 

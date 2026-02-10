@@ -5,6 +5,7 @@ import { Logger } from '../lib/logger';
 import { registerCoreCommands } from './registration/core';
 import { registerStrategyCommands } from './registration/strategies';
 import { registerAliases } from './registration/aliases';
+import { ExploreCommandOptions } from '../types/command-options';
 
 const program = new Command();
 
@@ -60,10 +61,9 @@ function registerExploreCommand(): void {
       return previous.concat([value]);
     }, [])
     .option('--list-strategies', 'List all available strategies')
-    .action(async (query: string | undefined, options: any) => {
-      // List available strategies
+    .action(async (query: string | undefined, options: ExploreCommandOptions) => {
       if (options.listStrategies) {
-        await handleMetaStrategyCommand('list', options);
+        await handleMetaStrategyCommand('list', options as any);
         return;
       }
 

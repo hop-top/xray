@@ -1,17 +1,11 @@
-const Graph = require('graphology');
 import * as pagerank from 'graphology-metrics/centrality';
 import { Logger } from '../logger';
-
-export interface RankedNode {
-  id: string;
-  score: number;
-  data: any;
-}
+import { XrayGraph, NodeAttributes, RankedNode } from '../../types/graph';
 
 export class Ranker {
-  private graph: any;
+  private graph: XrayGraph;
 
-  constructor(graph: any) {
+  constructor(graph: XrayGraph) {
     this.graph = graph;
   }
 
@@ -26,10 +20,10 @@ export class Ranker {
     // 2. Apply Heuristics (HSIR) & Focus Boosting
     const ranked: RankedNode[] = [];
 
-    this.graph.forEachNode((node: string, attr: any) => {
+    this.graph.forEachNode((node: string, attr: NodeAttributes) => {
       let score = scores[node];
 
-      // Heuristic: Boost short, clear names? 
+      // Heuristic: Boost short, clear names?
       // Heuristic: Boost files over tags slightly for structure?
       if (attr.type === 'file') {
         score *= 1.2; // Boost files to ensure they appear as containers
@@ -49,14 +43,14 @@ export class Ranker {
         }
       }
 
-      ranked.push({ id: node, score, data: attr });
+      ranked.push({ id: node, rank: score, attributes: attr });
     });
 
     // Sort descending
-    const sorted = ranked.sort((a, b) => b.score - a.score);
+    const sorted = ranked.sort((a, b) => b.rank - a.rank);
 
     Logger.info('Top 5 ranked nodes:');
-    sorted.slice(0, 5).forEach(n => Logger.log(`  ${n.id}: ${n.score.toFixed(4)}`));
+    sorted.slice(0, 5).forEach(n => Logger.log(`  ${n.id}: ${n.rank.toFixed(4)}`));
 
     return sorted;
   }

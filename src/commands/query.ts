@@ -4,8 +4,9 @@ import { GraphSerializer } from '../lib/graph/serializer';
 import { QueryAdapterRegistry } from '../lib/query/registry';
 import { FunctionAdapter } from '../lib/query/adapters/function';
 import type { QueryResult } from '../lib/query/types';
+import { QueryCommandOptions } from '../types/command-options';
 
-export async function handleQueryAction(query: string, options: any): Promise<any> {
+export async function handleQueryAction(query: string, options: QueryCommandOptions): Promise<any> {
   if (options.listAdapters) {
     return listAdapters();
   }

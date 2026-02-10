@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { RankedNode } from './graph/ranker';
+import { RankedNode, isRankedTagNode } from '../types/graph';
 import { ChunkMetadata } from './renderer/chunked-renderer';
 
 export interface ShareSummaryOptions {
@@ -54,8 +54,8 @@ export const buildShareSummary = (options: ShareSummaryOptions): string => {
   const outputDisplay = toDisplayPath(options.outputPath, options.projectPath);
   const rootChunkDisplay = options.rootChunk ? toDisplayPath(options.rootChunk, options.projectPath) : undefined;
 
-  const fileNodes = options.rankedNodes.filter(node => node.data?.type === 'file');
-  const tagNodes = options.rankedNodes.filter(node => node.data?.type === 'tag');
+  const fileNodes = options.rankedNodes.filter(node => node.attributes?.type === 'file');
+  const tagNodes = options.rankedNodes.filter(node => node.attributes?.type === 'tag');
 
   const topFiles = fileNodes
     .slice(0, 5)
@@ -65,8 +65,8 @@ export const buildShareSummary = (options: ShareSummaryOptions): string => {
   const topTags = tagNodes
     .slice(0, 5)
     .map(node => {
-      const label = node.data?.label || node.id;
-      const file = node.data?.file;
+      const label = node.attributes?.label || node.id;
+      const file = isRankedTagNode(node) ? node.attributes.file : undefined;
       return file ? `\`${label}\` (${file})` : `\`${label}\``;
     })
     .join(', ') || '(none)';

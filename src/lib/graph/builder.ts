@@ -1,11 +1,12 @@
-const Graph = require('graphology');
+import Graph from 'graphology';
 import { Tag, Import } from '../parser/types';
 import { AsyncEventEmitter } from '../events/async-emitter';
+import { XrayGraph, NodeAttributes, EdgeAttributes } from '../../types/graph';
 
 interface GraphBuilderEvents {
   'node:add': {
     nodeId: string;
-    attrs: any;
+    attrs: NodeAttributes;
     skip?: boolean;
   };
 
@@ -13,7 +14,7 @@ interface GraphBuilderEvents {
     source: string;
     target: string;
     type: 'defines' | 'calls';
-    attrs?: any;
+    attrs?: EdgeAttributes;
     skip?: boolean;
   };
 
@@ -31,18 +32,18 @@ interface GraphBuilderEvents {
 }
 
 export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
-  private graph: any;
+  private graph: XrayGraph;
   private pendingReferences: Map<string, { tagId: string, references: string[] }> = new Map();
 
   constructor() {
     super();
-    this.graph = new Graph({ multi: true, type: 'directed' });
+    this.graph = new Graph<NodeAttributes, EdgeAttributes>({ multi: true, type: 'directed' });
   }
 
   async addFile(file: string, tags: Tag[], imports: Import[]) {
     // Add File Node
     if (!this.graph.hasNode(file)) {
-      const nodeEvent = { nodeId: file, attrs: { type: 'file', label: file }, skip: false };
+      const nodeEvent = { nodeId: file, attrs: { type: 'file' as const, label: file }, skip: false };
       await this.emitAsync('node:add', nodeEvent);
 
       if (!nodeEvent.skip) {
@@ -51,8 +52,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     }
 
     // Collect all node events first
-    const nodeEvents: Array<{ nodeId: string, attrs: any, skip: boolean, tagId: string }> = [];
-    const edgeEvents: Array<{ source: string, target: string, type: 'defines', attrs: any, skip: boolean }> = [];
+    const nodeEvents: Array<{ nodeId: string, attrs: NodeAttributes, skip: boolean, tagId: string }> = [];
+    const edgeEvents: Array<{ source: string, target: string, type: 'defines', attrs: EdgeAttributes, skip: boolean }> = [];
 
     for (const tag of tags) {
       const tagId = `${file}::${tag.name}`;
@@ -135,7 +136,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     this.addFile(file, tags, imports);
   }
 
-  async getGraph(): Promise<any> {
+  async getGraph(): Promise<XrayGraph> {
     // Build reference edges before returning graph
     await this.buildReferenceEdges();
     return this.graph;
@@ -144,7 +145,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
   private async buildReferenceEdges() {
     // Create a map of tag names to tag IDs for efficient lookups
     const tagNameMap = new Map<string, string[]>();
-    this.graph.forEachNode((nodeId: string, attrs: any) => {
+    this.graph.forEachNode((nodeId: string, attrs: NodeAttributes) => {
       if (attrs.type === 'tag') {
         const tagName = attrs.label;
         if (!tagNameMap.has(tagName)) {
@@ -179,7 +180,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     }
 
     // Now collect all edge events based on resolved references
-    const edgeEvents: Array<{ source: string, target: string, type: 'calls', attrs: any, skip: boolean }> = [];
+    const edgeEvents: Array<{ source: string, target: string, type: 'calls', attrs: EdgeAttributes, skip: boolean }> = [];
 
     for (const resolveEvent of resolveEvents) {
       for (const targetTagId of resolveEvent.resolved) {

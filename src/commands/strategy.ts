@@ -7,9 +7,9 @@ import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { StrategyRunner } from '../lib/strategy/runner';
 import { resolvePath } from './common';
+import { StrategyCommandOptions } from '../types/command-options';
 
-// Handle meta-strategy commands (strategy:list, strategy:detect)
-export const handleMetaStrategyCommand = async (commandName: string, options: any) => {
+export const handleMetaStrategyCommand = async (commandName: string, options: StrategyCommandOptions) => {
 
   if (commandName === 'list') {
     const loader = new StrategyLoader();
@@ -61,7 +61,7 @@ export const handleMetaStrategyCommand = async (commandName: string, options: an
 };
 
 // Handle strategy:command queries
-export const handleStrategyCommand = async (query: string, options: any) => {
+export const handleStrategyCommand = async (query: string, options: StrategyCommandOptions) => {
   const startTime = Date.now();
   const [strategyName, commandName] = query.split(':');
 
@@ -145,16 +145,10 @@ export const handleStrategyCommand = async (query: string, options: any) => {
 
     // Store tags and metadata in context (use relative paths)
     for (const tag of metadata.tags) {
-      if (!(context as any).fileTags.has(file)) {
-        (context as any).fileTags.set(file, new Set());
-      }
-      (context as any).fileTags.get(file).add(tag);
+      context.addFileTag(file, tag);
     }
 
-    if (!(context as any).fileMetadata.has(file)) {
-      (context as any).fileMetadata.set(file, new Map());
-    }
-    (context as any).fileMetadata.get(file).set(strategyName, metadata.metadata);
+    context.setFileMetadata(file, strategyName, metadata.metadata);
   }
 
   // Execute strategy command

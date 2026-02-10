@@ -16,9 +16,9 @@ import { XrayScopeConfig } from '../types/xray-config';
 import { resolvePath, resolveOutputPath } from './common';
 import { ChunkedRenderer } from '../lib/renderer/chunked-renderer';
 import { buildShareSummary, resolveShareOutputPath } from '../lib/share-summary';
+import { CommonAnalysisOptions } from '../types/command-options';
 
-// Helper function to configure options based on detected strategies
-const configureFromStrategies = async (options: any): Promise<{
+const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<{
   match: string[];
   catch: string[];
   detectedStrategies: string[];
@@ -375,7 +375,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
 };
 
 // Shared action handler for all generation commands
-export const handleGenerateAction = async (options: any) => {
+export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
   try {
     // Set verbose level if provided
     if (options.verbose) {

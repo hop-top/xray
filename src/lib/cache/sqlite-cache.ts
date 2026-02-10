@@ -3,6 +3,22 @@ import { Tag, Import } from '../parser/types';
 import { CacheReadError, CacheWriteError } from '../error/types';
 import { Logger } from '../logger';
 
+interface FileRow {
+  mtime: number;
+  doc_config: string;
+  include_variables: number;
+}
+
+interface TagRow {
+  data: string;
+}
+
+interface FileAnalysisRow {
+  mtime: number;
+  hash: string;
+  analysis: string;
+}
+
 export class SqliteCache {
   private db: Database.Database;
 
@@ -35,13 +51,13 @@ export class SqliteCache {
 
   get(file: string, mtime: number, docConfig: string, includeVariables: boolean): { tags: Tag[], imports: Import[] } | null {
     try {
-      const row = this.db.prepare('SELECT mtime, doc_config, include_variables FROM files_v2 WHERE path = ?').get(file) as any;
+      const row = this.db.prepare('SELECT mtime, doc_config, include_variables FROM files_v2 WHERE path = ?').get(file) as FileRow | undefined;
 
       if (!row || row.mtime !== mtime || row.doc_config !== docConfig || Boolean(row.include_variables) !== includeVariables) {
-        return null; // Cache miss or stale or config mismatch
+        return null;
       }
 
-      const tagRows = this.db.prepare('SELECT data FROM tags WHERE file = ?').all(file) as any[];
+      const tagRows = this.db.prepare('SELECT data FROM tags WHERE file = ?').all(file) as TagRow[];
 
       // Parse tags with error handling for corrupted entries
       const tags: Tag[] = [];
@@ -99,7 +115,7 @@ export class SqliteCache {
     try {
       const row = this.db.prepare(
         'SELECT mtime, hash, analysis FROM file_analysis WHERE path = ?'
-      ).get(file) as any;
+      ).get(file) as FileAnalysisRow | undefined;
 
       if (!row) {
         return null;
@@ -126,7 +142,7 @@ export class SqliteCache {
     try {
       const row = this.db.prepare(
         'SELECT mtime, hash FROM file_analysis WHERE path = ?'
-      ).get(file) as any;
+      ).get(file) as Pick<FileAnalysisRow, 'mtime' | 'hash'> | undefined;
 
       if (!row) {
         return false;

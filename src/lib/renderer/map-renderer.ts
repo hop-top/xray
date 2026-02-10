@@ -1,13 +1,12 @@
-import Graph from 'graphology';
-import { RankedNode } from '../graph/ranker';
+import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../types/graph';
 import { tokenizeAndEstimateCost } from 'llm-cost';
 
 export class MapRenderer {
   private root: string;
   private ranked: RankedNode[];
-  private graph: Graph;
+  private graph: XrayGraph;
 
-  constructor(root: string, ranked: RankedNode[], graph: Graph) {
+  constructor(root: string, ranked: RankedNode[], graph: XrayGraph) {
     this.root = root;
     this.ranked = ranked;
     this.graph = graph;
@@ -15,11 +14,11 @@ export class MapRenderer {
 
   async render(tokenLimit: number, depth?: number, includeImports?: boolean): Promise<string> {
     // Group tags by file
-    const fileMap = new Map<string, RankedNode[]>();
+    const fileMap = new Map<string, RankedTagNode[]>();
 
     // Build a map of node IDs to their data for efficient lookup
     const nodeInfoMap = new Map<string, any>();
-    (this.graph as any).forEachNode((nodeId: string, attrs: any) => {
+    this.graph.forEachNode((nodeId: string, attrs: any) => {
       nodeInfoMap.set(nodeId, attrs);
     });
 
@@ -32,14 +31,14 @@ export class MapRenderer {
 
     // Organize data
     for (const node of this.ranked) {
-      if (node.data.type === 'tag') {
-        const file = node.data.file;
+      if (isRankedTagNode(node)) {
+        const file = node.attributes.file;
         if (!fileMap.has(file)) fileMap.set(file, []);
         fileMap.get(file)?.push(node);
-      } else if (node.data.type === 'file') {
+      } else if (node.attributes.type === 'file') {
         // Ensure file is in map if it has imports and we are including them
         if (includeImports) {
-          const imports = (this.graph as any).getNodeAttribute(node.id, 'imports');
+          const imports = this.graph.getNodeAttribute(node.id, 'imports');
           if (imports && imports.length > 0) {
             if (!fileMap.has(node.id)) fileMap.set(node.id, []);
           }
@@ -50,8 +49,8 @@ export class MapRenderer {
     // Create a map of file scores for sorting
     const fileScores = new Map<string, number>();
     for (const node of this.ranked) {
-      if (node.data.type === 'file') {
-        fileScores.set(node.id, node.score);
+      if (node.attributes.type === 'file') {
+        fileScores.set(node.id, node.rank);
       }
     }
 
@@ -71,15 +70,15 @@ export class MapRenderer {
       const tags = fileMap.get(file)!;
 
       // Sort tags in file by line number for readability
-      tags.sort((a, b) => a.data.line - b.data.line);
+      tags.sort((a, b) => a.attributes.line - b.attributes.line);
 
       // Calculate file line range
       let fileStart = 1;
       let fileEnd = 1;
       if (tags.length > 0) {
-        fileStart = tags[0].data.line + 1;
+        fileStart = tags[0].attributes.line + 1;
         const lastTag = tags[tags.length - 1];
-        fileEnd = lastTag.data.endLine ? lastTag.data.endLine + 1 : lastTag.data.line + 1;
+        fileEnd = lastTag.attributes.endLine ? lastTag.attributes.endLine + 1 : lastTag.attributes.line + 1;
       }
 
       let fileRange = `(L${fileStart})`;
@@ -94,7 +93,7 @@ export class MapRenderer {
       if (includeImports) {
         const fileNode = this.ranked.find(n => n.id === file);
         if (fileNode) {
-          const imports = (this.graph as any).getNodeAttribute(file, 'imports') as any[];
+          const imports = this.graph.getNodeAttribute(file, 'imports');
           if (imports && imports.length > 0) {
             for (const imp of imports) {
               // Use text if available, otherwise construct simple import
@@ -110,35 +109,35 @@ export class MapRenderer {
       }
 
       for (const tag of tags) {
-        const signature = tag.data.signature ? tag.data.signature : '';
+        const signature = tag.attributes.signature ? tag.attributes.signature : '';
         // Line numbers are 0-indexed in tree-sitter, so add 1 for display
-        const startLine = tag.data.line + 1;
-        const endLine = tag.data.endLine ? tag.data.endLine + 1 : startLine;
+        const startLine = tag.attributes.line + 1;
+        const endLine = tag.attributes.endLine ? tag.attributes.endLine + 1 : startLine;
 
         let lineRange = `[L${startLine}]`;
         if (endLine > startLine) {
           lineRange = `[L${startLine}-L${endLine}]`;
         }
 
-        let line = `│ ${lineRange} ${tag.data.kind} ${tag.data.label}${signature}`;
+        let line = `│ ${lineRange} ${tag.attributes.kind} ${tag.attributes.label}${signature}`;
 
-        if (tag.data.doc) {
-          const doc = tag.data.doc.length > 50 ? tag.data.doc.substring(0, 47) + '...' : tag.data.doc;
+        if (tag.attributes.doc) {
+          const doc = tag.attributes.doc.length > 50 ? tag.attributes.doc.substring(0, 47) + '...' : tag.attributes.doc;
           line += `  # ${doc}`;
         }
 
         outputLines.push(line);
 
         // Display cross-file references (who calls this tag)
-        const tagId = `${tag.data.file}::${tag.data.label}`;
-        if ((this.graph as any).hasNode(tagId)) {
+        const tagId = `${tag.attributes.file}::${tag.attributes.label}`;
+        if (this.graph.hasNode(tagId)) {
           const crossFileCallers: { file: string, line: number, endLine: number, label: string }[] = [];
 
           // Iterate through all nodes to find those that call this tag
-          (this.graph as any).forEachNode((nodeId: string, attrs: any) => {
-            if (attrs.type === 'tag' && attrs.file !== tag.data.file) {
+          this.graph.forEachNode((nodeId: string, attrs: any) => {
+            if (attrs.type === 'tag' && attrs.file !== tag.attributes.file) {
               // Check if this node has a 'calls' edge to our tag
-              if ((this.graph as any).hasEdge(nodeId, tagId)) {
+              if (this.graph.hasEdge(nodeId, tagId)) {
                 crossFileCallers.push({
                   file: attrs.file,
                   line: attrs.line + 1,  // Convert to 1-indexed
@@ -182,15 +181,15 @@ export class MapRenderer {
 
       // Collect all known files in the repo to filter internal imports
       this.ranked.forEach(node => {
-        if (node.data.type === 'file') {
+        if (node.attributes.type === 'file') {
           allFiles.add(node.id);
         }
       });
 
       // Iterate over all files to find imports
       this.ranked.forEach(node => {
-        if (node.data.type === 'file') {
-          const imports = (this.graph as any).getNodeAttribute(node.id, 'imports') as any[];
+        if (node.attributes.type === 'file') {
+          const imports = this.graph.getNodeAttribute(node.id, 'imports');
           if (imports) {
             for (const imp of imports) {
               const source = imp.source;
