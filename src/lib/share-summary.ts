@@ -114,13 +114,14 @@ const getProjectName = (projectPath: string): string => {
   try {
     const pkgPath = path.join(projectPath, 'package.json');
     if (fs.existsSync(pkgPath)) {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as { name?: string };
+      const content = fs.readFileSync(pkgPath, 'utf-8');
+      const pkg = JSON.parse(content) as { name?: string };
       if (pkg.name && typeof pkg.name === 'string') {
         return pkg.name;
       }
     }
   } catch {
-    // Ignore malformed package.json
+    // Ignore malformed package.json or read errors
   }
 
   return path.basename(projectPath);

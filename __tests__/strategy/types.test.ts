@@ -1,5 +1,5 @@
 // tests/strategy/types.test.ts
-import { Strategy, StrategyContext, FileMetadata } from '../../src/lib/lib/strategy/types';
+import { Strategy, StrategyContext, FileMetadata } from '../../src/lib/strategy/types';
 
 describe('Strategy Types', () => {
   it('should allow creating a strategy with required fields', () => {

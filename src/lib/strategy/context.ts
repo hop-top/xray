@@ -3,6 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { globSync } from 'glob';
 import { StrategyContext, FileQuery } from './types';
+import { FileReadError } from '../error/types';
+import { Logger } from '../logger';
 
 export class StrategyContextImpl implements StrategyContext {
   private root: string;
@@ -20,7 +22,13 @@ export class StrategyContextImpl implements StrategyContext {
   private loadPackageJson(): void {
     const pkgPath = path.join(this.root, 'package.json');
     if (fs.existsSync(pkgPath)) {
-      this.packageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      try {
+        const content = fs.readFileSync(pkgPath, 'utf-8');
+        this.packageJson = JSON.parse(content);
+      } catch (err: any) {
+        // Log warning but don't fail - package.json is optional for strategy detection
+        Logger.warn(`Could not read package.json: ${err.message}`);
+      }
     }
   }
 

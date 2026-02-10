@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Logger } from '../logger';
+import { FileReadError } from '../error/types';
 
 // We use require for tree-sitter grammars as they are native modules
 const TypeScript = require('tree-sitter-typescript').typescript;
@@ -34,7 +35,14 @@ const registry: Record<string, LanguageConfig> = {};
 // Helper to load queries
 function loadQuery(name: string): string {
   const p = path.join(__dirname, 'queries', name);
-  if (fs.existsSync(p)) return fs.readFileSync(p, 'utf-8');
+  if (fs.existsSync(p)) {
+    try {
+      return fs.readFileSync(p, 'utf-8');
+    } catch (err: any) {
+      Logger.warn(`Failed to load query file ${name}: ${err.message}`);
+      return '';
+    }
+  }
   return '';
 }
 

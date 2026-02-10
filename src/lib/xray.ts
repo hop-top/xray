@@ -14,6 +14,7 @@ import { XrayEvents } from './events/types';
 import { PluginManager, XrayPlugin } from './events/plugin';
 import { TelemetryPlugin } from './plugins/telemetry-plugin';
 import { loadConfig } from './config';
+import { FileReadError, FileAccessError } from './error/types';
 
 // Export strategy module
 export * as strategy from './strategy';
@@ -262,7 +263,17 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         // Event: Cache miss - use parallel for observers
         await this.emitAsyncParallel('cache:miss', { file });
 
-        const content = fs.readFileSync(absPath, 'utf-8');
+        let content: string;
+        try {
+          content = fs.readFileSync(absPath, 'utf-8');
+        } catch (err: any) {
+          await this.emitAsync('error', {
+            event: 'file:read',
+            error: new FileReadError(file, err),
+            payload: { file }
+          });
+          continue; // Skip this file and continue with others
+        }
 
         // Event: Before parse (listeners can modify content or skip)
         const parseBeforeEvent = { file, content, skip: false };
@@ -357,7 +368,11 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
             queryContent = await response.text();
           } else {
             Logger.info(`Loading custom query for ${ext} from ${source}...`);
-            queryContent = fs.readFileSync(source, 'utf-8');
+            try {
+              queryContent = fs.readFileSync(source, 'utf-8');
+            } catch (err: any) {
+              throw new FileReadError(source, err);
+            }
           }
           updateLanguageQuery(ext, queryContent);
         } catch (e) {
@@ -407,7 +422,18 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       if (cached) {
         graphBuilder.loadFromCache(file, cached.tags, cached.imports);
       } else {
-        const content = fs.readFileSync(absPath, 'utf-8');
+        let content: string;
+        try {
+          content = fs.readFileSync(absPath, 'utf-8');
+        } catch (err: any) {
+          await this.emitAsync('error', {
+            event: 'file:read',
+            error: new FileReadError(file, err),
+            payload: { file }
+          });
+          processed++;
+          continue; // Skip this file and continue with others
+        }
         const { tags, imports } = await parser.parse(file, content, includeVars, includeDocs, enableCfg, enableDfg);
 
         graphBuilder.addFile(file, tags, imports);

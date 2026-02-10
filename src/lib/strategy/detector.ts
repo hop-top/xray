@@ -3,6 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Strategy, DetectedStrategy, StrategyContext } from './types';
 import { StrategyLoader } from './loader';
+import { FileReadError, FileWriteError } from '../error/types';
+import { Logger } from '../logger';
 
 export class StrategyDetector {
   private loader: StrategyLoader;
@@ -29,7 +31,7 @@ export class StrategyDetector {
           });
         }
       } catch (error) {
-        console.warn(`Strategy detection failed for ${strategy.name}:`, error);
+        Logger.warn(`Strategy detection failed for ${strategy.name}: ${error}`);
       }
     }
 
@@ -42,15 +44,20 @@ export class StrategyDetector {
 
     // Save to file
     const xrayDir = path.join(this.context.getProjectRoot(), '.xray');
-    if (!fs.existsSync(xrayDir)) {
-      fs.mkdirSync(xrayDir, { recursive: true });
-    }
+    try {
+      if (!fs.existsSync(xrayDir)) {
+        fs.mkdirSync(xrayDir, { recursive: true });
+      }
 
-    fs.writeFileSync(
-      this.detectionFile,
-      JSON.stringify(detected, null, 2),
-      'utf-8'
-    );
+      fs.writeFileSync(
+        this.detectionFile,
+        JSON.stringify(detected, null, 2),
+        'utf-8'
+      );
+    } catch (err: any) {
+      // Log warning but don't fail - detection cache is optional
+      Logger.warn(`Could not write strategy detection cache: ${err.message}`);
+    }
 
     return detected;
   }
@@ -63,8 +70,8 @@ export class StrategyDetector {
     try {
       const content = fs.readFileSync(this.detectionFile, 'utf-8');
       return JSON.parse(content);
-    } catch (error) {
-      console.warn('Failed to read detected strategies:', error);
+    } catch (err: any) {
+      Logger.warn(`Failed to read detected strategies: ${err.message}`);
       return null;
     }
   }

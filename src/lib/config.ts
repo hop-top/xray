@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { Logger } from './logger';
 import { XrayScopeConfig, XrayConfig } from '../types/xray-config';
+import { FileReadError, FileWriteError } from './error/types';
 
 const CONFIG_FILENAMES = [
   '.xrayrc',
@@ -43,12 +44,16 @@ export function findConfigPath(startDir?: string): string | null {
       const packageJsonPath = path.join(currentDir, 'package.json');
       if (fs.existsSync(packageJsonPath)) {
         try {
-          const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+          const content = fs.readFileSync(packageJsonPath, 'utf-8');
+          const packageJson = JSON.parse(content);
           if (packageJson.xray) {
             return packageJsonPath;
           }
-        } catch (error) {
-          // Ignore package.json parsing errors
+        } catch (err: any) {
+          // Ignore package.json parsing errors (both read and parse errors)
+          if (err.code !== 'ENOENT') {
+            Logger.debug(`Failed to read/parse package.json: ${err.message}`);
+          }
         }
       }
     }
@@ -179,7 +184,12 @@ function loadConfigFile(filepath: string): XrayConfig {
       return config.default || config;
     } else {
       // For .json files and others, parse as JSON
-      const content = fs.readFileSync(filepath, 'utf-8');
+      let content: string;
+      try {
+        content = fs.readFileSync(filepath, 'utf-8');
+      } catch (err: any) {
+        throw new FileReadError(filepath, err);
+      }
       return JSON.parse(content) as XrayConfig;
     }
   } catch (error) {
@@ -238,7 +248,11 @@ export function saveConfig(config: XrayConfig, configPath?: string): void {
   // Pretty print with 2-space indent
   const json = JSON.stringify(config, null, 2);
 
-  fs.writeFileSync(resolvedPath, json, 'utf-8');
+  try {
+    fs.writeFileSync(resolvedPath, json, 'utf-8');
+  } catch (err: any) {
+    throw new FileWriteError(resolvedPath, err);
+  }
 }
 
 /**

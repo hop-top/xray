@@ -4,6 +4,8 @@ import * as path from 'path';
 import * as os from 'os';
 import * as yaml from 'js-yaml';
 import { Strategy, StrategyContext } from './types';
+import { FileReadError } from '../error/types';
+import { Logger } from '../logger';
 
 export class StrategyLoader {
   getStrategyPaths(): string[] {
@@ -68,7 +70,12 @@ export class StrategyLoader {
   }
 
   private async loadYamlStrategy(strategyPath: string): Promise<Strategy> {
-    const content = fs.readFileSync(strategyPath, 'utf-8');
+    let content: string;
+    try {
+      content = fs.readFileSync(strategyPath, 'utf-8');
+    } catch (err: any) {
+      throw new FileReadError(strategyPath, err);
+    }
     const config = yaml.load(content) as any;
 
     return {
@@ -171,14 +178,20 @@ export class StrategyLoader {
           if (file.startsWith('xray-strategy-')) {
             const pkgPath = path.join(filePath, 'package.json');
             if (fs.existsSync(pkgPath)) {
-              const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-              if (pkg['xray-strategy']) {
-                const entryPath = path.join(filePath, pkg['xray-strategy'].entry);
-                if (!seen.has(pkg['xray-strategy'].name)) {
-                  const strategy = await this.loadStrategy(entryPath);
-                  strategies.push(strategy);
-                  seen.add(strategy.name);
+              try {
+                const content = fs.readFileSync(pkgPath, 'utf-8');
+                const pkg = JSON.parse(content);
+                if (pkg['xray-strategy']) {
+                  const entryPath = path.join(filePath, pkg['xray-strategy'].entry);
+                  if (!seen.has(pkg['xray-strategy'].name)) {
+                    const strategy = await this.loadStrategy(entryPath);
+                    strategies.push(strategy);
+                    seen.add(strategy.name);
+                  }
                 }
+              } catch (err: any) {
+                // Log warning but continue - individual strategy failures shouldn't block discovery
+                Logger.warn(`Failed to load strategy from ${pkgPath}: ${err.message}`);
               }
             }
           }

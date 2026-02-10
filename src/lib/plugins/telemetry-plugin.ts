@@ -110,11 +110,12 @@ export class TelemetryPlugin implements XrayPlugin {
     try {
       const packageJsonPath = path.join(__dirname, '../../../package.json');
       if (fs.existsSync(packageJsonPath)) {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+        const content = fs.readFileSync(packageJsonPath, 'utf-8');
+        const packageJson = JSON.parse(content);
         return packageJson.version || '0.0.0';
       }
     } catch (error) {
-      // Ignore errors
+      // Ignore errors - version is optional for telemetry
     }
 
     return '0.0.0';

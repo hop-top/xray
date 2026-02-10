@@ -1,5 +1,6 @@
 
 import Parser from 'tree-sitter';
+import { Logger } from '../logger';
 
 export interface CFGNode {
     id: string;
@@ -102,7 +103,7 @@ export class GraphManager {
 
             return response;
         } catch (e) {
-            console.warn(`Failed to generate graphs for ${lang} using ${strategy} strategy:`, e);
+            Logger.warn(`Failed to generate graphs for ${lang} using ${strategy} strategy: ${e}`);
             return {};
         }
     }

@@ -95,6 +95,17 @@ export class FileAccessError extends XrayError {
   }
 }
 
+export class FileWriteError extends XrayError {
+  constructor(filePath: string, cause?: Error) {
+    super(`Failed to write file: ${filePath}`, 'error', true, cause);
+    this.retryable = true;
+  }
+
+  getSuggestion(): string {
+    return 'Check disk space and file permissions. Ensure the directory is writable.';
+  }
+}
+
 /**
  * Parsing Errors (Recoverable + Non-Retryable)
  */

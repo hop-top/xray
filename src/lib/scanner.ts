@@ -4,6 +4,7 @@ import { globSync } from 'glob';
 import ignore from 'ignore';
 import { execSync } from 'child_process';
 import { Logger } from './logger';
+import { FileReadError } from './error/types';
 
 export class FileScanner {
   private root: string;
@@ -16,7 +17,12 @@ export class FileScanner {
     // Load .gitignore if exists
     const gitignorePath = path.join(root, '.gitignore');
     if (fs.existsSync(gitignorePath)) {
-      this.ig.add(fs.readFileSync(gitignorePath, 'utf-8'));
+      try {
+        this.ig.add(fs.readFileSync(gitignorePath, 'utf-8'));
+      } catch (err: any) {
+        // If .gitignore is unreadable, log warning but continue
+        Logger.warn(`Could not read .gitignore: ${err.message}`);
+      }
     }
 
     // Add standard ignores
