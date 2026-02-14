@@ -46,7 +46,7 @@ describe('StrategyLoader', () => {
     const reactStrategy = strategies.find(s => s.name === 'react');
 
     expect(reactStrategy).toBeDefined();
-    expect(reactStrategy?.version).toBe('2.0.0');
+    expect(reactStrategy?.version).toBe('0.1.0');
   });
 
   it('should discover and load built-in REST API strategy', async () => {
@@ -54,7 +54,7 @@ describe('StrategyLoader', () => {
     const restApiStrategy = strategies.find(s => s.name === 'rest-api');
 
     expect(restApiStrategy).toBeDefined();
-    expect(restApiStrategy?.version).toBe('1.0.0');
+    expect(restApiStrategy?.version).toBe('0.1.0');
   });
 
   it('should discover and load built-in Express strategy', async () => {
@@ -62,6 +62,6 @@ describe('StrategyLoader', () => {
     const expressStrategy = strategies.find(s => s.name === 'express');
 
     expect(expressStrategy).toBeDefined();
-    expect(expressStrategy?.version).toBe('1.0.0');
+    expect(expressStrategy?.version).toBe('0.1.0');
   });
 });

@@ -42,7 +42,7 @@ type MdqElement = MdqSection | MdqParagraph | MdqCodeBlock | MdqList;
 
 export default class MarkdownStrategy implements Strategy {
   name = 'markdown';
-  version = '1.0.0';
+  version = '0.1.0';
 
   async detect(ctx: StrategyContext): Promise<boolean> {
     // Check if mdq is available

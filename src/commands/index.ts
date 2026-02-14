@@ -7,12 +7,15 @@ import { registerStrategyCommands } from './registration/strategies';
 import { registerAliases } from './registration/aliases';
 import { ExploreCommandOptions } from '../types/command-options';
 
+// Read version from package.json
+const { version } = require('../../package.json');
+
 const program = new Command();
 
 program
   .name('xray')
   .description('X-ray your codebase - Generate AST, CFG, and DFG visualizations')
-  .version('0.0.1-alpha.1')
+  .version(version)
   .option('-v, --verbose [level]', 'Set verbosity level: silent, error, warn, info (default), debug', 'info')
   .hook('preAction', (thisCommand) => {
     const options = thisCommand.opts();

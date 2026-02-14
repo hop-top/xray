@@ -6,7 +6,7 @@ import * as path from 'path';
 
 export default class ConfigStrategy implements Strategy {
   name = 'config';
-  version = '1.0.0';
+  version = '0.1.0';
   private parserFactory: ParserFactory;
 
   constructor() {

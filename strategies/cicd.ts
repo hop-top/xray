@@ -18,7 +18,7 @@ import { circleCIPlatform } from '../src/lib/strategy/cicd/parsers/circleci';
  */
 export default class CICDStrategy implements Strategy {
   name = 'cicd';
-  version = '1.0.0';
+  version = '0.1.0';
 
   private cicdPlatforms: CICDPlatform[] = [
     githubActionsPlatform,

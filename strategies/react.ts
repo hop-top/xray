@@ -4,7 +4,7 @@ import Parser from 'tree-sitter';
 
 export default class ReactStrategy implements Strategy {
   name = 'react';
-  version = '0.0.1-alpha.1';
+  version = '0.1.0';
 
   private getParser(): Parser {
     // Always create a fresh parser instance to avoid test interference

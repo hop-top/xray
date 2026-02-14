@@ -128,6 +128,6 @@ describe('StrategyDetector', () => {
 
     expect(reactDetection).toBeDefined();
     expect(reactDetection?.name).toBe('react');
-    expect(reactDetection?.version).toBe('2.0.0');
+    expect(reactDetection?.version).toBe('0.1.0');
   });
 });

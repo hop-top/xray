@@ -7,7 +7,7 @@ const Go = require('tree-sitter-go');
 
 export default class GoCliStrategy implements Strategy {
   name = 'go-cli';
-  version = '0.0.1-alpha.1';
+  version = '0.1.0';
   private parser: Parser;
 
   constructor() {

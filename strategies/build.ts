@@ -20,7 +20,7 @@ import { npmScriptsTool } from '../src/lib/strategy/build/parsers/npm-scripts';
  */
 export default class BuildStrategy implements Strategy {
   name = 'build';
-  version = '1.0.0';
+  version = '0.1.0';
 
   private buildTools: BuildTool[] = [
     makeTool,

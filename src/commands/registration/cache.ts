@@ -5,7 +5,7 @@ import * as crypto from 'crypto';
 import { Strategy } from '../../lib/strategy/types';
 import { Logger } from '../../lib/logger';
 
-const XRAY_VERSION = '0.0.1-alpha.1';
+const { version: XRAY_VERSION } = require('../../../package.json');
 
 export interface CachedStrategy {
   name: string;

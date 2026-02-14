@@ -2,7 +2,7 @@
 
 > X-ray your codebase - Generate intelligent, AI-optimized code maps for deep understanding
 
-[![npm version](https://img.shields.io/npm/v/xray.svg)](https://www.npmjs.com/package/xray)
+[![npm version](https://img.shields.io/npm/v/@xray-codes/xray.svg)](https://www.npmjs.com/package/@xray-codes/xray)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **⚠️ ALPHA RELEASE** - Early alpha version. Features may be incomplete or subject to breaking changes.
@@ -19,7 +19,7 @@ xray generates **intelligent, ranked, context-aware code maps** that fit within 
 
 ```bash
 # Install
-npm install -g xray
+npm install -g @xray-codes/xray
 
 # Generate your first code map
 cd /path/to/your/project
@@ -321,7 +321,7 @@ utils.ts (L5-L50):
 ### NPM (Recommended)
 
 ```bash
-npm install -g xray
+npm install -g @xray-codes/xray
 ```
 
 ### From Source

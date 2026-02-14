@@ -15,7 +15,7 @@ describe('PackageManagerStrategy', () => {
   describe('metadata', () => {
     it('should have correct name and version', () => {
       expect(strategy.name).toBe('package-manager');
-      expect(strategy.version).toBe('0.0.1-alpha.1');
+      expect(strategy.version).toBe('0.1.0');
     });
   });
 

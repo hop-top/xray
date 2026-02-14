@@ -56,7 +56,8 @@ describe('StrategyCacheManager', () => {
     expect(fs.existsSync(cacheFile)).toBe(true);
 
     const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
-    expect(cached.version).toBe('0.0.1-alpha.1');
+    const { version } = require('../../../package.json');
+    expect(cached.version).toBe(version);
     expect(cached.strategies).toHaveLength(2);
     expect(cached.strategies[0].name).toBe('test-strategy-1');
     expect(cached.strategies[1].name).toBe('test-strategy-2');

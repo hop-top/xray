@@ -1,10 +1,43 @@
 {
-  "name": "xray",
-  "version": "0.0.1-alpha.1",
+  "name": "@xray-codes/xray",
+  "version": "0.1.0",
   "description": "X-ray your codebase - Generate AST, CFG, and DFG visualizations",
   "main": "dist/index.js",
   "bin": {
-    "xray": "bin/xray"
+    "xray": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "ast",
+    "code-analysis",
+    "codebase",
+    "cfg",
+    "dfg",
+    "tree-sitter",
+    "visualization",
+    "ai",
+    "llm",
+    "code-map",
+    "pagerank",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xray-codes/xray.git"
+  },
+  "homepage": "https://github.com/xray-codes/xray",
+  "bugs": {
+    "url": "https://github.com/xray-codes/xray/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc && tsc --project tsconfig.strategies.json && cp -r src/lib/parser/queries dist/lib/parser/",
@@ -13,7 +46,7 @@
     "test": "./scripts/test-sequential.sh",
     "test:parallel": "jest",
     "test:coverage": "./scripts/test-coverage.sh",
-    "prepare-public": "./scripts/prepare-public.sh",
+    "prepublishOnly": "npm run build && npm test",
     "prepare": "husky install",
     "strategy:detect": "node dist/index.js strategy:detect"
   },

@@ -7,7 +7,7 @@ const TSX = require('tree-sitter-typescript').tsx;
 
 export default class NextjsStrategy implements Strategy {
   name = 'nextjs';
-  version = '0.0.1-alpha.1';
+  version = '0.1.0';
   private parser: Parser;
 
   constructor() {

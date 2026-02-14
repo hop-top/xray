@@ -8,7 +8,7 @@ import { cloudFormationTool } from '../src/lib/strategy/infrastructure/parsers/c
 
 export default class InfrastructureStrategy implements Strategy {
   name = 'infrastructure';
-  version = '1.0.0';
+  version = '0.1.0';
 
   private tools: InfrastructureTool[] = [
     terraformTool,

@@ -26,7 +26,7 @@ interface Service {
 
 export default class ContainerStrategy implements Strategy {
   name = 'container';
-  version = '1.0.0';
+  version = '0.1.0';
 
   commands: Record<string, StrategyCommand> = {
     analyze: {

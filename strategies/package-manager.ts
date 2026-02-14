@@ -19,7 +19,7 @@ interface PackageManagerMetadata {
 
 export default class PackageManagerStrategy implements Strategy {
   name = 'package-manager';
-  version = '0.0.1-alpha.1';
+  version = '0.1.0';
 
   async detect(ctx: StrategyContext): Promise<boolean> {
     // Check for npm/yarn/pnpm (JavaScript/TypeScript)

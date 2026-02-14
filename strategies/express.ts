@@ -3,7 +3,7 @@ import { Strategy, StrategyContext, FileMetadata, StrategyCommand } from '../src
 
 export default class ExpressStrategy implements Strategy {
   name = 'express';
-  version = '0.0.1-alpha.1';
+  version = '0.1.0';
 
   commands: Record<string, StrategyCommand> = {
     routes: {
