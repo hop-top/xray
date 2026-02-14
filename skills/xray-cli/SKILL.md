@@ -42,7 +42,7 @@ Goal: identify frameworks + top-level layout.
 
 Commands:
 ```bash
-xray strategy:detect
+xray strategy detect
 xray map --path ./src --depth 2 --with incs
 ```
 
@@ -52,30 +52,30 @@ Goal: list key surface area fast.
 Commands:
 ```bash
 # Framework-specific
-xray react:components
-xray react:hooks
-xray express:routes
-xray rest-api:endpoints
+xray react components
+xray react hooks
+xray express routes
+xray rest-api endpoints
 
 # Infrastructure & tooling
-xray package-manager:list-dependencies
-xray package-manager:summary
-xray build:targets
-xray build:graph
-xray container:analyze
-xray container:services
-xray container:stages
-xray config:list
-xray config:keys
-xray config:values
-xray cicd:workflows
-xray cicd:graph
-xray cicd:deploy
-xray cicd:triggers
-xray infrastructure:resources
-xray infrastructure:providers
-xray infrastructure:graph
-xray infrastructure:summary
+xray package-manager list-dependencies
+xray package-manager summary
+xray build targets
+xray build graph
+xray container analyze
+xray container services
+xray container stages
+xray config list
+xray config keys
+xray config values
+xray cicd workflows
+xray cicd graph
+xray cicd deploy
+xray cicd triggers
+xray infrastructure resources
+xray infrastructure providers
+xray infrastructure graph
+xray infrastructure summary
 ```
 
 ## Dependency map (who calls/imports)
@@ -166,8 +166,8 @@ Goal: understand project dependencies and package managers.
 
 Commands:
 ```bash
-xray package-manager:list-dependencies
-xray package-manager:summary
+xray package-manager list-dependencies
+xray package-manager summary
 ```
 
 ## Build system
@@ -175,8 +175,8 @@ Goal: understand how project builds.
 
 Commands:
 ```bash
-xray build:targets
-xray build:graph
+xray build targets
+xray build graph
 ```
 
 ## Container configuration
@@ -184,9 +184,9 @@ Goal: understand Docker/container setup.
 
 Commands:
 ```bash
-xray container:analyze
-xray container:services
-xray container:stages
+xray container analyze
+xray container services
+xray container stages
 ```
 
 ## CI/CD pipeline
@@ -194,10 +194,10 @@ Goal: understand deployment flow.
 
 Commands:
 ```bash
-xray cicd:workflows
-xray cicd:deploy
-xray cicd:graph
-xray cicd:triggers
+xray cicd workflows
+xray cicd deploy
+xray cicd graph
+xray cicd triggers
 ```
 
 ## Configuration files
@@ -205,9 +205,9 @@ Goal: understand project configuration.
 
 Commands:
 ```bash
-xray config:list
-xray config:keys --file <file>
-xray config:values --file <file>
+xray config list
+xray config keys --file <file>
+xray config values --file <file>
 ```
 
 ## Infrastructure as code
@@ -215,10 +215,10 @@ Goal: understand cloud resources.
 
 Commands:
 ```bash
-xray infrastructure:resources
-xray infrastructure:providers
-xray infrastructure:graph
-xray infrastructure:summary
+xray infrastructure resources
+xray infrastructure providers
+xray infrastructure graph
+xray infrastructure summary
 ```
 
 ## Decision Cheatsheet
@@ -226,12 +226,12 @@ xray infrastructure:summary
 - Need dependencies: `map --with incs`.
 - Need variable context: add `--with vars`.
 - Need logic flow: `graph --with cf/df`.
-- Need framework surface: `strategy:detect` + `explore`.
-- Need project setup: `strategy:detect` + infrastructure commands.
-- Need package dependencies: `package-manager:list-dependencies`.
-- Need build process: `build:targets`.
-- Need deployment flow: `cicd:workflows` + `cicd:deploy`.
-- Need infrastructure: `infrastructure:resources` + `infrastructure:providers`.
+- Need framework surface: `strategy detect` + `explore`.
+- Need project setup: `strategy detect` + infrastructure commands.
+- Need package dependencies: `package-manager list-dependencies`.
+- Need build process: `build targets`.
+- Need deployment flow: `cicd workflows` + `cicd deploy`.
+- Need infrastructure: `infrastructure resources` + `infrastructure providers`.
 
 ## Failure Modes
 - Empty output: narrow scope, wrong path, or strategy not detected.

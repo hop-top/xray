@@ -38,7 +38,9 @@ describe('Strategy Commands - Real Execution', () => {
 
       expect(exitCode).toBe(0);
       expect(stdout).toContain('React components');
-      expect(stdout).toContain('Total:');
+      expect(stdout).toContain('App');
+      expect(stdout).toContain('App.tsx');
+      expect(stdout).toContain('Total: 1');
     });
 
     it('should find React hooks', async () => {
@@ -156,11 +158,17 @@ describe('Strategy Commands - Real Execution', () => {
     });
 
     it('should indicate when nothing is found', async () => {
-      const { stdout, exitCode } = await runXray('react components --path /tmp');
+      const emptyDir = path.join(require('os').tmpdir(), 'xray-test-empty-' + Date.now());
+      fs.mkdirSync(emptyDir, { recursive: true });
+      try {
+        const { stdout, exitCode } = await runXray(`react components --path ${emptyDir}`);
 
-      expect(exitCode).toBe(0);
-      // Should either show "(none found)" or "Total: 0"
-      expect(stdout).toMatch(/\(none found\)|Total: 0/);
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain('(none found)');
+        expect(stdout).toContain('Total: 0');
+      } finally {
+        fs.rmSync(emptyDir, { recursive: true, force: true });
+      }
     });
   });
 

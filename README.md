@@ -5,8 +5,6 @@
 [![npm version](https://img.shields.io/npm/v/@xray-codes/xray.svg)](https://www.npmjs.com/package/@xray-codes/xray)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**⚠️ ALPHA RELEASE** - Early alpha version. Features may be incomplete or subject to breaking changes.
-
 ## What is xray?
 
 xray generates **intelligent, ranked, context-aware code maps** that fit within AI context windows while preserving the most important structural information. Perfect for AI-assisted development, code navigation, and understanding complex codebases.
@@ -105,6 +103,13 @@ xray strategy detect
 - **REST API** - Cross-framework endpoint analysis (Node.js, Python, Go)
 - **Go CLI** - Commands, flags, hierarchy (Cobra, urfave/cli)
 - **Next.js** - Pages, API routes, components
+- **Build** - Makefile, Justfile, Taskfile, npm scripts
+- **CI/CD** - GitHub Actions, GitLab CI, CircleCI
+- **Config** - Configuration file analysis (JSON, YAML, TOML, env)
+- **Container** - Dockerfile and Docker Compose analysis
+- **Infrastructure** - Terraform, Kubernetes, Helm, CloudFormation
+- **Markdown** - Table of contents and structure analysis
+- **Package Manager** - npm, pip, Go modules dependency analysis
 
 Strategy commands are **dynamically discovered** - new strategies auto-register without code changes.
 
@@ -192,8 +197,8 @@ Now just run `xray map` - no flags needed!
 ### Using Plugins
 
 ```typescript
-import { Xray } from 'xray';
-import { ProgressLoggerPlugin, FilterPrivatePlugin } from 'xray/plugins';
+import { Xray } from '@xray-codes/xray';
+import { ProgressLoggerPlugin, FilterPrivatePlugin } from '@xray-codes/xray/plugins';
 
 const xray = new Xray({ path: './src' });
 
@@ -216,7 +221,7 @@ await xray.run();
 ### Creating Custom Plugins
 
 ```typescript
-import { XrayPlugin } from 'xray';
+import { XrayPlugin } from '@xray-codes/xray';
 
 export class MyPlugin implements XrayPlugin {
   name = 'my-plugin';
@@ -300,12 +305,15 @@ utils.ts (L5-L50):
 - C
 - C#
 - C++
+- Dart
 - Elixir
 - Go
 - Haskell
 - Java
 - JavaScript
 - Kotlin
+- Lua
+- Perl
 - PHP
 - Python
 - Ruby
@@ -313,8 +321,6 @@ utils.ts (L5-L50):
 - Scala
 - Swift
 - TypeScript
-
-**Note:** Dart and Lua currently unsupported due to tree-sitter version incompatibility ([#6](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues/6))
 
 ## Installation
 
@@ -327,7 +333,7 @@ npm install -g @xray-codes/xray
 ### From Source
 
 ```bash
-git clone https://github.com/IdeaCraftersLabs/oss-xray-codes.git xray
+git clone https://github.com/xray-codes/xray.git
 cd xray
 npm install --legacy-peer-deps
 npm run build
@@ -335,7 +341,7 @@ npm link
 ```
 
 **Requirements:**
-- Node.js 20+
+- Node.js 18+
 - C++ build tools (build-essential on Linux, Xcode on macOS)
 
 **Troubleshooting:**
@@ -487,9 +493,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Links
 
-- **GitHub:** https://github.com/IdeaCraftersLabs/oss-xray-codes
-- **Issues:** https://github.com/IdeaCraftersLabs/oss-xray-codes/issues
-- **NPM:** https://www.npmjs.com/package/xray
+- **GitHub:** https://github.com/xray-codes/xray
+- **Issues:** https://github.com/xray-codes/xray/issues
+- **NPM:** https://www.npmjs.com/package/@xray-codes/xray
 
 ---
 

@@ -2,8 +2,8 @@
 Goal: list main surface area.
 
 ```bash
-xray react:components
-xray react:hooks
-xray express:routes
-xray rest-api:endpoints
+xray react components
+xray react hooks
+xray express routes
+xray rest-api endpoints
 ```

@@ -16,13 +16,13 @@ Quickly see all dependencies without reading multiple package manager files.
 
 ### List all dependencies
 ```bash
-xray package-manager:list-dependencies
+xray package-manager list-dependencies
 ```
 Shows all dependencies from package.json, Cargo.toml, requirements.txt, go.mod, pyproject.toml, etc.
 
 ### Summary by package manager
 ```bash
-xray package-manager:summary
+xray package-manager summary
 ```
 Shows counts and stats for each package manager found.
 
@@ -45,7 +45,7 @@ Shows counts and stats for each package manager found.
 ## Example Output
 
 ```bash
-$ xray package-manager:summary
+$ xray package-manager summary
 Package Managers (3):
 
 npm (package.json):
@@ -58,7 +58,7 @@ Cargo (Cargo.toml):
 pip (requirements.txt):
   - Dependencies: 8
 
-$ xray package-manager:list-dependencies
+$ xray package-manager list-dependencies
 Dependencies (88 total):
 
 npm:

@@ -16,24 +16,24 @@ Quickly discover build targets and dependencies without reading Makefiles, Justf
 
 ### List build targets
 ```bash
-xray build:targets
+xray build targets
 ```
 Shows all targets from Makefile, Justfile, Taskfile, npm scripts.
 
 ### Visualize build dependencies
 ```bash
-xray build:graph
+xray build graph
 ```
 Shows which targets depend on others.
 
 **Generate visual diagram:**
 ```bash
-xray build:graph --format=dot | dot -Tpng > build.png
+xray build graph --format=dot | dot -Tpng > build.png
 ```
 
 ### Run a build target
 ```bash
-xray build:run <target>
+xray build run <target>
 ```
 Executes the specified build target.
 
@@ -46,16 +46,16 @@ Executes the specified build target.
 
 ## Agent Tips
 
-**Start with targets**: Use `build:targets` to see what's available.
+**Start with targets**: Use `build targets` to see what's available.
 
-**Understand flow**: Use `build:graph` to see target dependencies (e.g., test depends on build).
+**Understand flow**: Use `build graph` to see target dependencies (e.g., test depends on build).
 
 **Common targets**: Look for: build, test, lint, clean, deploy, dev, start.
 
 ## Example Output
 
 ```bash
-$ xray build:targets
+$ xray build targets
 Build Targets (8):
 
 Make (Makefile):
@@ -79,7 +79,7 @@ npm (package.json):
   dev
     → Recipe: npm run build && nodemon
 
-$ xray build:graph
+$ xray build graph
 Build Dependencies:
 
 all → build

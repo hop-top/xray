@@ -134,6 +134,15 @@ async function executeStrategyCommand(
     const context = new StrategyContextImpl(projectPath);
     Logger.info(`Executing ${strategy.name}:${cmdName}...`);
 
+    // Run detection to confirm strategy applies
+    const detected = await strategy.detect(context);
+    if (!detected) {
+      Logger.warn(`Strategy "${strategy.name}" did not detect applicable project at ${projectPath}`);
+    }
+
+    // Analyze project files to populate tags and metadata in context
+    await analyzeProjectFiles(strategy, context);
+
     // Execute the command handler
     const result = await cmdDef.handler(context, options);
 
@@ -141,6 +150,59 @@ async function executeStrategyCommand(
     displayStrategyResult(strategy.name, cmdName, result);
   } catch (error: any) {
     handleStrategyCommandError(error, strategy.name, cmdName, projectPath);
+  }
+}
+
+/**
+ * Analyze all relevant project files for a strategy, populating tags and metadata in context
+ */
+async function analyzeProjectFiles(strategy: Strategy, context: StrategyContextImpl): Promise<void> {
+  const { globSync } = await import('glob');
+  const path = await import('path');
+
+  const fileTypes = strategy.fileTypes?.() || [];
+  const ignorePatterns = strategy.ignorePatterns?.() || ['**/node_modules/**', '**/.git/**'];
+  const projectRoot = context.getProjectRoot();
+
+  // Build glob patterns from file types
+  let patterns: string[];
+  if (fileTypes.length > 0) {
+    patterns = fileTypes.map(ext => `**/*${ext}`);
+  } else {
+    patterns = ['**/*'];
+  }
+
+  // Collect all matching files using glob with ignore support
+  const seen = new Set<string>();
+  for (const pattern of patterns) {
+    const files = globSync(pattern, {
+      cwd: projectRoot,
+      nodir: true,
+      ignore: ignorePatterns
+    });
+    for (const file of files) {
+      seen.add(file);
+    }
+  }
+
+  // Analyze each file and populate context
+  for (const file of seen) {
+    const fullPath = path.join(projectRoot, file);
+    try {
+      const metadata = await strategy.analyze(fullPath, context);
+
+      // Store tags in context
+      for (const tag of metadata.tags) {
+        context.addFileTag(file, tag);
+      }
+
+      // Store metadata in context
+      if (metadata.metadata && Object.keys(metadata.metadata).length > 0) {
+        context.setFileMetadata(file, strategy.name, metadata.metadata);
+      }
+    } catch (error: any) {
+      Logger.debug(`Failed to analyze ${file}: ${error.message}`);
+    }
   }
 }
 

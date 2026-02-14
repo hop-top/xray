@@ -16,19 +16,19 @@ Quickly understand containerization without reading Dockerfiles and docker-compo
 
 ### Analyze container setup
 ```bash
-xray container:analyze
+xray container analyze
 ```
 Shows Dockerfile stages, base images, exposed ports, and docker-compose services.
 
 ### List services
 ```bash
-xray container:services
+xray container services
 ```
 Shows service architecture from docker-compose.yml.
 
 ### Show build stages
 ```bash
-xray container:stages
+xray container stages
 ```
 Shows multi-stage Dockerfile build stages.
 
@@ -40,16 +40,16 @@ Shows multi-stage Dockerfile build stages.
 
 ## Agent Tips
 
-**Start with analyze**: Use `container:analyze` for complete overview.
+**Start with analyze**: Use `container analyze` for complete overview.
 
-**Multi-stage builds**: Use `container:stages` to understand build optimization.
+**Multi-stage builds**: Use `container stages` to understand build optimization.
 
-**Service deps**: Use `container:services` to see which services depend on others.
+**Service deps**: Use `container services` to see which services depend on others.
 
 ## Example Output
 
 ```bash
-$ xray container:analyze
+$ xray container analyze
 Container Configuration:
 
 Dockerfile (multi-stage):
@@ -74,7 +74,7 @@ docker-compose.yml (3 services):
 
   redis (redis:7-alpine)
 
-$ xray container:services
+$ xray container services
 Service Architecture:
 
 web → db (postgres)

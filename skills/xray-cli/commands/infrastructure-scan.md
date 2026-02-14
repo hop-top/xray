@@ -16,30 +16,30 @@ Quickly discover what infrastructure resources are defined using Terraform, Kube
 
 ### List infrastructure resources
 ```bash
-xray infrastructure:resources
+xray infrastructure resources
 ```
 Shows all infrastructure resources from Terraform, Kubernetes, Helm charts, and CloudFormation stacks.
 
 ### List cloud providers
 ```bash
-xray infrastructure:providers
+xray infrastructure providers
 ```
 Shows which cloud providers are used (AWS, Google Cloud, Azure).
 
 ### Visualize infrastructure dependencies
 ```bash
-xray infrastructure:graph
+xray infrastructure graph
 ```
 Shows resource dependencies.
 
 **Generate visual diagram:**
 ```bash
-xray infrastructure:graph --format=dot | dot -Tpng > infra.png
+xray infrastructure graph --format=dot | dot -Tpng > infra.png
 ```
 
 ### Infrastructure summary
 ```bash
-xray infrastructure:summary
+xray infrastructure summary
 ```
 Shows counts by tool (Terraform, Kubernetes, Helm, CloudFormation).
 
@@ -52,18 +52,18 @@ Shows counts by tool (Terraform, Kubernetes, Helm, CloudFormation).
 
 ## Agent Tips
 
-**Start broad**: Use `infrastructure:summary` to see what tools are in use.
+**Start broad**: Use `infrastructure summary` to see what tools are in use.
 
-**Focus on providers**: Use `infrastructure:providers` to understand which clouds are targeted.
+**Focus on providers**: Use `infrastructure providers` to understand which clouds are targeted.
 
-**Understand dependencies**: Use `infrastructure:graph` to see how resources depend on each other.
+**Understand dependencies**: Use `infrastructure graph` to see how resources depend on each other.
 
-**Resource details**: `infrastructure:resources` gives you a complete inventory.
+**Resource details**: `infrastructure resources` gives you a complete inventory.
 
 ## Example Output
 
 ```bash
-$ xray infrastructure:summary
+$ xray infrastructure summary
 Infrastructure Summary:
 
 Terraform (15 resources):
@@ -76,7 +76,7 @@ Kubernetes (8 resources):
   - Service: 3
   - Ingress: 2
 
-$ xray infrastructure:providers
+$ xray infrastructure providers
 Cloud Providers:
   - AWS (Terraform)
   - Google Cloud (Kubernetes)

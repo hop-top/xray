@@ -16,30 +16,30 @@ Quickly understand how code gets to production without reading CI/CD YAML files.
 
 ### List all workflows
 ```bash
-xray cicd:workflows
+xray cicd workflows
 ```
 Shows GitHub Actions, GitLab CI, and CircleCI workflows.
 
 ### Visualize pipeline
 ```bash
-xray cicd:graph
+xray cicd graph
 ```
 Shows job dependencies and execution flow.
 
 **Generate visual diagram:**
 ```bash
-xray cicd:graph --format=dot | dot -Tpng > pipeline.png
+xray cicd graph --format=dot | dot -Tpng > pipeline.png
 ```
 
 ### Show deployment workflows
 ```bash
-xray cicd:deploy
+xray cicd deploy
 ```
 Filters to show only deployment-related jobs.
 
 ### Show workflow triggers
 ```bash
-xray cicd:triggers
+xray cicd triggers
 ```
 Shows what triggers each workflow (push, PR, tags, schedule).
 
@@ -51,18 +51,18 @@ Shows what triggers each workflow (push, PR, tags, schedule).
 
 ## Agent Tips
 
-**Start with workflows**: Use `cicd:workflows` to see all pipelines.
+**Start with workflows**: Use `cicd workflows` to see all pipelines.
 
-**Focus on deploy**: Use `cicd:deploy` to understand production path.
+**Focus on deploy**: Use `cicd deploy` to understand production path.
 
-**Understand triggers**: Use `cicd:triggers` to see what starts builds.
+**Understand triggers**: Use `cicd triggers` to see what starts builds.
 
-**Visualize flow**: Use `cicd:graph` to see job dependencies.
+**Visualize flow**: Use `cicd graph` to see job dependencies.
 
 ## Example Output
 
 ```bash
-$ xray cicd:workflows
+$ xray cicd workflows
 CI/CD Workflows (2):
 
 GitHub Actions: CI (.github/workflows/ci.yml)
@@ -84,7 +84,7 @@ GitHub Actions: CI (.github/workflows/ci.yml)
       Environment: production
       Steps: Deploy to AWS
 
-$ xray cicd:deploy
+$ xray cicd deploy
 Deployment Workflows (1):
 
 deploy (CI workflow)
@@ -96,7 +96,7 @@ deploy (CI workflow)
     2. Build and push Docker image
     3. Deploy to ECS
 
-$ xray cicd:triggers
+$ xray cicd triggers
 Workflow Triggers:
 
 CI workflow:

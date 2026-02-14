@@ -5,6 +5,8 @@ import { Logger } from './logger';
 import { XrayScopeConfig, XrayConfig } from '../types/xray-config';
 import { FileReadError, FileWriteError } from './error/types';
 
+let configPathLogged = false;
+
 const CONFIG_FILENAMES = [
   '.xrayrc',
   '.xrayrc.json',
@@ -160,7 +162,8 @@ export function loadConfig(configPath?: string, searchPath?: string): XrayConfig
   const projectConfigPath = findConfigPath(searchPath);
   const projectConfig = projectConfigPath ? loadConfigFile(projectConfigPath) : null;
 
-  if (projectConfigPath && !searchPath) {
+  if (projectConfigPath && !searchPath && !configPathLogged) {
+    configPathLogged = true;
     const relativePath = path.relative(process.cwd(), projectConfigPath);
     const displayPath = relativePath.startsWith('..') ? projectConfigPath : relativePath;
     Logger.info(`Using config file: ${displayPath}`);
