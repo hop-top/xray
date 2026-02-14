@@ -142,6 +142,27 @@ xray map --anchor src/api/routes.ts --with incs --output context.txt
 **Before xray:** Paste 10 files, 50k tokens 😰
 **After xray:** Share 2k token map showing entire structure ✨
 
+### Claude Code Skill
+
+xray ships with a [Claude Code skill](https://docs.anthropic.com/en/docs/claude-code/skills) that gives Claude direct access to xray commands for codebase analysis, onboarding, and framework-specific insights.
+
+**Install the skill globally:**
+
+```bash
+# Copy the skill to your Claude Code skills directory
+mkdir -p ~/.claude/skills
+cp -r skills/xray-cli ~/.claude/skills/
+```
+
+Once installed, Claude Code can use xray to:
+- Onboard to new codebases (`xray strategy detect`, `xray map`)
+- Scan framework surfaces (`xray react components`, `xray express routes`)
+- Trace dependencies and data flow (`xray map --anchor <file> --with incs`)
+- Analyze infrastructure (`xray infrastructure resources`, `xray cicd workflows`)
+- Understand build systems (`xray build targets`, `xray package-manager list-dependencies`)
+
+The skill includes 17 use-case-driven workflows. See [`skills/xray-cli/SKILL.md`](skills/xray-cli/SKILL.md) for the full command reference.
+
 ### Automation
 
 Keep maps up-to-date automatically:
