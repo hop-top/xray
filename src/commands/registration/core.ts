@@ -7,6 +7,10 @@ import { handleCompletionAction } from '../completion';
 import { handleQueryAction } from '../query';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
+import { createUpgradeCommand } from '@hop/upgrade-ts/dist/commander';
+
+const XRAY_VERSION = '0.0.1-alpha.1';
+const XRAY_GITHUB_REPO = 'ideacrafterslabs/oss-xray-codes';
 
 /**
  * Register all static core commands
@@ -58,4 +62,10 @@ export function registerCoreCommands(program: Command): void {
     .description('Generate shell completion script')
     .argument('<shell>', 'Shell type: bash, zsh, or fish')
     .action(handleCompletionAction);
+
+  program.addCommand(createUpgradeCommand({
+    binary: 'xray',
+    githubRepo: XRAY_GITHUB_REPO,
+    currentVersion: XRAY_VERSION,
+  }));
 }

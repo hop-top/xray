@@ -3,6 +3,10 @@ import { registerCommands } from './commands';
 import { initializeTelemetry, shutdownTelemetry } from './lib/telemetry';
 import { loadConfig } from './lib/config';
 import { handleFirstRunConsent } from './lib/telemetry-consent';
+import { createUpgrader } from '@hop/upgrade-ts';
+
+const _up = createUpgrader({ binary: 'xray', githubRepo: 'ideacrafterslabs/oss-xray-codes' });
+const XRAY_VERSION = '0.0.1-alpha.1';
 
 // Initialize and register all commands (async for alias registration)
 async function main() {
@@ -41,6 +45,11 @@ async function main() {
       shutdownTelemetry();
       process.exit(1);
     });
+  }
+
+  // Startup update notification (async, non-blocking; skipped for upgrade cmd)
+  if (process.argv[2] !== 'upgrade') {
+    _up.notifyIfAvailable(XRAY_VERSION).catch(() => {});
   }
 
   const program = await registerCommands();
