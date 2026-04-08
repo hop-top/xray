@@ -164,17 +164,24 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       // 3. Render
       const includeIncs = this.config.features?.incs || false;
 
-      // 3. Render
-      await this.emitAsyncParallel('render:start', {
+      // Pre-construct the renderer so listeners can interact with it
+      // (e.g. inject pre-render hooks) via the render:start event payload.
+      const chunked = this.config.chunked !== false;
+      const renderer: MapRenderer | ChunkedRenderer = chunked
+        ? new ChunkedRenderer(this.config.path, rankedNodes, graph, this.config.limit!, this.config.depth, includeIncs)
+        : new MapRenderer(this.config.path, rankedNodes, graph);
+
+      // Sequential: listeners may configure or wrap the renderer.
+      await this.emitAsync('render:start', {
         format: this.config.format || 'txt',
-        chunked: this.config.chunked !== false,
-        outputPath: ''
+        chunked,
+        outputPath: '',
+        renderer
       });
 
       // If chunked rendering is disabled, use the original single-file renderer
       if (!this.config.chunked) {
-        const renderer = new MapRenderer(this.config.path, rankedNodes, graph);
-        const output = await renderer.render(this.config.limit!, this.config.depth, includeIncs);
+        const output = await (renderer as MapRenderer).render(this.config.limit!, this.config.depth, includeIncs);
 
         if (this.config.features?.cost) {
           const { tokenizeAndEstimateCost } = await import('llm-cost');
@@ -324,8 +331,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
 
     const graph = await graphBuilder.getGraph();
 
-    // Graph complete - use parallel for observers (metrics, logging)
-    await this.emitAsyncParallel('graph:complete', {
+    // Graph complete - sequential: mutation plugins (clustering, surprise)
+    // rely on attach-order semantics to write edge/node attributes.
+    await this.emitAsync('graph:complete', {
       graph,
       nodeCount: graph.order,
       edgeCount: graph.size
@@ -336,8 +344,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     const ranker = new Ranker(graph);
     const rankedNodes = ranker.rank(this.config.anchor);
 
-    // Rank complete - use sequential since listeners can modify rankings
-    const rankCompleteEvent = { rankedNodes };
+    // Rank complete - sequential: listeners can modify rankings or stamp
+    // edge attrs through the graph reference.
+    const rankCompleteEvent = { graph, rankedNodes };
     await this.emitAsync('rank:complete', rankCompleteEvent);
 
     this.lastGraph = graph;
