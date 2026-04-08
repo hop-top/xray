@@ -175,7 +175,14 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       // The non-chunked branch is the only path where `run()` itself
       // drives rendering, so listener configuration takes effect there.
       const renderer: MapRenderer | ChunkedRenderer = chunked
-        ? new ChunkedRenderer(this.config.path, rankedNodes, graph, this.config.limit!, this.config.depth, includeIncs)
+        ? new ChunkedRenderer({
+            root: this.config.path,
+            ranked: rankedNodes,
+            graph,
+            tokenLimit: this.config.limit!,
+            maxDepth: this.config.depth,
+            includeImports: includeIncs,
+          })
         : new MapRenderer(this.config.path, rankedNodes, graph);
 
       // Sequential: listeners may configure or wrap the renderer.
@@ -441,14 +448,14 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     const includeIncs = this.config.features?.incs || false;
     const chunked = this.config.chunked !== false;
     const renderer: MapRenderer | ChunkedRenderer = chunked
-      ? new ChunkedRenderer(
-          this.config.path,
-          rankedNodes,
+      ? new ChunkedRenderer({
+          root: this.config.path,
+          ranked: rankedNodes,
           graph,
-          this.config.limit!,
-          this.config.depth,
-          includeIncs
-        )
+          tokenLimit: this.config.limit!,
+          maxDepth: this.config.depth,
+          includeImports: includeIncs,
+        })
       : new MapRenderer(this.config.path, rankedNodes, graph);
 
     await this.emitAsync('render:start', {

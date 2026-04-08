@@ -81,14 +81,12 @@ describe('ChunkedRenderer', () => {
 
   describe('renderChunked', () => {
     it('should organize files by directory', async () => {
-      const renderer = new ChunkedRenderer(
-        '/project',
-        rankedNodes,
-        graph,
-        4096,
-        undefined,
-        false
-      );
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: rankedNodes,
+        graph: graph as any,
+        tokenLimit: 4096,
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -98,14 +96,13 @@ describe('ChunkedRenderer', () => {
     });
 
     it('should respect depth limits', async () => {
-      const renderer = new ChunkedRenderer(
-        '/project',
-        rankedNodes,
-        graph,
-        4096,
-        1, // max depth = 1
-        false
-      );
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: rankedNodes,
+        graph: graph as any,
+        tokenLimit: 4096,
+        maxDepth: 1,
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -115,14 +112,12 @@ describe('ChunkedRenderer', () => {
     });
 
     it('should create parent-child links', async () => {
-      const renderer = new ChunkedRenderer(
-        '/project',
-        rankedNodes,
-        graph,
-        4096,
-        undefined,
-        false
-      );
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: rankedNodes,
+        graph: graph as any,
+        tokenLimit: 4096,
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -140,14 +135,12 @@ describe('ChunkedRenderer', () => {
     });
 
     it('should include navigation links in content', async () => {
-      const renderer = new ChunkedRenderer(
-        '/project',
-        rankedNodes,
-        graph,
-        4096,
-        undefined,
-        false
-      );
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: rankedNodes,
+        graph: graph as any,
+        tokenLimit: 4096,
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -164,14 +157,12 @@ describe('ChunkedRenderer', () => {
 
     it('should respect token limits per chunk', async () => {
       const tokenLimit = 100;
-      const renderer = new ChunkedRenderer(
-        '/project',
-        rankedNodes,
-        graph,
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: rankedNodes,
+        graph: graph as any,
         tokenLimit,
-        undefined,
-        false
-      );
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -182,14 +173,12 @@ describe('ChunkedRenderer', () => {
     });
 
     it('should generate unique chunk file paths', async () => {
-      const renderer = new ChunkedRenderer(
-        '/project',
-        rankedNodes,
-        graph,
-        4096,
-        undefined,
-        false
-      );
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: rankedNodes,
+        graph: graph as any,
+        tokenLimit: 4096,
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -225,14 +214,12 @@ describe('ChunkedRenderer', () => {
       const rootGraph = new Graph();
       rootGraph.addNode('index.ts', { type: 'file', imports: [] });
 
-      const renderer = new ChunkedRenderer(
-        '/project',
-        rootNodes,
-        rootGraph,
-        4096,
-        undefined,
-        false
-      );
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: rootNodes,
+        graph: rootGraph as any,
+        tokenLimit: 4096,
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -252,14 +239,12 @@ describe('ChunkedRenderer', () => {
       const nestedGraph = new Graph();
       nestedGraph.addNode('a/b/c/deep.ts', { type: 'file', imports: [] });
 
-      const renderer = new ChunkedRenderer(
-        '/project',
-        nestedNodes,
-        nestedGraph,
-        4096,
-        undefined,
-        false
-      );
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: nestedNodes,
+        graph: nestedGraph as any,
+        tokenLimit: 4096,
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -288,14 +273,13 @@ describe('ChunkedRenderer', () => {
         },
       ];
 
-      const renderer = new ChunkedRenderer(
-        '/project',
-        nodesWithImports,
-        graphWithImports,
-        4096,
-        undefined,
-        true // includeImports = true
-      );
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: nodesWithImports,
+        graph: graphWithImports as any,
+        tokenLimit: 4096,
+        includeImports: true,
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -327,14 +311,13 @@ describe('ChunkedRenderer', () => {
         },
       ];
 
-      const renderer = new ChunkedRenderer(
-        '/project',
-        nodesWithImports,
-        graphWithImports,
-        4096,
-        undefined,
-        false // includeImports = false
-      );
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: nodesWithImports,
+        graph: graphWithImports as any,
+        tokenLimit: 4096,
+        includeImports: false,
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -417,14 +400,12 @@ describe('ChunkedRenderer', () => {
         },
       ];
 
-      const renderer = new ChunkedRenderer(
-        '/project',
-        perfNodes,
-        perfGraph,
-        4096,
-        undefined,
-        false
-      );
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked: perfNodes,
+        graph: perfGraph as any,
+        tokenLimit: 4096,
+      });
 
       const result = await renderer.renderChunked('/output/.xray');
 
@@ -439,6 +420,147 @@ describe('ChunkedRenderer', () => {
       }
 
       expect(foundReference).toBe(true);
+    });
+  });
+
+  describe('renderChunked (community grouping)', () => {
+    // Build a small graph where nodes carry a `community` attribute, then
+    // assert renderChunkedByCommunity emits one chunk per community plus a
+    // root index, and that metadata length matches chunks.size.
+    function buildCommunityFixture() {
+      const g = new Graph();
+      // Two communities: 0 and 1
+      g.addNode('src/a/one.ts', { type: 'file', community: 0, imports: [] });
+      g.addNode('src/a/two.ts', { type: 'file', community: 0, imports: [] });
+      g.addNode('src/b/three.ts', { type: 'file', community: 1, imports: [] });
+      g.addNode('src/a/one.ts::alpha', {
+        type: 'tag', file: 'src/a/one.ts', label: 'alpha', kind: 'function',
+        line: 0, endLine: 5, community: 0,
+      });
+      g.addNode('src/a/two.ts::beta', {
+        type: 'tag', file: 'src/a/two.ts', label: 'beta', kind: 'function',
+        line: 0, endLine: 5, community: 0,
+      });
+      g.addNode('src/b/three.ts::gamma', {
+        type: 'tag', file: 'src/b/three.ts', label: 'gamma', kind: 'function',
+        line: 0, endLine: 5, community: 1,
+      });
+
+      const ranked: any[] = [
+        { id: 'src/a/one.ts::alpha', rank: 0.9, attributes: { type: 'tag', file: 'src/a/one.ts', label: 'alpha', kind: 'function', line: 0, endLine: 5, community: 0 } },
+        { id: 'src/a/two.ts::beta',  rank: 0.8, attributes: { type: 'tag', file: 'src/a/two.ts', label: 'beta',  kind: 'function', line: 0, endLine: 5, community: 0 } },
+        { id: 'src/b/three.ts::gamma', rank: 0.7, attributes: { type: 'tag', file: 'src/b/three.ts', label: 'gamma', kind: 'function', line: 0, endLine: 5, community: 1 } },
+      ];
+      return { g, ranked };
+    }
+
+    it('emits one chunk per community plus a root index chunk', async () => {
+      const { g, ranked } = buildCommunityFixture();
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked,
+        graph: g as any,
+        tokenLimit: 4096,
+        grouping: 'community',
+      });
+
+      const result = await renderer.renderChunked('/output/.xray');
+
+      // 2 communities + 1 root
+      expect(result.chunks.size).toBe(3);
+      // metadata.length must match chunks.size (root chunk has its own entry)
+      expect(result.metadata.length).toBe(result.chunks.size);
+
+      // Verify community keys
+      const keys = Array.from(result.chunks.keys());
+      const hasCommunity0 = keys.some(k => k.includes('community_0'));
+      const hasCommunity1 = keys.some(k => k.includes('community_1'));
+      const hasRoot = keys.some(k => k.includes('_root'));
+      expect(hasCommunity0).toBe(true);
+      expect(hasCommunity1).toBe(true);
+      expect(hasRoot).toBe(true);
+
+      // Root chunk path is exposed
+      expect(result.rootChunk).toBeTruthy();
+      expect(result.rootChunk).toContain('_root');
+    });
+
+    it('reports unique file count (not node count) per community', async () => {
+      const { g, ranked } = buildCommunityFixture();
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked,
+        graph: g as any,
+        tokenLimit: 4096,
+        grouping: 'community',
+      });
+
+      const result = await renderer.renderChunked('/output/.xray');
+
+      // Community 0 has 2 unique files (one.ts, two.ts) — not 2 tag nodes.
+      const c0 = result.metadata.find(m => m.directory === 'community_0');
+      expect(c0).toBeDefined();
+      expect(c0!.fileCount).toBe(2);
+
+      // Community 1 has 1 unique file (three.ts).
+      const c1 = result.metadata.find(m => m.directory === 'community_1');
+      expect(c1).toBeDefined();
+      expect(c1!.fileCount).toBe(1);
+    });
+
+    it('places nodes without community in the unclustered bucket', async () => {
+      const g = new Graph();
+      g.addNode('src/orphan.ts', { type: 'file', imports: [] });
+      g.addNode('src/orphan.ts::lone', {
+        type: 'tag', file: 'src/orphan.ts', label: 'lone', kind: 'function',
+        line: 0, endLine: 1,
+      });
+      const ranked: any[] = [
+        { id: 'src/orphan.ts::lone', rank: 0.5, attributes: { type: 'tag', file: 'src/orphan.ts', label: 'lone', kind: 'function', line: 0, endLine: 1 } },
+      ];
+
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked,
+        graph: g as any,
+        tokenLimit: 4096,
+        grouping: 'community',
+      });
+
+      const result = await renderer.renderChunked('/output/.xray');
+      const keys = Array.from(result.chunks.keys());
+      expect(keys.some(k => k.includes('unclustered'))).toBe(true);
+    });
+
+    it('honours includeImports inside community chunks', async () => {
+      const g = new Graph();
+      g.addNode('src/a.ts', {
+        type: 'file',
+        community: 0,
+        imports: [{ source: './b.ts', text: "import { x } from './b.ts'" }],
+      });
+      g.addNode('src/a.ts::foo', {
+        type: 'tag', file: 'src/a.ts', label: 'foo', kind: 'function',
+        line: 0, endLine: 5, community: 0,
+      });
+      const ranked: any[] = [
+        { id: 'src/a.ts::foo', rank: 0.9, attributes: { type: 'tag', file: 'src/a.ts', label: 'foo', kind: 'function', line: 0, endLine: 5, community: 0 } },
+      ];
+
+      const renderer = new ChunkedRenderer({
+        root: '/project',
+        ranked,
+        graph: g as any,
+        tokenLimit: 4096,
+        grouping: 'community',
+        includeImports: true,
+      });
+
+      const result = await renderer.renderChunked('/output/.xray');
+      const communityChunks = Array.from(result.chunks.entries())
+        .filter(([k]) => k.includes('community_0'));
+      expect(communityChunks.length).toBe(1);
+      expect(communityChunks[0][1]).toContain("import { x } from './b.ts'");
     });
   });
 });

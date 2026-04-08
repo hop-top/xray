@@ -40,6 +40,7 @@ cat .xray
 - 🔗 **Dependency Tracking** - Shows imports, exports, and cross-file relationships
 - ⚙️  **Automation Ready** - GitHub Actions and pre-commit hooks included
 - 🔌 **Plugin System** - Extensible event-driven architecture for custom workflows (NEW!)
+- 🧭 **Logical Clustering** - Group chunks by graph community with `--group community` (NEW!)
 
 ## Core Commands
 
@@ -70,6 +71,18 @@ By default, xray generates multiple files organized by directory structure:
 Each chunk includes parent ↔ child navigation links. Use `--no-chunk` for single-file output.
 
 [Learn more about chunked output →](docs/chunked-output.md)
+
+**NEW: Community grouping (`--group community`)**
+
+Pass `--group community` to group chunks by graph community (Louvain over the `calls`
+subgraph) instead of by directory. Communities capture functional cohesion independent of
+the filesystem layout. Default grouping is unchanged.
+
+```bash
+xray map --group community
+```
+
+[Learn more about logical clustering →](docs/user/clustering.md)
 
 ### Strategy Commands - Framework-Specific Analysis
 

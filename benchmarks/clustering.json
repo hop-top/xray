@@ -1,0 +1,11 @@
+{
+  "repo": "logical-clustering-init",
+  "rngSeed": 1592590337,
+  "graphNodes": 0,
+  "graphEdges": 0,
+  "communityCount": 0,
+  "modularity": 0,
+  "wallclockMs": 0,
+  "timestamp": null,
+  "_note": "Baseline placeholder. Populate by running `pnpm ts-node scripts/benchmark-clustering.ts` once the sandbox runtime supports native better-sqlite3 bindings (Node 25 currently blocks the full pipeline — see AGENTS.md)."
+}
