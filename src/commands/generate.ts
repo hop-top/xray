@@ -18,6 +18,38 @@ import { ChunkedRenderer } from '../lib/renderer/chunked-renderer';
 import { applyStashedInsights } from '../lib/renderer/insight';
 import { buildShareSummary, resolveShareOutputPath } from '../lib/share-summary';
 import { CommonAnalysisOptions } from '../types/command-options';
+import { applyPreset, resolvePreset } from '../lib/plugins/presets';
+import type { Xray as XrayType } from '../lib/xray';
+
+/**
+ * Resolve every `--use <spec>` flag in order and apply the resulting
+ * presets to the given Xray instance. Repeatable flags compose via
+ * `applyPreset`'s `useIfAbsent` path so duplicate plugins across
+ * presets register exactly once.
+ *
+ * A single failing preset is logged as a warning and skipped — the
+ * map command must still render the default graph output even if a
+ * user-supplied preset is broken (spec C-2 + C-5 back-compat).
+ */
+const applyPresetFlags = async (
+  xray: XrayType,
+  specs: string[] | undefined,
+  currentPath: string
+): Promise<void> => {
+  if (!specs || specs.length === 0) return;
+  for (const spec of specs) {
+    try {
+      const preset = await resolvePreset(spec);
+      await applyPreset(xray as unknown as Parameters<typeof applyPreset>[0], preset, {
+        root: currentPath,
+      }, { presetName: spec });
+    } catch (err) {
+      Logger.warn(
+        `[presets] failed to apply "${spec}": ${(err as Error).message}`
+      );
+    }
+  }
+};
 
 const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<{
   match: string[];
@@ -206,6 +238,10 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         }
       });
 
+      // Apply any --use preset flags before building the graph so
+      // plugins can subscribe to the full pipeline lifecycle.
+      await applyPresetFlags(xray, mergedOptions.use, currentPath);
+
       // Build the graph
       const { rankedNodes, graph } = await xray.buildGraph();
 
@@ -325,6 +361,10 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
           }
         }
       });
+
+      // Apply --use preset flags before run() so plugins subscribe
+      // to the full pipeline lifecycle on the non-chunked path too.
+      await applyPresetFlags(xray, mergedOptions.use, currentPath);
 
       const result = await xray.run();
 

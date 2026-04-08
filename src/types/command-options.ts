@@ -93,6 +93,14 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
 
   /** Generate a shareable summary markdown (optional path override) */
   share?: boolean | string;
+
+  /**
+   * Apply one or more plugin presets. Repeatable flag: each value is a
+   * built-in name (`insights` | `onboarding` | `exploration`), a local
+   * path (`./my-preset.js`), or an npm package (`@scope/pkg`). Distinct
+   * from the config-file `preset` overlay flag above (see docs).
+   */
+  use?: string[];
 }
 
 /**

@@ -236,4 +236,16 @@ export interface XrayEvents {
     context?: Record<string, any>;
     timestamp: number;
   };
+
+  // Preset lifecycle — fired by `applyPreset` after every run.
+  // Observers only; payload is informational and must not be mutated.
+
+  /** @emission parallel */
+  'preset:applied': {
+    presetName: string;
+    applied: string[];
+    skipped: string[];
+    errored: string[];
+    timings: Record<string, number>;
+  };
 }

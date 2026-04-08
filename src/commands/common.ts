@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { BUILTIN_PRESET_NAMES } from '../lib/plugins/presets';
 
 // Helper to resolve paths relative to PWD
 export const resolvePath = (p: string | undefined): string | undefined => {
@@ -73,5 +74,11 @@ export const addCommonOptions = (cmd: Command) => {
     .option('--detect', 'Enable strategy detection (auto-detects when no path is provided)')
     .option('--skip-detect', 'Skip strategy detection and auto-configuration')
     .option('--share [path]', 'Generate a shareable summary markdown (optional path override)')
+    .option(
+      '--use <preset>',
+      `Apply a plugin preset (built-in name, ./local/path, or @scope/pkg). Repeatable. Built-ins: ${BUILTIN_PRESET_NAMES.join(', ')}.`,
+      (value: string, previous: string[]) => previous.concat([value]),
+      []
+    )
     .option('--no-telemetry', 'Disable telemetry for this session');
 };

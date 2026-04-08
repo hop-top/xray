@@ -41,6 +41,7 @@ cat .xray
 - ⚙️  **Automation Ready** - GitHub Actions and pre-commit hooks included
 - 🔌 **Plugin System** - Extensible event-driven architecture for custom workflows (NEW!)
 - 🧭 **Logical Clustering** - Group chunks by graph community with `--group community` (NEW!)
+- 🎛️ **Plugin Presets** - Apply curated plugin bundles via `--use insights|onboarding|exploration`, or load your own from a local path / npm package. See [docs/user/presets.md](docs/user/presets.md). (NEW!)
 
 ## Core Commands
 
