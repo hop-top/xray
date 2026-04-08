@@ -80,3 +80,40 @@ describe('events plumbing (run path)', () => {
     expect(captured).toBeInstanceOf(ChunkedRenderer);
   });
 });
+
+describe('events plumbing (buildGraph chunked path)', () => {
+  it('fires graph:complete, rank:complete, render:start with well-formed payloads', async () => {
+    const xray = makeXray(true);
+
+    let graphComplete: { nodeCount: number; edgeCount: number } | null = null;
+    let rankComplete: { nodes: number; rankedLen: number } | null = null;
+    let renderStart: { chunked: boolean; isRenderer: boolean } | null = null;
+
+    xray.on('graph:complete', async ({ nodeCount, edgeCount }) => {
+      graphComplete = { nodeCount, edgeCount };
+    });
+
+    xray.on('rank:complete', async ({ graph, rankedNodes }) => {
+      rankComplete = { nodes: graph.order, rankedLen: rankedNodes.length };
+    });
+
+    xray.on('render:start', async ({ chunked, renderer }) => {
+      renderStart = {
+        chunked,
+        isRenderer: renderer instanceof ChunkedRenderer || renderer instanceof MapRenderer
+      };
+    });
+
+    await xray.buildGraph();
+
+    expect(graphComplete).not.toBeNull();
+    expect(rankComplete).not.toBeNull();
+    expect(renderStart).not.toBeNull();
+
+    expect(graphComplete!.nodeCount).toBeGreaterThan(0);
+    expect(rankComplete!.nodes).toBe(graphComplete!.nodeCount);
+    expect(rankComplete!.rankedLen).toBeGreaterThan(0);
+    expect(renderStart!.chunked).toBe(true);
+    expect(renderStart!.isRenderer).toBe(true);
+  });
+});
