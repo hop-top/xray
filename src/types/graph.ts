@@ -76,23 +76,56 @@ export type TagNodeAttributes = BaseTagNodeAttributes & { [key: string]: any };
 export type NodeAttributes = FileNodeAttributes | TagNodeAttributes;
 
 /**
+ * Confidence levels for edge provenance.
+ *
+ * Every edge in the graph carries a provenance tag so downstream analyses
+ * (surprise scoring, clustering, ranking) can distinguish ground truth from
+ * inference.
+ *
+ * Values:
+ * - `EXTRACTED`: Edge was directly extracted from source (e.g. tree-sitter).
+ * - `INFERRED`: Edge was inferred by a heuristic or plugin (not ground truth).
+ * - `AMBIGUOUS`: Edge could not be confidently classified (multiple candidates).
+ *
+ * This is a const object rather than a TS `enum` for JSON friendliness and
+ * tree-shaking.
+ */
+export const Confidence = {
+  EXTRACTED: 'EXTRACTED',
+  INFERRED: 'INFERRED',
+  AMBIGUOUS: 'AMBIGUOUS',
+} as const;
+
+export type Confidence = typeof Confidence[keyof typeof Confidence];
+
+/**
  * Base attributes for edges in the graph.
  *
  * Edge types:
  * - 'defines': File defines a tag (file -> tag)
  * - 'calls': Tag calls another tag (tag -> tag)
  * - 'imports': File imports another file (file -> file)
+ *
+ * Every edge carries a `confidence` field; see {@link Confidence}.
  */
 export interface BaseEdgeAttributes {
   type: 'defines' | 'calls' | 'imports';
+  confidence: Confidence;
 }
 
 /**
  * Edge attributes with support for plugin-added custom fields.
  *
- * Plugins can extend edges with additional properties using the index signature.
+ * Defined as an interface (rather than `BaseEdgeAttributes & { [key: string]: any }`)
+ * so the declared keys (`type`, `confidence`) keep their narrow types when read.
+ * An intersection with `any` would widen every property to `any` and erase the
+ * `Confidence` enum on the `confidence` field.
+ *
+ * Plugins can extend edges with additional properties via the index signature.
  */
-export type EdgeAttributes = BaseEdgeAttributes & { [key: string]: any };
+export interface EdgeAttributes extends BaseEdgeAttributes {
+  [key: string]: any;
+}
 
 /**
  * Type alias for a properly-typed xray graph.

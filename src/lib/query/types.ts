@@ -1,3 +1,5 @@
+import type { Confidence } from '../../types/graph';
+
 /**
  * Import specification for a module
  */
@@ -31,7 +33,12 @@ export interface SerializedEdge {
   source: string;
   target: string;
   type: 'defines' | 'calls' | 'imports';
-  confidence?: string;
+  /**
+   * Edge provenance tag. Optional on the serialized side because older
+   * cached graphs may lack it; new scans always populate it via
+   * GraphBuilder (see Confidence in src/types/graph.ts).
+   */
+  confidence?: Confidence;
   community?: string;
   // Index signature is `any` (not `unknown`) because plugins extend edges
   // with arbitrary attributes; tightening to `unknown` would force every
