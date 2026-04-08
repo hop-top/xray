@@ -1,4 +1,6 @@
 import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../types/graph';
+import type { Insight } from './insight';
+export type { Insight } from './insight';
 
 export type TokenEstimator = (text: string) => number | Promise<number>;
 
@@ -7,12 +9,52 @@ export class MapRenderer {
   private ranked: RankedNode[];
   private graph: XrayGraph;
   private tokenEstimator?: TokenEstimator;
+  private insights: Insight[] = [];
 
   constructor(root: string, ranked: RankedNode[], graph: XrayGraph, tokenEstimator?: TokenEstimator) {
     this.root = root;
     this.ranked = ranked;
     this.graph = graph;
     this.tokenEstimator = tokenEstimator;
+  }
+
+  /**
+   * Push a pre-render insight block onto the renderer. Called by plugins
+   * from the `render:start` event (sequential emission). Insights are
+   * rendered in attach order, each as `## <title>` + body, at the top of
+   * the rendered output.
+   */
+  addInsight(insight: Insight): void {
+    this.insights.push(insight);
+  }
+
+  /** Read-only accessor used by integration tests. */
+  getInsights(): readonly Insight[] {
+    return this.insights;
+  }
+
+  /**
+   * Read-only accessor for the scan root. Used by plugins that need to
+   * build repo-root-relative links (e.g. QuestionGeneratorPlugin).
+   */
+  getRoot(): string {
+    return this.root;
+  }
+
+  /**
+   * Build the insight header block for prepending to rendered output.
+   * Returns empty string when no insights have been pushed.
+   */
+  protected renderInsights(): string {
+    if (this.insights.length === 0) return '';
+    const lines: string[] = [];
+    for (const ins of this.insights) {
+      lines.push(`## ${ins.title}`);
+      lines.push('');
+      lines.push(ins.body);
+      lines.push('');
+    }
+    return lines.join('\n');
   }
 
   /**
@@ -264,6 +306,8 @@ export class MapRenderer {
       }
     }
 
-    return outputLines.join('\n');
+    const body = outputLines.join('\n');
+    const header = this.renderInsights();
+    return header ? `${header}\n${body}` : body;
   }
 }
