@@ -4,15 +4,19 @@ import { XrayEvents } from '../../src/lib/events/types';
 
 // Mock Xray class for testing
 class MockXray extends AsyncEventEmitter<XrayEvents> {
-    private _surprises: unknown[] = [];
+    private _stashes = new Map<string, unknown[]>();
     getLastGraph() {
         return {};
     }
-    stashSurprises(items: unknown[]): void {
-        for (const item of items) this._surprises.push(item);
+    stash(namespace: string, items: unknown[]): void {
+        const bucket = this._stashes.get(namespace);
+        if (bucket) bucket.push(...items);
+        else this._stashes.set(namespace, [...items]);
     }
-    getSurprises(n?: number): unknown[] {
-        return n === undefined ? this._surprises.slice() : this._surprises.slice(0, n);
+    retrieve(namespace: string, n?: number): unknown[] {
+        const bucket = this._stashes.get(namespace);
+        if (!bucket) return [];
+        return n === undefined ? bucket.slice() : bucket.slice(0, n);
     }
 }
 

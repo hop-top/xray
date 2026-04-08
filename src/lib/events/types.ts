@@ -129,7 +129,7 @@ export interface XrayEvents {
   'graph:add-edge': {
     source: string;
     target: string;
-    type: 'defines' | 'calls';
+    type: 'defines' | 'calls' | 'imports';
     skip?: boolean;
     attrs?: any;
   };

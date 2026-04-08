@@ -4,14 +4,17 @@ import { XrayGraph, RankedNode } from '../../types/graph';
 import { Logger } from '../logger';
 
 /**
- * Typed public surface a plugin may rely on. Feature tracks (surprise,
- * clustering, question-generator, graphify) all need to read the graph,
- * stash per-run side data, and retrieve it later without narrowing casts.
+ * Typed public surface a plugin may rely on. Plugins read the last graph
+ * and use the namespaced `stash` / `retrieve` primitives to persist
+ * per-run side data across event boundaries without narrowing casts.
+ *
+ * Domain-specific helpers (e.g. `stashSurprises`) belong in the plugin
+ * package itself, not here — core stays domain-free.
  */
 export interface XrayLike extends AsyncEventEmitter<XrayEvents> {
   getLastGraph(): { graph?: XrayGraph; rankedNodes?: RankedNode[] };
-  stashSurprises(items: unknown[]): void;
-  getSurprises(n?: number): unknown[];
+  stash(namespace: string, items: unknown[]): void;
+  retrieve(namespace: string, n?: number): unknown[];
 }
 
 export interface XrayPlugin {
@@ -48,7 +51,7 @@ export class PluginManager {
   /**
    * Idempotent register: if a plugin with the same name is already present,
    * log a warning and return without throwing. Designed for preset bundles
-   * (graphify-integration-init) that may re-apply sub-plugins across setups.
+   * that may re-apply the same sub-plugin across multiple entry points.
    */
   async applyIfAbsent(plugin: XrayPlugin, xray: XrayLike): Promise<void> {
     if (this.has(plugin.name)) {

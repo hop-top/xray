@@ -60,7 +60,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
   private pluginManager: PluginManager;
   private lastGraph?: XrayGraph;
   private lastRankedNodes?: RankedNode[];
-  private surprises: unknown[] = [];
+  private stashes = new Map<string, unknown[]>();
 
   constructor(config: XrayConfig) {
     super();
@@ -120,19 +120,30 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
   }
 
   /**
-   * Typed side-channel for feature plugins (surprise-analysis, etc.) to
-   * persist per-run items across event boundaries. Storage only — scoring,
-   * ranking, and rendering logic live in the feature tracks.
+   * Generic per-run side-channel storage. Both core and plugins use it:
+   * each caller claims a string namespace and reads/writes its own slot.
+   * Cleared at the top of every pipeline run so long-lived `Xray`
+   * instances do not leak items across runs.
+   *
+   * Storage only — no domain logic. Plugins typically wrap with typed
+   * sugar in their own package:
+   *
+   *     const stashSurprises = (xray, items: Surprise[]) =>
+   *       xray.stash('surprise', items);
    */
-  stashSurprises(items: unknown[]): void {
-    for (const item of items) {
-      this.surprises.push(item);
+  stash(namespace: string, items: unknown[]): void {
+    const bucket = this.stashes.get(namespace);
+    if (bucket) {
+      bucket.push(...items);
+    } else {
+      this.stashes.set(namespace, [...items]);
     }
   }
 
-  getSurprises(n?: number): unknown[] {
-    if (n === undefined) return this.surprises.slice();
-    return this.surprises.slice(0, n);
+  retrieve(namespace: string, n?: number): unknown[] {
+    const bucket = this.stashes.get(namespace);
+    if (!bucket) return [];
+    return n === undefined ? bucket.slice() : bucket.slice(0, n);
   }
 
   /**
@@ -151,10 +162,18 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
 
       // 3. Render
       const includeIncs = this.config.features?.incs || false;
+      const chunked = this.config.chunked !== false;
 
       // Pre-construct the renderer so listeners can interact with it
       // (e.g. inject pre-render hooks) via the render:start event payload.
-      const chunked = this.config.chunked !== false;
+      //
+      // CAVEAT for chunked mode: `run()` does not actually drive the
+      // ChunkedRenderer — `src/commands/generate.ts` calls `buildGraph()`
+      // and constructs its own renderer to write chunks. The instance
+      // emitted here on the chunked branch is observability-only;
+      // listeners that mutate it will NOT affect generate.ts's renderer.
+      // The non-chunked branch is the only path where `run()` itself
+      // drives rendering, so listener configuration takes effect there.
       const renderer: MapRenderer | ChunkedRenderer = chunked
         ? new ChunkedRenderer(this.config.path, rankedNodes, graph, this.config.limit!, this.config.depth, includeIncs)
         : new MapRenderer(this.config.path, rankedNodes, graph);
@@ -267,6 +286,10 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
    * every code path (including the default chunked CLI path).
    */
   private async buildPipeline(files: string[]): Promise<{ rankedNodes: RankedNode[]; graph: XrayGraph }> {
+    // Reset per-run side-channel storage so long-lived `Xray` instances do
+    // not leak stash entries across runs.
+    this.stashes.clear();
+
     const parser = new ParserManager(this.config.path);
     const graphBuilder = new GraphBuilder();
 
@@ -309,7 +332,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         // Event: Cache hit - use sequential since listeners can modify cached data
         const cacheHitEvent = { file, tags: cached.tags, imports: cached.imports };
         await this.emitAsync('cache:hit', cacheHitEvent);
-        graphBuilder.loadFromCache(file, cacheHitEvent.tags, cacheHitEvent.imports);
+        await graphBuilder.loadFromCache(file, cacheHitEvent.tags, cacheHitEvent.imports);
       } else {
         // Event: Cache miss - use parallel for observers
         await this.emitAsyncParallel('cache:miss', { file });
@@ -350,7 +373,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           await this.emitAsync('graph:add-file', addFileEvent);
 
           if (!addFileEvent.skip) {
-            graphBuilder.addFile(file, addFileEvent.tags, addFileEvent.imports);
+            await graphBuilder.addFile(file, addFileEvent.tags, addFileEvent.imports);
           }
 
           // Event: Cache write
@@ -374,8 +397,8 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
 
     const graph = await graphBuilder.getGraph();
 
-    // Graph complete - sequential: mutation plugins (clustering, surprise)
-    // rely on attach-order semantics to write edge/node attributes.
+    // Graph complete - sequential: mutation plugins rely on attach-order
+    // semantics to write edge/node attributes deterministically.
     await this.emitAsync('graph:complete', {
       graph,
       nodeCount: graph.order,
@@ -403,30 +426,34 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
    *
    * Runs the same shared pipeline as `run()` so every lifecycle event fires
    * (previously silent — plugins registered before `buildGraph()` used to
-   * no-op on the default CLI path). Also pre-constructs a `ChunkedRenderer`
-   * and emits `render:start` so plugins get a chance to configure it before
-   * the caller renders chunks.
+   * no-op on the default CLI path). Also emits `render:start` so plugins
+   * can observe render-time state before the caller renders chunks with
+   * its own renderer instance.
    */
   async buildGraph(): Promise<{ rankedNodes: RankedNode[]; graph: XrayGraph }> {
     const files = await this.scanFiles();
     const { rankedNodes, graph } = await this.buildPipeline(files);
 
-    // Emit render:start with a chunked renderer so plugins can observe /
-    // configure it. The caller (src/commands/generate.ts) still constructs
-    // its own renderer — this is an observability contract, not a handoff.
+    // The renderer instance emitted here is observability-only — the actual
+    // chunk writing is performed by `src/commands/generate.ts`, which
+    // constructs its own renderer. We still pick the right type so the
+    // payload stays internally consistent with `chunked`.
     const includeIncs = this.config.features?.incs || false;
-    const renderer = new ChunkedRenderer(
-      this.config.path,
-      rankedNodes,
-      graph,
-      this.config.limit!,
-      this.config.depth,
-      includeIncs
-    );
+    const chunked = this.config.chunked !== false;
+    const renderer: MapRenderer | ChunkedRenderer = chunked
+      ? new ChunkedRenderer(
+          this.config.path,
+          rankedNodes,
+          graph,
+          this.config.limit!,
+          this.config.depth,
+          includeIncs
+        )
+      : new MapRenderer(this.config.path, rankedNodes, graph);
 
     await this.emitAsync('render:start', {
       format: this.config.format || 'txt',
-      chunked: true,
+      chunked,
       outputPath: '',
       renderer
     });
