@@ -1,6 +1,8 @@
 import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../types/graph';
 import { CLUSTER_SENTINEL } from '../graph/cluster';
 import { Logger } from '../logger';
+import type { Insight } from './insight';
+export type { Insight } from './insight';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -33,6 +35,10 @@ export type TokenEstimator = (text: string) => number | Promise<number>;
  */
 export type ChunkGrouping = 'directory' | 'community';
 
+// Insight type lives in `./insight` so both renderers (and the
+// `applyStashedInsights` drain helper used by `src/commands/generate.ts`)
+// reference a single shape.
+
 /**
  * Options bag for `ChunkedRenderer`. Replaces the previous positional
  * constructor parameter list — see spec T-0034. New grouping modes land as
@@ -59,6 +65,7 @@ export class ChunkedRenderer {
   private includeImports: boolean;
   private tokenEstimator?: TokenEstimator;
   private grouping: ChunkGrouping;
+  private insights: Insight[] = [];
 
   constructor(opts: ChunkedRendererOptions) {
     this.root = opts.root;
@@ -69,6 +76,45 @@ export class ChunkedRenderer {
     this.includeImports = opts.includeImports ?? false;
     this.tokenEstimator = opts.tokenEstimator;
     this.grouping = opts.grouping ?? 'directory';
+  }
+
+  /**
+   * Push a pre-render insight block onto the renderer. Called by plugins
+   * from the `render:start` event (sequential emission). Insights are
+   * rendered in attach order, each as `## <title>` + body, prepended to
+   * the root chunk in both `'directory'` and `'community'` modes.
+   */
+  addInsight(insight: Insight): void {
+    this.insights.push(insight);
+  }
+
+  /** Read-only accessor used by integration tests. */
+  getInsights(): readonly Insight[] {
+    return this.insights;
+  }
+
+  /**
+   * Read-only accessor for the scan root. Used by plugins that need to
+   * build repo-root-relative links (e.g. QuestionGeneratorPlugin).
+   */
+  getRoot(): string {
+    return this.root;
+  }
+
+  /**
+   * Build the insight header block to prepend on the root chunk. Empty
+   * string when no insights were pushed.
+   */
+  private renderInsights(): string {
+    if (this.insights.length === 0) return '';
+    const lines: string[] = [];
+    for (const ins of this.insights) {
+      lines.push(`## ${ins.title}`);
+      lines.push('');
+      lines.push(ins.body);
+      lines.push('');
+    }
+    return lines.join('\n');
   }
 
   /**
@@ -186,6 +232,16 @@ export class ChunkedRenderer {
 
     // Determine root chunk (usually the top-level directory)
     const rootChunk = this.getRootChunkPath(outputBasePath, sortedDirs);
+
+    // Prepend insight blocks (if any) onto the root chunk content.
+    // Insights are pushed by plugins from the `render:start` event.
+    const insightBlock = this.renderInsights();
+    if (insightBlock) {
+      const rootContent = chunks.get(rootChunk);
+      if (rootContent !== undefined) {
+        chunks.set(rootChunk, `${insightBlock}\n${rootContent}`);
+      }
+    }
 
     return {
       chunks,
@@ -686,7 +742,9 @@ export class ChunkedRenderer {
     }
 
     // Root index chunk
-    const rootContent = this.buildCommunityRootContent(communityOrder, byCommunity);
+    const rootBody = this.buildCommunityRootContent(communityOrder, byCommunity);
+    const insightBlock = this.renderInsights();
+    const rootContent = insightBlock ? `${insightBlock}\n${rootBody}` : rootBody;
     const ext = path.extname(outputBasePath) || '.md';
     const base = outputBasePath.replace(ext, '');
     const rootChunk = `${base}_root${ext}`;

@@ -15,6 +15,7 @@ import { StrategyRunner } from '../lib/strategy/runner';
 import { XrayScopeConfig } from '../types/xray-config';
 import { resolvePath, resolveOutputPath } from './common';
 import { ChunkedRenderer } from '../lib/renderer/chunked-renderer';
+import { applyStashedInsights } from '../lib/renderer/insight';
 import { buildShareSummary, resolveShareOutputPath } from '../lib/share-summary';
 import { CommonAnalysisOptions } from '../types/command-options';
 
@@ -221,6 +222,15 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         includeImports: includeIncs,
         grouping: groupingOpt,
       });
+
+      // Drain insights stashed by plugins on `render:start` into the
+      // real renderer. The renderer instance carried by render:start in
+      // the chunked path is observability-only — `buildGraph()`
+      // constructs it for the event payload but `generate.ts` (here)
+      // constructs the renderer that actually writes chunks. Plugins
+      // (e.g. question-generator) stash their insights so they can be
+      // re-applied here. See `src/lib/renderer/insight.ts`.
+      applyStashedInsights(xray, chunkedRenderer);
 
       const { chunks, metadata, rootChunk } = await chunkedRenderer.renderChunked(outputPath!);
 
