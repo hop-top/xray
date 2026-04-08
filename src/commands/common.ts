@@ -65,6 +65,7 @@ export const addCommonOptions = (cmd: Command) => {
     .option('--mermaid', 'Generate Mermaid diagram (default)')
     .option('--dot', 'Generate DOT diagram')
     .option('--no-chunk', 'Disable chunked output (single file output)')
+    .option('--group <mode>', 'Chunk grouping mode: directory (default) or community', 'directory')
     .option('--config <path>', 'Path to config file (auto-detect if not specified)')
     .option('--preset <name>', 'Use named preset from config file')
     .option('--scope <name>', 'Use specific scope from config file')

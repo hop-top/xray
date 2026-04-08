@@ -19,11 +19,22 @@ import { Import } from '../lib/parser/types';
  * Base attributes for file nodes in the graph.
  *
  * File nodes represent source code files.
+ *
+ * Well-known plugin-set keys (documented, not type-constrained beyond the
+ * index signature on the public alias type — see `FileNodeAttributes`):
+ *
+ * - `community?: number` — logical community id assigned by
+ *   `ClusteringPlugin` / `cluster()` in `src/lib/graph/cluster.ts`. Nodes
+ *   that fall outside the clustering subgraph (e.g. files with no `calls`
+ *   edges when the default `calls`-only edge filter runs) receive a
+ *   sentinel value of `-1`.
  */
 export interface BaseFileNodeAttributes {
   type: 'file';
   label: string;
   imports?: Import[];
+  /** Logical community id assigned by the clustering plugin. Sentinel: -1. */
+  community?: number;
 }
 
 /**
@@ -42,6 +53,8 @@ export interface BaseTagNodeAttributes {
   col?: number;
   signature?: string;
   doc?: string;
+  /** Logical community id assigned by the clustering plugin. Sentinel: -1. */
+  community?: number;
 }
 
 /**

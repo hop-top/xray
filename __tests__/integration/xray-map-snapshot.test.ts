@@ -112,14 +112,13 @@ describe('xray map — backward-compat snapshot (T-0018)', () => {
     const { rankedNodes, graph } = await xray.buildGraph();
 
     const includeIncs = false;
-    const renderer = new ChunkedRenderer(
-      targetDir,
-      rankedNodes,
+    const renderer = new ChunkedRenderer({
+      root: targetDir,
+      ranked: rankedNodes,
       graph,
-      4096, // default limit
-      undefined, // depth
-      includeIncs
-    );
+      tokenLimit: 4096,
+      includeImports: includeIncs,
+    });
 
     const outputBasePath = path.join(tmpDir, 'map');
     const result = await renderer.renderChunked(outputBasePath);
@@ -146,5 +145,54 @@ describe('xray map — backward-compat snapshot (T-0018)', () => {
     };
 
     expect(snapshot).toMatchSnapshot();
+  });
+
+  // T-0038 — confirm that `grouping: 'directory'` (new options-bag default)
+  // produces byte-identical chunk content to omitting the `grouping` field.
+  // This guards against the clustering track's renderer refactor silently
+  // altering the default chunked output.
+  it('default grouping is byte-identical to explicit grouping: "directory"', async () => {
+    const xray = new Xray({
+      path: targetDir,
+      cachePath: path.join(tmpDir, '.xray_cache_identity.db'),
+      chunked: true,
+    });
+
+    const { rankedNodes, graph } = await xray.buildGraph();
+
+    const defaultRenderer = new ChunkedRenderer({
+      root: targetDir,
+      ranked: rankedNodes,
+      graph,
+      tokenLimit: 4096,
+    });
+
+    const explicitRenderer = new ChunkedRenderer({
+      root: targetDir,
+      ranked: rankedNodes,
+      graph,
+      tokenLimit: 4096,
+      grouping: 'directory',
+    });
+
+    const outDefault = await defaultRenderer.renderChunked(path.join(tmpDir, 'map_default'));
+    const outExplicit = await explicitRenderer.renderChunked(path.join(tmpDir, 'map_explicit'));
+
+    expect(outDefault.chunks.size).toBe(outExplicit.chunks.size);
+    expect(outDefault.metadata.length).toBe(outExplicit.metadata.length);
+    // Compare the set of keys modulo the prefix so we can detect any shape
+    // drift between the two renderer instances.
+    const keysOf = (m: Map<string, string>) =>
+      Array.from(m.keys())
+        .map((k) => path.basename(k))
+        .sort();
+    expect(keysOf(outDefault.chunks)).toEqual(keysOf(outExplicit.chunks));
+    // Byte-length equality for every normalized chunk content.
+    const contentOf = (m: Map<string, string>) =>
+      Array.from(m.entries())
+        .map(([k, v]) => [path.basename(k), v] as const)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([_, v]) => v);
+    expect(contentOf(outDefault.chunks)).toEqual(contentOf(outExplicit.chunks));
   });
 });

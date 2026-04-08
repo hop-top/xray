@@ -210,14 +210,17 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
 
       // Use chunked renderer
       const includeIncs = features.incs || false;
-      const chunkedRenderer = new ChunkedRenderer(
-        currentPath,
-        rankedNodes,
+      const groupingOpt: 'directory' | 'community' =
+        mergedOptions.group === 'community' ? 'community' : 'directory';
+      const chunkedRenderer = new ChunkedRenderer({
+        root: currentPath,
+        ranked: rankedNodes,
         graph,
-        parseInt(mergedOptions.limit),
-        mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
-        includeIncs
-      );
+        tokenLimit: parseInt(mergedOptions.limit),
+        maxDepth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
+        includeImports: includeIncs,
+        grouping: groupingOpt,
+      });
 
       const { chunks, metadata, rootChunk } = await chunkedRenderer.renderChunked(outputPath!);
 
