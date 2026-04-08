@@ -30,7 +30,13 @@ export interface SerializedNode {
 export interface SerializedEdge {
   source: string;
   target: string;
-  type: 'defines' | 'calls';
+  type: 'defines' | 'calls' | 'imports';
+  confidence?: string;
+  community?: string;
+  // Index signature is `any` (not `unknown`) because plugins extend edges
+  // with arbitrary attributes; tightening to `unknown` would force every
+  // existing consumer to type-narrow. Declared keys above stay typed.
+  [key: string]: any;
 }
 
 /**

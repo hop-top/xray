@@ -2,6 +2,14 @@ const Graph = require('graphology');
 import type { SerializedGraph, SerializedNode, SerializedEdge } from '../query/types';
 
 /**
+ * Well-known edge attribute keys that the serializer copies through
+ * in both directions. Extend this list when adding new declared
+ * attributes on SerializedEdge so the serializer stays in sync with
+ * the type system rather than relying on ad-hoc memory.
+ */
+const WELL_KNOWN_EDGE_KEYS = ['type', 'confidence', 'community'] as const;
+
+/**
  * GraphSerializer handles serialization and deserialization of graphology graphs
  * to/from the canonical SerializedGraph format.
  *
@@ -40,11 +48,16 @@ export class GraphSerializer {
 
     // Serialize edges
     graph.forEachEdge((_: string, attrs: any, source: string, target: string) => {
-      edges.push({
+      const edge: SerializedEdge = {
         source,
         target,
         type: attrs.type,
-      });
+      };
+      for (const key of WELL_KNOWN_EDGE_KEYS) {
+        if (key === 'type') continue;
+        if (attrs[key] !== undefined) edge[key] = attrs[key];
+      }
+      edges.push(edge);
     });
 
     return {
@@ -61,10 +74,15 @@ export class GraphSerializer {
   }
 
   /**
-   * Deserialize a SerializedGraph back into a graphology graph
+   * Deserialize a SerializedGraph back into a graphology graph.
+   *
+   * Constructs the graph with `{ multi: true, type: 'directed' }` to match
+   * the producer (`GraphBuilder` in `src/lib/graph/builder.ts`). A default
+   * graphology graph would throw on parallel edges between the same nodes
+   * (e.g. when both `defines` and `imports` exist between two files).
    */
   deserialize(serialized: SerializedGraph): any {
-    const graph = new Graph();
+    const graph = new Graph({ multi: true, type: 'directed' });
 
     // Add nodes
     for (const node of serialized.nodes) {
@@ -88,9 +106,14 @@ export class GraphSerializer {
 
     // Add edges
     for (const edge of serialized.edges) {
-      graph.addEdge(edge.source, edge.target, {
+      const attrs: Record<string, any> = {
         type: edge.type,
-      });
+      };
+      for (const key of WELL_KNOWN_EDGE_KEYS) {
+        if (key === 'type') continue;
+        if (edge[key] !== undefined) attrs[key] = edge[key];
+      }
+      graph.addEdge(edge.source, edge.target, attrs);
     }
 
     return graph;

@@ -3,7 +3,22 @@ import { AsyncEventEmitter } from '../../src/lib/events/async-emitter';
 import { XrayEvents } from '../../src/lib/events/types';
 
 // Mock Xray class for testing
-class MockXray extends AsyncEventEmitter<XrayEvents> {}
+class MockXray extends AsyncEventEmitter<XrayEvents> {
+    private _stashes = new Map<string, unknown[]>();
+    getLastGraph() {
+        return {};
+    }
+    stash(namespace: string, items: unknown[]): void {
+        const bucket = this._stashes.get(namespace);
+        if (bucket) bucket.push(...items);
+        else this._stashes.set(namespace, [...items]);
+    }
+    retrieve(namespace: string, n?: number): unknown[] {
+        const bucket = this._stashes.get(namespace);
+        if (!bucket) return [];
+        return n === undefined ? bucket.slice() : bucket.slice(0, n);
+    }
+}
 
 describe('PluginManager', () => {
     let manager: PluginManager;
@@ -326,6 +341,37 @@ describe('PluginManager', () => {
             const registered = plugins.find(p => p.name === 'no-version');
 
             expect(registered?.version).toBeUndefined();
+        });
+    });
+
+    describe('applyIfAbsent idempotency', () => {
+        it('registers the plugin on first call and skips (without throwing) on second', async () => {
+            const applyFn = jest.fn();
+            const plugin: XrayPlugin = {
+                name: 'idempotent-plugin',
+                apply: applyFn
+            };
+
+            const warnSpy = jest
+                .spyOn(require('../../src/lib/logger').Logger, 'warn')
+                .mockImplementation(() => {});
+
+            try {
+                await manager.applyIfAbsent(plugin, mockXray);
+                expect(manager.has('idempotent-plugin')).toBe(true);
+                expect(applyFn).toHaveBeenCalledTimes(1);
+
+                // Second call resolves without throwing and does not re-apply.
+                await expect(
+                    manager.applyIfAbsent(plugin, mockXray)
+                ).resolves.toBeUndefined();
+                expect(applyFn).toHaveBeenCalledTimes(1);
+                expect(warnSpy).toHaveBeenCalledWith(
+                    expect.stringContaining('idempotent-plugin')
+                );
+            } finally {
+                warnSpy.mockRestore();
+            }
         });
     });
 });

@@ -60,6 +60,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
   private pluginManager: PluginManager;
   private lastGraph?: XrayGraph;
   private lastRankedNodes?: RankedNode[];
+  private stashes = new Map<string, unknown[]>();
 
   constructor(config: XrayConfig) {
     super();
@@ -97,6 +98,11 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     return this;
   }
 
+  async useIfAbsent(plugin: XrayPlugin): Promise<this> {
+    await this.pluginManager.applyIfAbsent(plugin, this);
+    return this;
+  }
+
   async unload(pluginName: string): Promise<this> {
     await this.pluginManager.unregister(pluginName);
     return this;
@@ -114,6 +120,33 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
   }
 
   /**
+   * Generic per-run side-channel storage. Both core and plugins use it:
+   * each caller claims a string namespace and reads/writes its own slot.
+   * Cleared at the top of every pipeline run so long-lived `Xray`
+   * instances do not leak items across runs.
+   *
+   * Storage only — no domain logic. Plugins typically wrap with typed
+   * sugar in their own package:
+   *
+   *     const stashSurprises = (xray, items: Surprise[]) =>
+   *       xray.stash('surprise', items);
+   */
+  stash(namespace: string, items: unknown[]): void {
+    const bucket = this.stashes.get(namespace);
+    if (bucket) {
+      bucket.push(...items);
+    } else {
+      this.stashes.set(namespace, [...items]);
+    }
+  }
+
+  retrieve(namespace: string, n?: number): unknown[] {
+    const bucket = this.stashes.get(namespace);
+    if (!bucket) return [];
+    return n === undefined ? bucket.slice() : bucket.slice(0, n);
+  }
+
+  /**
    * Main entry point to generate the repository map.
    * Returns either a single string (non-chunked) or an object with chunk metadata.
    */
@@ -121,60 +154,41 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     try {
       Logger.debug('Starting xray analysis', { config: this.config });
 
-      // 1. Scan Files - use parallel for independent observers
-      await this.emitAsyncParallel('scan:start', {
-        path: this.config.path,
-        config: this.config
-      });
+      // 1. Scan Files + apply custom queries
+      const files = await this.scanFiles();
 
-      const scanner = new FileScanner(this.config.path);
-      const files = scanner.scan();
-      Logger.info(`Found ${files.length} files.`);
-      Logger.debug(`File list:`, files.slice(0, 10));
-
-      await this.emitAsyncParallel('scan:complete', { files });
-      await this.emitProgress('scan', files.length, files.length, 'Scan complete');
-
-      // 1.5 Apply Custom Queries
-      if (this.config.queries) {
-        for (const [ext, source] of Object.entries(this.config.queries)) {
-          try {
-            let queryContent: string;
-            if (source.startsWith('http://') || source.startsWith('https://')) {
-              Logger.info(`Fetching custom query for ${ext} from ${source}...`);
-              const response = await fetch(source);
-              if (!response.ok) {
-                throw new Error(`Failed to fetch query: ${response.statusText}`);
-              }
-              queryContent = await response.text();
-            } else {
-              Logger.info(`Loading custom query for ${ext} from ${source}...`);
-              queryContent = fs.readFileSync(source, 'utf-8');
-            }
-            updateLanguageQuery(ext, queryContent);
-          } catch (e) {
-            Logger.error(`Failed to load custom query for ${ext}:`, e);
-          }
-        }
-      }
-
-      // 2. Parse & Build Graph
-      const { rankedNodes, graph } = await this.buildGraphWithEvents(files);
+      // 2. Parse & Build Graph (emits all pipeline lifecycle events)
+      const { rankedNodes, graph } = await this.buildPipeline(files);
 
       // 3. Render
       const includeIncs = this.config.features?.incs || false;
+      const chunked = this.config.chunked !== false;
 
-      // 3. Render
-      await this.emitAsyncParallel('render:start', {
+      // Pre-construct the renderer so listeners can interact with it
+      // (e.g. inject pre-render hooks) via the render:start event payload.
+      //
+      // CAVEAT for chunked mode: `run()` does not actually drive the
+      // ChunkedRenderer — `src/commands/generate.ts` calls `buildGraph()`
+      // and constructs its own renderer to write chunks. The instance
+      // emitted here on the chunked branch is observability-only;
+      // listeners that mutate it will NOT affect generate.ts's renderer.
+      // The non-chunked branch is the only path where `run()` itself
+      // drives rendering, so listener configuration takes effect there.
+      const renderer: MapRenderer | ChunkedRenderer = chunked
+        ? new ChunkedRenderer(this.config.path, rankedNodes, graph, this.config.limit!, this.config.depth, includeIncs)
+        : new MapRenderer(this.config.path, rankedNodes, graph);
+
+      // Sequential: listeners may configure or wrap the renderer.
+      await this.emitAsync('render:start', {
         format: this.config.format || 'txt',
-        chunked: this.config.chunked !== false,
-        outputPath: ''
+        chunked,
+        outputPath: '',
+        renderer
       });
 
       // If chunked rendering is disabled, use the original single-file renderer
       if (!this.config.chunked) {
-        const renderer = new MapRenderer(this.config.path, rankedNodes, graph);
-        const output = await renderer.render(this.config.limit!, this.config.depth, includeIncs);
+        const output = await (renderer as MapRenderer).render(this.config.limit!, this.config.depth, includeIncs);
 
         if (this.config.features?.cost) {
           const { tokenizeAndEstimateCost } = await import('llm-cost');
@@ -216,7 +230,66 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     await this.emitAsyncParallel('progress', { stage, current, total, message });
   }
 
-  private async buildGraphWithEvents(files: string[]): Promise<{ rankedNodes: RankedNode[]; graph: XrayGraph }> {
+  /**
+   * Scan filesystem and apply custom tree-sitter query overrides.
+   * Emits `scan:start` and `scan:complete`. Shared by `run()` and `buildGraph()`.
+   */
+  private async scanFiles(): Promise<string[]> {
+    await this.emitAsyncParallel('scan:start', {
+      path: this.config.path,
+      config: this.config
+    });
+
+    const scanner = new FileScanner(this.config.path);
+    const files = scanner.scan();
+    Logger.info(`Found ${files.length} files.`);
+    Logger.debug(`File list:`, files.slice(0, 10));
+
+    await this.emitAsyncParallel('scan:complete', { files });
+    await this.emitProgress('scan', files.length, files.length, 'Scan complete');
+
+    if (this.config.queries) {
+      for (const [ext, source] of Object.entries(this.config.queries)) {
+        try {
+          let queryContent: string;
+          if (source.startsWith('http://') || source.startsWith('https://')) {
+            Logger.info(`Fetching custom query for ${ext} from ${source}...`);
+            const response = await fetch(source);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch query: ${response.statusText}`);
+            }
+            queryContent = await response.text();
+          } else {
+            Logger.info(`Loading custom query for ${ext} from ${source}...`);
+            try {
+              queryContent = fs.readFileSync(source, 'utf-8');
+            } catch (err: any) {
+              throw new FileReadError(source, err);
+            }
+          }
+          updateLanguageQuery(ext, queryContent);
+        } catch (e) {
+          Logger.error(`Failed to load custom query for ${ext}:`, e);
+        }
+      }
+    }
+
+    return files;
+  }
+
+  /**
+   * Shared pipeline core for `run()` and `buildGraph()`. Owns every lifecycle
+   * event from per-file parsing through ranking:
+   *   scan:file, cache:*, parse:*, graph:add-*, graph:complete, rank:start, rank:complete.
+   *
+   * Both public entry points must call this so plugins register and fire on
+   * every code path (including the default chunked CLI path).
+   */
+  private async buildPipeline(files: string[]): Promise<{ rankedNodes: RankedNode[]; graph: XrayGraph }> {
+    // Reset per-run side-channel storage so long-lived `Xray` instances do
+    // not leak stash entries across runs.
+    this.stashes.clear();
+
     const parser = new ParserManager(this.config.path);
     const graphBuilder = new GraphBuilder();
 
@@ -259,7 +332,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         // Event: Cache hit - use sequential since listeners can modify cached data
         const cacheHitEvent = { file, tags: cached.tags, imports: cached.imports };
         await this.emitAsync('cache:hit', cacheHitEvent);
-        graphBuilder.loadFromCache(file, cacheHitEvent.tags, cacheHitEvent.imports);
+        await graphBuilder.loadFromCache(file, cacheHitEvent.tags, cacheHitEvent.imports);
       } else {
         // Event: Cache miss - use parallel for observers
         await this.emitAsyncParallel('cache:miss', { file });
@@ -300,7 +373,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           await this.emitAsync('graph:add-file', addFileEvent);
 
           if (!addFileEvent.skip) {
-            graphBuilder.addFile(file, addFileEvent.tags, addFileEvent.imports);
+            await graphBuilder.addFile(file, addFileEvent.tags, addFileEvent.imports);
           }
 
           // Event: Cache write
@@ -324,8 +397,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
 
     const graph = await graphBuilder.getGraph();
 
-    // Graph complete - use parallel for observers (metrics, logging)
-    await this.emitAsyncParallel('graph:complete', {
+    // Graph complete - sequential: mutation plugins rely on attach-order
+    // semantics to write edge/node attributes deterministically.
+    await this.emitAsync('graph:complete', {
       graph,
       nodeCount: graph.order,
       edgeCount: graph.size
@@ -336,8 +410,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     const ranker = new Ranker(graph);
     const rankedNodes = ranker.rank(this.config.anchor);
 
-    // Rank complete - use sequential since listeners can modify rankings
-    const rankCompleteEvent = { rankedNodes };
+    // Rank complete - sequential: listeners can modify rankings or stamp
+    // edge attrs through the graph reference.
+    const rankCompleteEvent = { graph, rankedNodes };
     await this.emitAsync('rank:complete', rankCompleteEvent);
 
     this.lastGraph = graph;
@@ -347,115 +422,41 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
   }
 
   /**
-   * Get the graph builder for external access (used by chunked rendering)
+   * Public entry point used by the chunked CLI path (`xray map`).
+   *
+   * Runs the same shared pipeline as `run()` so every lifecycle event fires
+   * (previously silent — plugins registered before `buildGraph()` used to
+   * no-op on the default CLI path). Also emits `render:start` so plugins
+   * can observe render-time state before the caller renders chunks with
+   * its own renderer instance.
    */
   async buildGraph(): Promise<{ rankedNodes: RankedNode[]; graph: XrayGraph }> {
-    // 1. Scan Files
-    const scanner = new FileScanner(this.config.path);
-    const files = scanner.scan();
-    Logger.info(`Found ${files.length} files.`);
+    const files = await this.scanFiles();
+    const { rankedNodes, graph } = await this.buildPipeline(files);
 
-    // 1.5 Apply Custom Queries
-    if (this.config.queries) {
-      for (const [ext, source] of Object.entries(this.config.queries)) {
-        try {
-          let queryContent: string;
-          if (source.startsWith('http://') || source.startsWith('https://')) {
-            Logger.info(`Fetching custom query for ${ext} from ${source}...`);
-            const response = await fetch(source);
-            if (!response.ok) {
-              throw new Error(`Failed to fetch query: ${response.statusText}`);
-            }
-            queryContent = await response.text();
-          } else {
-            Logger.info(`Loading custom query for ${ext} from ${source}...`);
-            try {
-              queryContent = fs.readFileSync(source, 'utf-8');
-            } catch (err: any) {
-              throw new FileReadError(source, err);
-            }
-          }
-          updateLanguageQuery(ext, queryContent);
-        } catch (e) {
-          Logger.error(`Failed to load custom query for ${ext}:`, e);
-        }
-      }
-    }
+    // The renderer instance emitted here is observability-only — the actual
+    // chunk writing is performed by `src/commands/generate.ts`, which
+    // constructs its own renderer. We still pick the right type so the
+    // payload stays internally consistent with `chunked`.
+    const includeIncs = this.config.features?.incs || false;
+    const chunked = this.config.chunked !== false;
+    const renderer: MapRenderer | ChunkedRenderer = chunked
+      ? new ChunkedRenderer(
+          this.config.path,
+          rankedNodes,
+          graph,
+          this.config.limit!,
+          this.config.depth,
+          includeIncs
+        )
+      : new MapRenderer(this.config.path, rankedNodes, graph);
 
-    // 2. Parse & Extract (with Cache)
-    const parser = new ParserManager(this.config.path);
-    const graphBuilder = new GraphBuilder();
-
-    // Forward GraphBuilder events to Xray listeners
-    graphBuilder.on('node:add', async (event) => {
-      await this.emitAsync('graph:add-node', event);
+    await this.emitAsync('render:start', {
+      format: this.config.format || 'txt',
+      chunked,
+      outputPath: '',
+      renderer
     });
-
-    graphBuilder.on('edge:add', async (event) => {
-      await this.emitAsync('graph:add-edge', event);
-    });
-
-    graphBuilder.on('error', async (event) => {
-      await this.emitAsync('error', event);
-    });
-
-    if (this.config.onProgress) {
-      this.config.onProgress(0, files.length, '');
-    }
-
-    const includeVars = this.config.features?.vars || false;
-    const includeDocs = this.config.features?.docs ? 'all' : 'none';
-    const enableCfg = this.config.features?.cf || false;
-    const enableDfg = this.config.features?.df || false;
-
-    let processed = 0;
-    for (const file of files) {
-      if (this.config.onProgress) {
-        this.config.onProgress(processed, files.length, file);
-      }
-
-      const absPath = path.join(this.config.path, file);
-      const stats = fs.statSync(absPath);
-
-      // Check cache
-      const cached = this.cache.get(file, stats.mtimeMs, includeDocs, includeVars);
-
-      if (cached) {
-        graphBuilder.loadFromCache(file, cached.tags, cached.imports);
-      } else {
-        let content: string;
-        try {
-          content = fs.readFileSync(absPath, 'utf-8');
-        } catch (err: any) {
-          await this.emitAsync('error', {
-            event: 'file:read',
-            error: new FileReadError(file, err),
-            payload: { file }
-          });
-          processed++;
-          continue; // Skip this file and continue with others
-        }
-        const { tags, imports } = await parser.parse(file, content, includeVars, includeDocs, enableCfg, enableDfg);
-
-        graphBuilder.addFile(file, tags, imports);
-        this.cache.set(file, stats.mtimeMs, tags, imports, includeDocs, includeVars);
-      }
-      processed++;
-    }
-
-    if (this.config.onProgress) {
-      this.config.onProgress(files.length, files.length, 'Done');
-    }
-
-    // 3. Build Graph
-    const graph = await graphBuilder.getGraph();
-
-    // 4. Rank (PageRank + Heuristics)
-    const ranker = new Ranker(graph);
-    const rankedNodes = ranker.rank(this.config.anchor);
-
-    this.lastGraph = graph;
-    this.lastRankedNodes = rankedNodes;
 
     return { rankedNodes, graph };
   }

@@ -1,3 +1,4 @@
+import * as path from 'path';
 import Graph from 'graphology';
 import { Tag, Import } from '../parser/types';
 import { AsyncEventEmitter } from '../events/async-emitter';
@@ -13,7 +14,7 @@ interface GraphBuilderEvents {
   'edge:add': {
     source: string;
     target: string;
-    type: 'defines' | 'calls';
+    type: 'defines' | 'calls' | 'imports';
     attrs?: EdgeAttributes;
     skip?: boolean;
   };
@@ -34,6 +35,8 @@ interface GraphBuilderEvents {
 export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
   private graph: XrayGraph;
   private pendingReferences: Map<string, { tagId: string, references: string[] }> = new Map();
+  // file (relative path) -> list of raw import specifiers to resolve in a deferred pass
+  private pendingImports: Map<string, string[]> = new Map();
 
   constructor() {
     super();
@@ -81,11 +84,13 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
       }
     }
 
-    // Emit all node events in parallel
+    // Emit node events sequentially (attach-order) so mutation plugins
+    // listening on `graph:add-node` see deterministic ordering and can
+    // mutate `event.attrs` / set `event.skip` without racing each other.
     if (nodeEvents.length > 0) {
-      await Promise.all(nodeEvents.map(event =>
-        this.emitAsync('node:add', event)
-      ));
+      for (const event of nodeEvents) {
+        await this.emitAsync('node:add', event);
+      }
 
       // Add nodes that weren't skipped
       for (const event of nodeEvents) {
@@ -108,11 +113,13 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
       }
     }
 
-    // Emit all edge events in parallel
+    // Emit edge events sequentially to honour the `@emission sequential`
+    // contract on `graph:add-edge` — mutation plugins must see edges in
+    // attach order and be able to set `event.skip` deterministically.
     if (edgeEvents.length > 0) {
-      await Promise.all(edgeEvents.map(event =>
-        this.emitAsync('edge:add', event)
-      ));
+      for (const event of edgeEvents) {
+        await this.emitAsync('edge:add', event);
+      }
 
       // Add edges that weren't skipped
       for (const event of edgeEvents) {
@@ -122,24 +129,162 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
       }
     }
 
-    // Note: In a full implementation, we would resolve imports to files
-    // and add edges: file -> imported_file
-
-    // Store imports as an attribute on the file node
+    // Store imports as an attribute on the file node (back-compat readers).
     if (imports && imports.length > 0) {
       // Store full import objects
       this.graph.mergeNodeAttributes(file, { imports: imports });
+
+      // Stash raw import specifiers for a deferred resolution pass in getGraph().
+      // Rationale: imports may reference files not yet added (iteration order).
+      // Mirrors the `buildReferenceEdges` pattern below.
+      const specifiers: string[] = [];
+      for (const imp of imports) {
+        if (imp && typeof imp.source === 'string' && imp.source.length > 0) {
+          specifiers.push(imp.source);
+        }
+      }
+      if (specifiers.length > 0) {
+        const existing = this.pendingImports.get(file);
+        if (existing) {
+          existing.push(...specifiers);
+        } else {
+          this.pendingImports.set(file, specifiers);
+        }
+      }
     }
   }
 
-  loadFromCache(file: string, tags: Tag[], imports: Import[]) {
-    this.addFile(file, tags, imports);
+  async loadFromCache(file: string, tags: Tag[], imports: Import[]): Promise<void> {
+    await this.addFile(file, tags, imports);
   }
 
   async getGraph(): Promise<XrayGraph> {
     // Build reference edges before returning graph
     await this.buildReferenceEdges();
+    // Resolve pending imports into real `imports` edges now that all file
+    // nodes have been added.
+    await this.buildImportEdges();
     return this.graph;
+  }
+
+  /**
+   * Resolve deferred import specifiers into `imports` edges.
+   *
+   * Minimum-viable resolver: relative path resolution against the set of
+   * known file nodes. External specifiers (not starting with `.` or `/`)
+   * are skipped. Tries common TS/JS extensions plus `/index.*`.
+   *
+   * TODO (spec OQ1): alias / tsconfig-paths / package.json `exports`
+   * resolution is intentionally out of scope for this pass.
+   */
+  private async buildImportEdges() {
+    if (this.pendingImports.size === 0) return;
+
+    // Build a set of known file-node IDs for O(1) lookups. File nodes are
+    // keyed by the relative project path handed to `addFile`.
+    const fileNodes = new Set<string>();
+    this.graph.forEachNode((nodeId: string, attrs: NodeAttributes) => {
+      if (attrs.type === 'file') {
+        fileNodes.add(nodeId);
+      }
+    });
+
+    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
+    const indexSuffixes = [
+      '/index.ts', '/index.tsx', '/index.js', '/index.jsx',
+      '/index.mjs', '/index.cjs'
+    ];
+
+    const resolveSpecifier = (fromFile: string, specifier: string): string | null => {
+      // Skip externals — only relative (`.`, `..`) or absolute specifiers.
+      if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
+        return null;
+      }
+
+      const fromDir = path.posix.dirname(fromFile.split(path.sep).join('/'));
+      const normalizedSpec = specifier.split(path.sep).join('/');
+      // For absolute specifiers, strip leading slash so we resolve within the
+      // project root (files nodes are relative paths).
+      const base = normalizedSpec.startsWith('/')
+        ? path.posix.normalize(normalizedSpec.slice(1))
+        : path.posix.normalize(path.posix.join(fromDir, normalizedSpec));
+
+      // 1) Exact match (specifier already includes extension)
+      if (fileNodes.has(base)) return base;
+
+      // 2) Try common extensions
+      for (const ext of extensions) {
+        const candidate = base + ext;
+        if (fileNodes.has(candidate)) return candidate;
+      }
+
+      // 3) Try directory/index.*
+      for (const idx of indexSuffixes) {
+        const candidate = base + idx;
+        if (fileNodes.has(candidate)) return candidate;
+      }
+
+      return null;
+    };
+
+    const edgeEvents: Array<{
+      source: string;
+      target: string;
+      type: 'imports';
+      attrs: EdgeAttributes;
+      skip: boolean;
+    }> = [];
+
+    // Dedupe by (source, target): multiple `import` statements from the
+    // same file resolving to the same target should produce one edge.
+    // Prevents output bloat and keeps `GraphSerializer.deserialize`
+    // round-trips safe even when the consumer uses a non-multi graph.
+    const seen = new Set<string>();
+    for (const [file, specifiers] of this.pendingImports.entries()) {
+      if (!this.graph.hasNode(file)) continue;
+      for (const specifier of specifiers) {
+        const resolved = resolveSpecifier(file, specifier);
+        if (!resolved) continue;
+        if (resolved === file) continue; // self-import
+        const key = `${file}\x00${resolved}`;
+        if (seen.has(key)) continue;
+        // Also skip if an `imports` edge already exists from a prior pass.
+        if (this.graph.hasEdge(file, resolved)) {
+          // Defensive: only skip when an imports-typed edge is already present
+          // (defines/calls edges between the same nodes are still valid).
+          let hasImports = false;
+          this.graph.forEachEdge(file, resolved, (_: string, attrs: any) => {
+            if (attrs?.type === 'imports') hasImports = true;
+          });
+          if (hasImports) {
+            seen.add(key);
+            continue;
+          }
+        }
+        seen.add(key);
+        edgeEvents.push({
+          source: file,
+          target: resolved,
+          type: 'imports',
+          attrs: { type: 'imports' },
+          skip: false
+        });
+      }
+    }
+
+    if (edgeEvents.length === 0) return;
+
+    // Emit sequentially to honour attach-order mutation semantics (listeners
+    // may flip `skip` or mutate attrs).
+    for (const event of edgeEvents) {
+      await this.emitAsync('edge:add', event);
+    }
+
+    for (const event of edgeEvents) {
+      if (!event.skip) {
+        this.graph.addEdge(event.source, event.target, event.attrs);
+      }
+    }
   }
 
   private async buildReferenceEdges() {
@@ -200,11 +345,12 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
       }
     }
 
-    // Emit all edge events in parallel
+    // Emit edge events sequentially to honour `@emission sequential` on
+    // `graph:add-edge` (see addFile() for the same rationale).
     if (edgeEvents.length > 0) {
-      await Promise.all(edgeEvents.map(event =>
-        this.emitAsync('edge:add', event)
-      ));
+      for (const event of edgeEvents) {
+        await this.emitAsync('edge:add', event);
+      }
 
       // Add edges that weren't skipped
       for (const event of edgeEvents) {
