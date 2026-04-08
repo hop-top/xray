@@ -2,7 +2,7 @@ import * as path from 'path';
 import Graph from 'graphology';
 import { Tag, Import } from '../parser/types';
 import { AsyncEventEmitter } from '../events/async-emitter';
-import { XrayGraph, NodeAttributes, EdgeAttributes } from '../../types/graph';
+import { XrayGraph, NodeAttributes, EdgeAttributes, Confidence } from '../../types/graph';
 
 interface GraphBuilderEvents {
   'node:add': {
@@ -107,7 +107,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
           source: file,
           target: event.tagId,
           type: 'defines',
-          attrs: { type: 'defines' },
+          attrs: { type: 'defines', confidence: Confidence.EXTRACTED },
           skip: false
         });
       }
@@ -266,7 +266,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
           source: file,
           target: resolved,
           type: 'imports',
-          attrs: { type: 'imports' },
+          attrs: { type: 'imports', confidence: Confidence.EXTRACTED },
           skip: false
         });
       }
@@ -337,7 +337,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
               source: resolveEvent.sourceTag,
               target: targetTagId,
               type: 'calls',
-              attrs: { type: 'calls' },
+              attrs: { type: 'calls', confidence: Confidence.EXTRACTED },
               skip: false
             });
           }

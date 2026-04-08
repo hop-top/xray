@@ -1,5 +1,6 @@
 const Graph = require('graphology');
 import { GraphSerializer } from '../../src/lib/graph/serializer';
+import { Confidence } from '../../src/types/graph';
 
 describe('GraphSerializer round-trip', () => {
     let graph: any;
@@ -26,14 +27,14 @@ describe('GraphSerializer round-trip', () => {
         // defines edge (file -> tag)
         graph.addEdge('src/a.ts', 'src/a.ts::foo', {
             type: 'defines',
-            confidence: 'EXTRACTED',
+            confidence: Confidence.EXTRACTED,
             community: 'ui',
         });
 
         // imports edge (file -> file) with well-known keys
         graph.addEdge('src/a.ts', 'src/b.ts', {
             type: 'imports',
-            confidence: 'RESOLVED',
+            confidence: Confidence.INFERRED,
             community: 'core',
         });
 
@@ -47,7 +48,7 @@ describe('GraphSerializer round-trip', () => {
         });
         graph.addEdge('src/a.ts::foo', 'src/b.ts::bar', {
             type: 'calls',
-            confidence: 'HEURISTIC',
+            confidence: Confidence.AMBIGUOUS,
         });
 
         const serialized = serializer.serialize(graph, '/project');
@@ -58,7 +59,7 @@ describe('GraphSerializer round-trip', () => {
         );
         expect(importsEdge).toBeDefined();
         expect(importsEdge!.type).toBe('imports');
-        expect(importsEdge!.confidence).toBe('RESOLVED');
+        expect(importsEdge!.confidence).toBe(Confidence.INFERRED);
         expect(importsEdge!.community).toBe('core');
 
         const definesEdge = serialized.edges.find(
@@ -66,7 +67,7 @@ describe('GraphSerializer round-trip', () => {
         );
         expect(definesEdge).toBeDefined();
         expect(definesEdge!.type).toBe('defines');
-        expect(definesEdge!.confidence).toBe('EXTRACTED');
+        expect(definesEdge!.confidence).toBe(Confidence.EXTRACTED);
         expect(definesEdge!.community).toBe('ui');
 
         const callsEdge = serialized.edges.find(
@@ -74,7 +75,7 @@ describe('GraphSerializer round-trip', () => {
         );
         expect(callsEdge).toBeDefined();
         expect(callsEdge!.type).toBe('calls');
-        expect(callsEdge!.confidence).toBe('HEURISTIC');
+        expect(callsEdge!.confidence).toBe(Confidence.AMBIGUOUS);
         expect(callsEdge!.community).toBeUndefined();
 
         // Round-trip through deserialize
@@ -88,21 +89,23 @@ describe('GraphSerializer round-trip', () => {
             restored.edges('src/a.ts', 'src/b.ts')[0]
         );
         expect(importsAttrs.type).toBe('imports');
-        expect(importsAttrs.confidence).toBe('RESOLVED');
+        expect(importsAttrs.confidence).toBe(Confidence.INFERRED);
         expect(importsAttrs.community).toBe('core');
 
         const definesAttrs = restored.getEdgeAttributes(
             restored.edges('src/a.ts', 'src/a.ts::foo')[0]
         );
         expect(definesAttrs.type).toBe('defines');
-        expect(definesAttrs.confidence).toBe('EXTRACTED');
+        expect(definesAttrs.confidence).toBe(Confidence.EXTRACTED);
         expect(definesAttrs.community).toBe('ui');
 
         const callsAttrs = restored.getEdgeAttributes(
             restored.edges('src/a.ts::foo', 'src/b.ts::bar')[0]
         );
         expect(callsAttrs.type).toBe('calls');
-        expect(callsAttrs.confidence).toBe('HEURISTIC');
+        // community is undefined on the source edge, so the deserialized
+        // attrs should also lack it (not be the string 'undefined').
+        expect(callsAttrs.confidence).toBe(Confidence.AMBIGUOUS);
         expect(callsAttrs.community).toBeUndefined();
     });
 

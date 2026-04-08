@@ -108,9 +108,14 @@ export class GraphSerializer {
     for (const edge of serialized.edges) {
       const attrs: Record<string, any> = {
         type: edge.type,
+        // BaseEdgeAttributes.confidence is required. Older serialized
+        // graphs (pre-confidence-level-init) may lack the field — backfill
+        // with EXTRACTED so the deserialized graph satisfies the type
+        // invariant without forcing a schema migration.
+        confidence: edge.confidence ?? 'EXTRACTED',
       };
       for (const key of WELL_KNOWN_EDGE_KEYS) {
-        if (key === 'type') continue;
+        if (key === 'type' || key === 'confidence') continue;
         if (edge[key] !== undefined) attrs[key] = edge[key];
       }
       graph.addEdge(edge.source, edge.target, attrs);

@@ -28,7 +28,7 @@
  */
 import Graph from 'graphology';
 import { Tag, Import } from '../parser/types';
-import { RankedNode } from '../../types/graph';
+import { RankedNode, EdgeAttributes } from '../../types/graph';
 import { XrayConfig } from '../xray';
 import type { MapRenderer } from '../renderer/map-renderer';
 import type { ChunkedRenderer } from '../renderer/chunked-renderer';
@@ -131,7 +131,7 @@ export interface XrayEvents {
     target: string;
     type: 'defines' | 'calls' | 'imports';
     skip?: boolean;
-    attrs?: any;
+    attrs?: EdgeAttributes;
   };
 
   /** @emission sequential */
