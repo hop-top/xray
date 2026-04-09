@@ -7,7 +7,7 @@ import { handleCompletionAction } from '../completion';
 import { handleQueryAction } from '../query';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
-import { createUpgradeCommand } from '@hop/upgrade-ts/dist/commander';
+import { createUpgradeCommand } from '@hop/upgrade-ts/commander';
 
 const XRAY_VERSION = '0.0.1-alpha.1';
 const XRAY_GITHUB_REPO = 'ideacrafterslabs/oss-xray-codes';
