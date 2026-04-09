@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `--lens <name>` CLI flag and `lenses:` config-file key. A lens is a
+  named set of CLI option defaults you can recall with one flag —
+  "view the same repo through this angle" (e.g. `quick`, `detailed`,
+  `api-only`).
+
+### Changed
+
+- **BREAKING:** renamed two CLI flags in a single release to resolve a
+  naming collision with no backward compatibility:
+  - Old `--preset <name>` (config-file option overlay) → new
+    `--lens <name>`. Config-file key `presets:` → `lenses:`.
+  - Old `--use <spec>` (plugin bundle loader) → new `--preset <spec>`,
+    now repeatable. Matches the internal `Preset` type, the
+    `BUILTIN_PRESETS` catalog, and the `preset:applied` telemetry
+    event. Runtime behaviour unchanged.
+  Combined example: `xray map --lens quick --preset insights`.
+
 ## [0.1.0] - 2025-02-13
 
 ### Added

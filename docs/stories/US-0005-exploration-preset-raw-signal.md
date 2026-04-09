@@ -18,7 +18,7 @@ sneak the removed plugins back into the bundle.
 
 ## acceptance
 
-- given `xray map --use exploration` against any project
+- given `xray map --preset exploration` against any project
 - when the command runs
 - then `xray.plugins()` contains `confidence-enricher` and
   `surprise-analyzer`, and does NOT contain `clustering` or

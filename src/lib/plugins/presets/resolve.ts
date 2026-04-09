@@ -1,6 +1,6 @@
 /**
- * resolvePreset — dispatch `--use <spec>` to a built-in, local file,
- * or npm package, in that order.
+ * resolvePreset — dispatch `--preset <spec>` to a built-in, local
+ * file, or npm package, in that order.
  *
  * Resolution heuristic (strict, spec C-3):
  *

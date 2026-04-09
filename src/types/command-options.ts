@@ -76,8 +76,8 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
   /** Disable chunked output (single file output) */
   chunk?: boolean;
 
-  /** Use named preset from config file */
-  preset?: string;
+  /** Use named lens (config-file option overlay) */
+  lens?: string;
 
   /** Use specific scope from config file */
   scope?: string;
@@ -98,9 +98,9 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
    * Apply one or more plugin presets. Repeatable flag: each value is a
    * built-in name (`insights` | `onboarding` | `exploration`), a local
    * path (`./my-preset.js`), or an npm package (`@scope/pkg`). Distinct
-   * from the config-file `preset` overlay flag above (see docs).
+   * from the `--lens` config-file overlay flag above (see docs).
    */
-  use?: string[];
+  preset?: string[];
 }
 
 /**

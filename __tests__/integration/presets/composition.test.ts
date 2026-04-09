@@ -1,5 +1,5 @@
 /**
- * Integration — composition of two presets via multiple `--use` flags.
+ * Integration — composition of two presets via multiple `--preset` flags.
  *
  * Applies `insights` then `onboarding` to the same Xray instance and
  * asserts:

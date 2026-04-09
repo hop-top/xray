@@ -18,7 +18,7 @@ preset cannot regress into silently including it.
 
 ## acceptance
 
-- given `xray map --use onboarding` against any project
+- given `xray map --preset onboarding` against any project
 - when the command runs
 - then `xray.plugins()` contains `confidence-enricher`, `clustering`,
   and `question-generator`, and does NOT contain `surprise-analyzer`

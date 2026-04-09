@@ -133,13 +133,13 @@ describe('PR #15 review regressions', () => {
   // #3: CLI help text derived from BUILTIN_PRESET_NAMES (no hardcoded
   //     drift between the constant and the commander option string).
   // -----------------------------------------------------------------
-  describe('#3 CLI --use help text sourced from BUILTIN_PRESET_NAMES', () => {
+  describe('#3 CLI --preset help text sourced from BUILTIN_PRESET_NAMES', () => {
     it('help text lists every built-in preset name from the constant', () => {
       const cmd = new Command();
       addCommonOptions(cmd);
-      const useOption = cmd.options.find((o) => o.long === '--use');
-      expect(useOption).toBeDefined();
-      const desc = useOption!.description;
+      const presetOption = cmd.options.find((o) => o.long === '--preset');
+      expect(presetOption).toBeDefined();
+      const desc = presetOption!.description;
       for (const name of BUILTIN_PRESET_NAMES) {
         expect(desc).toContain(name);
       }

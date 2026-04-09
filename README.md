@@ -41,7 +41,7 @@ cat .xray
 - ⚙️  **Automation Ready** - GitHub Actions and pre-commit hooks included
 - 🔌 **Plugin System** - Extensible event-driven architecture for custom workflows (NEW!)
 - 🧭 **Logical Clustering** - Group chunks by graph community with `--group community` (NEW!)
-- 🎛️ **Plugin Presets** - Apply curated plugin bundles via `--use insights|onboarding|exploration`, or load your own from a local path / npm package. See [docs/user/presets.md](docs/user/presets.md). (NEW!)
+- 🎛️ **Plugin Presets** - Apply curated plugin bundles via `--preset insights|onboarding|exploration`, or load your own from a local path / npm package. See [docs/user/presets.md](docs/user/presets.md). (NEW!)
 
 ## Core Commands
 
@@ -416,7 +416,7 @@ Completion scripts are **generated dynamically** and include all available strat
 - [Getting Started](docs/user/getting-started.md) - Installation and first steps
 - [Chunked Output Guide](docs/chunked-output.md) - **NEW:** Multi-file output system
 - [Commands Reference](docs/user/commands.md) - All commands and options
-- [Configuration](docs/user/configuration.md) - Config files and presets
+- [Configuration](docs/user/configuration.md) - Config files and lenses
 - [Strategies](docs/user/strategies.md) - Framework-specific analysis
 - [Automation](docs/user/automation.md) - GitHub Actions and hooks
 - [Troubleshooting](docs/user/troubleshooting.md) - Common issues

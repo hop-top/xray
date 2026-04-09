@@ -102,10 +102,14 @@ describe('E2E: compiled CLI boot', () => {
       const stderr = (err as { stderr?: Buffer }).stderr?.toString() ?? '';
       throw new Error(`CLI failed to boot. stderr:\n${stderr}`);
     }
-    expect(output).toContain('--use');
+    // Both flags must be present in the help.
+    expect(output).toContain('--lens');
+    expect(output).toContain('--preset');
     expect(output).toContain('Apply a plugin preset');
     expect(output).toMatch(/insights/);
     expect(output).toMatch(/onboarding/);
     expect(output).toMatch(/exploration/);
+    // No trace of the old `--use` flag.
+    expect(output).not.toMatch(/--use\b/);
   }, 60_000);
 });

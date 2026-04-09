@@ -1,13 +1,13 @@
 # Configuration Guide
 
-Learn how to configure xray for your project using configuration files, presets, and scopes.
+Learn how to configure xray for your project using configuration files, lenses, and scopes.
 
 ## Why Use Configuration?
 
 Configuration files are especially useful for:
 - **Automation**: GitHub Actions and pre-commit hooks can regenerate xray maps automatically
 - **Consistency**: Team members get the same analysis without remembering CLI flags
-- **Multiple Views**: Define presets for different analysis needs (quick overview, detailed analysis, etc.)
+- **Multiple Views**: Define lenses for different analysis needs (quick overview, detailed analysis, etc.)
 - **Personal Defaults**: Set global preferences that apply to all your projects
 - **Team Standards**: Share project-level configs while respecting personal preferences
 
@@ -129,7 +129,7 @@ module.exports = {
     vars: true,
     incs: true,
   },
-  presets: {
+  lenses: {
     quick: {
       limit: 4000,
       depth: 3,
@@ -166,7 +166,7 @@ module.exports = {
 | `json` | `boolean` | Output raw JSON graph |
 | `aliases` | `object` | Command aliases - shortcuts for strategy commands |
 | `scopes` | `object` | Named scoped xray configurations (multiple independent outputs) |
-| `presets` | `object` | Named configuration presets (legacy) |
+| `lenses` | `object` | Named lenses — config-file option overlays selected via `--lens <name>` |
 
 ## Global Configuration Use Cases
 
@@ -315,15 +315,17 @@ xray map --all-scopes
 # Scopes inherit base config but can override any setting
 ```
 
-## Using Presets (Legacy)
+## Using Lenses
 
-Presets are similar to scopes but run with CLI options:
+Lenses are named config-file overlays — a curated set of CLI option
+defaults you can recall with one flag. Think of them as different
+angles on the same project.
 
 ```json
 {
   "paths": ["./src"],
   "limit": 8000,
-  "presets": {
+  "lenses": {
     "quick": {
       "output": "docs/quick-map.txt",
       "limit": 4000,
@@ -333,15 +335,20 @@ Presets are similar to scopes but run with CLI options:
 }
 ```
 
-Use presets with the `--preset` flag:
+Apply a lens with the `--lens` flag:
 
 ```bash
-xray map --preset quick
+xray map --lens quick
 ```
 
-**Scopes vs Presets:**
+**Scopes vs Lenses:**
 - **Scopes**: Multiple independent outputs, can run all at once with `--all-scopes`
-- **Presets**: Single output, used for quick CLI shortcuts
+- **Lenses**: Single output, used as a quick CLI shortcut to preset flag combinations
+
+**Lens vs `--preset`:** `--lens` loads option defaults from your config
+file. `--preset` loads runtime plugin bundles — see
+[Plugin presets](presets.md). The two are orthogonal and can be
+combined on the same command.
 
 ## CLI Precedence
 

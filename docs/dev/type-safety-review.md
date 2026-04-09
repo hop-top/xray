@@ -947,7 +947,7 @@ getFileAnalysis(file: string): { mtime: number; hash: string; analysis: any } | 
 **Config Merging (1 instance)**
 ```typescript
 // src/lib/config.ts:261
-export function mergeConfig(config: XrayConfig | null, cliOptions: any, preset?: string): any
+export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: string): any
 ```
 
 **Why acceptable:** CLI options come from Commander.js as loosely-typed objects. Input/output intentionally flexible for config merge logic.

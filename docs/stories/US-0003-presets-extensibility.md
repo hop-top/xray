@@ -17,29 +17,29 @@ The preset primitive ships:
 - a typed `Preset` factory + `applyPreset` runner with idempotent
   composition and per-plugin error isolation
 - three built-in presets (`insights`, `onboarding`, `exploration`)
-- a repeatable `--use <spec>` CLI flag that resolves a built-in name,
+- a repeatable `--preset <spec>` CLI flag that resolves a built-in name,
   a local file path, or an npm package and wires the result
 - a resolver that refuses to let an installed `xray-preset-insights`
   package shadow the built-in via the bare `insights` name
 
 ## acceptance
 
-- given `xray map --use insights` against any project
+- given `xray map --preset insights` against any project
 - when the command runs
 - then all four feature plugins are registered exactly once and the
   root chunk contains the "Suggested Questions for Exploration"
   insight header
 
-- given `xray map --use ./my-preset.js` pointing at a file that
+- given `xray map --preset ./my-preset.js` pointing at a file that
   default-exports a `Preset` factory
 - when the command runs
 - then the plugins returned by the factory are registered and applied
 
-- given `xray map --use insights --use onboarding`
+- given `xray map --preset insights --preset onboarding`
 - when the command runs
 - then every plugin is registered exactly once (composition idempotency)
 
-- given `xray map --use bogus-name`
+- given `xray map --preset bogus-name`
 - when the resolver runs
 - then it throws a `PresetResolutionError` whose message lists all
   built-in names
@@ -55,7 +55,7 @@ The preset primitive ships:
    plugins still register.
 4. `resolvePreset` resolves bare built-in names BEFORE any path or
    package lookup (anti-typosquat guard, spec C-3).
-5. Default `xray map` without any `--use` flag produces output that
+5. Default `xray map` without any `--preset` flag produces output that
    is byte-identical (modulo timestamp + path normalisation) to the
    pre-track baseline.
 

@@ -15,7 +15,7 @@ Documentation for using xray:
 
 - **[Getting Started](user/getting-started.md)** - Installation and first steps
 - **[Commands Reference](user/commands.md)** - Complete command reference with all options
-- **[Configuration](user/configuration.md)** - Config files, presets, and scopes
+- **[Configuration](user/configuration.md)** - Config files, lenses, and scopes
 - **[Strategies](user/strategies.md)** - Framework-specific analysis (React, Express, Go CLI, etc.)
 - **[Automation](user/automation.md)** - GitHub Actions and pre-commit hooks
 - **[Troubleshooting](user/troubleshooting.md)** - Common issues and solutions

@@ -22,10 +22,10 @@ import { applyPreset, resolvePreset } from '../lib/plugins/presets';
 import type { Xray as XrayType } from '../lib/xray';
 
 /**
- * Resolve every `--use <spec>` flag in order and apply the resulting
- * presets to the given Xray instance. Repeatable flags compose via
- * `applyPreset`'s `useIfAbsent` path so duplicate plugins across
- * presets register exactly once.
+ * Resolve every `--preset <spec>` flag in order and apply the
+ * resulting plugin presets to the given Xray instance. Repeatable
+ * flags compose via `applyPreset`'s `useIfAbsent` path so duplicate
+ * plugins across presets register exactly once.
  *
  * A single failing preset is logged as a warning and skipped — the
  * map command must still render the default graph output even if a
@@ -238,9 +238,9 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         }
       });
 
-      // Apply any --use preset flags before building the graph so
-      // plugins can subscribe to the full pipeline lifecycle.
-      await applyPresetFlags(xray, mergedOptions.use, currentPath);
+      // Apply any --preset plugin bundles before building the graph
+      // so plugins can subscribe to the full pipeline lifecycle.
+      await applyPresetFlags(xray, mergedOptions.preset, currentPath);
 
       // Build the graph
       const { rankedNodes, graph } = await xray.buildGraph();
@@ -362,9 +362,10 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         }
       });
 
-      // Apply --use preset flags before run() so plugins subscribe
-      // to the full pipeline lifecycle on the non-chunked path too.
-      await applyPresetFlags(xray, mergedOptions.use, currentPath);
+      // Apply --preset plugin bundles before run() so plugins
+      // subscribe to the full pipeline lifecycle on the non-chunked
+      // path too.
+      await applyPresetFlags(xray, mergedOptions.preset, currentPath);
 
       const result = await xray.run();
 
@@ -479,7 +480,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
     }
 
     // Regular flow: merge config with CLI options
-    const mergedOptions = mergeConfig(config, options, options.preset);
+    const mergedOptions = mergeConfig(config, options, options.lens);
     await runSingleXray(mergedOptions);
 
   } catch (error) {

@@ -797,7 +797,7 @@ xray react:components | awk '{print $1}'
 ## See Also
 
 - [Commands Reference](commands.md) - All xray commands
-- [Configuration](configuration.md) - Config files and presets
+- [Configuration](configuration.md) - Config files and lenses
 - [Troubleshooting](troubleshooting.md) - Common issues
 
 ---

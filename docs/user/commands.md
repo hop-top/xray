@@ -251,7 +251,7 @@ xray map --catch "User*" --catch "!UserTest"
 |------|-------------|
 | `-q, --query <items...>` | Override default Tree-sitter queries |
 | `--config <path>` | Custom config file path |
-| `--preset <name>` | Use configuration preset |
+| `--lens <name>` | Use named lens (config-file option overlay) |
 | `--scope <name>` | Run specific scope from config |
 | `--all-scopes` | Run all scopes from config |
 

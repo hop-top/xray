@@ -27,7 +27,7 @@ export interface XrayScopeConfig {
 }
 
 export interface XrayConfig extends XrayScopeConfig {
-  presets?: {
+  lenses?: {
     [name: string]: XrayScopeConfig;
   };
   scopes?: {

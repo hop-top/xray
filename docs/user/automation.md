@@ -131,8 +131,8 @@ You can also specify `--config <path>` to use a custom location.
   // Output raw JSON graph
   "json": false,
 
-  // Named presets
-  "presets": {
+  // Named lenses — config-file option overlays
+  "lenses": {
     "quick": {
       "output": "docs/quick-map.txt",
       "limit": 4000,
@@ -153,16 +153,16 @@ You can also specify `--config <path>` to use a custom location.
 }
 ```
 
-### Using Presets
+### Using Lenses
 
 Define multiple configurations for different scenarios:
 
 ```bash
-# Use the "quick" preset
-xray map --preset quick
+# Apply the "quick" lens
+xray map --lens quick
 
-# Use the "detailed" preset
-xray map --preset detailed
+# Apply the "detailed" lens
+xray map --lens detailed
 ```
 
 ### CLI Override
@@ -214,7 +214,7 @@ xray map -l 4000
       Auto-generated from latest code changes
 ```
 
-#### Multiple Presets
+#### Multiple Lenses
 
 Run different configurations in parallel:
 
@@ -224,7 +224,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        preset: [quick, detailed, api]
+        lens: [quick, detailed, api]
 
     steps:
       - uses: actions/checkout@v4
@@ -232,12 +232,12 @@ jobs:
         with:
           node-version: '20'
       - run: npm install -g xray
-      - run: xray map --preset ${{ matrix.preset }}
+      - run: xray map --lens ${{ matrix.lens }}
       - run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
           git add .
-          git commit -m "docs: update ${{ matrix.preset }} xray map" || exit 0
+          git commit -m "docs: update ${{ matrix.lens }} xray map" || exit 0
           git push
 ```
 
@@ -489,7 +489,7 @@ xray map --all-scopes
 ## Best Practices
 
 1. **Start with defaults**: Begin with a simple config, add features as needed
-2. **Use presets**: Define multiple views (quick, detailed, api-focused)
+2. **Use lenses**: Define multiple views (quick, detailed, api-focused)
 3. **Commit maps**: Check generated maps into version control
 4. **Test locally**: Run `xray map` before pushing to verify config
 5. **Use both hooks**: GitHub Action for CI, pre-commit for local development

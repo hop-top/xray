@@ -261,16 +261,26 @@ export function saveConfig(config: XrayConfig, configPath?: string): void {
 /**
  * Merge CLI options with config file, with CLI taking precedence
  */
-export function mergeConfig(config: XrayConfig | null, cliOptions: any, preset?: string): any {
+export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: string): any {
   if (!config) {
     return cliOptions;
   }
 
-  // If preset specified, use it as base
+  // If lens specified, use it as base. Deep-merge features so a lens
+  // that sets only one feature does not wipe out base features set at
+  // the top-level config (matches `mergeScopeWithBase` semantics).
   let baseConfig = config;
-  if (preset && config.presets && config.presets[preset]) {
-    Logger.info(`Using preset: ${preset}`);
-    baseConfig = { ...config, ...config.presets[preset] };
+  if (lens && config.lenses && config.lenses[lens]) {
+    const lensConfig = config.lenses[lens];
+    Logger.info(`Using lens: ${lens}`);
+    baseConfig = {
+      ...config,
+      ...lensConfig,
+      features: {
+        ...(config.features || {}),
+        ...(lensConfig.features || {}),
+      },
+    };
   }
 
   // Merge features
@@ -310,6 +320,13 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, preset?:
     chunked: cliOptions.chunk !== false && (cliOptions.chunk ?? (baseConfig.chunked !== false)),
     skipDetect: cliOptions.skipDetect ?? baseConfig.skipDetect ?? false,
     share: cliOptions.share ?? baseConfig.share ?? false,
+    // Forward plugin preset specs and the selected lens name so the
+    // CLI dispatcher in `src/commands/generate.ts` can read them back
+    // out of the merged options object. Without these two fields,
+    // `--preset insights` and `--lens quick` silently no-op whenever
+    // a config file is present.
+    preset: cliOptions.preset || [],
+    lens,
     with: Object.entries(features)
       .filter(([_, enabled]) => enabled)
       .map(([feature, _]) => feature),

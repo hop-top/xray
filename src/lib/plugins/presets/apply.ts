@@ -7,7 +7,7 @@
  *  1. Calls `preset(ctx)` to materialise the plugin list.
  *  2. For each plugin in order, calls `xray.useIfAbsent(plugin)` so
  *     already-registered plugins are silently skipped (logged at
- *     debug). This is what makes `--use insights --use onboarding`
+ *     debug). This is what makes `--preset insights --preset onboarding`
  *     composition safe.
  *  3. Every plugin is wrapped in try/catch. A thrown `apply()` does
  *     NOT abort the loop — the error is recorded in `result.errored`,

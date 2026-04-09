@@ -34,7 +34,7 @@ xray map [options]
 **Implementation:**
 - File: `src/commands/generate.ts`
 - Handler: `runSingleXray()` and chunked/single-file routing logic
-- Supports scopes and presets from config files
+- Supports scopes and lenses from config files
 
 **Key Features:**
 - **Chunked Output** (default): Splits into multiple files by directory
@@ -66,7 +66,7 @@ interface MapCommandOptions {
   noChunk?: boolean;            // Disable chunking
   autoConfiguration?: boolean;  // Auto-detect strategies
   config?: string;              // Config file path
-  preset?: string;              // Config preset
+  lens?: string;                // Named lens (config-file overlay)
   scope?: string;               // Config scope
   allScopes?: boolean;          // Run all scopes
 }
@@ -230,7 +230,7 @@ addCommonOptions(cmd: Command) {
 
   // Configuration
   --config <path>            // Config file path
-  --preset <name>            // Config preset
+  --lens <name>              // Named lens (config-file overlay)
   --scope <name>             // Config scope
   --all-scopes               // Run all scopes
   --auto-configure           // Auto-detect strategies (default: true)
@@ -346,9 +346,9 @@ async configureFromStrategies(options) {
 xray map --no-auto-configure  # Use only explicit patterns
 ```
 
-## Scope and Preset Support
+## Scope and Lens Support
 
-Scopes and presets allow multiple configurations within a single config file.
+Scopes and lenses allow multiple configurations within a single config file.
 
 **Config File Example:**
 ```json
@@ -365,7 +365,7 @@ Scopes and presets allow multiple configurations within a single config file.
       "limit": 6144
     }
   },
-  "presets": {
+  "lenses": {
     "detailed": {
       "with": ["vars", "incs", "docs"]
     },
@@ -379,7 +379,7 @@ Scopes and presets allow multiple configurations within a single config file.
 **Usage:**
 ```bash
 xray map --scope backend           # Use backend scope
-xray map --preset detailed         # Use detailed preset
+xray map --lens detailed           # Use detailed lens
 xray map --all-scopes              # Run all scopes
 ```
 
@@ -419,7 +419,7 @@ Commands integrate with core xray services:
 1. **Configuration**: `src/lib/config.ts`
    - Load and merge configuration files
    - Validate options
-   - Handle presets and scopes
+   - Handle lenses and scopes
 
 2. **Analysis**: `src/lib/xray.ts`
    - Core analysis engine

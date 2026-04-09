@@ -29,7 +29,7 @@ Technical documentation for xray developers, maintainers, and contributors.
   - Common options and utilities
   - Configuration merging strategy
   - Strategy auto-configuration
-  - Scope and preset support
+  - Scope and lens support
 
 - **[Chunked Output Architecture](chunked-output-architecture.md)** - Multi-file rendering system
   - ChunkedRenderer implementation details
@@ -135,11 +135,11 @@ Strategies enable framework-specific code analysis and exploration. xray auto-de
 **Read:** [Strategy Development Guide](strategy-development.md)
 
 ### Configuration System
-Configuration comes from multiple sources (config files, scopes, presets, CLI flags) and is merged intelligently with CLI flags taking precedence.
+Configuration comes from multiple sources (config files, scopes, lenses, CLI flags) and is merged intelligently with CLI flags taking precedence.
 
 **Features:**
 - Multiple scopes for different analysis configurations
-- Named presets for quick shortcuts
+- Named lenses for quick CLI option overlays
 - File-based and CLI-based configuration
 - Auto-configuration from detected strategies
 

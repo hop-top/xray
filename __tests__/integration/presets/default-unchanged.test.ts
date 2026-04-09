@@ -1,9 +1,9 @@
 /**
- * Integration — default `xray map` (no `--use`) byte-identical across
- * two runs on the same inputs.
+ * Integration — default `xray map` (no `--preset`) byte-identical
+ * across two runs on the same inputs.
  *
  * This is the back-compat invariant for spec C-5: presets are strictly
- * opt-in; users who do not pass `--use` see zero behaviour change.
+ * opt-in; users who do not pass `--preset` see zero behaviour change.
  *
  * Strategy: run the chunked pipeline twice against the same fixture,
  * normalise timestamps / tmp paths, and assert chunk-by-chunk equality
@@ -49,7 +49,7 @@ async function runDefault(
   return out.chunks;
 }
 
-describe('default xray map (no --use) — byte-identical back-compat', () => {
+describe('default xray map (no --preset) — byte-identical back-compat', () => {
   const fixtureDir = path.resolve(__dirname, '../../fixtures/presets/sample');
   let tmpDir: string;
 

@@ -400,9 +400,9 @@ Deep merge strategy:
 - Each produces separate output
 - Best for automation
 
-**Presets:**
-- Named configuration shortcuts
-- Run one at a time with `--preset <name>`
+**Lenses:**
+- Named config-file option overlays
+- Apply one at a time with `--lens <name>`
 - Override base configuration
 - Best for manual CLI use
 

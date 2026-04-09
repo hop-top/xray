@@ -15,7 +15,7 @@ export interface CliOptions {
   mermaid?: boolean;
   dot?: boolean;
   config?: string;
-  preset?: string;
+  lens?: string;
   scope?: string;
   allScopes?: boolean;
 }
