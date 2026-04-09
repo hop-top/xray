@@ -8,6 +8,7 @@ import { StrategyContextImpl } from '../lib/strategy/context';
 import { StrategyRunner } from '../lib/strategy/runner';
 import { resolvePath } from './common';
 import { StrategyCommandOptions } from '../types/command-options';
+import { normalizeDetectedStrategy } from '../lib/strategy/types';
 
 export const handleMetaStrategyCommand = async (commandName: string, options: StrategyCommandOptions) => {
 
@@ -111,7 +112,10 @@ export const handleStrategyCommand = async (query: string, options: StrategyComm
   const context = new StrategyContextImpl(projectPath!);
 
   // Detect if strategy applies
-  const detected = await strategy.detect(context);
+  const detected = normalizeDetectedStrategy(
+    strategy,
+    await strategy.detect(context)
+  );
   if (!detected) {
     Logger.warn(`Strategy "${strategyName}" not detected for this project.`);
     Logger.info(`Make sure the project matches the strategy requirements.`);

@@ -1,6 +1,11 @@
 # Xray Strategies
 
-This directory contains built-in strategies for the xray analysis tool. Strategies extend xray's capabilities to understand different project types, frameworks, and patterns.
+This directory contains built-in strategies for the xray analysis tool.
+Strategies extend xray's capabilities to understand project types, frameworks,
+and code patterns.
+
+For documentation on the broader Extension system that powers these strategies,
+see [docs/dev/extensions.md](../docs/dev/extensions.md).
 
 ## Available Strategies
 
@@ -53,6 +58,21 @@ Generic REST API detection and analysis.
 
 ### Language Strategies
 
+#### Markdown Strategy (`markdown.ts`)
+Analyzes markdown structure, cross-references, and code examples. Requires [mdq](https://github.com/rehandalal/mdq) to be installed.
+
+**Detects:**
+- `mdq` binary availability
+- Markdown files (*.md, *.mdx)
+
+**Commands:**
+- `markdown toc` - Generate table of contents
+- `markdown refs` - Show cross-references between docs
+- `markdown orphans` - Find unlinked markdown files
+- `markdown code-refs` - Find code references in docs
+- `markdown coverage` - Source file documentation coverage
+- `markdown stale` - Find broken links and references
+
 #### Go CLI Strategy (`go-cli.ts`)
 Detects Go command-line applications.
 
@@ -76,14 +96,6 @@ Unified dependency analysis across multiple ecosystems.
 - `package-manager list-dependencies` - List all dependencies
 - `package-manager summary` - Summary of package managers
 
-**Supported:**
-- JavaScript/TypeScript (npm, yarn, pnpm)
-- Rust (Cargo)
-- Python (pip, poetry)
-- Go (go modules)
-
-See [detailed documentation](../docs/strategies/package-manager.md) for more information.
-
 ### Infrastructure Strategy (`infrastructure.ts`)
 
 Unified infrastructure-as-code analysis across multiple tools.
@@ -95,21 +107,11 @@ Unified infrastructure-as-code analysis across multiple tools.
 - CloudFormation (*.template.*) - Resources, Parameters, Outputs, intrinsic functions
 
 **Commands:**
-- `infrastructure resources` - List all infrastructure resources (filterable by type, tool, provider)
+- `infrastructure resources` - List all infrastructure resources
 - `infrastructure providers` - List cloud providers used
-- `infrastructure graph` - Generate dependency graph (JSON or DOT format)
+- `infrastructure graph` - Generate dependency graph
 - `infrastructure summary` - Infrastructure summary
-- `infrastructure validate` - Validate configuration for common issues
-
-**Features:**
-- Dependency extraction and validation
-- Circular dependency detection
-- Multi-tool support in single project
-- Cloud provider detection (AWS, Google Cloud, Azure)
-
-**Test Coverage:** 117 tests, 98%+ coverage across all metrics
-
-See [detailed documentation](../docs/strategies/infrastructure.md) for more information.
+- `infrastructure validate` - Validate configuration
 
 ## Creating Custom Strategies
 
@@ -127,14 +129,15 @@ xray strategy create my-strategy --ts
 
 ### Strategy Structure
 
-A strategy is a TypeScript/JavaScript module that implements the `Strategy` interface:
+A strategy is a TypeScript/JavaScript module that implements the `Strategy`
+interface:
 
 ```typescript
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 
 export default class MyStrategy implements Strategy {
   name = 'my-strategy';
-  version = '1.0.0';
+  version = '0.1.0';
 
   // Required: Detection logic
   async detect(ctx: StrategyContext): Promise<boolean> {
@@ -144,11 +147,6 @@ export default class MyStrategy implements Strategy {
   // Optional: File types to analyze
   fileTypes(): string[] {
     return ['.myext'];
-  }
-
-  // Optional: Patterns to ignore
-  ignorePatterns(): string[] {
-    return ['**/node_modules/**', '**/.git/**'];
   }
 
   // Required: File analysis logic
@@ -172,77 +170,11 @@ export default class MyStrategy implements Strategy {
     'info': {
       description: 'Show information about the strategy',
       async handler(ctx: StrategyContext) {
-        // Command implementation
         return { /* results */ };
       }
     }
   };
 }
-```
-
-### Strategy Context API
-
-The `StrategyContext` provides utilities for analyzing projects:
-
-```typescript
-interface StrategyContext {
-  // Check for dependencies
-  hasDependency(name: string): boolean;
-  hasDevDependency(name: string): boolean;
-
-  // File operations
-  hasFiles(pattern: string): boolean;
-  globFiles(pattern: string): string[];
-  readFile(file: string): Promise<string>;
-  findFiles(query: FileQuery): Promise<string[]>;
-
-  // Metadata and tags
-  hasTag(file: string, tag: string): boolean;
-  getTags(file: string): string[];
-  getMetadata(file: string, strategy: string): any;
-
-  // Caching
-  getCached(key: string): any;
-  setCached(key: string, value: any): void;
-
-  // Project info
-  getProjectRoot(): string;
-  getConfig(key: string): any;
-}
-```
-
-### Best Practices
-
-1. **Detection**: Make detection fast - use file checks before expensive operations
-2. **Tags**: Use consistent tag naming: `strategy:type` (e.g., `react:component`)
-3. **Error Handling**: Always handle errors gracefully - don't fail the entire analysis
-4. **Performance**: Cache expensive computations using `getCached/setCached`
-5. **Testing**: Write comprehensive tests for your strategy
-6. **Documentation**: Document what your strategy detects and analyzes
-
-### Testing Your Strategy
-
-Create a test file in `__tests__/strategies/`:
-
-```typescript
-import { StrategyContextImpl } from '../../src/lib/strategy/context';
-import MyStrategy from '../../strategies/my-strategy';
-
-describe('MyStrategy', () => {
-  let strategy: MyStrategy;
-
-  beforeEach(() => {
-    strategy = new MyStrategy();
-  });
-
-  it('should detect my-strategy projects', async () => {
-    // Test detection logic
-  });
-
-  it('should analyze files correctly', async () => {
-    // Test analysis logic
-  });
-});
 ```
 
 ## Strategy Discovery
@@ -251,83 +183,9 @@ Strategies are discovered from multiple locations (in priority order):
 
 1. **Environment Variable**: `XRAY_STRATEGIES_PATH`
 2. **Local Project**: `.xray/strategies/`
-3. **User Directory**:
-   - macOS: `~/Library/Application Support/xray/strategies/`
-   - Linux: `~/.local/share/xray/strategies/`
-   - Windows: `%APPDATA%/xray/strategies/`
+3. **User Directory**
 4. **NPM Packages**: `node_modules/xray-strategy-*/`
-5. **Built-in**: `strategies/` (this directory)
-
-## Publishing Strategies
-
-### As NPM Package
-
-1. Create package with prefix `xray-strategy-`:
-
-```json
-{
-  "name": "xray-strategy-my-framework",
-  "version": "1.0.0",
-  "xray-strategy": {
-    "name": "my-framework",
-    "entry": "dist/index.js"
-  }
-}
-```
-
-2. Publish to npm:
-
-```bash
-npm publish
-```
-
-3. Users install with:
-
-```bash
-npm install xray-strategy-my-framework
-xray strategy detect  # Automatically discovers your strategy
-```
-
-## CLI Commands
-
-### List Strategies
-```bash
-xray strategy list
-```
-
-### Detect Strategies
-```bash
-xray strategy detect
-```
-
-### Strategy Info
-```bash
-xray strategy info <name>
-```
-
-### Install Strategy
-```bash
-xray strategy install <path-or-npm-package>
-```
-
-### Remove Strategy
-```bash
-xray strategy remove <name>
-```
-
-### Validate Strategy
-```bash
-xray strategy validate <name>
-```
-
-## Examples
-
-See the built-in strategies in this directory for examples:
-
-- **Simple**: `go-cli.ts` - Basic detection and analysis
-- **Medium**: `nextjs.ts` - Framework-specific patterns
-- **Complex**: `react.ts` - AST parsing with fallbacks
-- **Comprehensive**: `package-manager.ts` - Multi-format parsing
+5. **Built-in**: `strategies/`
 
 ## Contributing
 

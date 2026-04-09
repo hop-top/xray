@@ -3,7 +3,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as yaml from 'js-yaml';
-import { Strategy, StrategyContext } from './types';
+import {
+  Extension,
+  Strategy,
+  StrategyContext,
+  strategyToExtension,
+} from './types';
 import { FileReadError } from '../error/types';
 import { Logger } from '../logger';
 
@@ -215,5 +220,10 @@ export class StrategyLoader {
     }
 
     return strategies;
+  }
+
+  async discoverExtensions(strategies?: Strategy[]): Promise<Extension[]> {
+    const discoveredStrategies = strategies || await this.discoverStrategies();
+    return discoveredStrategies.map(strategyToExtension);
   }
 }

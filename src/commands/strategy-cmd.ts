@@ -6,6 +6,7 @@ import { Logger } from '../lib/logger';
 import { StrategyLoader } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
+import { normalizeDetectedStrategy } from '../lib/strategy/types';
 import { FileWriteError } from '../lib/error/types';
 
 export function registerStrategyCommand(): Command {
@@ -89,7 +90,10 @@ export function registerStrategyCommand(): Command {
       }
 
       const context = new StrategyContextImpl(process.cwd());
-      const detected = await strategy.detect(context);
+      const detected = normalizeDetectedStrategy(
+        strategy,
+        await strategy.detect(context)
+      );
       Logger.output(`\nDetected in current project: ${detected ? chalk.green('Yes') : chalk.red('No')}`);
     });
 
@@ -294,7 +298,10 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
 
       const context = new StrategyContextImpl(process.cwd());
       try {
-        const detected = await strategy.detect(context);
+        const detected = normalizeDetectedStrategy(
+          strategy,
+          await strategy.detect(context)
+        );
         Logger.output(`  Detection test: ${detected ? chalk.green('Passed') : chalk.yellow('Not detected')}`);
       } catch (error: any) {
         Logger.output(`  Detection test: ${chalk.red('Error')}`);

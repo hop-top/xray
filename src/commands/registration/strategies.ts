@@ -2,16 +2,33 @@
 import { Command } from 'commander';
 import { StrategyLoader } from '../../lib/strategy/loader';
 import { StrategyContextImpl } from '../../lib/strategy/context';
-import { Strategy } from '../../lib/strategy/types';
+import {
+  Extension,
+  ExtensionCommandOption,
+  Strategy,
+  StrategyCommand,
+  normalizeDetectedStrategy,
+} from '../../lib/strategy/types';
 import { Logger } from '../../lib/logger';
 import { StrategyCacheManager } from './cache';
 import { StrategyCommandOptions } from '../../types/command-options';
+import {
+  addExtensionOverrideOptions,
+  createStrategyContext,
+  normalizeExtensionOptions,
+} from '../common';
 
 /**
  * Register dynamic strategy commands
  * Discovers all available strategies and registers their commands
  */
 export async function registerStrategyCommands(program: Command): Promise<void> {
+  return registerExtensionCommands(program);
+}
+
+export async function registerExtensionCommands(
+  program: Command
+): Promise<void> {
   const loader = new StrategyLoader();
   const cacheManager = new StrategyCacheManager();
 
@@ -21,8 +38,7 @@ export async function registerStrategyCommands(program: Command): Promise<void> 
     let strategies: Strategy[];
 
     if (cached) {
-      Logger.debug('Using cached strategies');
-      // Load strategies from cache
+      Logger.debug('Found valid strategy cache metadata');
       strategies = await loader.discoverStrategies();
 
       // Validate that loaded strategies match cache
@@ -38,17 +54,18 @@ export async function registerStrategyCommands(program: Command): Promise<void> 
       await cacheManager.save(strategies);
     }
 
-    // Register each strategy as a command group
-    for (const strategy of strategies) {
+    const extensions = await loader.discoverExtensions(strategies);
+
+    // Register each extension as a command group
+    for (const extension of extensions) {
       try {
-        registerStrategyCommand(program, strategy);
+        registerStrategyCommand(program, extension);
       } catch (error: any) {
-        // Log but don't fail - other strategies can still work
-        Logger.warn(`Failed to register strategy "${strategy.name}": ${error.message}`);
+        Logger.warn(`Failed to register extension "${extension.name}": ${error.message}`);
       }
     }
 
-    Logger.debug(`Registered ${strategies.length} strategies with dynamic commands`);
+    Logger.debug(`Registered ${extensions.length} extensions with dynamic commands`);
   } catch (error: any) {
     // Strategy discovery failed - continue with static commands only
     handleStrategyDiscoveryError(error);
@@ -73,90 +90,160 @@ function handleStrategyDiscoveryError(error: any): void {
 }
 
 /**
- * Register a single strategy and its commands
+ * Register a single extension and its commands
  */
-function registerStrategyCommand(program: Command, strategy: Strategy): void {
-  // Skip strategies without commands
-  if (!strategy.commands || Object.keys(strategy.commands).length === 0) {
-    Logger.debug(`Strategy "${strategy.name}" has no commands, skipping`);
+function registerStrategyCommand(
+  program: Command,
+  extension: Strategy | Extension
+): void {
+  if (!extension.commands || Object.keys(extension.commands).length === 0) {
+    Logger.debug(`Extension "${extension.name}" has no commands, skipping`);
     return;
   }
 
-  // Create strategy subcommand group
   const strategyCmd = program
-    .command(strategy.name)
-    .description(`${strategy.name} strategy commands`);
+    .command(extension.name)
+    .description(`${extension.name} commands`);
 
-  // Register each command under the strategy
-  for (const [cmdName, cmdDef] of Object.entries(strategy.commands)) {
-    // Validate command definition
+  for (const [cmdName, cmdDef] of Object.entries(
+    extension.commands as Record<string, StrategyCommand>
+  )) {
     if (!cmdDef.handler || typeof cmdDef.handler !== 'function') {
       Logger.warn(
-        `Strategy "${strategy.name}" has invalid command "${cmdName}" (missing or invalid handler)`
+        `Extension "${extension.name}" has invalid command "${cmdName}" ` +
+          '(missing or invalid handler)'
       );
       continue;
     }
 
-    const cmd = strategyCmd
-      .command(cmdName)
-      .description(cmdDef.description || `Execute ${cmdName} command`)
-      .option('-p, --path <path>', 'Project path to analyze', process.cwd());
+    const cmd = addExtensionOverrideOptions(
+      strategyCmd
+        .command(cmdName)
+        .description(cmdDef.description || `Execute ${cmdName} command`)
+        .option('-p, --path <path>', 'Project path to analyze', process.cwd())
+    );
 
-    // Register strategy-specific options if defined
     if (cmdDef.options) {
-      for (const [optName, optDesc] of Object.entries(cmdDef.options)) {
-        const optFlag = `--${optName} ${optName.includes('show-') ? '' : `<${optName}>`}`.trim();
-        cmd.option(optFlag, optDesc as string);
+      for (const [optName, optDef] of Object.entries(cmdDef.options)) {
+        const { flags, description, fn } = toCommanderOption(optName, optDef);
+        const defaultValue =
+          typeof optDef === 'object' && optDef.repeatable ? [] : undefined;
+
+        if (fn) {
+          cmd.option(flags, description, fn, defaultValue);
+        } else {
+          cmd.option(flags, description, defaultValue as any);
+        }
       }
     }
 
     cmd
-      .allowUnknownOption() // Allow additional strategy-specific options
-      .action(async (options: StrategyCommandOptions, command: Command) => {
-        await executeStrategyCommand(strategy, cmdName, cmdDef, options, command);
+      .allowUnknownOption()
+      .action(async (options: StrategyCommandOptions) => {
+        const normalizedOptions = normalizeExtensionOptions(options);
+        await executeStrategyCommand(
+          extension,
+          cmdName,
+          cmdDef,
+          normalizedOptions
+        );
       });
   }
 }
 
 /**
- * Execute a strategy command
+ * Execute an extension command
  */
 async function executeStrategyCommand(
-  strategy: Strategy,
+  extension: Strategy | Extension,
   cmdName: string,
-  cmdDef: any,
-  options: StrategyCommandOptions,
-  command: Command
+  cmdDef: StrategyCommand,
+  options: StrategyCommandOptions
 ): Promise<void> {
   const projectPath = options.path || process.cwd();
+  const detectionSource =
+    'strategy' in extension && extension.strategy
+      ? extension.strategy
+      : extension;
 
   try {
-    const context = new StrategyContextImpl(projectPath);
-    Logger.info(`Executing ${strategy.name}:${cmdName}...`);
+    const context = createStrategyContext(projectPath, options);
+    Logger.info(`Executing ${extension.name}:${cmdName}...`);
 
-    // Run detection to confirm strategy applies
-    const detected = await strategy.detect(context);
+    const detected = normalizeDetectedStrategy(
+      detectionSource,
+      await extension.detect(context)
+    );
     if (!detected) {
-      Logger.warn(`Strategy "${strategy.name}" did not detect applicable project at ${projectPath}`);
+      Logger.warn(
+        `Extension "${extension.name}" did not detect an applicable project ` +
+          `at ${projectPath}`
+      );
     }
 
-    // Analyze project files to populate tags and metadata in context
-    await analyzeProjectFiles(strategy, context);
+    await analyzeProjectFiles(extension, context);
 
-    // Execute the command handler
     const result = await cmdDef.handler(context, options);
 
-    // Display results
-    displayStrategyResult(strategy.name, cmdName, result);
+    displayStrategyResult(extension.name, cmdName, result);
   } catch (error: any) {
-    handleStrategyCommandError(error, strategy.name, cmdName, projectPath);
+    handleStrategyCommandError(error, extension.name, cmdName, projectPath);
   }
 }
 
+function toCommanderOption(
+  optionName: string,
+  optionValue: ExtensionCommandOption
+): {
+  flags: string;
+  description: string;
+  fn?: (value: string, previous: any) => any;
+} {
+  if (typeof optionValue === 'string') {
+    const placeholder = optionName.includes('show-') ? '' : ` <${optionName}>`;
+    return {
+      flags: `--${optionName}${placeholder}`.trim(),
+      description: optionValue,
+    };
+  }
+
+  const aliasPrefix = optionValue.alias ? `-${optionValue.alias}, ` : '';
+  const placeholder =
+    optionValue.type === 'boolean'
+      ? ''
+      : ` ${optionValue.placeholder || `<${optionName}>`}`;
+
+  let fn: ((value: string, previous: any) => any) | undefined;
+
+  if (optionValue.repeatable) {
+    if (optionValue.type === 'number') {
+      fn = (val, prev) => (prev || []).concat([Number(val)]);
+    } else {
+      fn = (val, prev) => (prev || []).concat([val]);
+    }
+  } else if (optionValue.type === 'number') {
+    fn = (val) => Number(val);
+  }
+
+  return {
+    flags: `${aliasPrefix}--${optionName}${placeholder}`,
+    description: optionValue.description,
+    fn,
+  };
+}
+
 /**
- * Analyze all relevant project files for a strategy, populating tags and metadata in context
+ * Analyze all relevant project files for an extension, populating tags and
+ * metadata in context
  */
-async function analyzeProjectFiles(strategy: Strategy, context: StrategyContextImpl): Promise<void> {
+async function analyzeProjectFiles(
+  strategy: Strategy | Extension,
+  context: StrategyContextImpl
+): Promise<void> {
+  if (typeof strategy.analyze !== 'function') {
+    return;
+  }
+
   const { globSync } = await import('glob');
   const path = await import('path');
 

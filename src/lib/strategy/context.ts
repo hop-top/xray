@@ -2,7 +2,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { globSync } from 'glob';
-import { StrategyContext, FileQuery } from './types';
+import type { XrayExtensionConfig } from '../../types/xray-config';
+import { StrategyContext, FileQuery, StrategyContextOptions } from './types';
 import { FileReadError } from '../error/types';
 import { Logger } from '../logger';
 
@@ -13,10 +14,20 @@ export class StrategyContextImpl implements StrategyContext {
   private fileTags: Map<string, Set<string>> = new Map();
   private fileMetadata: Map<string, Map<string, any>> = new Map();
   private globCache: Map<string, string[]> = new Map();
+  private extensionConfig: Map<string, XrayExtensionConfig> = new Map();
 
-  constructor(root: string) {
+  constructor(root: string, options: StrategyContextOptions = {}) {
     this.root = root;
+    this.loadExtensionConfig(options.extensions);
     this.loadPackageJson();
+  }
+
+  private loadExtensionConfig(
+    extensions?: Record<string, XrayExtensionConfig>
+  ): void {
+    for (const [name, config] of Object.entries(extensions || {})) {
+      this.extensionConfig.set(name, config);
+    }
   }
 
   private loadPackageJson(): void {
@@ -134,8 +145,31 @@ export class StrategyContextImpl implements StrategyContext {
   }
 
   getConfig(key: string): any {
-    // Placeholder - will integrate with existing config
-    return undefined;
+    const segments = key.split('.');
+    if (segments.length === 0) {
+      return undefined;
+    }
+
+    const [extensionName, ...pathSegments] = segments;
+    const extensionConfig = this.getExtensionConfig(extensionName);
+    if (!extensionConfig) {
+      return undefined;
+    }
+
+    if (pathSegments.length === 0) {
+      return extensionConfig;
+    }
+
+    return pathSegments.reduce<any>((value, segment) => {
+      if (!value || typeof value !== 'object') {
+        return undefined;
+      }
+      return value[segment as keyof typeof value];
+    }, extensionConfig);
+  }
+
+  getExtensionConfig(name: string): XrayExtensionConfig | undefined {
+    return this.extensionConfig.get(name);
   }
 
   // Internal methods for strategy system
@@ -185,5 +219,9 @@ export class StrategyContextImpl implements StrategyContext {
       this.fileMetadata.set(file, new Map());
     }
     this.fileMetadata.get(file)!.set(strategy, metadata);
+  }
+
+  setExtensionConfig(name: string, config: XrayExtensionConfig): void {
+    this.extensionConfig.set(name, config);
   }
 }

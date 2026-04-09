@@ -26,6 +26,29 @@ describe('StrategyContext', () => {
     expect(content).toContain('"name"');
   });
 
+  it('should expose extension-scoped config values', () => {
+    const glossaryConfig = {
+      enabled: true,
+      threshold: 0.7,
+      hints: ['terms', 'definitions'],
+      enabledSurfaces: {
+        detect: true,
+        export: false,
+      },
+    };
+
+    ctx = new StrategyContextImpl(testRoot, {
+      extensions: {
+        glossary: glossaryConfig,
+      },
+    });
+
+    expect(ctx.getExtensionConfig('glossary')).toEqual(glossaryConfig);
+    expect(ctx.getConfig('glossary.threshold')).toBe(0.7);
+    expect(ctx.getConfig('glossary.enabledSurfaces.detect')).toBe(true);
+    expect(ctx.getExtensionConfig('missing')).toBeUndefined();
+  });
+
   it('should cache file lists for repeated glob patterns', () => {
     // First call should populate cache
     const files1 = ctx.globFiles('**/*');

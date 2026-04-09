@@ -1,6 +1,6 @@
 // tests/strategy/registry.test.ts
 import { StrategyRegistry } from '../../src/lib/strategy/registry';
-import { Strategy } from '../../src/lib/strategy/types';
+import { Extension, Strategy } from '../../src/lib/strategy/types';
 import * as path from 'path';
 
 describe('StrategyRegistry', () => {
@@ -108,5 +108,29 @@ describe('StrategyRegistry', () => {
     expect(all[0].name).toBe('high');
     expect(all[1].name).toBe('medium');
     expect(all[2].name).toBe('low');
+  });
+
+  it('registers command-only extensions without polluting strategy lookups', () => {
+    const registry = new StrategyRegistry();
+    const glossaryExtension: Extension = {
+      id: 'glossary',
+      name: 'glossary',
+      version: '0.1.0',
+      surface: 'glossary',
+      detect: () => true,
+      commands: {
+        scan: {
+          description: 'Scan glossary terms',
+          handler: async () => [],
+        },
+      },
+    };
+
+    registry.registerExtension(glossaryExtension, 3, 'builtin');
+
+    expect(registry.get('glossary')).toBeUndefined();
+    expect(registry.getExtension('glossary')).toBe(glossaryExtension);
+    expect(registry.list()).toEqual([]);
+    expect(registry.listExtensions()).toContain(glossaryExtension);
   });
 });

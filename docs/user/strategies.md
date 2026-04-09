@@ -1,12 +1,14 @@
-# Strategy System Usage Guide
+# Strategy and Extension Usage Guide
 
-This guide covers how to use xray's strategy system to explore and analyze framework-specific code patterns in your projects.
+This guide covers how to use xray's dynamic strategy and extension system to
+explore framework-specific code patterns in your projects.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
 - [What Are Strategies?](#what-are-strategies)
 - [Command Syntax](#command-syntax)
+- [Extension Runtime Overrides](#extension-runtime-overrides)
 - [Built-in Strategies](#built-in-strategies)
   - [React Strategy](#react-strategy)
   - [Express Strategy](#express-strategy)
@@ -33,7 +35,12 @@ xray react:components -p /path/to/other/project
 
 ## What Are Strategies?
 
-Strategies are intelligent analyzers that understand framework-specific conventions and patterns. When you run strategy commands, xray:
+Strategies are intelligent analyzers that understand framework-specific
+conventions and patterns. Internally, xray now registers them through a
+generic extension contract, which lets future capabilities share the same
+detection, config, and command plumbing.
+
+When you run a dynamic command, xray:
 
 1. **Detects** if the strategy applies to your project
 2. **Analyzes** your codebase using framework-specific patterns
@@ -62,11 +69,56 @@ xray explore <strategy>:<command> [options]
 **Available Options:**
 - `-p, --path <path>` - Project path to analyze (default: current directory)
 
+Dynamic extension commands also accept runtime extension overrides:
+- `--enable-extension <name>`
+- `--disable-extension <name>`
+- `--extension-threshold <name=value>`
+- `--extension-hint <name=value>`
+- `--enable-surface <name:surface>`
+- `--disable-surface <name:surface>`
+
 **Examples:**
 ```bash
 xray react:components
 xray explore express:routes
 xray rest-api:endpoints -p ~/projects/my-api
+xray glossary:scan --extension-threshold glossary=0.9
+xray react:components --disable-extension glossary
+```
+
+## Extension Runtime Overrides
+
+Use runtime overrides when you want one command run to behave differently
+without editing your config file.
+
+```bash
+# Turn one extension on or off for a single run
+xray map --enable-extension glossary
+xray map --disable-extension glossary
+
+# Override threshold and add repeatable hints
+xray map --extension-threshold glossary=0.85 \
+  --extension-hint glossary=domain-term \
+  --extension-hint glossary=approved-lexicon
+
+# Gate extension surfaces independently
+xray map --enable-surface glossary:detect
+xray glossary:scan --disable-surface glossary:export
+```
+
+These flags layer on top of config file settings with runtime precedence.
+They work for:
+- analysis commands such as `map`, `scan`, `graph`, and `generate`
+- dynamic extension command groups such as `react:*`, `express:*`, and future
+  glossary commands
+
+If you are authoring an extension, the resolved values are exposed through the
+shared strategy context:
+
+```typescript
+ctx.getExtensionConfig('glossary');
+ctx.getConfig('glossary.threshold');
+ctx.getConfig('glossary.enabledSurfaces.detect');
 ```
 
 ## Built-in Strategies

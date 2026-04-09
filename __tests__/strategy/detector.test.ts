@@ -2,6 +2,7 @@
 import { StrategyDetector } from '../../src/lib/strategy/detector';
 import { StrategyLoader } from '../../src/lib/strategy/loader';
 import { StrategyContextImpl } from '../../src/lib/strategy/context';
+import { Extension } from '../../src/lib/strategy/types';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -117,6 +118,40 @@ describe('StrategyDetector', () => {
     expect(detected).toEqual([]);
   });
 
+  it('detects command-only extensions through the extension seam', async () => {
+    const loader = new StrategyLoader();
+    const context = new StrategyContextImpl(testRoot);
+    const detector = new StrategyDetector(loader, context);
+    const glossaryExtension: Extension = {
+      id: 'glossary',
+      name: 'glossary',
+      version: '0.1.0',
+      surface: 'glossary',
+      detect: () => ({
+        matched: true,
+        score: 0.92,
+        surface: 'glossary',
+      }),
+      commands: {
+        scan: {
+          description: 'Scan glossary terms',
+          handler: async () => [],
+        },
+      },
+    };
+
+    const detected = await detector.detectExtensions([glossaryExtension]);
+
+    expect(detected).toEqual([
+      expect.objectContaining({
+        name: 'glossary',
+        version: '0.1.0',
+        score: 0.92,
+        surface: 'glossary',
+      }),
+    ]);
+  });
+
   it('should detect React strategy in React project', async () => {
     const reactProjectRoot = path.join(__dirname, 'fixtures/react-project');
     const loader = new StrategyLoader();
@@ -129,5 +164,28 @@ describe('StrategyDetector', () => {
     expect(reactDetection).toBeDefined();
     expect(reactDetection?.name).toBe('react');
     expect(reactDetection?.version).toBe('0.1.0');
+  });
+
+  it('uses passed extensions in runDetection (regression PR #18)', async () => {
+    const loader = new StrategyLoader();
+    const context = new StrategyContextImpl(testRoot);
+    const detector = new StrategyDetector(loader, context);
+    const mockExtensions: Extension[] = [
+      {
+        id: 'mock',
+        name: 'mock',
+        version: '1.0.0',
+        surface: 'strategy',
+        detect: () => true,
+      },
+    ];
+
+    const spy = jest.spyOn(loader, 'discoverExtensions');
+    const detected = await detector.runDetection(mockExtensions);
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(detected).toHaveLength(1);
+    expect(detected[0].name).toBe('mock');
+    spy.mockRestore();
   });
 });

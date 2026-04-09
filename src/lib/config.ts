@@ -2,7 +2,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { Logger } from './logger';
-import { XrayScopeConfig, XrayConfig } from '../types/xray-config';
+import {
+  XrayScopeConfig,
+  XrayConfig,
+  XrayExtensionConfig,
+} from '../types/xray-config';
 import { FileReadError, FileWriteError } from './error/types';
 
 let configPathLogged = false;
@@ -108,6 +112,55 @@ export function findGlobalConfigPath(): string | null {
  * Deep merge two config objects
  * Project config takes precedence over global config
  */
+function mergeSingleExtensionConfig(
+  base: XrayExtensionConfig | undefined,
+  override: XrayExtensionConfig | undefined
+): XrayExtensionConfig | undefined {
+  if (!base) return override;
+  if (!override) return base;
+
+  const merged: XrayExtensionConfig = {
+    ...base,
+    ...override,
+    hints: override.hints ?? base.hints,
+  };
+
+  if (base.enabledSurfaces || override.enabledSurfaces) {
+    merged.enabledSurfaces = {
+      ...(base.enabledSurfaces || {}),
+      ...(override.enabledSurfaces || {}),
+    };
+  }
+
+  if (base.config || override.config) {
+    merged.config = {
+      ...(base.config || {}),
+      ...(override.config || {}),
+    };
+  }
+
+  return merged;
+}
+
+function mergeExtensionConfigs(
+  base: Record<string, XrayExtensionConfig> | undefined,
+  override: Record<string, XrayExtensionConfig> | undefined
+): Record<string, XrayExtensionConfig> | undefined {
+  if (!base && !override) {
+    return undefined;
+  }
+
+  const merged: Record<string, XrayExtensionConfig> = {
+    ...(base || {}),
+  };
+
+  for (const [name, config] of Object.entries(override || {})) {
+    merged[name] = mergeSingleExtensionConfig(base?.[name], config)!;
+  }
+
+  return merged;
+}
+
 function mergeConfigs(global: XrayConfig | null, project: XrayConfig | null): XrayConfig | null {
   if (!global && !project) return null;
   if (!global) return project;
@@ -123,6 +176,14 @@ function mergeConfigs(global: XrayConfig | null, project: XrayConfig | null): Xr
 
     if (projectValue === undefined || projectValue === null) {
       return; // Keep global value
+    }
+
+    if (key === 'extensions') {
+      merged.extensions = mergeExtensionConfigs(
+        global.extensions,
+        project.extensions
+      );
+      return;
     }
 
     // Deep merge for objects
@@ -230,6 +291,10 @@ export function mergeScopeWithBase(baseConfig: XrayConfig, scopeConfig: XrayScop
     output: scopeConfig.output || baseConfig.output,
     limit: scopeConfig.limit || baseConfig.limit,
     features: { ...(baseConfig.features || {}), ...(scopeConfig.features || {}) },
+    extensions: mergeExtensionConfigs(
+      baseConfig.extensions,
+      scopeConfig.extensions
+    ),
     anchor: scopeConfig.anchor || baseConfig.anchor,
     depth: scopeConfig.depth || baseConfig.depth,
     match: scopeConfig.match || baseConfig.match,
@@ -280,6 +345,10 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
         ...(config.features || {}),
         ...(lensConfig.features || {}),
       },
+      extensions: mergeExtensionConfigs(
+        config.extensions,
+        lensConfig.extensions
+      ),
     };
   }
 
@@ -320,6 +389,10 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     chunked: cliOptions.chunk !== false && (cliOptions.chunk ?? (baseConfig.chunked !== false)),
     skipDetect: cliOptions.skipDetect ?? baseConfig.skipDetect ?? false,
     share: cliOptions.share ?? baseConfig.share ?? false,
+    extensions: mergeExtensionConfigs(
+      baseConfig.extensions,
+      cliOptions.extensions
+    ) || {},
     // Forward plugin preset specs and the selected lens name so the
     // CLI dispatcher in `src/commands/generate.ts` can read them back
     // out of the merged options object. Without these two fields,

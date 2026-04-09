@@ -10,10 +10,14 @@ import { FileWriteError } from '../lib/error/types';
 import { FileScanner } from '../lib/scanner';
 import { StrategyLoader } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
-import { StrategyContextImpl } from '../lib/strategy/context';
 import { StrategyRunner } from '../lib/strategy/runner';
 import { XrayScopeConfig } from '../types/xray-config';
-import { resolvePath, resolveOutputPath } from './common';
+import {
+  createStrategyContext,
+  normalizeExtensionOptions,
+  resolvePath,
+  resolveOutputPath,
+} from './common';
 import { ChunkedRenderer } from '../lib/renderer/chunked-renderer';
 import { applyStashedInsights } from '../lib/renderer/insight';
 import { buildShareSummary, resolveShareOutputPath } from '../lib/share-summary';
@@ -68,10 +72,14 @@ const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<
 
   const projectPath = paths[0];
   const loader = new StrategyLoader();
-  const context = new StrategyContextImpl(projectPath);
+  const context = createStrategyContext(projectPath, options);
   const detector = new StrategyDetector(loader, context);
+  const extensions = await loader.discoverExtensions();
+  const extensionMap = new Map(
+    extensions.map(extension => [extension.name, extension])
+  );
 
-  const detected = await detector.runDetection();
+  const detected = await detector.runDetection(extensions);
 
   if (detected.length === 0) {
     return { match, catch: catchPatterns, detectedStrategies };
@@ -80,15 +88,11 @@ const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<
   for (const strategy of detected) {
     detectedStrategies.push(strategy.name);
 
-    const fullStrategy = loader.discoverStrategies().then(strategies =>
-      strategies.find(s => s.name === strategy.name)
-    );
+    const resolvedExtension = extensionMap.get(strategy.name);
+    if (!resolvedExtension) continue;
 
-    const resolvedStrategy = await fullStrategy;
-    if (!resolvedStrategy) continue;
-
-    if (resolvedStrategy.fileTypes) {
-      const fileTypes = resolvedStrategy.fileTypes();
+    if (resolvedExtension.fileTypes) {
+      const fileTypes = resolvedExtension.fileTypes();
       for (const ext of fileTypes) {
         const pattern = `*${ext}`;
         if (!match.includes(pattern)) {
@@ -97,8 +101,8 @@ const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<
       }
     }
 
-    if (resolvedStrategy.ignorePatterns) {
-      const ignorePatterns = resolvedStrategy.ignorePatterns();
+    if (resolvedExtension.ignorePatterns) {
+      const ignorePatterns = resolvedExtension.ignorePatterns();
       for (const pattern of ignorePatterns) {
         if (!catchPatterns.includes(pattern)) {
           catchPatterns.push(pattern);
@@ -431,18 +435,23 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
 // Shared action handler for all generation commands
 export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
   try {
+    const normalizedOptions = normalizeExtensionOptions(options);
+
     // Set verbose level if provided
-    if (options.verbose) {
-      Logger.setLevel(options.verbose);
+    if (normalizedOptions.verbose) {
+      Logger.setLevel(normalizedOptions.verbose);
     }
 
-    Logger.debug('Generate action started', { options });
+    Logger.debug('Generate action started', { options: normalizedOptions });
 
     // Load config file
-    const config = loadConfig(options.config, options.path?.[0]);
+    const config = loadConfig(
+      normalizedOptions.config,
+      normalizedOptions.path?.[0]
+    );
 
     // Handle --all-scopes flag
-    if (options.allScopes) {
+    if (normalizedOptions.allScopes) {
       const scopes = getScopes(config);
       const scopeNames = Object.keys(scopes);
 
@@ -456,7 +465,11 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
       for (const scopeName of scopeNames) {
         const scopeConfig = scopes[scopeName];
         const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
-        const mergedOptions = mergeConfig({ ...mergedScope } as any, {}, undefined);
+        const mergedOptions = mergeConfig(
+          { ...mergedScope } as any,
+          { extensions: normalizedOptions.extensions },
+          undefined
+        );
         await runSingleXray(mergedOptions, scopeName);
       }
 
@@ -464,23 +477,31 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
     }
 
     // Handle --scope flag
-    if (options.scope) {
-      const scopeConfig = getScope(config, options.scope);
+    if (normalizedOptions.scope) {
+      const scopeConfig = getScope(config, normalizedOptions.scope);
 
       if (!scopeConfig) {
-        Logger.error(`Scope "${options.scope}" not found in config file`);
+        Logger.error(`Scope "${normalizedOptions.scope}" not found in config file`);
         process.exit(1);
       }
 
       const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
-      const mergedOptions = mergeConfig({ ...mergedScope } as any, options, undefined);
-      await runSingleXray(mergedOptions, options.scope);
+      const mergedOptions = mergeConfig(
+        { ...mergedScope } as any,
+        normalizedOptions,
+        undefined
+      );
+      await runSingleXray(mergedOptions, normalizedOptions.scope);
 
       return;
     }
 
     // Regular flow: merge config with CLI options
-    const mergedOptions = mergeConfig(config, options, options.lens);
+    const mergedOptions = mergeConfig(
+      config,
+      normalizedOptions,
+      normalizedOptions.lens
+    );
     await runSingleXray(mergedOptions);
 
   } catch (error) {

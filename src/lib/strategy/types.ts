@@ -1,9 +1,90 @@
 // src/strategy/types.ts
+import type { XrayExtensionConfig } from '../../types/xray-config';
+
 export interface FileMetadata {
   tags: string[];
   exports?: string[];
   imports?: string[];
   metadata?: Record<string, any>;
+}
+
+export type ExtensionSurface =
+  | 'strategy'
+  | 'glossary'
+  | 'command'
+  | 'config'
+  | 'export'
+  | string;
+
+export type ExtensionEvidenceSurface =
+  | 'dependency'
+  | 'devDependency'
+  | 'file'
+  | 'tag'
+  | 'metadata'
+  | 'config'
+  | 'runtime'
+  | 'manual'
+  | string;
+
+export interface ExtensionEvidence {
+  surface: ExtensionEvidenceSurface;
+  value: string;
+  reason?: string;
+  file?: string;
+  line?: number;
+  weight?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ExtensionDetection {
+  matched?: boolean;
+  score?: number;
+  detectedAt?: number;
+  config?: unknown;
+  evidence?: ExtensionEvidence[];
+  surface?: ExtensionSurface;
+}
+
+export interface ExtensionCommandOptionDefinition {
+  description: string;
+  alias?: string;
+  type?: 'boolean' | 'string' | 'number';
+  repeatable?: boolean;
+  placeholder?: string;
+}
+
+export type ExtensionCommandOption =
+  | string
+  | ExtensionCommandOptionDefinition;
+
+export interface ExtensionExportRecord {
+  kind: string;
+  title: string;
+  source?: string;
+  path?: string;
+  data?: unknown;
+  evidence?: ExtensionEvidence[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface Extension {
+  id: string;
+  name: string;
+  version: string;
+  surface: ExtensionSurface;
+  detect(
+    ctx: StrategyContext
+  ): boolean | ExtensionDetection | Promise<boolean | ExtensionDetection>;
+  fileTypes?(): string[];
+  ignorePatterns?(): string[];
+  analyze?(file: string, ctx: StrategyContext): Promise<FileMetadata>;
+  commands?: Record<string, StrategyCommand>;
+  strategy?: Strategy;
+}
+
+export interface StrategyContextOptions {
+  extensions?: Record<string, XrayExtensionConfig>;
 }
 
 export interface StrategyContext {
@@ -21,6 +102,7 @@ export interface StrategyContext {
   globFiles(pattern: string): string[];
   getProjectRoot(): string;
   getConfig(key: string): any;
+  getExtensionConfig(name: string): XrayExtensionConfig | undefined;
 }
 
 export interface FileQuery {
@@ -32,7 +114,10 @@ export interface FileQuery {
 export interface Strategy {
   name: string;
   version: string;
-  detect(ctx: StrategyContext): boolean | Promise<boolean>;
+  surface?: ExtensionSurface;
+  detect(
+    ctx: StrategyContext
+  ): boolean | ExtensionDetection | Promise<boolean | ExtensionDetection>;
   fileTypes?(): string[];
   ignorePatterns?(): string[];
   analyze(file: string, ctx: StrategyContext): Promise<FileMetadata>;
@@ -41,13 +126,59 @@ export interface Strategy {
 
 export interface StrategyCommand {
   description: string;
-  options?: Record<string, string>;
+  options?: Record<string, ExtensionCommandOption>;
   handler(ctx: StrategyContext, opts?: any): Promise<any>;
 }
 
-export interface DetectedStrategy {
+export interface DetectedStrategy extends ExtensionDetection {
   name: string;
   version: string;
   detectedAt: number;
-  config?: any;
+}
+
+export function normalizeDetectedStrategy(
+  strategy: Pick<Strategy, 'name' | 'version' | 'surface'>,
+  result: boolean | ExtensionDetection | null | undefined
+): DetectedStrategy | null {
+  if (!result) {
+    return null;
+  }
+
+  if (result === true) {
+    return {
+      name: strategy.name,
+      version: strategy.version,
+      detectedAt: Date.now(),
+      surface: strategy.surface ?? 'strategy',
+    };
+  }
+
+  if (result.matched === false) {
+    return null;
+  }
+
+  return {
+    name: strategy.name,
+    version: strategy.version,
+    detectedAt: result.detectedAt ?? Date.now(),
+    config: result.config,
+    score: result.score,
+    evidence: result.evidence,
+    surface: result.surface ?? strategy.surface ?? 'strategy',
+  };
+}
+
+export function strategyToExtension(strategy: Strategy): Extension {
+  return {
+    id: strategy.name,
+    name: strategy.name,
+    version: strategy.version,
+    surface: strategy.surface ?? 'strategy',
+    detect: strategy.detect.bind(strategy),
+    fileTypes: strategy.fileTypes?.bind(strategy),
+    ignorePatterns: strategy.ignorePatterns?.bind(strategy),
+    analyze: strategy.analyze?.bind(strategy),
+    commands: strategy.commands,
+    strategy,
+  };
 }

@@ -1,21 +1,44 @@
 // src/strategy/registry.ts
-import { Strategy } from './types';
+import { Extension, Strategy, strategyToExtension } from './types';
 
 interface RegisteredStrategy {
-  strategy: Strategy;
+  extension: Extension;
+  strategy?: Strategy;
   priority: number;
   source: string;
+}
+
+function asRegisteredStrategy(extension: Extension): Strategy | undefined {
+  if (extension.strategy) {
+    return extension.strategy;
+  }
+
+  if (typeof extension.analyze === 'function') {
+    return extension as Strategy;
+  }
+
+  return undefined;
 }
 
 export class StrategyRegistry {
   private strategies: Map<string, RegisteredStrategy> = new Map();
 
   register(strategy: Strategy, priority: number = 0, source: string = 'unknown'): void {
-    const existing = this.strategies.get(strategy.name);
+    this.registerExtension(strategyToExtension(strategy), priority, source);
+  }
+
+  registerExtension(
+    extension: Extension,
+    priority: number = 0,
+    source: string = 'unknown'
+  ): void {
+    const existing = this.strategies.get(extension.name);
+    const strategy = asRegisteredStrategy(extension);
 
     // Higher priority wins
     if (!existing || priority > existing.priority) {
-      this.strategies.set(strategy.name, {
+      this.strategies.set(extension.name, {
+        extension,
         strategy,
         priority,
         source
@@ -30,7 +53,18 @@ export class StrategyRegistry {
   list(): Strategy[] {
     return Array.from(this.strategies.values())
       .sort((a, b) => b.priority - a.priority)
-      .map(r => r.strategy);
+      .map(r => r.strategy)
+      .filter((strategy): strategy is Strategy => !!strategy);
+  }
+
+  getExtension(name: string): Extension | undefined {
+    return this.strategies.get(name)?.extension;
+  }
+
+  listExtensions(): Extension[] {
+    return Array.from(this.strategies.values())
+      .sort((a, b) => b.priority - a.priority)
+      .map(r => r.extension);
   }
 
   has(name: string): boolean {

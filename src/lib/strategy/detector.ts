@@ -1,7 +1,14 @@
 // src/strategy/detector.ts
 import * as fs from 'fs';
 import * as path from 'path';
-import { Strategy, DetectedStrategy, StrategyContext } from './types';
+import {
+  Extension,
+  Strategy,
+  DetectedStrategy,
+  StrategyContext,
+  normalizeDetectedStrategy,
+  strategyToExtension,
+} from './types';
 import { StrategyLoader } from './loader';
 import { FileReadError, FileWriteError } from '../error/types';
 import { Logger } from '../logger';
@@ -18,29 +25,32 @@ export class StrategyDetector {
   }
 
   async detect(strategies: Strategy[]): Promise<DetectedStrategy[]> {
+    return this.detectExtensions(strategies.map(strategyToExtension));
+  }
+
+  async detectExtensions(extensions: Extension[]): Promise<DetectedStrategy[]> {
     const detected: DetectedStrategy[] = [];
 
-    for (const strategy of strategies) {
+    for (const extension of extensions) {
       try {
-        const isApplicable = await strategy.detect(this.context);
-        if (isApplicable) {
-          detected.push({
-            name: strategy.name,
-            version: strategy.version,
-            detectedAt: Date.now()
-          });
+        const strategyDetection = normalizeDetectedStrategy(
+          extension.strategy || extension,
+          await extension.detect(this.context)
+        );
+        if (strategyDetection) {
+          detected.push(strategyDetection);
         }
       } catch (error) {
-        Logger.warn(`Strategy detection failed for ${strategy.name}: ${error}`);
+        Logger.warn(`Extension detection failed for ${extension.name}: ${error}`);
       }
     }
 
     return detected;
   }
 
-  async runDetection(): Promise<DetectedStrategy[]> {
-    const strategies = await this.loader.discoverStrategies();
-    const detected = await this.detect(strategies);
+  async runDetection(extensions?: Extension[]): Promise<DetectedStrategy[]> {
+    const exts = extensions || await this.loader.discoverExtensions();
+    const detected = await this.detectExtensions(exts);
 
     // Save to file
     const xrayDir = path.join(this.context.getProjectRoot(), '.xray');

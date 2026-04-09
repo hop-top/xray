@@ -8,7 +8,7 @@
  * delivers working --preset and --lens when users have config files.
  */
 
-import { mergeConfig } from '../../src/lib/config';
+import { mergeConfig, mergeScopeWithBase } from '../../src/lib/config';
 import type { XrayConfig } from '../../src/types/xray-config';
 
 describe('mergeConfig — plugin preset + lens forwarding', () => {
@@ -104,5 +104,100 @@ describe('mergeConfig — lens features deep-merge', () => {
     const merged = mergeConfig(config, {}, 'narrow');
     expect(merged.with).toEqual(expect.arrayContaining(['vars', 'docs']));
     expect(merged.limit).toBe('1024');
+  });
+});
+
+describe('mergeConfig — extension contract forwarding', () => {
+  it('forwards extension config into merged options', () => {
+    const config: XrayConfig = {
+      paths: ['./src'],
+      extensions: {
+        glossary: {
+          enabled: true,
+          threshold: 0.8,
+          hints: ['terms'],
+          enabledSurfaces: {
+            detect: true,
+          },
+        },
+      },
+    };
+
+    const merged = mergeConfig(config, {});
+    expect(merged.extensions.glossary).toEqual(config.extensions?.glossary);
+  });
+
+  it('deep-merges CLI extension overrides on top of config extensions', () => {
+    const config: XrayConfig = {
+      paths: ['./src'],
+      extensions: {
+        glossary: {
+          enabled: true,
+          threshold: 0.7,
+          hints: ['base'],
+          enabledSurfaces: {
+            detect: true,
+          },
+        },
+      },
+    };
+
+    const merged = mergeConfig(config, {
+      extensions: {
+        glossary: {
+          threshold: 0.9,
+          hints: ['runtime'],
+          enabledSurfaces: {
+            export: true,
+          },
+        },
+      },
+    });
+
+    expect(merged.extensions.glossary).toEqual({
+      enabled: true,
+      threshold: 0.9,
+      hints: ['runtime'],
+      enabledSurfaces: {
+        detect: true,
+        export: true,
+      },
+    });
+  });
+
+  it('deep-merges scope extension overlays without dropping base fields', () => {
+    const baseConfig: XrayConfig = {
+      paths: ['./src'],
+      extensions: {
+        glossary: {
+          enabled: true,
+          threshold: 0.8,
+          hints: ['terms'],
+          enabledSurfaces: {
+            detect: true,
+          },
+        },
+      },
+    };
+
+    const merged = mergeScopeWithBase(baseConfig, {
+      extensions: {
+        glossary: {
+          enabledSurfaces: {
+            export: true,
+          },
+        },
+      },
+    });
+
+    expect(merged.extensions?.glossary).toEqual({
+      enabled: true,
+      threshold: 0.8,
+      hints: ['terms'],
+      enabledSurfaces: {
+        detect: true,
+        export: true,
+      },
+    });
   });
 });

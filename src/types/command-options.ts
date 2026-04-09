@@ -9,11 +9,38 @@
  * - Compile-time validation of option access
  * - Self-documenting CLI interface
  */
+import type { XrayExtensionConfig } from './xray-config';
+
+/**
+ * Shared runtime override options for extension-aware commands
+ */
+export interface ExtensionOverrideCommandOptions {
+  /** Pre-merged extension config bag */
+  extensions?: Record<string, XrayExtensionConfig>;
+
+  /** Force-enable a named extension (repeatable) */
+  enableExtension?: string[];
+
+  /** Force-disable a named extension (repeatable) */
+  disableExtension?: string[];
+
+  /** Override extension threshold as <name>=<number> (repeatable) */
+  extensionThreshold?: string[];
+
+  /** Add repeatable extension hints as <name>=<hint> */
+  extensionHint?: string[];
+
+  /** Enable an extension surface as <name>:<surface> (repeatable) */
+  enableSurface?: string[];
+
+  /** Disable an extension surface as <name>:<surface> (repeatable) */
+  disableSurface?: string[];
+}
 
 /**
  * Base options available to all commands
  */
-export interface BaseCommandOptions {
+export interface BaseCommandOptions extends ExtensionOverrideCommandOptions {
   /** Verbosity level: silent, error, warn, info (default), debug */
   verbose?: 'silent' | 'error' | 'warn' | 'info' | 'debug';
 

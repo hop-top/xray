@@ -64,4 +64,20 @@ describe('StrategyLoader', () => {
     expect(expressStrategy).toBeDefined();
     expect(expressStrategy?.version).toBe('0.1.0');
   });
+
+  it('discovers extension facades for discovered strategies', async () => {
+    const strategies = await loader.discoverStrategies();
+    const reactStrategy = strategies.find(s => s.name === 'react');
+    const extensions = await loader.discoverExtensions(strategies);
+    const reactExtension = extensions.find(extension => extension.name === 'react');
+
+    expect(reactStrategy).toBeDefined();
+    expect(reactExtension).toMatchObject({
+      id: 'react',
+      name: 'react',
+      version: '0.1.0',
+      surface: 'strategy',
+    });
+    expect(reactExtension?.strategy).toBe(reactStrategy);
+  });
 });

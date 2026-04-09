@@ -1,3 +1,15 @@
+export interface XrayExtensionConfig {
+  enabled?: boolean;
+  threshold?: number;
+  hints?: string[];
+  enabledSurfaces?: {
+    [name: string]: boolean;
+  };
+  config?: {
+    [name: string]: unknown;
+  };
+}
+
 export interface XrayScopeConfig {
   paths?: string[];
   output?: string;
@@ -23,6 +35,9 @@ export interface XrayScopeConfig {
   share?: boolean | string;
   telemetry?: {
     enabled?: boolean;
+  };
+  extensions?: {
+    [name: string]: XrayExtensionConfig;
   };
 }
 
