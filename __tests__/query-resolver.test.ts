@@ -1,4 +1,4 @@
-import { QueryResolver } from '../src/query-resolver';
+import { QueryResolver } from '../src/lib/query-resolver';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -104,5 +104,54 @@ describe('QueryResolver', () => {
         expect(QueryResolver.resolve(['my-ts-query.scm'])).toEqual({ '.ts': 'my-ts-query.scm', '.tsx': 'my-ts-query.scm' });
         expect(QueryResolver.resolve(['rust_query.scm'])).toEqual({ '.rs': 'rust_query.scm' });
         expect(QueryResolver.resolve(['go.scm'])).toEqual({ '.go': 'go.scm' });
+    });
+
+    test('should reject non-.scm source files (regression: would crash tree-sitter)', () => {
+        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+        mockFs.existsSync.mockReturnValue(true);
+        mockFs.statSync.mockReturnValue({ isDirectory: () => false } as any);
+
+        const input = ['/Users/me/code/printingpress/internal/generator/generator.go'];
+        const result = QueryResolver.resolve(input);
+
+        expect(result).toEqual({});
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('must point to a .scm file'));
+    });
+
+    test('should reject non-.scm URLs', () => {
+        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+        const input = ['https://example.com/some/generator.go'];
+        const result = QueryResolver.resolve(input);
+
+        expect(result).toEqual({});
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('must point to a .scm file'));
+    });
+
+    test('explicit ext:path mapping bypasses .scm requirement', () => {
+        const input = ['.go:/abs/path/custom-go-query'];
+        const result = QueryResolver.resolve(input);
+        expect(result).toEqual({ '.go': '/abs/path/custom-go-query' });
+    });
+
+    test('accepts a .scm URL with a query string', () => {
+        const input = ['https://example.com/queries/typescript.scm?raw=1'];
+        const result = QueryResolver.resolve(input);
+        expect(result).toEqual({
+            '.ts': 'https://example.com/queries/typescript.scm?raw=1',
+            '.tsx': 'https://example.com/queries/typescript.scm?raw=1',
+        });
+    });
+
+    test('directory scan accepts mixed-case .SCM filenames', () => {
+        mockFs.existsSync.mockReturnValue(true);
+        mockFs.statSync.mockReturnValue({ isDirectory: () => true } as any);
+        mockFs.readdirSync.mockReturnValue(['Python.SCM', 'go.scm', 'README.md'] as any);
+
+        const result = QueryResolver.resolve(['./queries-dir']);
+        expect(result).toEqual({
+            '.py': 'queries-dir/Python.SCM',
+            '.go': 'queries-dir/go.scm',
+        });
     });
 });

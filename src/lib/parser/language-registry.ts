@@ -79,13 +79,38 @@ export function getLanguageConfig(ext: string): LanguageConfig | undefined {
 }
 
 export function updateLanguageQuery(ext: string, query: string): void {
-  if (registry[ext]) {
-    registry[ext].tagsQuery = query;
-  } else {
-    // If the language isn't registered, we can't really add a query for it 
-    // because we don't have the grammar. 
-    // For now, we'll just ignore it or we could throw an error.
-    // Let's warn.
+  const config = registry[ext];
+  if (!config) {
     Logger.warn(`Warning: Cannot update query for unknown extension '${ext}'`);
+    return;
   }
+
+  if (!looksLikeTreeSitterQuery(query)) {
+    Logger.warn(`Warning: Custom query for '${ext}' does not look like a tree-sitter query (no @capture); keeping default.`);
+    return;
+  }
+
+  config.tagsQuery = query;
+}
+
+// Cheap structural sniff: a usable tree-sitter query must contain `@capture`
+// patterns outside of string literals. Source files in every supported
+// language fail this (a stray `"user@example.com"` is rejected because the
+// quoted string is stripped first). We deliberately avoid invoking the native
+// Parser.Query constructor for validation: it throws on many malformed inputs
+// but segfaults on some pathological ones (e.g. raw Go source), which no JS
+// try/catch can recover from.
+function looksLikeTreeSitterQuery(query: string): boolean {
+  if (!query || query.length === 0) return false;
+  const stripped = query
+    // Strip line comments — tree-sitter query (`;`), C-style (`//`).
+    .replace(/;[^\n]*/g, '')
+    .replace(/\/\/[^\n]*/g, '')
+    // Strip block comments (covers Go/JS/Java/...).
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    // Strip quoted strings so embedded `@`s in source files don't count.
+    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    .replace(/'(?:\\.|[^'\\])*'/g, "''")
+    .replace(/`[^`]*`/g, '``');
+  return stripped.includes('(') && /@[a-zA-Z_][\w.]*/.test(stripped);
 }

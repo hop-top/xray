@@ -84,8 +84,11 @@ export class QueryResolver {
     private static resolvePathOrUrl(pathOrUrl: string, queries: Record<string, string>) {
         // If it's a URL, we can only infer from the filename
         if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
-            const parts = pathOrUrl.split('/');
-            const filename = parts[parts.length - 1];
+            const filename = this.basenameFromUrl(pathOrUrl);
+            if (!this.isQueryFilename(filename)) {
+                Logger.warn(`Warning: Query path must point to a .scm file: ${pathOrUrl}. Use explicit mapping (e.g. .go:${pathOrUrl}) to override.`);
+                return;
+            }
             this.inferFromFilename(filename, pathOrUrl, queries);
             return;
         }
@@ -101,15 +104,40 @@ export class QueryResolver {
             // Scan directory for .scm files
             const files = fs.readdirSync(pathOrUrl);
             for (const file of files) {
-                if (file.endsWith('.scm')) {
+                if (this.isQueryFilename(file)) {
                     const fullPath = path.join(pathOrUrl, file);
                     this.inferFromFilename(file, fullPath, queries);
                 }
             }
         } else {
-            // Single file
-            this.inferFromFilename(path.basename(pathOrUrl), pathOrUrl, queries);
+            // Single file: require .scm so we never feed source files to the
+            // tree-sitter Query parser (the native binding can crash on
+            // malformed input — see https://github.com/tree-sitter/node-tree-sitter)
+            const basename = path.basename(pathOrUrl);
+            if (!this.isQueryFilename(basename)) {
+                Logger.warn(`Warning: Query path must point to a .scm file: ${pathOrUrl}. Use explicit mapping (e.g. .go:${pathOrUrl}) to override.`);
+                return;
+            }
+            this.inferFromFilename(basename, pathOrUrl, queries);
         }
+    }
+
+    private static isQueryFilename(filename: string): boolean {
+        return filename.toLowerCase().endsWith('.scm');
+    }
+
+    // Extract the basename of a URL, ignoring query string and fragment so
+    // links like `https://host/typescript.scm?raw=1` still resolve.
+    private static basenameFromUrl(url: string): string {
+        let pathPart = url;
+        try {
+            pathPart = new URL(url).pathname;
+        } catch {
+            // Fall through and use the raw string — best-effort behaviour
+            // matching the pre-URL-parsing implementation.
+        }
+        const parts = pathPart.split('/');
+        return parts[parts.length - 1] || '';
     }
 
     private static inferFromFilename(filename: string, fullPath: string, queries: Record<string, string>) {
