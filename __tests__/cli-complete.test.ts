@@ -11,10 +11,10 @@ describe('CLI E2E - Complete Command Coverage', () => {
         }
     });
 
-    describe('clear-cache command', () => {
+    describe('cache clear command', () => {
         test('should show help', () => {
-            const output = execSync(`node ${CLI_PATH} clear-cache --help`).toString();
-            expect(output).toContain('Usage: xray clear-cache [options]');
+            const output = execSync(`node ${CLI_PATH} cache clear --help`).toString();
+            expect(output).toContain('Usage: xray cache clear [options]');
             expect(output).toContain('Clear SQLite cache');
         });
 
@@ -28,8 +28,8 @@ describe('CLI E2E - Complete Command Coverage', () => {
             fs.writeFileSync(cachePath, 'fake cache content');
             expect(fs.existsSync(cachePath)).toBe(true);
 
-            // Run clear-cache command in that directory
-            execSync(`node ${CLI_PATH} clear-cache`, { cwd: root });
+            // Run cache clear command in that directory
+            execSync(`node ${CLI_PATH} cache clear`, { cwd: root });
 
             // Cache should be deleted
             expect(fs.existsSync(cachePath)).toBe(false);
@@ -43,12 +43,33 @@ describe('CLI E2E - Complete Command Coverage', () => {
             if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
 
             // Cache doesn't exist, should not error and might show message or be silent
-            const output = execSync(`node ${CLI_PATH} clear-cache`, { cwd: root }).toString();
+            const output = execSync(`node ${CLI_PATH} cache clear`, { cwd: root }).toString();
             // Either shows message or silent - both are acceptable
             expect(['No cache found', '']).toContain(output.trim());
 
             // Cleanup
             fs.rmSync(root, { recursive: true, force: true });
+        });
+
+        test('deprecated `clear-cache` alias still resolves', () => {
+            const root = path.join(__dirname, 'manual-cache-alias');
+            if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
+
+            const cachePath = path.join(root, '.xray_cache.db');
+            fs.writeFileSync(cachePath, 'fake cache content');
+            expect(fs.existsSync(cachePath)).toBe(true);
+
+            execSync(`node ${CLI_PATH} clear-cache`, { cwd: root });
+
+            expect(fs.existsSync(cachePath)).toBe(false);
+
+            fs.rmSync(root, { recursive: true, force: true });
+        });
+
+        test('--help omits hidden `clear-cache` alias but lists `cache`', () => {
+            const output = execSync(`node ${CLI_PATH} --help`).toString();
+            expect(output).toContain('cache');
+            expect(output).not.toMatch(/^\s*clear-cache\b/m);
         });
     });
 

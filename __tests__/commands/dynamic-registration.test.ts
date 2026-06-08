@@ -22,12 +22,26 @@ describe('Dynamic Command Registration', () => {
     });
 
     it('should register core static commands', () => {
-      const coreCommands = ['map', 'scan', 'graph', 'query', 'clear-cache', 'completion'];
+      const coreCommands = ['map', 'scan', 'graph', 'query', 'cache', 'completion'];
 
       for (const cmdName of coreCommands) {
         const cmd = program.commands.find(c => c.name() === cmdName);
         expect(cmd).toBeDefined();
       }
+    });
+
+    it('should expose `cache clear` subcommand', () => {
+      const cacheCmd = program.commands.find(c => c.name() === 'cache');
+      expect(cacheCmd).toBeDefined();
+      const clearSub = cacheCmd?.commands.find(c => c.name() === 'clear');
+      expect(clearSub).toBeDefined();
+    });
+
+    it('should keep `clear-cache` as a hidden alias', () => {
+      const aliasCmd = program.commands.find(c => c.name() === 'clear-cache');
+      expect(aliasCmd).toBeDefined();
+      // Commander stores hidden flag on _hidden
+      expect((aliasCmd as unknown as { _hidden?: boolean })._hidden).toBe(true);
     });
 
     it('should register strategy and alias management commands', () => {

@@ -49,9 +49,18 @@ export function registerCoreCommands(program: Command): void {
   program.addCommand(registerAliasCommand());
 
   // System commands
-  program
-    .command('clear-cache')
+  // `cache` noun-verb group (canonical form)
+  const cache = new Command('cache').description('Cache management');
+  cache
+    .command('clear')
     .description('Clear SQLite cache (.xray_cache.db)')
+    .action(handleClearCacheAction);
+  program.addCommand(cache);
+
+  // Hidden alias of `cache clear` for backwards compatibility
+  program
+    .command('clear-cache', { hidden: true })
+    .description('[deprecated alias of `cache clear`] Clear SQLite cache (.xray_cache.db)')
     .action(handleClearCacheAction);
 
   // Introspect xray's own runtime paths (config + cache locations).
