@@ -157,12 +157,33 @@ describe('mergeConfig — extension contract forwarding', () => {
     expect(merged.extensions.glossary).toEqual({
       enabled: true,
       threshold: 0.9,
-      hints: ['runtime'],
+      hints: ['base', 'runtime'],
       enabledSurfaces: {
         detect: true,
         export: true,
       },
     });
+  });
+
+  it('deduplicates merged hints when override repeats a base hint', () => {
+    const config: XrayConfig = {
+      paths: ['./src'],
+      extensions: {
+        glossary: {
+          hints: ['terms'],
+        },
+      },
+    };
+
+    const merged = mergeConfig(config, {
+      extensions: {
+        glossary: {
+          hints: ['terms', 'definitions'],
+        },
+      },
+    });
+
+    expect(merged.extensions.glossary.hints).toEqual(['terms', 'definitions']);
   });
 
   it('deep-merges scope extension overlays without dropping base fields', () => {

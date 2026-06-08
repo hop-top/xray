@@ -119,10 +119,17 @@ function mergeSingleExtensionConfig(
   if (!base) return override;
   if (!override) return base;
 
+  // --extension-hint semantics are additive ("Add an extension hint at
+  // runtime") so override hints concatenate onto base hints; only when
+  // override has no hints do we fall back to the base array.
+  const mergedHints = override.hints
+    ? Array.from(new Set([...(base.hints ?? []), ...override.hints]))
+    : base.hints;
+
   const merged: XrayExtensionConfig = {
     ...base,
     ...override,
-    hints: override.hints ?? base.hints,
+    hints: mergedHints,
   };
 
   if (base.enabledSurfaces || override.enabledSurfaces) {
