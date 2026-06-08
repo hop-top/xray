@@ -270,7 +270,6 @@ export const addCommonOptions = (cmd: Command) => {
     .option('--dot', 'Generate DOT diagram')
     .option('--no-chunk', 'Disable chunked output (single file output)')
     .option('--group <mode>', 'Chunk grouping mode: directory (default) or community', 'directory')
-    .option('--config <path>', 'Path to config file (auto-detect if not specified)')
     .option('--lens <name>', 'Use named lens (config-file option overlay)')
     .option('--scope <name>', 'Use specific scope from config file')
     .option('--all-scopes', 'Run all scopes defined in config file')
@@ -283,6 +282,5 @@ export const addCommonOptions = (cmd: Command) => {
       (value: string, previous: string[]) => previous.concat([value]),
       []
     )
-  )
-    .option('--no-telemetry', 'Disable telemetry for this session');
+  );
 };

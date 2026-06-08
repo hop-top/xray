@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { handleMetaStrategyCommand } from './strategy';
 import { handleExploreAction } from './explore';
-import { Logger } from '../lib/logger';
+import { configureRootProgram } from './root-options';
 import { registerCoreCommands } from './registration/core';
 import { registerStrategyCommands } from './registration/strategies';
 import { registerAliases } from './registration/aliases';
@@ -10,19 +10,7 @@ import { ExploreCommandOptions } from '../types/command-options';
 // Read version from package.json
 const { version } = require('../../package.json');
 
-const program = new Command();
-
-program
-  .name('xray')
-  .description('X-ray your codebase - Generate AST, CFG, and DFG visualizations')
-  .version(version)
-  .option('-v, --verbose [level]', 'Set verbosity level: silent, error, warn, info (default), debug', 'info')
-  .hook('preAction', (thisCommand) => {
-    const options = thisCommand.opts();
-    if (options.verbose) {
-      Logger.setLevel(options.verbose);
-    }
-  });
+const program = configureRootProgram(new Command(), version);
 
 /**
  * Register all commands (static core + dynamic strategies + aliases)
