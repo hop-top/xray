@@ -84,7 +84,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
                 function init() { return 'ready'; }
             `);
 
-            const output = execSync(`node ${CLI_PATH} explore -p ${root} -s API_KEY -s SECRET`).toString();
+            const output = execSync(`node ${CLI_PATH} explore -p ${root} -s API_KEY -s SECRET 2>&1`).toString();
 
             expect(output).toContain('Found matches');
             expect(output).toContain('[API_KEY]');
@@ -103,7 +103,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
             fs.writeFileSync(path.join(root, 'app.ts'), 'const app = 1;const x = 2;');
             fs.writeFileSync(path.join(root, 'utils.js'), 'const y = 3;');
 
-            const output = execSync(`node ${CLI_PATH} explore -p ${root} --stats`).toString();
+            const output = execSync(`node ${CLI_PATH} explore -p ${root} --stats 2>&1`).toString();
 
             expect(output).toContain('Codebase Statistics:');
             expect(output).toContain('Total Files: 2');
@@ -123,7 +123,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
             fs.writeFileSync(path.join(root, 'app.ts'), 'const app = 1;');
             fs.writeFileSync(path.join(root, 'utils.ts'), 'export const x = 1;');
 
-            const output = execSync(`node ${CLI_PATH} explore -p ${root}`).toString();
+            const output = execSync(`node ${CLI_PATH} explore -p ${root} 2>&1`).toString();
 
             expect(output).toContain('Found 2 file(s):');
             expect(output).toContain('.ts (2):');

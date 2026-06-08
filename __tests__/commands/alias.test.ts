@@ -19,7 +19,7 @@ describe('Alias Commands', () => {
   describe('alias list', () => {
     it('should show message when no aliases configured', async () => {
       mockLoadConfig.mockReturnValue({ paths: ['./src'] });
-      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'error').mockImplementation();
 
       const program = registerAliasCommand();
       await program.parseAsync(['node', 'test', 'list']);
@@ -54,7 +54,7 @@ describe('Alias Commands', () => {
   describe('alias set', () => {
     it('should create new alias', async () => {
       mockLoadConfig.mockReturnValue({ paths: ['./src'] });
-      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'error').mockImplementation();
 
       const program = registerAliasCommand();
       await program.parseAsync(['node', 'test', 'set', 'comp', 'react components']);
@@ -76,7 +76,7 @@ describe('Alias Commands', () => {
           comp: 'react components'
         }
       });
-      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'error').mockImplementation();
 
       const program = registerAliasCommand();
       await program.parseAsync(['node', 'test', 'set', 'comp', 'vue components']);
@@ -125,7 +125,7 @@ describe('Alias Commands', () => {
           routes: 'express routes'
         }
       });
-      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'error').mockImplementation();
 
       const program = registerAliasCommand();
       await program.parseAsync(['node', 'test', 'remove', 'comp']);

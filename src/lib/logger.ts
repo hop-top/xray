@@ -32,19 +32,19 @@ export class Logger {
 
   static debug(message: string, ...args: any[]): void {
     if (this.level >= LogLevel.DEBUG) {
-      console.log(chalk.gray('◆') + ' ' + message, ...args);
+      console.error(chalk.gray('◆') + ' ' + message, ...args);
     }
   }
 
   static info(message: string): void {
     if (this.level >= LogLevel.INFO) {
-      console.log(chalk.blue('ℹ') + ' ' + message);
+      console.error(chalk.blue('ℹ') + ' ' + message);
     }
   }
 
   static success(message: string): void {
     if (this.level >= LogLevel.INFO) {
-      console.log(chalk.green('✔') + ' ' + message);
+      console.error(chalk.green('✔') + ' ' + message);
     }
   }
 
@@ -65,7 +65,7 @@ export class Logger {
 
   static log(message: string): void {
     if (this.level >= LogLevel.INFO) {
-      console.log(message);
+      console.error(message);
     }
   }
 
