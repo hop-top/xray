@@ -212,6 +212,15 @@ describe('Dynamic Command Registration', () => {
         expect(scoresOpt.fn('0.5', [])).toEqual([0.5]);
         expect(scoresOpt.fn('0.8', [0.5])).toEqual([0.5, 0.8]);
       }
+
+      // Non-numeric input rejected with UsageError (exit 2), not silent NaN.
+      const { UsageError } = require('../../src/lib/error/types');
+      if (limitOpt?.fn) {
+        expect(() => limitOpt.fn('foo', undefined)).toThrow(UsageError);
+      }
+      if (scoresOpt?.fn) {
+        expect(() => scoresOpt.fn('not-a-number', [])).toThrow(UsageError);
+      }
     });
 
     it('registers command-only extensions discovered outside the strategy list', async () => {

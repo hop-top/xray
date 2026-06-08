@@ -17,6 +17,7 @@ import {
   createStrategyContext,
   normalizeExtensionOptions,
 } from '../common';
+import { UsageError } from '../../lib/error/types';
 
 /**
  * Register dynamic strategy commands
@@ -213,16 +214,27 @@ function toCommanderOption(
       ? ''
       : ` ${optionValue.placeholder || `<${optionName}>`}`;
 
+  const flagLabel = `--${optionName}`;
+  const parseNumber = (raw: string): number => {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) {
+      throw new UsageError(
+        `Invalid ${flagLabel} value "${raw}". Expected a number.`
+      );
+    }
+    return parsed;
+  };
+
   let fn: ((value: string, previous: any) => any) | undefined;
 
   if (optionValue.repeatable) {
     if (optionValue.type === 'number') {
-      fn = (val, prev) => (prev || []).concat([Number(val)]);
+      fn = (val, prev) => (prev || []).concat([parseNumber(val)]);
     } else {
       fn = (val, prev) => (prev || []).concat([val]);
     }
   } else if (optionValue.type === 'number') {
-    fn = (val) => Number(val);
+    fn = (val) => parseNumber(val);
   }
 
   return {
