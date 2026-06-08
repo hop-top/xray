@@ -138,17 +138,19 @@ function registerStrategyCommand(
       }
     }
 
-    cmd
-      .allowUnknownOption()
-      .action(async (options: StrategyCommandOptions) => {
-        const normalizedOptions = normalizeExtensionOptions(options);
-        await executeStrategyCommand(
-          extension,
-          cmdName,
-          cmdDef,
-          normalizedOptions
-        );
-      });
+    // Intentionally NOT allowUnknownOption(): unknown flags must surface
+    // as commander parse errors → UsageError (exit 2) so typos like
+    // `--extenson-threshold` fail loudly instead of being silently
+    // swallowed and bypassing the rest of the validation chain.
+    cmd.action(async (options: StrategyCommandOptions) => {
+      const normalizedOptions = normalizeExtensionOptions(options);
+      await executeStrategyCommand(
+        extension,
+        cmdName,
+        cmdDef,
+        normalizedOptions
+      );
+    });
   }
 }
 
