@@ -223,15 +223,19 @@ export class UnknownError extends XrayError {
  * - 1   generic unexpected error (default; non-CodedError throws)
  * - 2   usage error (bad flag, missing required arg, commander parse failure)
  * - 3   not-found (alias, config, strategy, file path)
- * - 4   conflict (alias collides with built-in; resource conflict)
- * - 5   unauthorized (reserved; not currently instantiated)
+ * - 4   unauthorized / permission denied (reserved; not currently instantiated)
+ * - 5   conflict (alias collides with built-in; resource conflict)
+ *
+ * Codes 4/5 follow the 12-Factor AI-CLI Apps spec (Factor 11): 4=auth/
+ * permission, 5=conflict. xray previously had these swapped — scripts that
+ * branched on `$?==4` for conflicts must move to `$?==5`.
  */
 export const EXIT_SUCCESS = 0;
 export const EXIT_GENERIC = 1;
 export const EXIT_USAGE = 2;
 export const EXIT_NOT_FOUND = 3;
-export const EXIT_CONFLICT = 4;
-export const EXIT_UNAUTHORIZED = 5;
+export const EXIT_UNAUTHORIZED = 4;
+export const EXIT_CONFLICT = 5;
 
 /**
  * Base class for CLI-level errors that carry a structured exit code.
@@ -281,7 +285,7 @@ export class NotFoundError extends CodedError {
 
 /**
  * Conflict error: name collision with built-in command or other resource.
- * Exit code 4.
+ * Exit code 5 (12fc Factor 11).
  */
 export class ConflictError extends CodedError {
   constructor(message: string, cause?: Error) {
@@ -290,8 +294,8 @@ export class ConflictError extends CodedError {
 }
 
 /**
- * Unauthorized error (reserved; currently unused).
- * Exit code 5.
+ * Unauthorized error: authentication/permission failure (reserved).
+ * Exit code 4 (12fc Factor 11).
  */
 export class UnauthorizedError extends CodedError {
   constructor(message: string, cause?: Error) {

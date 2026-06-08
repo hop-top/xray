@@ -104,7 +104,7 @@ describe('Alias Commands', () => {
       expect(mockSaveConfig).not.toHaveBeenCalled();
     });
 
-    it('should reject alias that conflicts with built-in command (ConflictError, exit 4)', async () => {
+    it('should reject alias that conflicts with built-in command (ConflictError, exit 5)', async () => {
       mockLoadConfig.mockReturnValue({ paths: ['./src'] });
 
       const program = registerAliasCommand();
