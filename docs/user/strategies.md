@@ -21,16 +21,16 @@ explore framework-specific code patterns in your projects.
 
 ```bash
 # Detect which strategies apply to your project
-xray strategy:detect
+xray strategy detect
 
 # List all available strategies
-xray strategy:list
+xray strategy list
 
 # Use a strategy command (React example)
-xray react:components
+xray react components
 
 # Analyze a different project
-xray react:components -p /path/to/other/project
+xray react components -p /path/to/other/project
 ```
 
 ## What Are Strategies?
@@ -56,14 +56,11 @@ When you run a dynamic command, xray:
 
 ## Command Syntax
 
-All strategy commands follow the `strategy:command` pattern:
+All strategy commands follow the `<strategy> <command>` pattern. The
+strategy is the command group; the operation is the subcommand:
 
 ```bash
-# Shorthand (explore is implicit)
-xray <strategy>:<command> [options]
-
-# Explicit
-xray explore <strategy>:<command> [options]
+xray <strategy> <command> [options]
 ```
 
 **Available Options:**
@@ -79,11 +76,11 @@ Dynamic extension commands also accept runtime extension overrides:
 
 **Examples:**
 ```bash
-xray react:components
-xray explore express:routes
-xray rest-api:endpoints -p ~/projects/my-api
-xray glossary:scan --extension-threshold glossary=0.9
-xray react:components --disable-extension glossary
+xray react components
+xray express routes
+xray rest-api endpoints -p ~/projects/my-api
+xray glossary scan --extension-threshold glossary=0.9
+xray react components --disable-extension glossary
 ```
 
 ## Extension Runtime Overrides
@@ -103,7 +100,7 @@ xray map --extension-threshold glossary=0.85 \
 
 # Gate extension surfaces independently
 xray map --enable-surface glossary:detect
-xray glossary:scan --disable-surface glossary:export
+xray glossary scan --disable-surface glossary:export
 ```
 
 These flags layer on top of config file settings with runtime precedence.
@@ -140,7 +137,7 @@ The React strategy activates when:
 Lists all React components in the project.
 
 ```bash
-xray react:components
+xray react components
 ```
 
 **Example Output:**
@@ -165,7 +162,7 @@ Total: 4 component(s)
 Lists all custom React hooks.
 
 ```bash
-xray react:hooks
+xray react hooks
 ```
 
 **Example Output:**
@@ -189,7 +186,7 @@ Total: 4 hook(s)
 Lists all React contexts.
 
 ```bash
-xray react:contexts
+xray react contexts
 ```
 
 **Example Output:**
@@ -210,22 +207,22 @@ Total: 3 context(s)
 
 **Inventory components before refactoring:**
 ```bash
-xray react:components > components-before.txt
+xray react components > components-before.txt
 # ... perform refactoring ...
-xray react:components > components-after.txt
+xray react components > components-after.txt
 diff components-before.txt components-after.txt
 ```
 
 **Find all custom hooks in a monorepo:**
 ```bash
-xray react:hooks -p packages/ui
-xray react:hooks -p packages/admin
-xray react:hooks -p packages/customer
+xray react hooks -p packages/ui
+xray react hooks -p packages/admin
+xray react hooks -p packages/customer
 ```
 
 **Audit context usage:**
 ```bash
-xray react:contexts
+xray react contexts
 # Review the list to identify unnecessary contexts
 ```
 
@@ -250,7 +247,7 @@ The Express strategy activates when:
 Lists all Express routes with HTTP methods, paths, handlers, and middleware chains.
 
 ```bash
-xray express:routes
+xray express routes
 ```
 
 **Example Output:**
@@ -277,7 +274,7 @@ Total: 5 route(s)
 Lists all Express Router instances and their mount points.
 
 ```bash
-xray express:routers
+xray express routers
 ```
 
 **Example Output:**
@@ -305,7 +302,7 @@ Total: 3 router(s)
 Lists all middleware (global and path-specific).
 
 ```bash
-xray express:middleware
+xray express middleware
 ```
 
 **Example Output:**
@@ -336,7 +333,7 @@ Total: 6 middleware
 Lists all error handling middleware (4-parameter functions).
 
 ```bash
-xray express:error-handlers
+xray express error-handlers
 ```
 
 **Example Output:**
@@ -359,28 +356,28 @@ Total: 3 error handler(s)
 **API documentation generation:**
 ```bash
 # Get all routes and generate OpenAPI spec
-xray express:routes > routes.txt
+xray express routes > routes.txt
 # Parse routes.txt to build API docs
 ```
 
 **Security audit:**
 ```bash
 # Check which routes have authentication middleware
-xray express:routes | grep -v "authenticate"
+xray express routes | grep -v "authenticate"
 # These routes might be unprotected!
 ```
 
 **Refactoring router structure:**
 ```bash
 # See current router organization
-xray express:routers
+xray express routers
 # Plan consolidation or splitting
 ```
 
 **Middleware order analysis:**
 ```bash
 # Verify middleware is in correct order
-xray express:middleware
+xray express middleware
 # Ensure security middleware (helmet, cors) comes first
 ```
 
@@ -410,7 +407,7 @@ The REST API strategy activates when:
 Lists all REST endpoints across all detected frameworks.
 
 ```bash
-xray rest-api:endpoints
+xray rest-api endpoints
 ```
 
 **Example Output:**
@@ -441,7 +438,7 @@ Total: 7 endpoint(s) across 3 framework(s)
 Groups endpoints by HTTP method.
 
 ```bash
-xray rest-api:methods
+xray rest-api methods
 ```
 
 **Example Output:**
@@ -469,7 +466,7 @@ Total: 7 endpoint(s)
 Lists middleware and interceptors (framework-specific).
 
 ```bash
-xray rest-api:middleware
+xray rest-api middleware
 ```
 
 #### Use Cases
@@ -477,20 +474,20 @@ xray rest-api:middleware
 **Polyglot API inventory:**
 ```bash
 # Microservices with different tech stacks
-xray rest-api:endpoints
+xray rest-api endpoints
 # See all endpoints across Node, Python, Go services
 ```
 
 **API versioning audit:**
 ```bash
-xray rest-api:endpoints | grep "/v1"
-xray rest-api:endpoints | grep "/v2"
+xray rest-api endpoints | grep "/v1"
+xray rest-api endpoints | grep "/v2"
 # Identify which endpoints need v2 migration
 ```
 
 **HTTP method consistency check:**
 ```bash
-xray rest-api:methods
+xray rest-api methods
 # Verify REST conventions (GET = read, POST = create, etc.)
 ```
 
@@ -514,7 +511,7 @@ The Go CLI strategy activates when:
 Lists all CLI commands with descriptions.
 
 ```bash
-xray go-cli:commands
+xray go-cli commands
 ```
 
 **Example Output:**
@@ -539,7 +536,7 @@ Total: 5 command(s)
 Lists all command-line flags.
 
 ```bash
-xray go-cli:flags
+xray go-cli flags
 ```
 
 **Example Output:**
@@ -564,7 +561,7 @@ Total: 4 flag(s)
 Shows command hierarchy (parent-child relationships).
 
 ```bash
-xray go-cli:tree
+xray go-cli tree
 ```
 
 **Example Output:**
@@ -593,21 +590,21 @@ Total: 8 command(s)
 **CLI documentation:**
 ```bash
 # Generate command reference
-xray go-cli:commands > CLI-COMMANDS.md
-xray go-cli:flags > CLI-FLAGS.md
+xray go-cli commands > CLI-COMMANDS.md
+xray go-cli flags > CLI-FLAGS.md
 ```
 
 **Command completeness check:**
 ```bash
 # Ensure all commands have descriptions
-xray go-cli:commands | grep -v "(.*)$"
+xray go-cli commands | grep -v "(.*)$"
 # Commands without descriptions will appear
 ```
 
 **Flag audit:**
 ```bash
 # Review all flags for consistency
-xray go-cli:flags
+xray go-cli flags
 # Check naming conventions, required flags, defaults
 ```
 
@@ -621,7 +618,7 @@ When joining a new project or exploring unfamiliar code:
 
 ```bash
 # Step 1: Detect which strategies apply
-xray strategy:detect
+xray strategy detect
 
 # Output:
 # Detected Strategies:
@@ -629,16 +626,16 @@ xray strategy:detect
 #   - express (v0.0.1-alpha.1): Express.js detected
 
 # Step 2: Explore React structure
-xray react:components
-xray react:hooks
+xray react components
+xray react hooks
 
 # Step 3: Explore API structure
-xray express:routes
-xray express:middleware
+xray express routes
+xray express middleware
 
 # Step 4: Save exploration results
-xray react:components > docs/react-components.txt
-xray express:routes > docs/api-routes.txt
+xray react components > docs/react-components.txt
+xray express routes > docs/api-routes.txt
 ```
 
 ### Workflow 2: Pre-Refactoring Audit
@@ -647,14 +644,14 @@ Before major refactoring:
 
 ```bash
 # Snapshot current state
-xray react:components > before-refactor/components.txt
-xray react:hooks > before-refactor/hooks.txt
-xray express:routes > before-refactor/routes.txt
+xray react components > before-refactor/components.txt
+xray react hooks > before-refactor/hooks.txt
+xray express routes > before-refactor/routes.txt
 
 # Perform refactoring...
 
 # Compare after refactoring
-xray react:components > after-refactor/components.txt
+xray react components > after-refactor/components.txt
 diff before-refactor/components.txt after-refactor/components.txt
 
 # Verify nothing was lost or broken
@@ -668,13 +665,13 @@ Analyzing multiple related projects:
 # Monorepo package analysis
 for package in packages/*/; do
   echo "=== $package ==="
-  xray react:components -p "$package"
+  xray react components -p "$package"
 done
 
 # Microservices API inventory
-xray rest-api:endpoints -p services/user-api > user-api-endpoints.txt
-xray rest-api:endpoints -p services/order-api > order-api-endpoints.txt
-xray rest-api:endpoints -p services/payment-api > payment-api-endpoints.txt
+xray rest-api endpoints -p services/user-api > user-api-endpoints.txt
+xray rest-api endpoints -p services/order-api > order-api-endpoints.txt
+xray rest-api endpoints -p services/payment-api > payment-api-endpoints.txt
 
 # Consolidate into single API catalog
 cat *-endpoints.txt > api-catalog.txt
@@ -686,13 +683,13 @@ During code reviews:
 
 ```bash
 # Before reviewing PR that adds new components
-xray react:components > components-main.txt
+xray react components > components-main.txt
 
 # Switch to PR branch
 git checkout feature/new-dashboard
 
 # See what components were added
-xray react:components > components-pr.txt
+xray react components > components-pr.txt
 diff components-main.txt components-pr.txt
 
 # Review new components specifically
@@ -705,30 +702,30 @@ Automatically generate documentation:
 ```bash
 # API Documentation
 echo "# API Endpoints" > API.md
-xray express:routes >> API.md
+xray express routes >> API.md
 
 # Component Library
 echo "# Component Library" > COMPONENTS.md
-xray react:components >> COMPONENTS.md
+xray react components >> COMPONENTS.md
 
 # CLI Reference
 echo "# CLI Commands" > CLI.md
-xray go-cli:commands >> CLI.md
-xray go-cli:flags >> CLI.md
+xray go-cli commands >> CLI.md
+xray go-cli flags >> CLI.md
 ```
 
 ## Troubleshooting
 
 ### Strategy not detected
 
-**Problem**: `xray strategy:detect` doesn't show your framework.
+**Problem**: `xray strategy detect` doesn't show your framework.
 
 **Solutions**:
 1. Verify detection criteria are met (see each strategy's "Detection Criteria" section)
 2. For React: Check `package.json` has `react` or `react-dom` dependency
 3. For Express: Check `express` is in dependencies (not just devDependencies)
 4. For Go CLI: Check `go.mod` includes Cobra or urfave/cli
-5. Clear cache and retry: `xray clear-cache && xray strategy:detect`
+5. Clear cache and retry: `xray clear-cache && xray strategy detect`
 
 ### No results from command
 
@@ -762,11 +759,11 @@ xray go-cli:flags >> CLI.md
 
 ### Command not found
 
-**Problem**: `xray strategy:list` shows strategy, but command fails.
+**Problem**: `xray strategy list` shows strategy, but command fails.
 
 **Solutions**:
 1. Verify command name matches exactly (case-sensitive)
-2. Use `xray strategy:list` to see available commands for each strategy
+2. Use `xray strategy list` to see available commands for each strategy
 3. Some strategies may have limited commands (not all strategies implement all commands)
 
 ### Path issues
@@ -774,7 +771,7 @@ xray go-cli:flags >> CLI.md
 **Problem**: Command works in one directory but not another.
 
 **Solutions**:
-1. Always use absolute paths with `-p` flag: `xray react:components -p /full/path/to/project`
+1. Always use absolute paths with `-p` flag: `xray react components -p /full/path/to/project`
 2. Check you're in the project root when running without `-p`
 3. Verify the path contains `package.json` or framework-specific files
 
@@ -786,7 +783,7 @@ Use strategies to identify targets, then use `xray map` for detailed analysis:
 
 ```bash
 # Find all components
-xray react:components
+xray react components
 
 # Deep dive into specific component
 xray map --anchor src/components/Button.tsx --with incs --with vars
@@ -800,7 +797,7 @@ Use strategy commands in scripts:
 #!/bin/bash
 # Check if new components follow naming convention
 
-components=$(xray react:components)
+components=$(xray react components)
 
 if echo "$components" | grep -qv "^[A-Z]"; then
   echo "Error: Component names must be PascalCase"
@@ -816,7 +813,7 @@ Add to CI pipeline:
 # .github/workflows/code-analysis.yml
 - name: Analyze API routes
   run: |
-    xray express:routes > api-routes.txt
+    xray express routes > api-routes.txt
     git add api-routes.txt
     git commit -m "docs: update API route inventory" || true
 ```
@@ -827,16 +824,16 @@ Use standard Unix tools to filter results:
 
 ```bash
 # Find components in specific directory
-xray react:components | grep "src/features/"
+xray react components | grep "src/features/"
 
 # Count endpoints by method
-xray rest-api:endpoints | grep "GET" | wc -l
+xray rest-api endpoints | grep "GET" | wc -l
 
 # Find unprotected routes
-xray express:routes | grep -v "authenticate"
+xray express routes | grep -v "authenticate"
 
 # Extract just component names
-xray react:components | awk '{print $1}'
+xray react components | awk '{print $1}'
 ```
 
 ## Next Steps
