@@ -13,6 +13,7 @@
 import chalk from 'chalk';
 import type { Command } from 'commander';
 import { Logger } from '../lib/logger';
+import { UsageError } from '../lib/error/types';
 
 // Root flag attribute keys forwarded onto the invoked subcommand's opts.
 // `color` covers `--no-color` (commander stores the boolean under
@@ -55,12 +56,21 @@ export function configureRootProgram(program: Command, version: string): Command
       const rootOpts = thisCommand.opts();
 
       // Apply --chdir before any handler runs so all relative paths
-      // resolve against the requested working directory.
+      // resolve against the requested working directory. Known limitation:
+      // the preAction hook fires *after* commander parses argv, so any
+      // pre-parse work (telemetry consent + config auto-detect in
+      // src/index.ts) sees the launch CWD, not --chdir's target. That's
+      // acceptable for observational/best-effort lookups — a fix would
+      // need a top-level argv scan before constructing the program.
       if (
         typeof rootOpts.chdir === 'string' &&
         rootOpts.chdir.length > 0
       ) {
-        process.chdir(rootOpts.chdir);
+        try {
+          process.chdir(rootOpts.chdir);
+        } catch (err: any) {
+          throw new UsageError(`--chdir: ${err.message}`);
+        }
       }
 
       // chalk auto-detects color support; --no-color forces it off.
