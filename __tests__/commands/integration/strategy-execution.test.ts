@@ -67,11 +67,14 @@ describe('Strategy Command Execution (Integration)', () => {
   });
 
   describe('Error Handling', () => {
-    it('should show error for unknown strategy via explore default', async () => {
+    it('should reject hyphenated unknown strategy as a usage error', async () => {
       const { stdout, stderr, exitCode } = await runXray('unknown-strategy test');
 
-      // Unknown strategies go to default explore command, which succeeds
-      expect(exitCode).toBe(0);
+      // 12fc Factor 11: typo-shaped unknown commands surface as exit 2
+      // instead of silently routing through the default explore command
+      // (which hid typos in strategy names).
+      expect(exitCode).toBe(2);
+      expect(stderr).toMatch(/unknown command/);
     });
 
     it('should show error for unknown command in known strategy', async () => {
