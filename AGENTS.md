@@ -1,0 +1,34 @@
+# AGENTS.md
+
+Agent guidance for xray. Full guide at [`docs/agent/`](docs/agent/).
+
+## Quick start
+
+| Intent | Command |
+|--------|---------|
+| First-pass codebase understanding | `xray map` |
+| Scan / discover files | `xray scan` |
+| Control + data flow graphs | `xray graph` |
+| Call-graph queries | `xray query "calls(<fn>)"` |
+| Framework-aware insights | `xray <strategy> <noun>` |
+| List available strategies | `xray strategy list` |
+| Detect applicable strategies | `xray strategy detect` |
+| Default search / explore | `xray [query]` |
+
+## Surface
+
+`xray --help` — top-level commands. Functional groups:
+
+- Analysis: `map`, `scan`, `graph`, `query`, `explore`, `generate`
+- Strategy: `strategy` + dynamic noun commands
+- Management: `alias`, `clear-cache`, `completion`, `upgrade`
+
+## Reference
+
+- [`docs/agent/INDEX.md`](docs/agent/INDEX.md) — full index
+- [`docs/agent/README.md`](docs/agent/README.md) — main entry point
+- [`docs/agent/command-selection.md`](docs/agent/command-selection.md) — picking the right command
+- [`docs/agent/decision-trees.md`](docs/agent/decision-trees.md) — when to use what
+- [`docs/agent/optimal-usage-patterns.md`](docs/agent/optimal-usage-patterns.md) — best practices
+- [`docs/agent/error-handling.md`](docs/agent/error-handling.md) — interpreting exit codes
+- [`docs/agent/token-optimization.md`](docs/agent/token-optimization.md) — token budgeting
