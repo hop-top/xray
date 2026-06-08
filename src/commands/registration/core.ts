@@ -7,6 +7,7 @@ import { handleCompletionAction } from '../completion';
 import { handleQueryAction } from '../query';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
+import { registerPathsCommand } from '../paths';
 
 /**
  * Register all static core commands
@@ -52,6 +53,11 @@ export function registerCoreCommands(program: Command): void {
     .command('clear-cache')
     .description('Clear SQLite cache (.xray_cache.db)')
     .action(handleClearCacheAction);
+
+  // Introspect xray's own runtime paths (config + cache locations).
+  // Note: distinct from the `config` strategy, which analyzes config files
+  // in the user's project. See docs/dev/cli-config-noun-decision.md.
+  registerPathsCommand(program);
 
   program
     .command('completion')
