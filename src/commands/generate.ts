@@ -6,7 +6,7 @@ import { QueryResolver } from '../lib/query-resolver';
 import * as cliProgress from 'cli-progress';
 import { Logger } from '../lib/logger';
 import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase } from '../lib/config';
-import { FileWriteError } from '../lib/error/types';
+import { CodedError, FileWriteError, NotFoundError } from '../lib/error/types';
 import { FileScanner } from '../lib/scanner';
 import { StrategyLoader } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
@@ -481,8 +481,9 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
       const scopeConfig = getScope(config, normalizedOptions.scope);
 
       if (!scopeConfig) {
-        Logger.error(`Scope "${normalizedOptions.scope}" not found in config file`);
-        process.exit(1);
+        throw new NotFoundError(
+          `Scope "${normalizedOptions.scope}" not found in config file`
+        );
       }
 
       const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
@@ -505,6 +506,11 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
     await runSingleXray(mergedOptions);
 
   } catch (error) {
+    // CodedError (NotFoundError, UsageError, etc.) carries an exit code —
+    // let the top-level dispatcher in src/index.ts emit the right code.
+    if (error instanceof CodedError) {
+      throw error;
+    }
     Logger.error('Error generating analysis:', error);
     process.exit(1);
   }
