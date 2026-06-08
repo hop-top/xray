@@ -90,5 +90,14 @@ export function configureRootProgram(program: Command, version: string): Command
           );
         }
       }
-    });
+    })
+    .addHelpText(
+      'after',
+      `
+Groups:
+  ANALYZE:     map  scan  graph  query  explore
+  STRATEGY:    strategy  build  cicd  config  container  express  infrastructure  markdown  package-manager  react  rest-api
+  MANAGEMENT:  alias  clear-cache  completion  paths  upgrade
+`
+    );
 }
