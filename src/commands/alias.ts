@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { loadConfig, saveConfig } from '../lib/config';
 import { AliasResolver } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
+import { ConflictError, NotFoundError, UsageError } from '../lib/error/types';
 import chalk from 'chalk';
 
 export function registerAliasCommand(): Command {
@@ -49,9 +50,8 @@ export function registerAliasCommand(): Command {
 
       // Validate target format
       if (!target.includes(' ')) {
-        Logger.error('Target must be in format "<strategy> <command>"');
         Logger.info('Example: xray alias set comp "react components"');
-        return process.exit(1);
+        throw new UsageError('Target must be in format "<strategy> <command>"');
       }
 
       // Initialize aliases object if needed
@@ -62,8 +62,7 @@ export function registerAliasCommand(): Command {
       // Check for built-in conflicts
       const builtIns = ['map', 'scan', 'graph', 'find', 'detect', 'strategies', 'strategy', 'save', 'load', 'alias', 'config'];
       if (builtIns.includes(name)) {
-        Logger.error(`Cannot create alias "${name}" - conflicts with built-in command`);
-        return process.exit(1);
+        throw new ConflictError(`Cannot create alias "${name}" - conflicts with built-in command`);
       }
 
       // Update config
@@ -89,13 +88,11 @@ export function registerAliasCommand(): Command {
     .action(async (name: string) => {
       const config = loadConfig();
       if (!config) {
-        Logger.error('No configuration file found');
-        return process.exit(1);
+        throw new NotFoundError('No configuration file found');
       }
 
       if (!config.aliases || !config.aliases[name]) {
-        Logger.error(`Alias "${name}" not found`);
-        return process.exit(1);
+        throw new NotFoundError(`Alias "${name}" not found`);
       }
 
       const target = config.aliases[name];

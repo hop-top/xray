@@ -1,5 +1,6 @@
 import { registerAliasCommand } from '../../src/commands/alias';
 import { loadConfig, saveConfig } from '../../src/lib/config';
+import { ConflictError, NotFoundError, UsageError } from '../../src/lib/error/types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -91,28 +92,28 @@ describe('Alias Commands', () => {
       consoleLogSpy.mockRestore();
     });
 
-    it('should reject alias with invalid format', async () => {
+    it('should reject alias with invalid format (UsageError, exit 2)', async () => {
       mockLoadConfig.mockReturnValue({ paths: ['./src'] });
-      const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
 
       const program = registerAliasCommand();
-      await program.parseAsync(['node', 'test', 'set', 'bad', 'invalidformat']);
+      program.exitOverride();
+      await expect(
+        program.parseAsync(['node', 'test', 'set', 'bad', 'invalidformat'])
+      ).rejects.toMatchObject({ exitCode: 2, code: 'USAGE' });
 
-      expect(exitSpy).toHaveBeenCalledWith(1);
       expect(mockSaveConfig).not.toHaveBeenCalled();
-      exitSpy.mockRestore();
     });
 
-    it('should reject alias that conflicts with built-in command', async () => {
+    it('should reject alias that conflicts with built-in command (ConflictError, exit 4)', async () => {
       mockLoadConfig.mockReturnValue({ paths: ['./src'] });
-      const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
 
       const program = registerAliasCommand();
-      await program.parseAsync(['node', 'test', 'set', 'map', 'react components']);
+      program.exitOverride();
+      await expect(
+        program.parseAsync(['node', 'test', 'set', 'map', 'react components'])
+      ).rejects.toBeInstanceOf(ConflictError);
 
-      expect(exitSpy).toHaveBeenCalledWith(1);
       expect(mockSaveConfig).not.toHaveBeenCalled();
-      exitSpy.mockRestore();
     });
   });
 
@@ -140,16 +141,16 @@ describe('Alias Commands', () => {
       consoleLogSpy.mockRestore();
     });
 
-    it('should error when alias not found', async () => {
+    it('should error when alias not found (NotFoundError, exit 3)', async () => {
       mockLoadConfig.mockReturnValue({ paths: ['./src'] });
-      const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
 
       const program = registerAliasCommand();
-      await program.parseAsync(['node', 'test', 'remove', 'nonexistent']);
+      program.exitOverride();
+      await expect(
+        program.parseAsync(['node', 'test', 'remove', 'nonexistent'])
+      ).rejects.toBeInstanceOf(NotFoundError);
 
-      expect(exitSpy).toHaveBeenCalledWith(1);
       expect(mockSaveConfig).not.toHaveBeenCalled();
-      exitSpy.mockRestore();
     });
   });
 });

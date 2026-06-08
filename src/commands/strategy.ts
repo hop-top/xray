@@ -9,6 +9,7 @@ import { StrategyRunner } from '../lib/strategy/runner';
 import { resolvePath } from './common';
 import { StrategyCommandOptions } from '../types/command-options';
 import { normalizeDetectedStrategy } from '../lib/strategy/types';
+import { NotFoundError, UsageError } from '../lib/error/types';
 
 export const handleMetaStrategyCommand = async (commandName: string, options: StrategyCommandOptions) => {
 
@@ -67,8 +68,7 @@ export const handleStrategyCommand = async (query: string, options: StrategyComm
   const [strategyName, commandName] = query.split(':');
 
   if (!commandName) {
-    Logger.error(`Invalid query format: "${query}". Expected format: strategy:command (e.g., react:components)`);
-    process.exit(1);
+    throw new UsageError(`Invalid query format: "${query}". Expected format: strategy:command (e.g., react:components)`);
   }
 
   // Handle meta-strategy commands
@@ -90,22 +90,20 @@ export const handleStrategyCommand = async (query: string, options: StrategyComm
   const strategy = strategies.find(s => s.name === strategyName);
 
   if (!strategy) {
-    Logger.error(`Strategy "${strategyName}" not found.`);
     Logger.info(`\nAvailable strategies:`);
     strategies.forEach(s => Logger.output(`  - ${s.name}`));
-    process.exit(1);
+    throw new NotFoundError(`Strategy "${strategyName}" not found.`);
   }
 
   // Check if strategy has the requested command
   if (!strategy.commands || !strategy.commands[commandName]) {
-    Logger.error(`Command "${commandName}" not found for strategy "${strategyName}".`);
     if (strategy.commands && Object.keys(strategy.commands).length > 0) {
       Logger.info(`\nAvailable commands for ${strategyName}:`);
       Object.keys(strategy.commands).forEach(cmd => {
         Logger.output(`  - ${strategyName}:${cmd}`);
       });
     }
-    process.exit(1);
+    throw new NotFoundError(`Command "${commandName}" not found for strategy "${strategyName}".`);
   }
 
   // Create context

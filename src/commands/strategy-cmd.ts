@@ -7,7 +7,7 @@ import { StrategyLoader } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { normalizeDetectedStrategy } from '../lib/strategy/types';
-import { FileWriteError } from '../lib/error/types';
+import { FileWriteError, NotFoundError } from '../lib/error/types';
 
 export function registerStrategyCommand(): Command {
   const program = new Command('strategy')
@@ -69,10 +69,9 @@ export function registerStrategyCommand(): Command {
       const strategy = strategies.find(s => s.name === name);
 
       if (!strategy) {
-        Logger.error(`Strategy "${name}" not found.`);
         Logger.info('\nAvailable strategies:');
         strategies.forEach(s => console.log(`  - ${s.name}`));
-        process.exit(1);
+        throw new NotFoundError(`Strategy "${name}" not found.`);
       }
 
       Logger.info(`\nStrategy: ${strategy.name}`);
@@ -247,8 +246,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       const strategy = strategies.find(s => s.name === name);
 
       if (!strategy) {
-        Logger.error(`Strategy "${name}" not found.`);
-        process.exit(1);
+        throw new NotFoundError(`Strategy "${name}" not found.`);
       }
 
       const strategyPaths = loader.getStrategyPaths();
@@ -285,8 +283,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       const strategy = strategies.find(s => s.name === name);
 
       if (!strategy) {
-        Logger.error(`Strategy "${name}" not found.`);
-        process.exit(1);
+        throw new NotFoundError(`Strategy "${name}" not found.`);
       }
 
       Logger.info(`\nValidating strategy: ${name}`);

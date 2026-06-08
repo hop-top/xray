@@ -212,3 +212,89 @@ export class UnknownError extends XrayError {
     return 'This is an unexpected error. Please report this issue with the error details.';
   }
 }
+
+/**
+ * CLI Exit Code Taxonomy
+ *
+ * Maps error categories to POSIX-style exit codes so callers (humans, agents,
+ * pipelines) can distinguish failure modes without parsing stderr.
+ *
+ * - 0   success
+ * - 1   generic unexpected error (default; non-CodedError throws)
+ * - 2   usage error (bad flag, missing required arg, commander parse failure)
+ * - 3   not-found (alias, config, strategy, file path)
+ * - 4   conflict (alias collides with built-in; resource conflict)
+ * - 5   unauthorized (reserved; not currently instantiated)
+ */
+export const EXIT_SUCCESS = 0;
+export const EXIT_GENERIC = 1;
+export const EXIT_USAGE = 2;
+export const EXIT_NOT_FOUND = 3;
+export const EXIT_CONFLICT = 4;
+export const EXIT_UNAUTHORIZED = 5;
+
+/**
+ * Base class for CLI-level errors that carry a structured exit code.
+ *
+ * Throw a CodedError (or subclass) from any command handler instead of calling
+ * process.exit directly. The top-level dispatcher in src/commands catches
+ * CodedError and exits with err.exitCode; everything else exits 1.
+ */
+export class CodedError extends Error {
+  readonly exitCode: number;
+  readonly code: string;
+  cause?: Error;
+
+  constructor(message: string, exitCode: number, code: string, cause?: Error) {
+    super(message);
+    this.exitCode = exitCode;
+    this.code = code;
+    this.name = this.constructor.name;
+    if (cause) {
+      this.cause = cause;
+    }
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+}
+
+/**
+ * Usage error: invalid invocation, bad flag, missing required arg.
+ * Exit code 2.
+ */
+export class UsageError extends CodedError {
+  constructor(message: string, cause?: Error) {
+    super(message, EXIT_USAGE, 'USAGE', cause);
+  }
+}
+
+/**
+ * Not-found error: alias/config/strategy/file path missing.
+ * Exit code 3.
+ */
+export class NotFoundError extends CodedError {
+  constructor(message: string, cause?: Error) {
+    super(message, EXIT_NOT_FOUND, 'NOT_FOUND', cause);
+  }
+}
+
+/**
+ * Conflict error: name collision with built-in command or other resource.
+ * Exit code 4.
+ */
+export class ConflictError extends CodedError {
+  constructor(message: string, cause?: Error) {
+    super(message, EXIT_CONFLICT, 'CONFLICT', cause);
+  }
+}
+
+/**
+ * Unauthorized error (reserved; currently unused).
+ * Exit code 5.
+ */
+export class UnauthorizedError extends CodedError {
+  constructor(message: string, cause?: Error) {
+    super(message, EXIT_UNAUTHORIZED, 'UNAUTHORIZED', cause);
+  }
+}

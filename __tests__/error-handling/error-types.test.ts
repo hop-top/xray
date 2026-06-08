@@ -11,6 +11,15 @@ import {
   ConfigValidationError,
   GraphQueryError,
   UnknownError,
+  CodedError,
+  UsageError,
+  NotFoundError,
+  ConflictError,
+  UnauthorizedError,
+  EXIT_USAGE,
+  EXIT_NOT_FOUND,
+  EXIT_CONFLICT,
+  EXIT_UNAUTHORIZED,
 } from '../../src/lib/error/types';
 
 /**
@@ -409,6 +418,65 @@ describe('UnknownError', () => {
     const error = new UnknownError('Something went wrong');
 
     expect(error.getSuggestion()).toMatch(/report|issue|unexpected/i);
+  });
+});
+
+/**
+ * CLI Exit Code Taxonomy (CodedError + subclasses)
+ *
+ * Each CLI-facing error carries a structured exit code so callers can
+ * distinguish failure modes without parsing stderr.
+ */
+describe('CodedError taxonomy', () => {
+  it('UsageError carries exit code 2 and code "USAGE"', () => {
+    const err = new UsageError('bad flag');
+    expect(err).toBeInstanceOf(CodedError);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.exitCode).toBe(EXIT_USAGE);
+    expect(err.exitCode).toBe(2);
+    expect(err.code).toBe('USAGE');
+    expect(err.message).toBe('bad flag');
+    expect(err.name).toBe('UsageError');
+  });
+
+  it('NotFoundError carries exit code 3 and code "NOT_FOUND"', () => {
+    const err = new NotFoundError('alias "foo" not found');
+    expect(err).toBeInstanceOf(CodedError);
+    expect(err.exitCode).toBe(EXIT_NOT_FOUND);
+    expect(err.exitCode).toBe(3);
+    expect(err.code).toBe('NOT_FOUND');
+    expect(err.name).toBe('NotFoundError');
+  });
+
+  it('ConflictError carries exit code 4 and code "CONFLICT"', () => {
+    const err = new ConflictError('alias collides with built-in');
+    expect(err).toBeInstanceOf(CodedError);
+    expect(err.exitCode).toBe(EXIT_CONFLICT);
+    expect(err.exitCode).toBe(4);
+    expect(err.code).toBe('CONFLICT');
+    expect(err.name).toBe('ConflictError');
+  });
+
+  it('UnauthorizedError carries exit code 5 and code "UNAUTHORIZED"', () => {
+    const err = new UnauthorizedError('reserved');
+    expect(err).toBeInstanceOf(CodedError);
+    expect(err.exitCode).toBe(EXIT_UNAUTHORIZED);
+    expect(err.exitCode).toBe(5);
+    expect(err.code).toBe('UNAUTHORIZED');
+    expect(err.name).toBe('UnauthorizedError');
+  });
+
+  it('captures underlying cause when provided', () => {
+    const cause = new Error('underlying');
+    const err = new NotFoundError('wrap', cause);
+    expect(err.cause).toBe(cause);
+  });
+
+  it('preserves prototype chain for instanceof checks across subclasses', () => {
+    const err = new UsageError('x');
+    expect(err instanceof UsageError).toBe(true);
+    expect(err instanceof CodedError).toBe(true);
+    expect(err instanceof NotFoundError).toBe(false);
   });
 });
 
