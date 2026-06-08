@@ -5,6 +5,7 @@ import { handleGenerateAction } from '../generate';
 import { handleClearCacheAction } from '../clear-cache';
 import { handleCompletionAction } from '../completion';
 import { handleQueryAction } from '../query';
+import { handleDescribeAction } from '../describe';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
 import { registerPathsCommand } from '../paths';
@@ -67,6 +68,16 @@ export function registerCoreCommands(program: Command): void {
   // Note: distinct from the `config` strategy, which analyzes config files
   // in the user's project. See docs/dev/cli-config-noun-decision.md.
   registerPathsCommand(program);
+
+  // Machine-readable capability surface (12fc Factor 1).
+  // Walks the constructed commander tree and emits a JSON document
+  // documenting every command's args, options, side-effect class,
+  // idempotency, and exit codes.
+  program
+    .command('describe')
+    .description('Emit machine-readable capability surface (12fc Factor 1)')
+    .option('--format <fmt>', 'Output format (json)', 'json')
+    .action(handleDescribeAction);
 
   program
     .command('completion')
