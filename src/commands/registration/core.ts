@@ -27,8 +27,8 @@ export function registerCoreCommands(program: Command): void {
     .description('Generate control flow (CFG) and data flow (DFG) graphs')
     .action(handleGenerateAction);
 
-  // Generate command (kept for backwards compatibility)
-  addCommonOptions(program.command('generate'))
+  // Generate command (kept for backwards compatibility; hidden alias of `map`)
+  addCommonOptions(program.command('generate', { hidden: true }))
     .description('Generate code analysis visualization [alias: map]')
     .action(handleGenerateAction);
 
