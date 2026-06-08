@@ -201,8 +201,16 @@ export function createStrategyContext(
   projectPath: string,
   options: ExtensionOverrideCommandOptions = {}
 ): StrategyContextImpl {
+  // Prefer pre-normalized options.extensions (produced by
+  // normalizeExtensionOptions) to avoid re-folding the raw repeatable
+  // flags a second time, which would double-append --extension-hint /
+  // duplicate enable/disable entries.
+  const extensions = options.extensions
+    ? cloneExtensionConfigs(options.extensions)
+    : buildExtensionOverrides(options);
+
   return new StrategyContextImpl(projectPath, {
-    extensions: buildExtensionOverrides(options),
+    extensions,
   });
 }
 

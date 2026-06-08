@@ -1,6 +1,7 @@
 import {
   buildExtensionOverrides,
   createStrategyContext,
+  normalizeExtensionOptions,
 } from '../../src/commands/common';
 import { UsageError } from '../../src/lib/error/types';
 import * as path from 'path';
@@ -86,6 +87,17 @@ describe('extension runtime overrides', () => {
         enableSurface: [':detect'],
       })
     ).toThrow(UsageError);
+  });
+
+  it('does not double-apply repeatable flags when context is built from normalized options', () => {
+    const normalized = normalizeExtensionOptions({
+      extensionHint: ['glossary=one', 'glossary=two'],
+    });
+
+    const ctx = createStrategyContext(testRoot, normalized);
+    const cfg = ctx.getExtensionConfig('glossary');
+
+    expect(cfg?.hints).toEqual(['one', 'two']);
   });
 
   it('throws UsageError (exit 2) for malformed pairs and bad thresholds', () => {
