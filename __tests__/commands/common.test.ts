@@ -2,6 +2,7 @@ import {
   buildExtensionOverrides,
   createStrategyContext,
 } from '../../src/commands/common';
+import { UsageError } from '../../src/lib/error/types';
 import * as path from 'path';
 
 describe('extension runtime overrides', () => {
@@ -65,5 +66,39 @@ describe('extension runtime overrides', () => {
         extensionThreshold: ['glossary=high'],
       })
     ).toThrow('Threshold must be a number.');
+  });
+
+  it('rejects extension pair specs with whitespace-only name or value', () => {
+    expect(() =>
+      buildExtensionOverrides({
+        extensionThreshold: ['  =0.9'],
+      })
+    ).toThrow(UsageError);
+
+    expect(() =>
+      buildExtensionOverrides({
+        extensionHint: ['glossary= '],
+      })
+    ).toThrow(UsageError);
+
+    expect(() =>
+      buildExtensionOverrides({
+        enableSurface: [':detect'],
+      })
+    ).toThrow(UsageError);
+  });
+
+  it('throws UsageError (exit 2) for malformed pairs and bad thresholds', () => {
+    expect(() =>
+      buildExtensionOverrides({
+        extensionThreshold: ['no-separator'],
+      })
+    ).toThrow(UsageError);
+
+    expect(() =>
+      buildExtensionOverrides({
+        extensionThreshold: ['glossary=not-a-number'],
+      })
+    ).toThrow(UsageError);
   });
 });

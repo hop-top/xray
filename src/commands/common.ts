@@ -3,6 +3,7 @@ import { BUILTIN_PRESET_NAMES } from '../lib/plugins/presets';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { ExtensionOverrideCommandOptions } from '../types/command-options';
 import type { XrayExtensionConfig } from '../types/xray-config';
+import { UsageError } from '../lib/error/types';
 
 const appendOptionValue = (
   value: string,
@@ -86,16 +87,22 @@ const parseExtensionPair = (
 ): [string, string] => {
   const separatorIndex = spec.indexOf(separator);
 
-  if (separatorIndex <= 0 || separatorIndex === spec.length - 1) {
-    throw new Error(
+  if (separatorIndex < 0) {
+    throw new UsageError(
       `Invalid ${flagName} value "${spec}". Expected <extension>${separator}<value>.`
     );
   }
 
-  return [
-    spec.slice(0, separatorIndex).trim(),
-    spec.slice(separatorIndex + 1).trim(),
-  ];
+  const name = spec.slice(0, separatorIndex).trim();
+  const value = spec.slice(separatorIndex + 1).trim();
+
+  if (!name || !value) {
+    throw new UsageError(
+      `Invalid ${flagName} value "${spec}". Expected <extension>${separator}<value>.`
+    );
+  }
+
+  return [name, value];
 };
 
 export function buildExtensionOverrides(
@@ -123,7 +130,7 @@ export function buildExtensionOverrides(
     const threshold = Number(rawThreshold);
 
     if (!Number.isFinite(threshold)) {
-      throw new Error(
+      throw new UsageError(
         `Invalid --extension-threshold value "${thresholdSpec}". ` +
           'Threshold must be a number.'
       );
