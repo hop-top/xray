@@ -1,17 +1,20 @@
 // strategies/react.ts
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import Parser from 'tree-sitter';
+import { requireGrammarModule } from '../src/lib/parser/grammars';
 
 export default class ReactStrategy implements Strategy {
   name = 'react';
   version = '0.1.0';
+  // Grammar is optional (language pack): detection is skipped when absent.
+  requiresLanguages = ['typescript'];
 
   private getParser(): Parser {
     // Always create a fresh parser instance to avoid test interference
     const parser = new Parser();
     // Use TSX grammar for both .tsx and .jsx files (supports JSX syntax)
     // Load grammar only when needed to avoid module-level side effects
-    const TSX = require('tree-sitter-typescript').tsx;
+    const TSX = requireGrammarModule('typescript').tsx;
     parser.setLanguage(TSX);
     return parser;
   }

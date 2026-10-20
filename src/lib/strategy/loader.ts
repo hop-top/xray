@@ -11,6 +11,9 @@ import {
 } from './types';
 import { FileReadError } from '../error/types';
 import { Logger } from '../logger';
+import { isGrammarAvailable } from '../parser/grammars';
+
+const warnedStrategies = new Set<string>();
 
 export class StrategyLoader {
   getStrategyPaths(): string[] {
@@ -72,12 +75,39 @@ export class StrategyLoader {
     const ext = path.extname(strategyPath);
 
     if (ext === '.yml' || ext === '.yaml') {
-      return this.loadYamlStrategy(strategyPath);
+      return this.guardGrammars(await this.loadYamlStrategy(strategyPath));
     } else if (ext === '.ts' || ext === '.js') {
-      return this.loadJsStrategy(strategyPath);
+      return this.guardGrammars(await this.loadJsStrategy(strategyPath));
     }
 
     throw new Error(`Unsupported strategy file type: ${ext}`);
+  }
+
+  /**
+   * A strategy that declares `requiresLanguages` is only reported as detected
+   * when those grammars are installed; otherwise one warning per strategy.
+   */
+  private guardGrammars(strategy: Strategy): Strategy {
+    const required = strategy.requiresLanguages;
+    if (!required || required.length === 0 || typeof strategy.detect !== 'function') return strategy;
+
+    const originalDetect = strategy.detect.bind(strategy);
+    strategy.detect = async (ctx: StrategyContext) => {
+      const result = await originalDetect(ctx);
+      const applicable = typeof result === 'object' && result !== null ? result.matched !== false : !!result;
+      if (!applicable) return result;
+      const missing = required.filter(l => !isGrammarAvailable(l));
+      if (missing.length === 0) return result;
+      if (!warnedStrategies.has(strategy.name)) {
+        warnedStrategies.add(strategy.name);
+        Logger.warn(
+          `strategy '${strategy.name}' applies here but needs the ${missing.join(', ')} grammar: ` +
+          `run \`xray lang add ${missing.join(' ')}\``
+        );
+      }
+      return false;
+    };
+    return strategy;
   }
 
   private async loadYamlStrategy(strategyPath: string): Promise<Strategy> {
@@ -105,6 +135,7 @@ export class StrategyLoader {
         }
         return false;
       },
+      requiresLanguages: config.requiresLanguages,
       fileTypes: config.fileTypes ? () => config.fileTypes : undefined,
       ignorePatterns: config.ignorePatterns ? () => config.ignorePatterns : undefined,
       analyze: async (file: string, ctx: StrategyContext) => {

@@ -1,19 +1,22 @@
 // strategies/nextjs.ts
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import Parser from 'tree-sitter';
-
-// Use require for tree-sitter grammars as they are native modules
-const TSX = require('tree-sitter-typescript').tsx;
+import { requireGrammarModule } from '../src/lib/parser/grammars';
 
 export default class NextjsStrategy implements Strategy {
   name = 'nextjs';
   version = '0.1.0';
-  private parser: Parser;
+  // Grammar is optional (language pack): detection is skipped when absent.
+  requiresLanguages = ['typescript'];
+  private parser?: Parser;
 
-  constructor() {
-    this.parser = new Parser();
-    // Use TSX grammar for both .tsx and .jsx files (supports JSX syntax)
-    this.parser.setLanguage(TSX);
+  // Lazy: see go-cli. TSX grammar covers both .tsx and .jsx (JSX syntax).
+  private getParser(): Parser {
+    if (!this.parser) {
+      this.parser = new Parser();
+      this.parser.setLanguage(requireGrammarModule('typescript').tsx);
+    }
+    return this.parser;
   }
 
   async detect(ctx: StrategyContext): Promise<boolean> {

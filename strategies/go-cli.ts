@@ -1,18 +1,23 @@
 // strategies/go-cli.ts
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import Parser from 'tree-sitter';
-
-// Use require for tree-sitter grammars as they are native modules
-const Go = require('tree-sitter-go');
+import { requireGrammarModule } from '../src/lib/parser/grammars';
 
 export default class GoCliStrategy implements Strategy {
   name = 'go-cli';
   version = '0.1.0';
-  private parser: Parser;
+  // Grammar is optional (language pack): detection is skipped when absent.
+  requiresLanguages = ['go'];
+  private parser?: Parser;
 
-  constructor() {
-    this.parser = new Parser();
-    this.parser.setLanguage(Go);
+  // Lazy: loading the grammar at construction/import would break strategy
+  // discovery when the go pack is not installed.
+  private getParser(): Parser {
+    if (!this.parser) {
+      this.parser = new Parser();
+      this.parser.setLanguage(requireGrammarModule('go'));
+    }
+    return this.parser;
   }
 
   async detect(ctx: StrategyContext): Promise<boolean> {

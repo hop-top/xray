@@ -115,6 +115,8 @@ export interface Strategy {
   name: string;
   version: string;
   surface?: ExtensionSurface;
+  /** Language packs (grammars) this strategy needs, e.g. ['go']. Missing => not detected + one warning. */
+  requiresLanguages?: string[];
   detect(
     ctx: StrategyContext
   ): boolean | ExtensionDetection | Promise<boolean | ExtensionDetection>;
