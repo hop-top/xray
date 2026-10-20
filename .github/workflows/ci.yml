@@ -62,6 +62,22 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           tar -xzf "$RUNNER_TEMP/mdq.tar.gz" -C "$HOME/.local/bin" mdq
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      # Ubuntu 24.04 runners set kernel.apparmor_restrict_unprivileged_userns=1, which
+      # strips capabilities from unprivileged user namespaces; bwrap then dies with
+      # "loopback: Failed RTM_NEWADDR: Operation not permitted" and every sandboxed
+      # go-cli build fails. Grant `userns` to the bwrap binary only (scoped; leaves
+      # the system-wide restriction in place).
+      - name: Allow bubblewrap user namespaces
+        run: |
+          sudo tee /etc/apparmor.d/bwrap-userns >/dev/null <<'EOF'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+          }
+          EOF
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns
+          bwrap --ro-bind / / --unshare-net --unshare-pid true
       - run: npm ci --legacy-peer-deps
       - run: npm run build
       - name: Run test suites
