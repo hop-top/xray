@@ -54,6 +54,27 @@ harmless by definition.
 | `XRAY_TEST_LOCK_TIMEOUT_S` | `3600` | give up waiting for the lock (`0` = forever) |
 | `XRAY_TEST_PRESSURE_WAIT_S` | `300` | max wait on critical memory pressure (`0` = off) |
 
+## Linux and CI
+
+The runner is portable: peak RSS comes from GNU `time -v` (BSD `-l` on macOS),
+`ps -axeww` and `setsid` work as-is, and the memory-pressure wait is macOS-only.
+CI (`.github/workflows/ci.yml`, job `test`) runs `npm test` on ubuntu-latest for
+Node 26 and 22 (about 6 minutes of suites each, ~8 minutes per job) with `XRAY_TEST_NO_LOCK=1`, and uploads
+the log on failure. The job installs Go, bubblewrap (plus an AppArmor `userns` grant
+for `bwrap`; see `docs/dev/strategies/go-cli.md`) and a pinned `mdq` release, so the
+go-cli sandbox suites and the markdown strategy suites run instead of skipping.
+
+To reproduce locally on a Linux container: use Ubuntu 24.04 with Node, Go, `git`, `perl`,
+`procps`, `time`, `bubblewrap`; copy the tree (not host `node_modules`), then
+`npm ci --legacy-peer-deps && npm run build && XRAY_TEST_NO_LOCK=1 npm test`. Docker masks
+`/proc`, so the bwrap suites need `--security-opt systempaths=unconfined`
+(plus `seccomp=unconfined`, `apparmor=unconfined`) and `--init` (otherwise the runner reports reaped bwrap children as `<defunct>` leaks). That is a container limit, not
+product behavior.
+
+Tests must not assume directory-entry order, a wall-clock lower bound on a timer
+(timers can fire ~1ms early), or sub-jiffy distinct mtimes: Linux filesystems differ
+from APFS on all three.
+
 ## Writing tests that spawn processes
 
 - Every child you start must be gone when the suite ends. Kill it in

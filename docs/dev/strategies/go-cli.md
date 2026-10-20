@@ -97,8 +97,11 @@ own startup). A temp HOME is not isolation. So:
   writes except a private temp dir (plus the build cache for the build step), and denies reads of
   the user's home except an explicit allow list (see Build hardening; for the run step only the
   binary and the temp dir). Linux: `bwrap` with `--unshare-net`, private `/tmp` and
-  `/home`, read-only binary. The Linux profile follows the same contract but has not been
-  exercised on Linux.
+  `/home`, read-only binary. The Linux profile follows the same contract and is
+  exercised in CI (ubuntu-latest). Ubuntu 24.04 restricts unprivileged user namespaces
+  (`kernel.apparmor_restrict_unprivileged_userns=1`); until `bwrap` is allowed one
+  (an AppArmor profile granting `userns` to `/usr/bin/bwrap`, see `.github/workflows/ci.yml`),
+  sandboxed builds fail with `bwrap: loopback: Failed RTM_NEWADDR` and xray falls back to AST.
 - **Build hardening.** `CGO_ENABLED=0` by default: cgo lets repo code drive the C toolchain
   (clang/gcc) during the build, so it is enabled only by the user (`--allow-cgo` or
   `XRAY_GO_CLI_CGO=1`; never by repo config). Trade-off: packages that need cgo-tagged files
