@@ -186,6 +186,7 @@ Start here, then pick your next path based on what you want to do.
 
 ### Installation & Setup
 - [Getting Started](getting-started.md)
+- [Language Packs](language-packs.md)
 - [Installation Troubleshooting](troubleshooting.md#installation-issues)
 
 ### Learning Commands

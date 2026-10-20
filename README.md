@@ -34,7 +34,7 @@ cat .xray
 - 🎯 **Intelligent Ranking** - PageRank algorithm surfaces the most important files and functions first
 - 🤖 **AI-Optimized** - Token-efficient output designed for Claude, GPT, and other LLMs
 - 📦 **Chunked Output** - Automatically splits large codebases into navigable chunks (NEW!)
-- 📊 **Multi-Language** - Supports 19+ programming languages via tree-sitter
+- 📊 **Multi-Language** - 17 languages via opt-in tree-sitter packs (`xray lang add`)
 - 🔍 **Framework-Aware** - Built-in strategies for React, Express, Go CLI, and more
 - ⚡ **Smart Caching** - SQLite cache for fast subsequent runs
 - 🔗 **Dependency Tracking** - Shows imports, exports, and cross-file relationships
@@ -336,26 +336,18 @@ utils.ts (L5-L50):
 
 ## Supported Languages
 
-- Bash
-- C
-- C#
-- C++
-- Dart
-- Elixir
-- Go
-- Haskell
-- Java
-- JavaScript
-- Kotlin
-- Lua
-- Perl
-- PHP
-- Python
-- Ruby
-- Rust
-- Scala
-- Swift
-- TypeScript
+Bash, C, C#, C++, Elixir, Go, Haskell, Java, JavaScript, Kotlin, PHP, Python, Ruby, Rust, Scala, Swift, TypeScript.
+
+Grammars are optional **language packs**: install only what you use.
+
+```bash
+xray lang list                  # installed / missing, plus what your repo needs
+xray lang add go typescript     # or a bundle: web, go, systems, jvm, scripting, full
+```
+
+Missing grammars never fail a scan; xray warns once per language and continues.
+Pin languages with `"languages": ["go", "typescript"]` in `.xrayrc.json`.
+[Language packs guide →](docs/user/language-packs.md)
 
 ## Installation
 
@@ -363,6 +355,7 @@ utils.ts (L5-L50):
 
 ```bash
 npm install -g @xray-codes/xray
+xray lang add go typescript   # choose your language packs
 ```
 
 ### From Source
