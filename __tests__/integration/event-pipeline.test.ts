@@ -268,15 +268,17 @@ describe('Event Pipeline Integration', () => {
         chunked: false
       });
 
-      const delays: number[] = [];
+      // The requirement is that run() awaits an async handler, not how long the
+      // timer takes: setTimeout may fire ~1ms early against Date.now() (observed
+      // on linux), so assert completion rather than a wall-clock lower bound.
+      let finished = 0;
 
       class AsyncPlugin implements XrayPlugin {
         name = 'async-plugin';
         apply(xray: Xray): void {
           xray.on('parse:after', async (event) => {
-            const start = Date.now();
             await new Promise(resolve => setTimeout(resolve, 50));
-            delays.push(Date.now() - start);
+            finished++;
           });
         }
       }
@@ -284,8 +286,8 @@ describe('Event Pipeline Integration', () => {
       await xray.use(new AsyncPlugin());
       await xray.run();
 
-      expect(delays.length).toBe(1);
-      expect(delays[0]).toBeGreaterThanOrEqual(50);
+      // Handler fully completed (not merely started) by the time run() resolves.
+      expect(finished).toBe(1);
     });
   });
 
