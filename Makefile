@@ -1,4 +1,4 @@
-.PHONY: all build dev test test-parallel test-coverage check setup clean
+.PHONY: all build dev test test-parallel test-coverage check setup setup-ci clean
 
 all: build
 
@@ -19,8 +19,14 @@ test-coverage:
 
 check: test
 
+# --legacy-peer-deps: optional grammar peers (e.g. tree-sitter-kotlin) declare
+# peer ranges npm's strict resolver rejects.
 setup:
-	npm install
+	npm install --legacy-peer-deps
+
+# Lockfile-exact install (clean node_modules), for CI / reproducible setups.
+setup-ci:
+	npm ci --legacy-peer-deps
 
 clean:
 	rm -rf dist coverage
