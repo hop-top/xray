@@ -1,14 +1,14 @@
 import { MapRenderer } from '../../src/lib/renderer/map-renderer';
 import Graph from 'graphology';
-import { RankedNode } from '../../src/lib/graph/ranker';
+import type { RankedNode, XrayGraph } from '../../src/types/graph';
 
 describe('MapRenderer', () => {
-    let graph: Graph;
+    let graph: XrayGraph;
     let ranked: RankedNode[];
     let renderer: MapRenderer;
 
     beforeEach(() => {
-        graph = new Graph();
+        graph = new Graph() as XrayGraph;
         ranked = [];
         renderer = new MapRenderer('/root', ranked, graph);
     });
@@ -21,8 +21,8 @@ describe('MapRenderer', () => {
     it('should break on small token limit', async () => {
         // Define some ranked nodes for this specific test
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file1.ts::tag1', rank: 5, attributes: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
         ];
         // Re-instantiate renderer with the specific ranked data
         const renderer = new MapRenderer('/root', ranked, graph);
@@ -43,10 +43,10 @@ describe('MapRenderer', () => {
 
     it('should break after first file if limit reached', async () => {
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 1, data: { type: 'tag', file: 'file1.ts', kind: 'fn', label: 'tag1', line: 1 } },
-            { id: 'file2.ts', score: 5, data: { type: 'file' } },
-            { id: 'file2.ts::tag1', score: 1, data: { type: 'tag', file: 'file2.ts', kind: 'fn', label: 'tag1', line: 1 } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file1.ts::tag1', rank: 1, attributes: { type: 'tag', file: 'file1.ts', kind: 'fn', label: 'tag1', line: 1 } },
+            { id: 'file2.ts', rank: 5, attributes: { type: 'file', label: 'file2.ts' } },
+            { id: 'file2.ts::tag1', rank: 1, attributes: { type: 'tag', file: 'file2.ts', kind: 'fn', label: 'tag1', line: 1 } }
         ];
         const renderer = new MapRenderer('/root', ranked, graph);
         // Limit = 2 (file header) + 1 (margin?)
@@ -60,22 +60,22 @@ describe('MapRenderer', () => {
     });
     it('should not filter if depth is undefined', async () => {
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file1.ts::tag1', rank: 5, attributes: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
     });
     it('should filter by depth', async () => {
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file1.ts::tag1', rank: 5, attributes: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
     });
     it('should render files and tags', async () => {
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, endLine: 14 } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file1.ts::tag1', rank: 5, attributes: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, endLine: 14 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
@@ -86,9 +86,9 @@ describe('MapRenderer', () => {
 
     it('should respect token limit', async () => {
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, endLine: 14 } },
-            { id: 'file1.ts::tag2', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag2', line: 20, endLine: 20 } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file1.ts::tag1', rank: 5, attributes: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, endLine: 14 } },
+            { id: 'file1.ts::tag2', rank: 5, attributes: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag2', line: 20, endLine: 20 } }
         ];
         // Set a very small limit to force truncation
         renderer = new MapRenderer('/root', ranked, graph);
@@ -109,10 +109,10 @@ describe('MapRenderer', () => {
 
     it('should prioritize files with higher score', async () => {
         ranked = [
-            { id: 'fileA.ts', score: 1, data: { type: 'file' } },
-            { id: 'fileB.ts', score: 10, data: { type: 'file' } },
-            { id: 'fileA.ts::tag1', score: 1, data: { type: 'tag', file: 'fileA.ts', kind: 'fn', label: 'tag1', line: 1, endLine: 1 } },
-            { id: 'fileB.ts::tag1', score: 1, data: { type: 'tag', file: 'fileB.ts', kind: 'fn', label: 'tag1', line: 1, endLine: 1 } }
+            { id: 'fileA.ts', rank: 1, attributes: { type: 'file', label: 'fileA.ts' } },
+            { id: 'fileB.ts', rank: 10, attributes: { type: 'file', label: 'fileB.ts' } },
+            { id: 'fileA.ts::tag1', rank: 1, attributes: { type: 'tag', file: 'fileA.ts', kind: 'fn', label: 'tag1', line: 1, endLine: 1 } },
+            { id: 'fileB.ts::tag1', rank: 1, attributes: { type: 'tag', file: 'fileB.ts', kind: 'fn', label: 'tag1', line: 1, endLine: 1 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
         const output = await renderer.render(1000);
@@ -125,15 +125,15 @@ describe('MapRenderer', () => {
 
     it('should handle missing file scores', async () => {
         ranked = [
-            { id: 'fileA.ts', score: 10, data: { type: 'file' } },
-            { id: 'fileB.ts', score: 5, data: { type: 'file' } }, // fileB has score
-            { id: 'fileC.ts', score: 0, data: { type: 'file' } }  // fileC has 0 score
+            { id: 'fileA.ts', rank: 10, attributes: { type: 'file', label: 'fileA.ts' } },
+            { id: 'fileB.ts', rank: 5, attributes: { type: 'file', label: 'fileB.ts' } }, // fileB has score
+            { id: 'fileC.ts', rank: 0, attributes: { type: 'file', label: 'fileC.ts' } }  // fileC has 0 score
         ];
         // Add a tag for a file that is NOT in ranked files list (shouldn't happen usually but good for coverage)
         // Actually, the renderer iterates ranked nodes to build fileMap.
         // If a file node is missing but tag exists, it creates entry in fileMap.
         // But fileScores won't have it.
-        ranked.push({ id: 'fileD.ts::tag1', score: 1, data: { type: 'tag', file: 'fileD.ts', kind: 'fn', label: 'tag1', line: 1, endLine: 1 } });
+        ranked.push({ id: 'fileD.ts::tag1', rank: 1, attributes: { type: 'tag', file: 'fileD.ts', kind: 'fn', label: 'tag1', line: 1, endLine: 1 } });
 
         renderer = new MapRenderer('/root', ranked, graph);
         const output = await renderer.render(1000);
@@ -146,10 +146,10 @@ describe('MapRenderer', () => {
         // fileB has no score (undefined) -> 0
         // fileC has no score (undefined) -> 0
         ranked = [
-            { id: 'fileA.ts', score: 10, data: { type: 'file' } },
-            { id: 'fileA.ts::tag1', score: 1, data: { type: 'tag', file: 'fileA.ts', kind: 'fn', label: 'tag1', line: 1 } },
-            { id: 'fileB.ts::tag1', score: 1, data: { type: 'tag', file: 'fileB.ts', kind: 'fn', label: 'tag1', line: 1 } },
-            { id: 'fileC.ts::tag1', score: 1, data: { type: 'tag', file: 'fileC.ts', kind: 'fn', label: 'tag1', line: 1 } }
+            { id: 'fileA.ts', rank: 10, attributes: { type: 'file', label: 'fileA.ts' } },
+            { id: 'fileA.ts::tag1', rank: 1, attributes: { type: 'tag', file: 'fileA.ts', kind: 'fn', label: 'tag1', line: 1 } },
+            { id: 'fileB.ts::tag1', rank: 1, attributes: { type: 'tag', file: 'fileB.ts', kind: 'fn', label: 'tag1', line: 1 } },
+            { id: 'fileC.ts::tag1', rank: 1, attributes: { type: 'tag', file: 'fileC.ts', kind: 'fn', label: 'tag1', line: 1 } }
         ];
 
         renderer = new MapRenderer('/root', ranked, graph);
@@ -166,8 +166,8 @@ describe('MapRenderer', () => {
 
     it('should include docstrings if present', async () => {
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, doc: 'My Doc' } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file1.ts::tag1', rank: 5, attributes: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, doc: 'My Doc' } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
@@ -178,8 +178,8 @@ describe('MapRenderer', () => {
     it('should truncate long docstrings', async () => {
         const longDoc = 'A'.repeat(100);
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, doc: longDoc } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file1.ts::tag1', rank: 5, attributes: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10, doc: longDoc } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
@@ -197,8 +197,8 @@ describe('MapRenderer', () => {
         });
 
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file1.ts::tag1', rank: 5, attributes: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
@@ -209,10 +209,10 @@ describe('MapRenderer', () => {
 
     it('should filter by depth', async () => {
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file1.ts::tag1', score: 5, data: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } },
-            { id: 'deep/nested/file2.ts', score: 8, data: { type: 'file' } },
-            { id: 'deep/nested/file2.ts::tag2', score: 4, data: { type: 'tag', file: 'deep/nested/file2.ts', kind: 'function', label: 'tag2', line: 10 } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file1.ts::tag1', rank: 5, attributes: { type: 'tag', file: 'file1.ts', kind: 'function', label: 'tag1', line: 10 } },
+            { id: 'deep/nested/file2.ts', rank: 8, attributes: { type: 'file', label: 'deep/nested/file2.ts' } },
+            { id: 'deep/nested/file2.ts::tag2', rank: 4, attributes: { type: 'tag', file: 'deep/nested/file2.ts', kind: 'function', label: 'tag2', line: 10 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
@@ -228,9 +228,9 @@ describe('MapRenderer', () => {
         (graph as any).addEdge('file1.ts::caller', 'file2.ts::callee', { type: 'calls' });
 
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file2.ts', score: 9, data: { type: 'file' } },
-            { id: 'file2.ts::callee', score: 5, data: { type: 'tag', file: 'file2.ts', kind: 'function', label: 'callee', line: 10, endLine: 12 } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file2.ts', rank: 9, attributes: { type: 'file', label: 'file2.ts' } },
+            { id: 'file2.ts::callee', rank: 5, attributes: { type: 'tag', file: 'file2.ts', kind: 'function', label: 'callee', line: 10, endLine: 12 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
@@ -253,8 +253,8 @@ describe('MapRenderer', () => {
         });
 
         ranked = [
-            { id: 'file1.ts', score: 10, data: { type: 'file' } },
-            { id: 'file2.ts', score: 9, data: { type: 'file' } }
+            { id: 'file1.ts', rank: 10, attributes: { type: 'file', label: 'file1.ts' } },
+            { id: 'file2.ts', rank: 9, attributes: { type: 'file', label: 'file2.ts' } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
@@ -274,7 +274,7 @@ describe('MapRenderer', () => {
         });
 
         ranked = [
-            { id: 'fileWithImports.ts', score: 10, data: { type: 'file' } }
+            { id: 'fileWithImports.ts', rank: 10, attributes: { type: 'file', label: 'fileWithImports.ts' } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 
@@ -298,10 +298,10 @@ describe('MapRenderer', () => {
         });
 
         ranked = [
-            { id: 'main.ts', score: 10, data: { type: 'file' } },
-            { id: 'main.ts::handler', score: 5, data: { type: 'tag', file: 'main.ts', kind: 'function', label: 'handler', line: 10, endLine: 15 } },
-            { id: 'utils.ts', score: 9, data: { type: 'file' } },
-            { id: 'utils.ts::helper', score: 4, data: { type: 'tag', file: 'utils.ts', kind: 'function', label: 'helper', line: 1, endLine: 5 } }
+            { id: 'main.ts', rank: 10, attributes: { type: 'file', label: 'main.ts' } },
+            { id: 'main.ts::handler', rank: 5, attributes: { type: 'tag', file: 'main.ts', kind: 'function', label: 'handler', line: 10, endLine: 15 } },
+            { id: 'utils.ts', rank: 9, attributes: { type: 'file', label: 'utils.ts' } },
+            { id: 'utils.ts::helper', rank: 4, attributes: { type: 'tag', file: 'utils.ts', kind: 'function', label: 'helper', line: 1, endLine: 5 } }
         ];
         renderer = new MapRenderer('/root', ranked, graph);
 

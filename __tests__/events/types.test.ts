@@ -1,6 +1,6 @@
 import { XrayEvents } from '../../src/lib/events/types';
 import { Tag, Import } from '../../src/lib/parser/types';
-import { RankedNode } from '../../src/lib/graph/ranker';
+import type { RankedNode } from '../../src/types/graph';
 import Graph from 'graphology';
 
 describe('XrayEvents Type Schema', () => {
@@ -208,7 +208,7 @@ describe('XrayEvents Type Schema', () => {
                 target: 'file.ts::callee',
                 type: 'calls',
                 skip: false,
-                attrs: { weight: 1 }
+                attrs: { type: 'calls', confidence: 'EXTRACTED', weight: 1 }
             };
 
             expect(callsEvent.type).toBe('calls');
@@ -253,21 +253,22 @@ describe('XrayEvents Type Schema', () => {
 
         it('should define rank:complete event with mutable rankedNodes', () => {
             const rankedNodes: RankedNode[] = [
-                { id: 'node1', score: 0.5, data: {} },
-                { id: 'node2', score: 0.3, data: {} }
+                { id: 'node1', rank: 0.5, attributes: { type: 'file', label: 'node1' } },
+                { id: 'node2', rank: 0.3, attributes: { type: 'file', label: 'node2' } }
             ];
 
             const event: XrayEvents['rank:complete'] = {
+                graph: new Graph(),
                 rankedNodes
             };
 
             // Verify rankedNodes are mutable (can be reordered)
-            event.rankedNodes.sort((a: RankedNode, b: RankedNode) => b.score - a.score);
+            event.rankedNodes.sort((a: RankedNode, b: RankedNode) => b.rank - a.rank);
             expect(event.rankedNodes[0].id).toBe('node1');
 
             // Can modify scores
-            event.rankedNodes[0].score = 0.9;
-            expect(event.rankedNodes[0].score).toBe(0.9);
+            event.rankedNodes[0].rank = 0.9;
+            expect(event.rankedNodes[0].rank).toBe(0.9);
         });
     });
 
@@ -276,7 +277,8 @@ describe('XrayEvents Type Schema', () => {
             const event: XrayEvents['render:start'] = {
                 format: 'markdown',
                 chunked: true,
-                outputPath: '/path/to/output'
+                outputPath: '/path/to/output',
+                renderer: {} as XrayEvents['render:start']['renderer']
             };
 
             expect(event.format).toBe('markdown');

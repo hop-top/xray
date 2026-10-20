@@ -17,7 +17,7 @@ describe('Ranker', () => {
 
         const ranked = ranker.rank();
         expect(ranked.length).toBe(2);
-        expect(ranked[0].score).toBeGreaterThan(0);
+        expect(ranked[0].rank).toBeGreaterThan(0);
     });
 
     it('should boost file nodes', () => {
@@ -30,7 +30,7 @@ describe('Ranker', () => {
         const fileNode = ranked.find(n => n.id === 'A');
         const tagNode = ranked.find(n => n.id === 'B');
 
-        expect(fileNode!.score).toBeGreaterThan(tagNode!.score);
+        expect(fileNode!.rank).toBeGreaterThan(tagNode!.rank);
     });
 
     it('should penalize private members', () => {
@@ -41,7 +41,7 @@ describe('Ranker', () => {
         const publicNode = ranked.find(n => n.id === 'A');
         const privateNode = ranked.find(n => n.id === 'B');
 
-        expect(publicNode!.score).toBeGreaterThan(privateNode!.score);
+        expect(publicNode!.rank).toBeGreaterThan(privateNode!.rank);
     });
 
     it('should boost focus node and neighbors', () => {
@@ -57,7 +57,7 @@ describe('Ranker', () => {
         const neighborNode = ranked.find(n => n.id === 'Neighbor');
         const otherNode = ranked.find(n => n.id === 'Other');
 
-        expect(focusNode!.score).toBeGreaterThan(neighborNode!.score);
-        expect(neighborNode!.score).toBeGreaterThan(otherNode!.score);
+        expect(focusNode!.rank).toBeGreaterThan(neighborNode!.rank);
+        expect(neighborNode!.rank).toBeGreaterThan(otherNode!.rank);
     });
 });

@@ -2,12 +2,24 @@ import { ChunkedRenderer } from '../src/lib/renderer/chunked-renderer';
 import Graph from 'graphology';
 import { RankedNode } from '../src/types/graph';
 import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 
 describe('ChunkedRenderer', () => {
   let graph: Graph;
   let rankedNodes: RankedNode[];
 
+  // renderChunked creates the output directory (2f6a6f6), so use a real tmp dir.
+  let outputDir: string;
+  let outputBase: string;
+
+  afterEach(() => {
+    fs.rmSync(outputDir, { recursive: true, force: true });
+  });
+
   beforeEach(() => {
+    outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-chunked-'));
+    outputBase = path.join(outputDir, '.xray');
     // Setup mock graph and ranked nodes
     graph = new Graph();
 
@@ -39,23 +51,23 @@ describe('ChunkedRenderer', () => {
     rankedNodes = [
       {
         id: 'src/index.ts',
-        score: 1.0,
-        data: { type: 'file' },
+        rank: 1.0,
+        attributes: { type: 'file', label: 'src/index.ts' },
       },
       {
         id: 'src/lib/utils.ts',
-        score: 0.8,
-        data: { type: 'file' },
+        rank: 0.8,
+        attributes: { type: 'file', label: 'src/lib/utils.ts' },
       },
       {
         id: 'src/lib/config.ts',
-        score: 0.6,
-        data: { type: 'file' },
+        rank: 0.6,
+        attributes: { type: 'file', label: 'src/lib/config.ts' },
       },
       {
         id: 'src/index.ts::main',
-        score: 0.9,
-        data: {
+        rank: 0.9,
+        attributes: {
           type: 'tag',
           file: 'src/index.ts',
           label: 'main',
@@ -66,8 +78,8 @@ describe('ChunkedRenderer', () => {
       },
       {
         id: 'src/lib/utils.ts::helper',
-        score: 0.7,
-        data: {
+        rank: 0.7,
+        attributes: {
           type: 'tag',
           file: 'src/lib/utils.ts',
           label: 'helper',
@@ -88,7 +100,7 @@ describe('ChunkedRenderer', () => {
         tokenLimit: 4096,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       expect(result.chunks.size).toBeGreaterThan(0);
       expect(result.metadata.length).toBeGreaterThan(0);
@@ -104,7 +116,7 @@ describe('ChunkedRenderer', () => {
         maxDepth: 1,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       // Should only include directories at depth <= 1
       const depthViolations = result.metadata.filter(m => m.depth > 1);
@@ -119,7 +131,7 @@ describe('ChunkedRenderer', () => {
         tokenLimit: 4096,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       // Check that child directories have parent references
       const childMetadata = result.metadata.find(m => m.directory === 'src/lib');
@@ -142,7 +154,7 @@ describe('ChunkedRenderer', () => {
         tokenLimit: 4096,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       // Find a chunk with a parent
       for (const [chunkPath, content] of result.chunks.entries()) {
@@ -164,7 +176,7 @@ describe('ChunkedRenderer', () => {
         tokenLimit,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       // Each chunk should respect the token limit
       for (const metadata of result.metadata) {
@@ -180,7 +192,7 @@ describe('ChunkedRenderer', () => {
         tokenLimit: 4096,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       const paths = Array.from(result.chunks.keys());
       const uniquePaths = new Set(paths);
@@ -194,13 +206,13 @@ describe('ChunkedRenderer', () => {
       const rootNodes: RankedNode[] = [
         {
           id: 'index.ts',
-          score: 1.0,
-          data: { type: 'file' },
+          rank: 1.0,
+          attributes: { type: 'file', label: 'index.ts' },
         },
         {
           id: 'index.ts::main',
-          score: 0.9,
-          data: {
+          rank: 0.9,
+          attributes: {
             type: 'tag',
             file: 'index.ts',
             label: 'main',
@@ -221,7 +233,7 @@ describe('ChunkedRenderer', () => {
         tokenLimit: 4096,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       expect(result.chunks.size).toBeGreaterThan(0);
       expect(result.rootChunk).toBeTruthy();
@@ -231,8 +243,8 @@ describe('ChunkedRenderer', () => {
       const nestedNodes: RankedNode[] = [
         {
           id: 'a/b/c/deep.ts',
-          score: 0.5,
-          data: { type: 'file' },
+          rank: 0.5,
+          attributes: { type: 'file', label: 'a/b/c/deep.ts' },
         },
       ];
 
@@ -246,7 +258,7 @@ describe('ChunkedRenderer', () => {
         tokenLimit: 4096,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       // Should have a chunk for the nested directory
       const deepDirMeta = result.metadata.find(m => m.directory === 'a/b/c');
@@ -265,12 +277,23 @@ describe('ChunkedRenderer', () => {
         ],
       });
 
+      // Files only render when they own at least one tag.
+      const mainTag = {
+        type: 'tag' as const,
+        file: 'src/index.ts',
+        label: 'main',
+        kind: 'function',
+        line: 1,
+      };
+      graphWithImports.addNode('src/index.ts::main', mainTag);
+
       const nodesWithImports: RankedNode[] = [
         {
           id: 'src/index.ts',
-          score: 1.0,
-          data: { type: 'file' },
+          rank: 1.0,
+          attributes: { type: 'file', label: 'src/index.ts' },
         },
+        { id: 'src/index.ts::main', rank: 0.9, attributes: mainTag },
       ];
 
       const renderer = new ChunkedRenderer({
@@ -281,12 +304,12 @@ describe('ChunkedRenderer', () => {
         includeImports: true,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       // Check that at least one chunk contains import information
       let foundImport = false;
       for (const content of result.chunks.values()) {
-        if (content.includes('import')) {
+        if (content.includes("import { helper } from './lib/utils';")) {
           foundImport = true;
           break;
         }
@@ -303,12 +326,23 @@ describe('ChunkedRenderer', () => {
         ],
       });
 
+      // Files only render when they own at least one tag.
+      const mainTag = {
+        type: 'tag' as const,
+        file: 'src/index.ts',
+        label: 'main',
+        kind: 'function',
+        line: 1,
+      };
+      graphWithImports.addNode('src/index.ts::main', mainTag);
+
       const nodesWithImports: RankedNode[] = [
         {
           id: 'src/index.ts',
-          score: 1.0,
-          data: { type: 'file' },
+          rank: 1.0,
+          attributes: { type: 'file', label: 'src/index.ts' },
         },
+        { id: 'src/index.ts::main', rank: 0.9, attributes: mainTag },
       ];
 
       const renderer = new ChunkedRenderer({
@@ -319,14 +353,11 @@ describe('ChunkedRenderer', () => {
         includeImports: false,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
-      // Should not contain import statements in most cases
-      // (unless they're part of tag names, which is unlikely)
+      expect(result.chunks.size).toBeGreaterThan(0);
       for (const content of result.chunks.values()) {
-        // This is a soft check - imports might appear in other contexts
-        const importCount = (content.match(/import/g) || []).length;
-        expect(importCount).toBeLessThan(5); // Arbitrary low threshold
+        expect(content).not.toContain("import { helper } from './lib/utils';");
       }
     });
   });
@@ -366,18 +397,18 @@ describe('ChunkedRenderer', () => {
       const perfNodes: RankedNode[] = [
         {
           id: 'src/a.ts',
-          score: 1.0,
-          data: { type: 'file' },
+          rank: 1.0,
+          attributes: { type: 'file', label: 'src/a.ts' },
         },
         {
           id: 'src/b.ts',
-          score: 0.9,
-          data: { type: 'file' },
+          rank: 0.9,
+          attributes: { type: 'file', label: 'src/b.ts' },
         },
         {
           id: 'src/a.ts::helper',
-          score: 0.8,
-          data: {
+          rank: 0.8,
+          attributes: {
             type: 'tag',
             file: 'src/a.ts',
             label: 'helper',
@@ -388,8 +419,8 @@ describe('ChunkedRenderer', () => {
         },
         {
           id: 'src/b.ts::main',
-          score: 0.7,
-          data: {
+          rank: 0.7,
+          attributes: {
             type: 'tag',
             file: 'src/b.ts',
             label: 'main',
@@ -407,7 +438,7 @@ describe('ChunkedRenderer', () => {
         tokenLimit: 4096,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       // Find the chunk containing src/a.ts
       let foundReference = false;
@@ -464,7 +495,7 @@ describe('ChunkedRenderer', () => {
         grouping: 'community',
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       // 2 communities + 1 root
       expect(result.chunks.size).toBe(3);
@@ -495,7 +526,7 @@ describe('ChunkedRenderer', () => {
         grouping: 'community',
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
 
       // Community 0 has 2 unique files (one.ts, two.ts) — not 2 tag nodes.
       const c0 = result.metadata.find(m => m.directory === 'community_0');
@@ -527,7 +558,7 @@ describe('ChunkedRenderer', () => {
         grouping: 'community',
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
       const keys = Array.from(result.chunks.keys());
       expect(keys.some(k => k.includes('unclustered'))).toBe(true);
     });
@@ -556,7 +587,7 @@ describe('ChunkedRenderer', () => {
         includeImports: true,
       });
 
-      const result = await renderer.renderChunked('/output/.xray');
+      const result = await renderer.renderChunked(outputBase);
       const communityChunks = Array.from(result.chunks.entries())
         .filter(([k]) => k.includes('community_0'));
       expect(communityChunks.length).toBe(1);
