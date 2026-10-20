@@ -177,18 +177,25 @@ export async function main() {
   }
 }
 
+/**
+ * Top-level rejection handler for main(): CodedError -> its exit code,
+ * anything else -> EXIT_GENERIC. Shared by bin/xray, bin/cli.js and the
+ * direct-run path below.
+ */
+export function handleFatalError(error: unknown): never {
+  if (error instanceof CodedError) {
+    Logger.error(error.message);
+    shutdownTelemetry();
+    process.exit(error.exitCode);
+  }
+  Logger.error(error instanceof Error ? error.message : String(error));
+  shutdownTelemetry();
+  process.exit(EXIT_GENERIC);
+}
+
 // Run when executed directly (`node dist/index.js`); bin/xray calls main().
 if (require.main === module) {
-  main().catch(error => {
-    if (error instanceof CodedError) {
-      Logger.error(error.message);
-      shutdownTelemetry();
-      process.exit(error.exitCode);
-    }
-    console.error('Fatal error:', error);
-    shutdownTelemetry();
-    process.exit(EXIT_GENERIC);
-  });
+  main().catch(handleFatalError);
 }
 
 // Export for testing
