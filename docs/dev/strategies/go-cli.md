@@ -1,232 +1,164 @@
 # Go CLI Strategy
 
-The Go CLI strategy detects and analyzes Go-based command-line interface applications, supporting popular frameworks like Cobra and urfave/cli, as well as the standard Go flag package.
+Detects Go command-line applications and extracts their command tree: names, hierarchy, short
+descriptions, and flags. Frameworks: `spf13/cobra`, `urfave/cli` (v1-v3), and kit
+(`hop.top/kit`, which sits on cobra).
 
 ## Detection
 
-The strategy detects Go CLI projects by checking for:
+A project matches when any of these hold:
 
-1. **Cobra framework** (`github.com/spf13/cobra`) in `go.mod`
-2. **urfave/cli framework** (`github.com/urfave/cli`) in `go.mod`
-3. **cmd/ directory structure** with Go files
-4. **Standard flag package** usage in `main.go`
-5. **CLI framework imports** in Go source files
+1. `go.mod` mentions `github.com/spf13/cobra`, `github.com/urfave/cli` or `hop.top/kit`
+2. a `cmd/**/*.go` tree exists
+3. any Go file imports one of those frameworks or `hop.top/kit/...`
+4. a file with `func main()` imports the standard `flag` package (detected only; commands and
+   flags of the `flag` package are not extracted)
 
-## Supported Frameworks
-
-### Cobra
-
-The most popular Go CLI framework. The strategy detects:
-
-- Command definitions (`&cobra.Command{}`)
-- Command hierarchy (via `AddCommand()` calls)
-- Flag definitions (StringP, BoolP, IntP, etc.)
-- Root and subcommands
-
-Example:
-```go
-var rootCmd = &cobra.Command{
-    Use:   "myapp",
-    Short: "A brief description",
-    Long:  "A longer description",
-}
-
-var serveCmd = &cobra.Command{
-    Use:   "serve",
-    Short: "Start the server",
-}
-
-func init() {
-    rootCmd.AddCommand(serveCmd)
-    rootCmd.Flags().StringP("config", "c", "", "config file")
-}
-```
-
-### urfave/cli
-
-A simple and expressive CLI framework. The strategy detects:
-
-- App definitions (`&cli.App{}`)
-- Command definitions (`&cli.Command{}`)
-- Flag definitions (StringFlag, BoolFlag, etc.)
-
-Example:
-```go
-var app = &cli.App{
-    Name:  "myapp",
-    Usage: "do awesome things",
-    Flags: []cli.Flag{
-        &cli.StringFlag{
-            Name:  "config",
-            Usage: "config file",
-        },
-    },
-}
-```
-
-### Standard flag Package
-
-The built-in Go flag package. The strategy detects:
-
-- Flag definitions (String, Bool, Int, etc.)
-- Flag variables
-
-Example:
-```go
-var (
-    verbose = flag.Bool("verbose", false, "verbose mode")
-    config  = flag.String("config", "default.conf", "config file")
-)
-```
-
-## Commands
-
-### List Commands
+## Usage
 
 ```bash
-xray go-cli:commands
+xray go-cli commands                      # text tree, static AST analysis (default)
+xray go-cli commands --format json        # stable, sorted JSON
+xray go-cli commands -p /path/to/repo
+
+# opt-in: ask the real binary (kit toolspec), see "Trust model"
+xray go-cli commands --exec-binary        # build the main package, run `spec --format json`
+xray go-cli commands --binary ./bin/tool  # run a binary you supply
+xray go-cli commands --exec-binary --unsafe-no-sandbox   # only if no OS sandbox exists
 ```
 
-Lists all CLI commands defined in the project, including:
-- Command name
-- Short description
-- File location
+`XRAY_GO_CLI_EXEC=1` in the *user's* environment is equivalent to `--exec-binary`.
 
-### List Flags
+The `source` field (and the text header) says which path produced the result.
 
-```bash
-xray go-cli:flags
+## Sources
+
+### `ast` (default)
+
+Static analysis of the Go source with tree-sitter-go. Nothing is built or executed.
+
+Extracted:
+
+- cobra: `&cobra.Command{Use, Short, Long, Aliases, Hidden, Deprecated}` literals (string
+  constants and `"a" + b` concatenations are resolved); the command name is the first word of
+  `Use`
+- hierarchy from `X.AddCommand(...)`, where `X` and the children may be package variables, local
+  variables, constructor calls (`newFooCmd()`, `pkg.NewCmd()`, resolved through the function's
+  `return`) or inline literals; works across files and packages
+- flags from `Flags()` / `PersistentFlags()` calls, including a stored `f := cmd.Flags()`:
+  `String`, `StringP`, `StringVar`, `StringVarP`, `Bool`, `Int`, `Duration`, `Count`, slices,
+  maps, `Var`, `Func`, ...; name, shorthand, type, default, usage, persistent
+- urfave: `cli.App` / `cli.Command` literals with nested `Commands`/`Subcommands` (inline or by
+  identifier) and `Flags: []cli.Flag{&cli.StringFlag{...}}` (name, first one-letter alias as
+  shorthand, usage, default)
+- kit: the root cobra command is created inside kit (`var rootCmd = root.Cmd`). Anything wired
+  to a root-looking reference becomes children of one synthetic root named after
+  `cli.Config{Name: ...}`
+
+Limits (best effort, reported as `warnings`): commands built by helper functions that take the
+name as a parameter, reflection, dynamic registration in loops, and `AddCommand` receivers that
+are function parameters are not resolved; such commands may appear as separate roots
+("unattached command") or be missing. Hidden/kit-reserved commands appear when they exist in
+source. If `tree-sitter-go` is not installed (optional language pack) the AST path is skipped
+with a warning and an empty result; it never throws.
+
+### `toolspec` (opt-in)
+
+kit CLIs expose `<tool> spec --format json`, a machine-readable manifest. xray parses it:
+
+```json
+{ "tool": "demo", "version": "0.1.0", "schema_version": "1.0",
+  "commands": [ { "path": ["demo","item","add"], "short": "Add an item",
+                  "side_effect": "write", "idempotent": "no", "retryable": false,
+                  "dry_run_supported": true, "flags": [ {"name":"force","type":"bool"} ] } ] }
 ```
 
-Lists all command-line flags, including:
-- Flag name
-- Type (string, bool, int, etc.)
-- Usage description
-- File location
+The manifest lists leaf commands only; group nodes are synthesized from `path`. In addition to
+the AST fields, each command gets `safety`: `sideEffect`, derived `level`
+(`read`->`safe`, `write*`/`interactive`->`caution`, `destructive*`->`dangerous`), `idempotent`,
+`retryable`, `dryRunSupported`, `destructiveTokenRequired`, `exitCodes`. The nested `ToolSpec`
+tree shape (`name` + `children`) is also accepted. kit's `spec` command itself, `help` and
+`completion` are omitted from the tree.
 
-### Show Command Tree
+If the toolspec cannot be obtained (execution not allowed, no sandbox, build failure, no `spec`
+command, non-JSON output, timeout) xray falls back to the AST path and says why in `warnings`.
+Most hop.top tools do not expose kit's standard `spec` yet and therefore use the fallback.
 
-```bash
-xray go-cli:tree
+## Trust model
+
+Building and running a repository's code is arbitrary code execution (cgo, init code, the CLI's
+own startup). A temp HOME is not isolation. So:
+
+- **Default is static.** No `go build`, no subprocess. Nothing found in the scanned repo
+  (including `.xrayrc.json` and other repo-local config) can turn execution on. Only the user can:
+  `--exec-binary`, `--binary <path>`, or `XRAY_GO_CLI_EXEC=1` in their own environment.
+- **Always sandboxed.** macOS: `sandbox-exec` with a profile that denies network, denies all
+  writes except a private temp dir, and (for the run step) denies reads of the user's home
+  except the binary and the temp dir. Linux: `bwrap` with `--unshare-net`, private `/tmp` and
+  `/home`, read-only binary. The Linux profile follows the same contract but has not been
+  exercised on Linux.
+- **Build hardening.** `GOPROXY=off`, `GOFLAGS=-mod=readonly` (or `-mod=vendor`),
+  `GOTOOLCHAIN=local`, `CGO_ENABLED=0`, private `GOCACHE`; `GOROOT` and `GOBIN` are removed from
+  the child env (a shell `GOROOT` for another toolchain breaks the build). The module cache is
+  read-only under the sandbox. The build step can still *read* your home (toolchain, module
+  cache); only writes and network are denied.
+- **Run hardening.** Command is exactly `<bin> spec --format json`, scrubbed environment (no
+  inherited secrets; temp HOME/XDG dirs, `NO_COLOR=1`), temp cwd, stdin closed, 15 s timeout,
+  process group killed on timeout.
+- **No sandbox tool, no execution.** Without `sandbox-exec`/`bwrap`, xray refuses and uses AST.
+  `--unsafe-no-sandbox` overrides this (with a warning in the output).
+- **Fail closed.** Any failure falls back to AST.
+
+## Output
+
+Text:
+
+```
+cobrademo commands [source: AST (tree-sitter-go)]
+cobrademo  Demo cobra CLI  (cmd/root.go:15)
+│    -c, --config <string>  config file
+├─ deploy  Deploy the application  (cmd/deploy.go:5)
+│  └─ rollback  Roll back a deploy  [hidden]  (cmd/deploy.go:11)
+└─ serve  Start the server  (internal/serve/serve.go:6)
 ```
 
-Displays the command hierarchy showing parent-child relationships between commands.
+JSON (`--format json`; commands sorted by path, flags by name, empty optionals omitted):
 
-## Analysis Features
-
-The strategy provides detailed analysis of:
-
-### Commands
-- Command names (Use field)
-- Short and long descriptions
-- Multiple commands per file
-
-### Flags
-- Flag names
-- Flag types (string, bool, int, float, duration)
-- Short/long forms (e.g., `-v` / `--verbose`)
-- Default values
-- Usage descriptions
-
-### Command Hierarchy
-- Parent-child command relationships
-- Command tree structure
-- AddCommand() call detection
-
-## File Types
-
-The strategy analyzes:
-- `.go` files
-
-## Ignore Patterns
-
-The strategy ignores:
-- `**/*_test.go` - Test files
-- `**/vendor/**` - Vendor dependencies
-- `**/testdata/**` - Test data directories
-
-## Tags
-
-The strategy adds the following tags to analyzed files:
-
-- `go-cli:command` - Files containing command definitions
-- `go-cli:flags` - Files containing flag definitions
-- `go-cli:hierarchy` - Files containing command hierarchy (AddCommand calls)
-- `go-cli:urfave-app` - Files containing urfave/cli App definitions
-
-## Metadata
-
-For each analyzed file, the strategy extracts:
-
-### Commands
-- `commandName` - The command name
-- `commandShort` - Short description
-- `commandLong` - Long description
-- `commands` - Array of commands (if multiple in one file)
-
-### Flags
-- `flags` - Array of flag definitions with:
-  - `name` - Flag name
-  - `type` - Flag type
-  - `usage` - Usage description
-  - `shorthand` - Short form (e.g., "v" for verbose)
-
-### Hierarchy
-- `hierarchy` - Array of parent-child relationships:
-  - `parent` - Parent command name
-  - `child` - Child command name
-
-### urfave/cli
-- `appName` - Application name
-- `appUsage` - Application usage
-- `urfaveCommands` - Array of urfave/cli commands
-
-## Examples
-
-### Detect CLI project
-```bash
-cd my-go-cli-project
-xray detect
-# Output: Detected strategies: go-cli
+```json
+{ "source": "ast", "tool": "cobrademo",
+  "commands": [ { "path": ["cobrademo","deploy"], "short": "Deploy the application",
+                  "aliases": ["ship"], "flags": [ {"name":"replicas","type":"int","default":"1"} ],
+                  "file": "cmd/deploy.go", "line": 5 } ],
+  "warnings": [] }
 ```
 
-### List all commands
-```bash
-xray go-cli:commands
-# Output:
-# Go CLI Commands:
-# - myapp (A CLI application) [cmd/root.go]
-# - serve (Start the server) [cmd/serve.go]
-# - deploy (Deploy the application) [cmd/deploy.go]
-```
+`file`/`line` appear for `ast`, `safety` for `toolspec`.
 
-### List all flags
-```bash
-xray go-cli:flags
-# Output:
-# Go CLI Flags:
-# - config (string): Configuration file path [cmd/root.go]
-# - verbose (bool): Verbose output [cmd/root.go]
-# - port (int): Server port [cmd/serve.go]
-```
+## Per-file metadata (`analyze`)
 
-### Show command hierarchy
-```bash
-xray go-cli:tree
-# Output:
-# Command Tree:
-# myapp
-#   ├─ serve
-#   ├─ deploy
-#   └─ version
-```
+For `xray map` / `explore`, each Go file that defines commands is tagged and annotated:
+
+| Tag | Meaning |
+| --- | --- |
+| `go-cli:command` | file defines command literals |
+| `go-cli:flags` | file defines flags |
+| `go-cli:hierarchy` | file wires `AddCommand` / nested subcommands |
+| `go-cli:urfave-app` | file defines a `cli.App` |
+
+Metadata: `commands` (`name`, `short`, `framework`, `line`, `flags` count), `commandName`,
+`commandShort`, `commandLong`, `flags` (`name`, `type`, `usage`, `shorthand`), `appName`,
+`appUsage`. When `tree-sitter-go` is missing, `metadata.astSkipped` is set instead.
+
+## File types and ignores
+
+`.go`; ignores `**/*_test.go`, `**/vendor/**`, `**/testdata/**`.
+
+## Implementation
+
+`strategies/go-cli.ts` (strategy), `src/lib/strategy/go-cli/`: `ast.ts` (extraction + linking),
+`toolspec.ts` (manifest parser), `binary.ts` (opt-in build/run + sandbox), `model.ts` (shared
+model, JSON/text renderers).
 
 ## Version
 
-**v0.0.1-alpha.1** - Initial implementation
-- Cobra framework detection and analysis
-- urfave/cli framework detection and analysis
-- Standard flag package detection
-- Command hierarchy detection (AddCommand calls)
-- Flag parsing for all major types (string, bool, int, etc.)
-- Support for both short and long flag forms
+**0.2.0**: `commands` subcommand; kit detection; AST and opt-in toolspec sources.

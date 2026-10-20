@@ -116,7 +116,7 @@ xray rest-api:endpoints
 
 **For Go CLI projects:**
 ```bash
-xray go-cli:commands
+xray go-cli commands
 ```
 
 **Expected Output (React example):**
