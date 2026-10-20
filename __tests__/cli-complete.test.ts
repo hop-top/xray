@@ -45,7 +45,13 @@ describe('CLI E2E - Complete Command Coverage', () => {
             // Cache doesn't exist, should not error and might show message or be silent
             const output = execSync(`node ${CLI_PATH} cache clear`, { cwd: root }).toString();
             // Either shows message or silent - both are acceptable
-            expect(['No cache found', '']).toContain(output.trim());
+            // Ignore the "Using config file" notice emitted when a config is found.
+            const message = output
+                .split('\n')
+                .filter(line => !line.includes('Using config file'))
+                .join('\n')
+                .trim();
+            expect(['No cache found', '']).toContain(message);
 
             // Cleanup
             fs.rmSync(root, { recursive: true, force: true });
