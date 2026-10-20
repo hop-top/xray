@@ -70,7 +70,8 @@ const mockContext: StrategyContext = {
   setCached: () => {},
   globFiles: () => [],
   getProjectRoot: () => '/test',
-  getConfig: () => undefined
+  getConfig: () => undefined,
+  getExtensionConfig: () => undefined
 };
 
 describe('StrategyRunner', () => {

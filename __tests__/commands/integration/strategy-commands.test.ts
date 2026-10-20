@@ -12,11 +12,12 @@ describe('Strategy Commands - Real Execution', () => {
   // Helper to run xray commands
   async function runXray(args: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     try {
-      const { stdout, stderr } = await execAsync(`node ${xrayBin} ${args}`);
-      return { stdout, stderr, exitCode: 0 };
+      // Human messages go to stderr (logger stream split); merge for assertions.
+      const { stdout, stderr } = await execAsync(`node ${xrayBin} ${args} 2>&1`);
+      return { stdout: stdout + stderr, stderr, exitCode: 0 };
     } catch (error: any) {
       return {
-        stdout: error.stdout || '',
+        stdout: (error.stdout || '') + (error.stderr || ''),
         stderr: error.stderr || '',
         exitCode: error.code || 1
       };
