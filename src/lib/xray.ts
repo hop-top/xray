@@ -345,7 +345,11 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       // Event: Cache check - use parallel for observers
       await this.emitAsyncParallel('cache:check', { file, mtime: stats.mtimeMs });
 
-      const cached = this.cache.get(file, stats.mtimeMs, includeDocs, includeVars);
+      // Key by absolute path: the cache db lives in the cwd and is shared by every
+      // root scanned from it, so a root-relative key lets `a/main.ts` and
+      // `b/main.ts` (same relative path, equal mtime) serve each other's tags.
+      const cacheKey = absPath;
+      const cached = this.cache.get(cacheKey, stats.mtimeMs, includeDocs, includeVars);
 
       if (cached) {
         // Event: Cache hit - use sequential since listeners can modify cached data
@@ -401,7 +405,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           // Never cache a file we could not parse for lack of a grammar:
           // installing it later must take effect without touching the file.
           if (!skipped) {
-            this.cache.set(file, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars);
+            this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars);
           }
         } catch (error) {
           // Event: Parse error
