@@ -2,6 +2,7 @@
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import { execFileNoThrow } from '../src/utils/execFileNoThrow';
 import { Logger } from '../src/lib/logger';
+import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -40,6 +41,40 @@ interface MdqList {
 
 type MdqElement = MdqSection | MdqParagraph | MdqCodeBlock | MdqList;
 
+const DEFAULT_MDQ_TIMEOUT_MS = 30_000;
+
+/**
+ * Run mdq with stdin closed (mdq reads stdin when its argv is wrong, which
+ * would block forever on an open pipe) and a hard timeout that kills the child.
+ */
+function runMdq(args: string[]): Promise<{ status: number; stdout: string; stderr: string }> {
+  const timeoutMs = Number(process.env.XRAY_MDQ_TIMEOUT_MS) || DEFAULT_MDQ_TIMEOUT_MS;
+
+  return new Promise((resolve) => {
+    const child = spawn('mdq', args, { stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+
+    const finish = (status: number, extraErr = ''): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ status, stdout, stderr: stderr + extraErr });
+    };
+
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      finish(124, `mdq timed out after ${timeoutMs}ms`);
+    }, timeoutMs);
+
+    child.stdout.on('data', (d) => { stdout += d; });
+    child.stderr.on('data', (d) => { stderr += d; });
+    child.on('error', (err) => finish(127, String(err)));
+    child.on('close', (code) => finish(code ?? 1));
+  });
+}
+
 export default class MarkdownStrategy implements Strategy {
   name = 'markdown';
   version = '0.1.0';
@@ -75,11 +110,8 @@ export default class MarkdownStrategy implements Strategy {
     }
 
     // Parse markdown with mdq (SAFE - no shell injection)
-    const result = await execFileNoThrow('mdq', [
-      '--output', 'json',
-      '',  // empty selector: first positional is a selector, not a path
-      absolutePath
-    ]);
+    // First positional of mdq is a SELECTOR (empty = whole document), then the file.
+    const result = await runMdq(['--output', 'json', '', absolutePath]);
 
     if (result.status !== 0) {
       throw new Error(`mdq failed: ${result.stderr}`);
