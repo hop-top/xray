@@ -210,8 +210,8 @@ describe('isolatedFileTemplate', () => {
     addFile(g, 'src/other.ts');
     // live <- other via imports edge; live defines something
     addTag(g, 'live.fn', 'src/live.ts', 1);
-    g.addEdge('src/live.ts', 'live.fn', { type: 'defines' });
-    g.addEdge('src/other.ts', 'src/live.ts', { type: 'imports' });
+    g.addEdge('src/live.ts', 'live.fn', { type: 'defines', confidence: 'EXTRACTED' });
+    g.addEdge('src/other.ts', 'src/live.ts', { type: 'imports', confidence: 'EXTRACTED' });
 
     const qs = isolatedFileTemplate(g);
     expect(qs).toHaveLength(1);
@@ -263,7 +263,7 @@ describe('isolatedFileTemplate', () => {
     addFile(g, 'src/a.ts');
     addFile(g, 'src/b.ts');
     addFile(g, 'src/c.ts');
-    g.addEdge('src/a.ts', 'src/b.ts', { type: 'imports' });
+    g.addEdge('src/a.ts', 'src/b.ts', { type: 'imports', confidence: 'EXTRACTED' });
     const qs = isolatedFileTemplate(g);
     expect(qs).toHaveLength(1);
     expect(qs[0].question).toContain('src/c.ts');

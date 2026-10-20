@@ -2,6 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import * as fs from 'fs';
 import * as path from 'path';
 import { handleQueryAction } from '../../src/commands/query';
+import type { QueryCommandOptions } from '../../src/types/command-options';
 import Graph from 'graphology';
 import { GraphSerializer } from '../../src/lib/graph/serializer';
 
@@ -49,7 +50,7 @@ describe('Query Command', () => {
 
   describe('with --graph flag (offline mode)', () => {
     test('executes query against saved graph', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         graph: graphFile,
         format: 'json',
       };
@@ -62,7 +63,7 @@ describe('Query Command', () => {
     });
 
     test('throws error when graph file does not exist', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         graph: '/nonexistent/graph.json',
         format: 'json',
       };
@@ -74,7 +75,7 @@ describe('Query Command', () => {
       const invalidFile = path.join(testDir, 'invalid.json');
       fs.writeFileSync(invalidFile, 'not valid json');
 
-      const options = {
+      const options: QueryCommandOptions = {
         graph: invalidFile,
         format: 'json',
       };
@@ -87,7 +88,7 @@ describe('Query Command', () => {
 
   describe('output formats', () => {
     test('outputs JSON format', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         graph: graphFile,
         format: 'json',
       };
@@ -101,7 +102,7 @@ describe('Query Command', () => {
     });
 
     test('outputs table format', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         graph: graphFile,
         format: 'table',
       };
@@ -114,7 +115,7 @@ describe('Query Command', () => {
     });
 
     test('outputs tree format', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         graph: graphFile,
         format: 'tree',
       };
@@ -128,7 +129,7 @@ describe('Query Command', () => {
     });
 
     test('defaults to table format when not specified', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         graph: graphFile,
       };
 
@@ -140,7 +141,7 @@ describe('Query Command', () => {
 
   describe('adapter detection', () => {
     test('detects function-based syntax', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         graph: graphFile,
         format: 'json',
       };
@@ -151,7 +152,7 @@ describe('Query Command', () => {
     });
 
     test('throws error when no adapter can parse query', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         graph: graphFile,
         format: 'json',
       };
@@ -164,7 +165,7 @@ describe('Query Command', () => {
 
   describe('error handling', () => {
     test('throws error for invalid query syntax', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         graph: graphFile,
         format: 'json',
       };
@@ -175,7 +176,7 @@ describe('Query Command', () => {
     });
 
     test('throws error when query is empty', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         graph: graphFile,
         format: 'json',
       };
@@ -184,7 +185,7 @@ describe('Query Command', () => {
     });
 
     test('provides helpful error message for missing graph', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         format: 'json',
       };
 
@@ -196,7 +197,7 @@ describe('Query Command', () => {
 
   describe('--list-adapters flag', () => {
     test('lists available query adapters', async () => {
-      const options = {
+      const options: QueryCommandOptions = {
         listAdapters: true,
       };
 

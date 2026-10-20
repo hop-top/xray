@@ -67,14 +67,13 @@ async function renderChunks(
 
   const { rankedNodes, graph } = await xray.buildGraph();
 
-  const renderer = new ChunkedRenderer(
-    targetDir,
-    rankedNodes,
+  const renderer = new ChunkedRenderer({
+    root: targetDir,
+    ranked: rankedNodes,
     graph,
-    4096,
-    undefined,
-    false
-  );
+    tokenLimit: 4096,
+    includeImports: false,
+  });
 
   const outputBasePath = path.join(
     tmpDir,
@@ -87,7 +86,7 @@ async function renderChunks(
     const relKey = path.relative(tmpDir, absKey) || path.basename(absKey);
     // Strip the plugin-variant suffix so the two runs share a comparable
     // key space (they write into different output bases by design).
-    const normalizedKey = relKey.replace(/^map_(with|without)/, 'map');
+    const normalizedKey = relKey.replace(/^map_(without|with)/, 'map');
     const normalized = normalizeContent(content, tmpDir);
     chunks.push({ key: normalizedKey, hash: hashContent(normalized) });
   }

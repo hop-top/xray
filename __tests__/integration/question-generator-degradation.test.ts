@@ -77,7 +77,7 @@ describe('question-generator degradation — no upstream signals (T-0062)', () =
     expect(questions.length).toBeGreaterThanOrEqual(1);
     const isolated = questions.find((q) => q.type === 'isolated-file');
     expect(isolated).toBeDefined();
-    expect(isolated!.anchors[0]?.file).toBe('src/orphan.ts');
+    expect(isolated!.anchors?.[0]?.file).toBe('src/orphan.ts');
 
     // Format also produces the expected markdown structure.
     const md = formatQuestionsMarkdown(questions, { root: '/project' });

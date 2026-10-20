@@ -100,7 +100,7 @@ describe('confidence — default stamping', () => {
   it('stamps EXTRACTED on imports edges', async () => {
     const builder = new GraphBuilder();
     const imports: Import[] = [
-      { source: './b', specifier: 'named', as: 'b' } as Import
+      { file: 'a.ts', source: './b', text: "import { named as b } from './b';" }
     ];
     await builder.addFile('a.ts', [], imports);
     await builder.addFile('b.ts', [], []);
@@ -142,7 +142,7 @@ describe('confidence — default stamping', () => {
       } as Tag
     ];
     const imports: Import[] = [
-      { source: './b', specifier: 'named', as: 'b' } as Import
+      { file: 'a.ts', source: './b', text: "import { named as b } from './b';" }
     ];
     await builder.addFile('a.ts', tagsA, imports);
     await builder.addFile('b.ts', tagsB, []);
@@ -314,7 +314,7 @@ describe('confidence — serializer round-trip', () => {
       } as Tag,
     ];
     const imports: Import[] = [
-      { source: './b', specifier: 'named', as: 'b' } as Import,
+      { file: 'a.ts', source: './b', text: "import { named as b } from './b';" },
     ];
     await builder.addFile('a.ts', tagsA, imports);
     await builder.addFile('b.ts', tagsB, []);

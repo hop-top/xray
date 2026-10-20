@@ -20,7 +20,7 @@ import {
   DEFAULT_HEURISTICS,
   HeuristicContext,
 } from '../../src/lib/graph/analyzer';
-import { Confidence, XrayGraph, RankedNode } from '../../src/types/graph';
+import { Confidence, XrayGraph, RankedNode, EdgeAttributes } from '../../src/types/graph';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -60,7 +60,7 @@ function twoTagGraph(opts: {
   });
   const attrs: { type: 'calls'; confidence?: Confidence } = { type: 'calls' };
   if (opts.confidence !== undefined) attrs.confidence = opts.confidence;
-  const edgeId = g.addEdge('s', 't', attrs);
+  const edgeId = g.addEdge('s', 't', attrs as EdgeAttributes);
   return { graph: g, edgeId };
 }
 

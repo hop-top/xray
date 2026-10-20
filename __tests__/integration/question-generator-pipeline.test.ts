@@ -51,7 +51,7 @@ describe('question-generator full-pipeline integration (T-0061)', () => {
 
     // Spec-mandated plugin order: confidence enricher -> clustering ->
     // surprise analyzer -> question generator.
-    await xray.use(new ConfidenceEnricherPlugin());
+    await xray.use(new ConfidenceEnricherPlugin({ rules: [] }));
     await xray.use(new ClusteringPlugin());
     await xray.use(new SurpriseAnalyzerPlugin());
     await xray.use(new QuestionGeneratorPlugin());
@@ -102,7 +102,7 @@ describe('question-generator full-pipeline integration (T-0061)', () => {
       chunked: true,
     });
 
-    await xray.use(new ConfidenceEnricherPlugin());
+    await xray.use(new ConfidenceEnricherPlugin({ rules: [] }));
     await xray.use(new ClusteringPlugin());
     await xray.use(new SurpriseAnalyzerPlugin());
     await xray.use(new QuestionGeneratorPlugin());

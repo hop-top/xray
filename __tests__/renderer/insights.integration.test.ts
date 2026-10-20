@@ -23,8 +23,8 @@ import { RankedNode, XrayGraph } from '../../src/types/graph';
 function buildFixture(): { graph: XrayGraph; ranked: RankedNode[] } {
   const graph = new Graph() as XrayGraph;
 
-  graph.addNode('src/a.ts', { type: 'file', community: 0 });
-  graph.addNode('src/b.ts', { type: 'file', community: 0 });
+  graph.addNode('src/a.ts', { type: 'file', label: 'src/a.ts', community: 0 });
+  graph.addNode('src/b.ts', { type: 'file', label: 'src/b.ts', community: 0 });
   graph.addNode('src/a.ts::foo', {
     type: 'tag',
     file: 'src/a.ts',
@@ -45,8 +45,8 @@ function buildFixture(): { graph: XrayGraph; ranked: RankedNode[] } {
   });
 
   const ranked: RankedNode[] = [
-    { id: 'src/a.ts', rank: 1.0, attributes: { type: 'file' } },
-    { id: 'src/b.ts', rank: 0.9, attributes: { type: 'file' } },
+    { id: 'src/a.ts', rank: 1.0, attributes: { type: 'file', label: 'src/a.ts' } },
+    { id: 'src/b.ts', rank: 0.9, attributes: { type: 'file', label: 'src/b.ts' } },
     {
       id: 'src/a.ts::foo',
       rank: 0.8,

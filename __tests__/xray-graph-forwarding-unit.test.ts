@@ -1,6 +1,7 @@
 import { GraphBuilder } from '../src/lib/graph/builder';
 import { Xray } from '../src/lib/xray';
 import { Tag } from '../src/lib/parser/types';
+import type { EdgeAttributes } from '../src/types/graph';
 
 // Mock dependencies to avoid tree-sitter issues
 jest.mock('tree-sitter', () => jest.fn());
@@ -173,7 +174,7 @@ describe('Xray GraphBuilder Event Forwarding (Unit Tests)', () => {
       // Xray listener modifies edge attributes
       xray.on('graph:add-edge', (event) => {
         if (!event.attrs) {
-          event.attrs = {};
+          event.attrs = {} as EdgeAttributes;
         }
         event.attrs.weight = 10;
       });

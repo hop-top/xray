@@ -1,5 +1,6 @@
 import { GraphBuilder } from '../../src/lib/graph/builder';
 import { Tag, Import } from '../../src/lib/parser/types';
+import type { EdgeAttributes } from '../../src/types/graph';
 
 describe('GraphBuilder Events', () => {
     let builder: GraphBuilder;
@@ -229,7 +230,7 @@ describe('GraphBuilder Events', () => {
         it('should allow listeners to modify edge attributes', async () => {
             builder.on('edge:add', (event) => {
                 if (!event.attrs) {
-                    event.attrs = {};
+                    event.attrs = {} as EdgeAttributes;
                 }
                 event.attrs.weight = 5;
             });
@@ -317,8 +318,11 @@ describe('GraphBuilder Events', () => {
                 }
             ];
 
-            await builder.addFile('test.ts', tags, []);
-            builder.addFile('filtered.ts', tags.slice(2), []);
+            // Each file receives only its own tags: node ids are
+            // `<file>::<name>`, so passing all tags to test.ts duplicated
+            // `test.ts::target`.
+            await builder.addFile('test.ts', tags.slice(0, 2), []);
+            await builder.addFile('filtered.ts', tags.slice(2), []);
             const graph = await builder.getGraph();
 
             // Should only have edge to test.ts::target, not filtered.ts::target
