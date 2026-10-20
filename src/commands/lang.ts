@@ -24,7 +24,17 @@ export interface LangRow {
   status: 'installed' | 'not-installed' | 'broken';
   source?: string;
   files: number;
+  /** Repo file count per extension (only extensions present). */
+  byExtension: Record<string, number>;
   selected: boolean;
+}
+
+/** A language with files in the repo whose grammar is not usable. */
+export interface DetectedNotInstalled {
+  language: string;
+  files: number;
+  extensions: Record<string, number>;
+  status: 'not-installed' | 'broken';
 }
 
 /** Count repo files per language by extension (git-aware, falls back to a glob). */
@@ -57,10 +67,27 @@ export function collectRows(root: string): LangRow[] {
       status: s.ok ? 'installed' : s.reason === 'broken' ? 'broken' : 'not-installed',
       source: s.source,
       files: p.extensions.reduce((n, e) => n + (counts.get(e) ?? 0), 0),
+      byExtension: Object.fromEntries(p.extensions.filter(e => counts.get(e)).map(e => [e, counts.get(e)!])),
       selected: selected.has(p.name),
     } as LangRow;
   });
 }
+
+/** Languages present in the repo without a usable grammar, most files first. */
+export function detectedNotInstalled(rows: LangRow[]): DetectedNotInstalled[] {
+  return rows
+    .filter(r => r.status !== 'installed' && r.files > 0)
+    .sort((a, b) => b.files - a.files || a.language.localeCompare(b.language))
+    .map(r => ({
+      language: r.language,
+      files: r.files,
+      extensions: r.byExtension,
+      status: r.status as DetectedNotInstalled['status'],
+    }));
+}
+
+const installHint = (d: DetectedNotInstalled[]): string | null =>
+  d.length ? `xray lang add ${d.map(x => x.language).join(' ')}` : null;
 
 function parseSelection(names: string[]): LanguagePack[] | undefined {
   try {
@@ -85,8 +112,15 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
     .option('--json', 'Output JSON')
     .action((opts: { path: string; json?: boolean }) => {
       const rows = collectRows(path.resolve(opts.path));
+      const detected = detectedNotInstalled(rows);
       if (opts.json) {
-        Logger.output(JSON.stringify({ languages: rows, bundles: BUNDLES, managedDir: managedDir() }, null, 2));
+        Logger.output(JSON.stringify({
+          languages: rows,
+          detectedNotInstalled: detected,
+          install: installHint(detected),
+          bundles: BUNDLES,
+          managedDir: managedDir(),
+        }, null, 2));
         return;
       }
       Logger.output(chalk.cyan('\nLanguage packs:\n'));
@@ -101,9 +135,14 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
       for (const [name, langs] of Object.entries(BUNDLES)) {
         Logger.output(`  ${name.padEnd(11)} ${langs.join(', ')}`);
       }
-      const missingHere = rows.filter(r => r.status !== 'installed' && r.files > 0);
-      if (missingHere.length) {
-        Logger.output(chalk.yellow(`\nThis repo has files in languages without a grammar: run \`xray lang add ${missingHere.map(r => r.language).join(' ')}\``));
+      if (detected.length) {
+        Logger.output(chalk.yellow('\nDetected in this repo, not installed:\n'));
+        for (const d of detected) {
+          const exts = Object.keys(d.extensions).join(', ');
+          const broken = d.status === 'broken' ? chalk.red('  (installed, fails to load)') : '';
+          Logger.output(`  ${d.language.padEnd(11)} ${d.files} file${d.files === 1 ? '' : 's'} (${exts})${broken}`);
+        }
+        Logger.output(`\nInstall with: ${installHint(detected)}`);
       }
       Logger.output(chalk.gray(`\nManaged dir: ${managedDir()}\n`));
     });
