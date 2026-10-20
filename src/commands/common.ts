@@ -258,10 +258,10 @@ export const addExtensionOverrideOptions = (cmd: Command): Command => {
 export const addCommonOptions = (cmd: Command) => {
   return addExtensionOverrideOptions(
     cmd
-    .option('-p, --path <path>', 'Root directory to analyze (repeatable) [default: current directory]', (value: string, previous: string[]) => {
+    .option('-p, --path <path>', 'Root directory to analyze (repeatable; with --format json|csv|xml all roots merge into one graph) [default: current directory]', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
-    .option('-o, --output <path>', 'Output file path [default: .xray, auto-appends format extension if no extension given]')
+    .option('-o, --output <path>', 'Output file path [default: .xray, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]')
     .option('-l, --limit <number>', 'Token limit per chunk [default: 4096]')
     .option('-w, --with <feature>', 'Include feature: vars, incs, cost, docs, df, cf (repeatable)', (value: string, previous: string[]) => {
       return previous.concat([value]);
@@ -277,10 +277,10 @@ export const addCommonOptions = (cmd: Command) => {
     .option('-c, --catch <pattern>', 'Match function/class name (prefix ! to negate) (repeatable)', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
-    .option('--format <fmt>', 'Output format: txt (default), csv, xml, json (raw graph), or diagram: mermaid (default), dot')
+    .option('--format <fmt>', 'Output format: txt (default); graph formats json, csv (nodes+edges tables), xml; or diagram: mermaid (default), dot')
     .option('--txt', 'Alias of --format txt')
-    .option('--csv', 'Alias of --format csv')
-    .option('--xml', 'Alias of --format xml')
+    .option('--csv', 'Alias of --format csv (<out>.nodes.csv + <out>.edges.csv)')
+    .option('--xml', 'Alias of --format xml (one <graph> document)')
     .option('--json', 'Alias of --format json (raw JSON graph)')
     .option('--mermaid', 'Alias of --format mermaid')
     .option('--dot', 'Alias of --format dot')

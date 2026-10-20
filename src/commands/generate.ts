@@ -10,6 +10,7 @@ import { CodedError, FileWriteError, NotFoundError } from '../lib/error/types';
 import { resolveFormatFlags } from '../lib/output-format';
 import { GraphSerializer } from '../lib/graph/serializer';
 import { mergeSerializedGraphs } from '../lib/graph/merge';
+import { graphToEdgesCsv, graphToNodesCsv, graphToXml } from '../lib/graph/export';
 import type { SerializedGraph } from '../lib/query/types';
 import { FileScanner } from '../lib/scanner';
 import { StrategyLoader } from '../lib/strategy/loader';
@@ -119,20 +120,36 @@ const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<
 };
 
 /**
- * Write the (merged) graph as JSON to `outputPath`. Returns the files written.
+ * Write a graph in a graph format. JSON/XML: one file at `outputPath`.
+ * CSV: two files, `<base>.nodes.csv` and `<base>.edges.csv`, where `<base>`
+ * is `outputPath` without a trailing `.csv`. Returns the files written.
  */
 const writeGraphOutput = (
   graph: SerializedGraph,
-  _format: 'json',
+  format: 'json' | 'csv' | 'xml',
   outputPath: string
 ): string[] => {
-  try {
-    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-    fs.writeFileSync(outputPath, JSON.stringify(graph, null, 2) + '\n');
-  } catch (err: any) {
-    throw new FileWriteError(outputPath, err);
+  const files: Array<[string, string]> =
+    format === 'json'
+      ? [[outputPath, JSON.stringify(graph, null, 2) + '\n']]
+      : format === 'xml'
+        ? [[outputPath, graphToXml(graph)]]
+        : (() => {
+            const base = outputPath.replace(/\.csv$/i, '');
+            return [
+              [`${base}.nodes.csv`, graphToNodesCsv(graph)],
+              [`${base}.edges.csv`, graphToEdgesCsv(graph)],
+            ] as Array<[string, string]>;
+          })();
+  for (const [file, content] of files) {
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, content);
+    } catch (err: any) {
+      throw new FileWriteError(file, err);
+    }
   }
-  return [outputPath];
+  return files.map(([f]) => f);
 };
 
 // Helper function to run a single xray generation
@@ -232,8 +249,8 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
   // Determine if chunked output is enabled
   const chunkedEnabled = mergedOptions.chunked !== false;
 
-  if (format === 'json') {
-    // The JSON graph is not a rendering: chunking (a
+  if (format === 'json' || format === 'csv' || format === 'xml') {
+    // Graph formats (json | csv | xml) are not renderings: chunking (a
     // token-budget concern of the text renderers) does not apply, and one
     // graph (merged across all --path roots) is written with or without
     // --no-chunk.
