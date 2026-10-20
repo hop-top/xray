@@ -46,6 +46,7 @@
     "dev": "ts-node src/index.ts",
     "test": "./scripts/test-sequential.sh",
     "test:parallel": "jest",
+    "typecheck:tests": "tsc -p tsconfig.tests.json",
     "test:coverage": "./scripts/test-coverage.sh",
     "prepublishOnly": "npm run build && npm test",
     "prepare": "husky install",
