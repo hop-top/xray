@@ -335,6 +335,16 @@ export class ParserManager {
           if (funcNode.type === 'identifier') {
             references.add(funcNode.text);
           }
+          // Go selector: pkg.Func(). Kept qualified so the graph builder can
+          // resolve it through the file's imports; plain `x.Method()` stays
+          // unresolved there (no type info).
+          else if (funcNode.type === 'selector_expression') {
+            const operand = funcNode.childForFieldName('operand');
+            const field = funcNode.childForFieldName('field');
+            if (operand && field && operand.type === 'identifier') {
+              references.add(`${operand.text}.${field.text}`);
+            }
+          }
           // Handle member expressions: obj.method()
           else if (funcNode.type === 'member_expression' || funcNode.type === 'attribute') {
             const property = funcNode.childForFieldName('property') || funcNode.childForFieldName('attribute');
@@ -355,6 +365,13 @@ export class ParserManager {
     }
 
     return Array.from(references);
+  }
+
+  /** Go: local name of an `import_spec` (`alias`, `.` or `_`), if any. */
+  private importAlias(sourceNode: Parser.SyntaxNode): string | undefined {
+    const spec = sourceNode.parent;
+    if (!spec || spec.type !== 'import_spec') return undefined;
+    return spec.childForFieldName('name')?.text || undefined;
   }
 
   private async extractImports(tree: Parser.Tree, language: any, queryStr: string, file: string): Promise<Import[]> {
@@ -431,11 +448,10 @@ export class ParserManager {
             source = source.replace(/^import\s+/, '').trim();
           }
 
-          imports.push({
-            file,
-            source,
-            text: stmt.text
-          });
+          const imp: Import = { file, source, text: stmt.text };
+          const alias = this.importAlias(src.node);
+          if (alias) imp.alias = alias;
+          imports.push(imp);
         } else {
           let source = src.source;
           if (file.endsWith('.scala') && source.startsWith('import ')) {

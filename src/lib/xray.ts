@@ -8,6 +8,7 @@ import { GraphBuilder } from './graph/builder';
 import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
 import { ChunkedRenderer } from './renderer/chunked-renderer';
+import { detectGoModule } from './graph/go-resolver';
 import { SqliteCache } from './cache/sqlite-cache';
 import { Logger } from './logger';
 import { AsyncEventEmitter } from './events/async-emitter';
@@ -307,6 +308,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
 
     const parser = new ParserManager(this.config.path);
     const graphBuilder = new GraphBuilder();
+    if (files.some(f => f.endsWith('.go'))) {
+      graphBuilder.setGoModule(detectGoModule(this.config.path));
+    }
 
     // Forward GraphBuilder events to Xray listeners
     graphBuilder.on('node:add', async (event) => {

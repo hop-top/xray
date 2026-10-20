@@ -2,6 +2,7 @@ import * as path from 'path';
 import Graph from 'graphology';
 import { Tag, Import } from '../parser/types';
 import { AsyncEventEmitter } from '../events/async-emitter';
+import { GoModule, goPackageDir, goDefaultName } from './go-resolver';
 import { XrayGraph, NodeAttributes, EdgeAttributes, Confidence } from '../../types/graph';
 
 interface GraphBuilderEvents {
@@ -38,9 +39,19 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
   // file (relative path) -> list of raw import specifiers to resolve in a deferred pass
   private pendingImports: Map<string, string[]> = new Map();
 
+  // Module context enabling `pkg.Func()` resolution in Go files (optional).
+  private goModule: GoModule | null = null;
+  // Go file -> imports (needed to map a call's package qualifier to a directory)
+  private goImports: Map<string, Import[]> = new Map();
+
   constructor() {
     super();
     this.graph = new Graph<NodeAttributes, EdgeAttributes>({ multi: true, type: 'directed' });
+  }
+
+  /** Enable resolution of Go package-qualified calls inside this module. */
+  setGoModule(mod: GoModule | null) {
+    this.goModule = mod;
   }
 
   async addFile(file: string, tags: Tag[], imports: Import[]) {
@@ -127,6 +138,10 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
           this.graph.addEdge(event.source, event.target, event.attrs);
         }
       }
+    }
+
+    if (imports && imports.length > 0 && file.endsWith('.go')) {
+      this.goImports.set(file, imports);
     }
 
     // Store imports as an attribute on the file node (back-compat readers).
@@ -290,8 +305,18 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
   private async buildReferenceEdges() {
     // Create a map of tag names to tag IDs for efficient lookups
     const tagNameMap = new Map<string, string[]>();
+    // Exported, non-test Go functions by package directory then name.
+    const goFuncs = new Map<string, Map<string, string[]>>();
     this.graph.forEachNode((nodeId: string, attrs: NodeAttributes) => {
       if (attrs.type === 'tag') {
+        if (this.goModule && attrs.kind === 'function' && attrs.file.endsWith('.go') &&
+            !attrs.file.endsWith('_test.go') && /^[A-Z]/.test(attrs.label)) {
+          const dir = path.posix.dirname(attrs.file.split(path.sep).join('/'));
+          let byName = goFuncs.get(dir);
+          if (!byName) goFuncs.set(dir, (byName = new Map()));
+          const list = byName.get(attrs.label);
+          if (list) list.push(nodeId); else byName.set(attrs.label, [nodeId]);
+        }
         const tagName = attrs.label;
         if (!tagNameMap.has(tagName)) {
           tagNameMap.set(tagName, []);
@@ -302,9 +327,20 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
 
     // Collect all reference resolution events first
     const resolveEvents: Array<{ sourceTag: string, targetName: string, resolved: string[] }> = [];
+    // Events resolved through go.mod + import paths rather than a bare name.
+    const goResolved = new WeakSet<object>();
 
     for (const { tagId, references } of this.pendingReferences.values()) {
       for (const refName of references) {
+        if (this.goModule && refName.includes('.')) {
+          const targets = this.resolveGoQualified(tagId, refName, goFuncs);
+          if (targets.length > 0) {
+            const ev = { sourceTag: tagId, targetName: refName, resolved: targets };
+            goResolved.add(ev);
+            resolveEvents.push(ev);
+          }
+          continue;
+        }
         const targetTags = tagNameMap.get(refName);
         if (targetTags) {
           // Event: Reference resolution (listeners can modify targets)
@@ -327,17 +363,24 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     // Now collect all edge events based on resolved references
     const edgeEvents: Array<{ source: string, target: string, type: 'calls', attrs: EdgeAttributes, skip: boolean }> = [];
 
+    const queued = new Set<string>();
     for (const resolveEvent of resolveEvents) {
       for (const targetTagId of resolveEvent.resolved) {
         // Avoid self-references
         if (targetTagId !== resolveEvent.sourceTag) {
           // Only add edge if it doesn't already exist
-          if (!this.graph.hasEdge(resolveEvent.sourceTag, targetTagId)) {
+          const key = `${resolveEvent.sourceTag}\x00${targetTagId}`;
+          if (!queued.has(key) && !this.graph.hasEdge(resolveEvent.sourceTag, targetTagId)) {
+            queued.add(key);
             edgeEvents.push({
               source: resolveEvent.sourceTag,
               target: targetTagId,
               type: 'calls',
-              attrs: { type: 'calls', confidence: Confidence.EXTRACTED },
+              attrs: {
+                type: 'calls',
+                // Import-path resolution goes through go.mod, not the source text alone.
+                confidence: goResolved.has(resolveEvent) ? Confidence.INFERRED : Confidence.EXTRACTED
+              },
               skip: false
             });
           }
@@ -359,5 +402,36 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
         }
       }
     }
+  }
+
+  /**
+   * Resolve a Go `pkg.Func` reference from tag `tagId` to function tags in the
+   * module-local package that `pkg` names in the tag's file. Anything else
+   * (external packages, blank/dot imports, locals shadowing nothing known,
+   * method calls on values) yields no targets.
+   */
+  private resolveGoQualified(
+    tagId: string,
+    ref: string,
+    goFuncs: Map<string, Map<string, string[]>>
+  ): string[] {
+    const mod = this.goModule;
+    if (!mod || !this.graph.hasNode(tagId)) return [];
+    const file = (this.graph.getNodeAttributes(tagId) as any).file as string | undefined;
+    if (!file || !file.endsWith('.go')) return [];
+    const dot = ref.indexOf('.');
+    const qualifier = ref.slice(0, dot);
+    const name = ref.slice(dot + 1);
+    if (!qualifier || !name || name.includes('.')) return [];
+
+    const out: string[] = [];
+    for (const imp of this.goImports.get(file) ?? []) {
+      if (imp.alias === '_' || imp.alias === '.') continue;
+      if ((imp.alias || goDefaultName(imp.source)) !== qualifier) continue;
+      const dir = goPackageDir(mod, imp.source);
+      if (dir === null) continue;
+      for (const t of goFuncs.get(dir)?.get(name) ?? []) out.push(t);
+    }
+    return out;
   }
 }
