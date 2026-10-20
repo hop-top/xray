@@ -5,6 +5,7 @@ import ignore from 'ignore';
 import { execSync } from 'child_process';
 import { Logger } from './logger';
 import { FileReadError } from './error/types';
+import { knownExtensions } from './parser/grammars';
 
 export class FileScanner {
   private root: string;
@@ -29,8 +30,16 @@ export class FileScanner {
     this.ig.add(['.git', 'node_modules', 'dist', 'build', '*.min.js', '*.map', '.xray_cache.db']);
   }
 
+  /**
+   * Extensions discovered by the scanner: every language in the grammar
+   * catalog, installed or not (files without a grammar are reported, not parsed).
+   */
+  static supportedExtensions(): string[] {
+    return knownExtensions();
+  }
+
   scan(): string[] {
-    const supportedExts = ['.ts', '.js', '.py', '.tsx', '.jsx', '.go', '.java', '.c', '.cpp', '.rs', '.php'];
+    const supportedExts = new Set(FileScanner.supportedExtensions());
 
     try {
       const gitFiles = execSync('git ls-files --cached --others --exclude-standard', {
@@ -43,7 +52,7 @@ export class FileScanner {
 
       return files.filter(f => {
         const ext = path.extname(f);
-        return supportedExts.includes(ext);
+        return supportedExts.has(ext);
       });
     } catch (error) {
       Logger.warn('Not a git repository or git is not available. Falling back to manual file scanning. This might be slower and include files ignored by git.');
@@ -60,7 +69,7 @@ export class FileScanner {
       return allFiles.filter(f => {
         if (this.ig.ignores(f)) return false;
         const ext = path.extname(f);
-        return supportedExts.includes(ext);
+        return supportedExts.has(ext);
       });
     }
   }
