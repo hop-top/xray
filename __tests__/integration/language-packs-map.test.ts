@@ -5,7 +5,8 @@ import { Xray } from '../../src/lib/xray';
 import { Logger } from '../../src/lib/logger';
 import { resetGrammarCache, MissingGrammarError } from '../../src/lib/parser/grammars';
 
-const fixture = path.join(__dirname, '../fixtures/lang-packs');
+const fixtureSrc = path.join(__dirname, '../fixtures/lang-packs');
+let fixture = '';
 
 describe('map on a Go+TS(+py,java) repo with only go and typescript grammars', () => {
   let warn: jest.SpyInstance;
@@ -16,6 +17,9 @@ describe('map on a Go+TS(+py,java) repo with only go and typescript grammars', (
     warn = jest.spyOn(Logger, 'warn').mockImplementation();
     jest.spyOn(Logger, 'info').mockImplementation();
     cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-cache-'));
+    // Private copy: isolates the run from repo/git state and concurrent suites.
+    fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-fx-'));
+    for (const f of fs.readdirSync(fixtureSrc)) fs.copyFileSync(path.join(fixtureSrc, f), path.join(fixture, f));
   });
   afterEach(() => {
     delete process.env.XRAY_LANG_BLOCK;
