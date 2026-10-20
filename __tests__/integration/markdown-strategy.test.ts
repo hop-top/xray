@@ -4,6 +4,13 @@ import { StrategyContextImpl } from '../../src/lib/strategy/context';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { spawnSync } from 'child_process';
+
+// The strategy shells out to the external `mdq` binary; tests that need it are
+// skipped (reason in their name) when it is not runnable. CI installs a pinned mdq.
+const hasMdq = spawnSync('mdq', ['--version']).status === 0;
+const skipNote = hasMdq ? '' : ' [skipped: mdq not installed]';
+const itMdq = hasMdq ? it : it.skip;
 
 describe('Markdown Strategy Integration', () => {
   const fixtureRoot = path.join(__dirname, '../strategy/fixtures/markdown-project');
@@ -17,7 +24,7 @@ describe('Markdown Strategy Integration', () => {
     expect(markdown?.version).toBe('0.1.0');
   });
 
-  it('should detect markdown project', async () => {
+  itMdq('should detect markdown project' + skipNote, async () => {
     const loader = new StrategyLoader();
     const strategies = await loader.discoverStrategies();
     const markdown = strategies.find(s => s.name === 'markdown');
@@ -30,7 +37,7 @@ describe('Markdown Strategy Integration', () => {
     expect(detected).toBe(true);
   });
 
-  it('should analyze markdown files and extract structure', async () => {
+  itMdq('should analyze markdown files and extract structure' + skipNote, async () => {
     const loader = new StrategyLoader();
     const strategies = await loader.discoverStrategies();
     const markdown = strategies.find(s => s.name === 'markdown');
@@ -59,7 +66,7 @@ describe('Markdown Strategy Integration', () => {
     expect(result.metadata?.codeReferences.length).toBeGreaterThan(0);
   });
 
-  it('should work with real markdown files from docs/', async () => {
+  itMdq('should work with real markdown files from docs/' + skipNote, async () => {
     const loader = new StrategyLoader();
     const strategies = await loader.discoverStrategies();
     const markdown = strategies.find(s => s.name === 'markdown');
@@ -91,7 +98,7 @@ describe('Markdown Strategy Integration', () => {
     }
   });
 
-  it('should handle MDX files', async () => {
+  itMdq('should handle MDX files' + skipNote, async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-mdx-integration-'));
 
     try {
@@ -129,7 +136,7 @@ See the [API documentation](./api.md) for more details.
     }
   });
 
-  it('should extract cross-references between documentation files', async () => {
+  itMdq('should extract cross-references between documentation files' + skipNote, async () => {
     const loader = new StrategyLoader();
     const strategies = await loader.discoverStrategies();
     const markdown = strategies.find(s => s.name === 'markdown');
@@ -159,7 +166,7 @@ See the [API documentation](./api.md) for more details.
     )).toBe(true);
   });
 
-  it('should extract code file references from documentation', async () => {
+  itMdq('should extract code file references from documentation' + skipNote, async () => {
     const loader = new StrategyLoader();
     const strategies = await loader.discoverStrategies();
     const markdown = strategies.find(s => s.name === 'markdown');
@@ -183,7 +190,7 @@ See the [API documentation](./api.md) for more details.
     expect(hasCodeRef).toBe(true);
   });
 
-  it('should handle malformed markdown gracefully', async () => {
+  itMdq('should handle malformed markdown gracefully' + skipNote, async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-malformed-'));
 
     try {
