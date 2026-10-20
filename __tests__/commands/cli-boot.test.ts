@@ -1,13 +1,12 @@
 /**
- * E2E regression — the compiled CLI must boot without hitting
- * ERR_PACKAGE_PATH_NOT_EXPORTED from the `@hop/upgrade-ts` subpath
- * import.
+ * E2E regression — the compiled CLI must boot without
+ * exports-map / module-resolution failures.
  *
  * Builds `dist/index.js` on demand (if missing or stale) so the
  * regression runs under the default `jest` invocation, not only in
  * environments where the CLI happens to be pre-built. Any
- * reintroduced raw `dist/` value import from an `exports`-gated
- * subpath will cause `node dist/index.js map --help` to throw at
+ * exports-gated subpath import that bypasses a package's `exports`
+ * map will cause `node dist/index.js map --help` to throw at
  * load time and this test will fail loudly.
  *
  * Build is gated behind TSC availability — if the local TypeScript

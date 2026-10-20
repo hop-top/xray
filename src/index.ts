@@ -3,13 +3,10 @@ import { registerCommands } from './commands';
 import { initializeTelemetry, shutdownTelemetry } from './lib/telemetry';
 import { loadConfig } from './lib/config';
 import { handleFirstRunConsent } from './lib/telemetry-consent';
-import { createUpgrader } from '@hop/upgrade-ts';
-
-const _up = createUpgrader({ binary: 'xray', githubRepo: 'ideacrafterslabs/oss-xray-codes' });
-const XRAY_VERSION = '0.0.1-alpha.1';
+import { createXrayUpgradeChecker } from './upgrade-checker';
 
 // Initialize and register all commands (async for alias registration)
-async function main() {
+export async function main() {
   // Handle first-run telemetry consent
   const telemetryEnabled = await handleFirstRunConsent(process.argv);
 
@@ -47,29 +44,22 @@ async function main() {
     });
   }
 
-  // Startup update notification (async, non-blocking; skipped for upgrade cmd)
-  if (process.argv[2] !== 'upgrade') {
-    _up.notifyIfAvailable(XRAY_VERSION).catch(() => {});
-  }
+  // Startup update notification (async, non-blocking)
+  createXrayUpgradeChecker().notifyIfAvailable(process.stderr).catch(() => {});
 
   const program = await registerCommands();
 
-  // Handle CLI execution
-  if (require.main === module) {
-    program.parse();
-  } else {
-    // For when module is required (like from bin/xray)
-    // Parse the arguments that were passed to the process
-    program.parse(process.argv);
-  }
+  program.parse(process.argv);
 }
 
-// Run the CLI
-main().catch(error => {
-  console.error('Fatal error:', error);
-  shutdownTelemetry();
-  process.exit(1);
-});
+// Run when executed directly (`node dist/index.js`); bin/xray calls main().
+if (require.main === module) {
+  main().catch(error => {
+    console.error('Fatal error:', error);
+    shutdownTelemetry();
+    process.exit(1);
+  });
+}
 
 // Export for testing
 export { registerCommands };

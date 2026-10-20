@@ -30,6 +30,11 @@ describe('Dynamic Command Registration', () => {
       }
     });
 
+    it('should NOT register an upgrade subcommand', () => {
+      // Self-update dropped: package manager is the canonical upgrade path.
+      expect(program.commands.find(c => c.name() === 'upgrade')).toBeUndefined();
+    });
+
     it('should have analysis commands with descriptions', () => {
       const mapCmd = program.commands.find(c => c.name() === 'map');
       expect(mapCmd?.description()).toBe('Generate visual map of codebase');
