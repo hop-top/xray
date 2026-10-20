@@ -395,6 +395,7 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     mermaid: cliOptions.mermaid || baseConfig.diagram === 'mermaid',
     chunked: cliOptions.chunk !== false && (cliOptions.chunk ?? (baseConfig.chunked !== false)),
     detect: cliOptions.detect ?? false,
+    languages: cliOptions.lang && cliOptions.lang.length > 0 ? cliOptions.lang : baseConfig.languages,
     skipDetect: cliOptions.skipDetect ?? baseConfig.skipDetect ?? false,
     share: cliOptions.share ?? baseConfig.share ?? false,
     extensions: mergeExtensionConfigs(

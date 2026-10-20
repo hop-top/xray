@@ -47,6 +47,14 @@ in `.xrayrc.json` restricts parsing to those languages (other files are skipped
 silently). Listed languages are **required**: if one of their grammars is missing,
 the run fails with a message naming the fix. Bundles are accepted too (`"languages": ["web"]`).
 
+One-off override from the command line (replaces config `languages`; comma-separated or repeated):
+
+```bash
+xray map --lang go,ts
+```
+
+Unknown names exit 2; a required language whose grammar is missing exits 3.
+
 ## Where grammars are resolved from
 
 In order:

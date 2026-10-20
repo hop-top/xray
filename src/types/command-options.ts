@@ -115,6 +115,9 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
   /** Enable strategy detection */
   detect?: boolean;
 
+  /** Languages to parse (comma-separated names/bundles; repeatable). Overrides config `languages` */
+  lang?: string[];
+
   /** Skip strategy detection and auto-configuration */
   skipDetect?: boolean;
 

@@ -73,7 +73,7 @@ describe('xray lang', () => {
     const lines = capture();
     await registerLangCommand(jest.fn()).parseAsync(['node', 'lang', 'add', 'cobol']);
     expect(lines.join('\n')).toContain("Unknown language or bundle 'cobol'");
-    expect(process.exitCode).toBe(1);
+    expect(process.exitCode).toBe(2);
   });
 
   it('remove only touches packs in the managed dir', async () => {

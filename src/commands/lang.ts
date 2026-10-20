@@ -4,6 +4,7 @@ import { execSync } from 'child_process';
 import { globSync } from 'glob';
 import chalk from 'chalk';
 import { Logger } from '../lib/logger';
+import { EXIT_USAGE } from '../lib/error/types';
 import { loadConfig } from '../lib/config';
 import {
   BUNDLES,
@@ -67,7 +68,7 @@ function parseSelection(names: string[]): LanguagePack[] | undefined {
   } catch (e) {
     if (e instanceof UnknownLanguageError) {
       Logger.error(e.message);
-      process.exitCode = 1;
+      process.exitCode = EXIT_USAGE;
       return undefined;
     }
     throw e;

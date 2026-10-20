@@ -15,6 +15,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { createRequire } from 'module';
 import { Logger } from '../logger';
+import { NotFoundError, UsageError } from '../error/types';
 
 export interface LanguagePack {
   /** Canonical language name (what `xray lang add <name>` takes). */
@@ -83,13 +84,15 @@ export function knownExtensions(): string[] {
   return Array.from(byExt.keys());
 }
 
-export class UnknownLanguageError extends Error {
-  constructor(public readonly requested: string) {
+export class UnknownLanguageError extends UsageError {
+  readonly requested: string;
+  constructor(requested: string) {
     super(
       `Unknown language or bundle '${requested}'. ` +
       `Languages: ${LANGUAGE_PACKS.map(p => p.name).join(', ')}. ` +
       `Bundles: ${Object.keys(BUNDLES).join(', ')}.`
     );
+    this.requested = requested;
     this.name = 'UnknownLanguageError';
   }
 }
@@ -229,13 +232,17 @@ export function isGrammarAvailable(language: string): boolean {
   return getGrammar(language).ok;
 }
 
-export class MissingGrammarError extends Error {
-  constructor(public readonly language: string, public readonly status?: GrammarStatus) {
+export class MissingGrammarError extends NotFoundError {
+  readonly language: string;
+  readonly status?: GrammarStatus;
+  constructor(language: string, status?: GrammarStatus) {
     super(
       status?.reason === 'broken'
         ? `Grammar for '${language}' failed to load (${status.error}). Try \`xray lang add ${language}\`.`
         : `Grammar for '${language}' is not installed. Run \`xray lang add ${language}\`.`
     );
+    this.language = language;
+    this.status = status;
     this.name = 'MissingGrammarError';
   }
 }

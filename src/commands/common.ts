@@ -289,6 +289,9 @@ export const addCommonOptions = (cmd: Command) => {
     .option('--scope <name>', 'Use specific scope from config file')
     .option('--all-scopes', 'Run all scopes defined in config file')
     .option('--detect', 'Enable strategy detection (auto-detects when no path is provided)')
+    .option('--lang <list>', 'Languages to parse, comma-separated names or bundles (e.g. go,ts or web); overrides config `languages`; each must be installed (repeatable)', (value: string, previous: string[]) => {
+      return previous.concat(value.split(',').map(s => s.trim()).filter(Boolean));
+    }, [])
     .option('--skip-detect', 'Skip strategy detection and auto-configuration')
     .option('--share [path]', 'Generate a shareable summary markdown (optional path override)')
     .option(
