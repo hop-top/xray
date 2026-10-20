@@ -1,5 +1,5 @@
 /**
- * `--json` must write the documented raw JSON graph (the
+ * `--json` / `--format json` must write the documented raw JSON graph (the
  * canonical SerializedGraph that `xray query --graph` consumes), as ONE
  * valid JSON file, in both chunked (default) and --no-chunk modes.
  */
@@ -50,6 +50,8 @@ describe('map JSON output is valid JSON', () => {
   const variants: Array<[string, string[]]> = [
     ['--json (chunked default)', ['--json']],
     ['--json --no-chunk', ['--json', '--no-chunk']],
+    ['--format json (chunked default)', ['--format', 'json']],
+    ['--format json --no-chunk', ['--format', 'json', '--no-chunk']],
   ];
 
   test.each(variants)('%s: every produced .json file parses and is a graph', (_n, extra) => {

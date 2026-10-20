@@ -21,8 +21,8 @@ language, parses those whose grammar is installed, and prints one aggregated hin
 ℹ found 12 .kt, 3 .swift files without installed grammars — install with: xray lang add kotlin swift
 ```
 
-The hint shows for human output (the default). Machine formats (`--json`, `--csv`,
-`--xml`) keep it quiet unless verbose (`-v`), where per-language counts and sample
+The hint shows for human output (the default). Machine formats (`--format json|csv|xml`,
+or the `--json`, `--csv`, `--xml` aliases) keep it quiet unless verbose (`-v`), where per-language counts and sample
 paths are listed too; `--quiet` always hides it. `xray lang list` shows the same
 languages under "Detected in this repo, not installed" (`detectedNotInstalled` in
 `--json`).
@@ -34,7 +34,7 @@ unchanged by skipped languages.
 
 | Command | Purpose |
 |---------|---------|
-| `xray lang list [--path p] [--json]` | Packs, status (installed / not installed / broken), source, file counts in the repo, bundles |
+| `xray lang list [--path p] [--format text|json]` | Packs, status (installed / not installed / broken), source, file counts in the repo, bundles |
 | `xray lang add <names...> [--dry-run]` | Install languages or bundles into the xray-managed dir (npm; native build only if no prebuilt binary) |
 | `xray lang remove <names...>` | Remove packs from the managed dir (never touches grammars from other installs) |
 

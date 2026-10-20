@@ -26,7 +26,7 @@ export interface XrayScopeConfig {
   depth?: number;
   match?: string[];
   catch?: string[];
-  format?: 'txt' | 'csv' | 'xml';
+  format?: 'txt' | 'csv' | 'xml' | 'json';
   diagram?: 'mermaid' | 'dot';
   queries?: string[];
   json?: boolean;

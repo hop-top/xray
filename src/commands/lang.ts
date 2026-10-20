@@ -4,7 +4,7 @@ import { execSync } from 'child_process';
 import { globSync } from 'glob';
 import chalk from 'chalk';
 import { Logger } from '../lib/logger';
-import { EXIT_USAGE } from '../lib/error/types';
+import { EXIT_USAGE, UsageError } from '../lib/error/types';
 import { loadConfig } from '../lib/config';
 import {
   BUNDLES,
@@ -109,11 +109,16 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
     .command('list')
     .description('List language packs, install status, and files of each language in this repo')
     .option('-p, --path <path>', 'Repository to inspect', process.cwd())
-    .option('--json', 'Output JSON')
-    .action((opts: { path: string; json?: boolean }) => {
+    .option('--format <fmt>', 'Output format: text (default) or json')
+    .option('--json', 'Alias of --format json')
+    .action((opts: { path: string; json?: boolean; format?: string }) => {
+      const fmt = (opts.format ?? (opts.json ? 'json' : 'text')).toLowerCase();
+      if (fmt !== 'text' && fmt !== 'json') {
+        throw new UsageError(`invalid --format '${opts.format}' (expected one of: text, json)`);
+      }
       const rows = collectRows(path.resolve(opts.path));
       const detected = detectedNotInstalled(rows);
-      if (opts.json) {
+      if (fmt === 'json') {
         Logger.output(JSON.stringify({
           languages: rows,
           detectedNotInstalled: detected,

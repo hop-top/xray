@@ -393,6 +393,10 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     txt: cliOptions.txt || baseConfig.format === 'txt',
     dot: cliOptions.dot || baseConfig.diagram === 'dot',
     mermaid: cliOptions.mermaid || baseConfig.diagram === 'mermaid',
+    // Resolved selection (see resolveFormatFlags): CLI beats config, and a
+    // CLI choice on an axis must not be re-overridden by config booleans.
+    outputFormat: cliOptions.outputFormat ?? (baseConfig.json ? 'json' : baseConfig.format),
+    outputDiagram: cliOptions.outputDiagram ?? baseConfig.diagram,
     chunked: cliOptions.chunk !== false && (cliOptions.chunk ?? (baseConfig.chunked !== false)),
     detect: cliOptions.detect ?? false,
     languages: cliOptions.lang && cliOptions.lang.length > 0 ? cliOptions.lang : baseConfig.languages,

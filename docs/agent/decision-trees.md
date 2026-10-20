@@ -287,17 +287,17 @@ WHICH OUTPUT FORMAT SHOULD I USE?
     │
     ├─ JSON?
     │   ├─ WHEN: Need to parse programmatically
-    │   ├─ COMMAND: xray map --json
+    │   ├─ COMMAND: xray map --format json
     │   └─ OUTPUT: Structured JSON objects
     │
     ├─ CSV?
     │   ├─ WHEN: Need tabular data
-    │   ├─ COMMAND: xray map --csv
+    │   ├─ COMMAND: xray map --format csv
     │   └─ OUTPUT: Comma-separated values
     │
     ├─ Mermaid diagram?
     │   ├─ WHEN: Need visual relationships
-    │   ├─ COMMAND: xray graph --mermaid
+    │   ├─ COMMAND: xray graph --format mermaid
     │   └─ OUTPUT: Mermaid syntax diagram
     │
     └─ Chunked (multiple files)?

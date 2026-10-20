@@ -7,6 +7,7 @@ import * as cliProgress from 'cli-progress';
 import { Logger } from '../lib/logger';
 import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase } from '../lib/config';
 import { CodedError, FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
+import { resolveFormatFlags } from '../lib/output-format';
 import { GraphSerializer } from '../lib/graph/serializer';
 import { FileScanner } from '../lib/scanner';
 import { StrategyLoader } from '../lib/strategy/loader';
@@ -165,16 +166,19 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
   const anchor = resolvePath(mergedOptions.anchor);
 
   // Determine format first (needed for output path resolution)
+  // `outputFormat` is the resolved --format/legacy-flag/config selection;
+  // the boolean chain is the fallback for callers passing raw flags.
   const format: 'txt' | 'csv' | 'xml' | 'json' =
-    mergedOptions.json ? 'json' :
-    mergedOptions.csv ? 'csv' :
-    mergedOptions.xml ? 'xml' : 'txt';
+    mergedOptions.outputFormat ??
+    (mergedOptions.json ? 'json' :
+     mergedOptions.csv ? 'csv' :
+     mergedOptions.xml ? 'xml' : 'txt');
 
   // A raw JSON graph is a single document: reject up-front, before any
   // analysis or file write, rather than emitting concatenated JSON.
   if (format === 'json' && paths.length > 1) {
     throw new UsageError(
-      `--json writes a single graph document; got ${paths.length} paths. Run once per path.`
+      `--format json writes a single graph document; got ${paths.length} paths. Run once per path.`
     );
   }
 
@@ -203,7 +207,8 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
   const queries = QueryResolver.resolve(mergedOptions.query || []);
 
   // Determine diagram type
-  const diagram: 'mermaid' | 'dot' = mergedOptions.dot ? 'dot' : 'mermaid';
+  const diagram: 'mermaid' | 'dot' =
+    mergedOptions.outputDiagram ?? (mergedOptions.dot ? 'dot' : 'mermaid');
 
   // Setup progress bar
   const progressBar = new cliProgress.SingleBar({
@@ -220,7 +225,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
     // The raw JSON graph is not a rendering: chunking (a token-budget
     // concern of the text renderers) does not apply, and the same single
     // SerializedGraph document is written with or without --no-chunk.
-    if (chunkedEnabled) Logger.debug('--json: chunking does not apply; writing one graph file');
+    if (chunkedEnabled) Logger.debug('--format json: chunking does not apply; writing one graph file');
     const currentPath = paths[0];
     let barStarted = false;
     const xray = new Xray({
@@ -518,7 +523,14 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
 // Shared action handler for all generation commands
 export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
   try {
-    const normalizedOptions = normalizeExtensionOptions(options);
+    // Resolve --format / legacy flags first: a conflict is a usage error
+    // that must surface before any config loading or analysis.
+    const resolvedFormat = resolveFormatFlags(options);
+    const normalizedOptions = {
+      ...normalizeExtensionOptions(options),
+      outputFormat: resolvedFormat.format,
+      outputDiagram: resolvedFormat.diagram,
+    };
 
     // Set verbose level if provided
     if (normalizedOptions.verbose) {
@@ -550,7 +562,11 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
         const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
         const mergedOptions = mergeConfig(
           { ...mergedScope } as any,
-          { extensions: normalizedOptions.extensions },
+          {
+            extensions: normalizedOptions.extensions,
+            outputFormat: normalizedOptions.outputFormat,
+            outputDiagram: normalizedOptions.outputDiagram,
+          },
           undefined
         );
         await runSingleXray(mergedOptions, scopeName);

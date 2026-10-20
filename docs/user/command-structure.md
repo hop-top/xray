@@ -78,7 +78,7 @@ Available for all commands:
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `-v, --verbose <level>` | Set verbosity: silent, error, warn, info, debug | `-v debug` |
+| `-v, --verbose [level]` | Set verbosity: silent, error, warn, info, debug (bare `-v` = debug; works before or after the subcommand) | `-v debug` |
 | `-h, --help` | Display help | `--help` |
 | `-V, --version` | Display version | `--version` |
 

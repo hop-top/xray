@@ -121,11 +121,11 @@ ${strategyCompletions}
       return 0
       ;;
     --format)
-      COMPREPLY=( $(compgen -W "json table tree" -- "$cur") )
+      COMPREPLY=( $(compgen -W "txt csv xml json mermaid dot table tree text" -- "$cur") )
       return 0
       ;;
     *)
-      COMPREPLY=( $(compgen -W "--path --output --limit --anchor --depth --query --match --graph --format --help" -- "$cur") )
+      COMPREPLY=( $(compgen -W "--path --output --limit --anchor --depth --query --match --graph --format --json --csv --xml --txt --mermaid --dot --help" -- "$cur") )
       return 0
       ;;
   esac
@@ -178,7 +178,7 @@ ${coreCommandDefs}
     '(-p --path)'{-p,--path}'[Project path]:path:_files -/' \\
     '(-o --output)'{-o,--output}'[Output file path]:file:_files' \\
     '--graph[Load graph from file]:file:_files' \\
-    '--format[Output format]:format:(json table tree)' \\
+    '--format[Output format]:format:(txt csv xml json mermaid dot table tree text)' \\
     '(-h --help)'{-h,--help}'[Display help]'
 
   case $state in
@@ -229,7 +229,7 @@ ${strategyCompletions}
 complete -c xray -s p -l path -d 'Project path' -r
 complete -c xray -s o -l output -d 'Output file path' -r
 complete -c xray -l graph -d 'Load graph from file' -r
-complete -c xray -l format -d 'Output format' -xa 'json table tree'
+complete -c xray -l format -d 'Output format' -xa 'txt csv xml json mermaid dot table tree text'
 complete -c xray -s h -l help -d 'Display help'`;
 }
 

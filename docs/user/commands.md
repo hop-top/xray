@@ -235,15 +235,28 @@ xray map --catch "User*" --catch "!UserTest"
 
 ### Output Formats
 
-**Formats** (mutually exclusive):
-- `--txt` - Text format (default)
-- `--csv` - CSV format
-- `--xml` - XML format
-- `--json` - JSON graph format
+Select the output with `--format <fmt>` (available on `map`, `scan`, `graph`):
 
-**Diagrams** (mutually exclusive):
-- `--mermaid` - Mermaid diagram (default)
-- `--dot` - DOT/Graphviz diagram
+**Formats** (`--format txt|csv|xml|json`, one at a time):
+- `txt` - Text format (default)
+- `csv` - CSV format
+- `xml` - XML format
+- `json` - Raw JSON graph: one valid JSON document (`metadata`, `nodes`,
+  `edges`; the shape `xray query --graph` reads), written to `-o` (default
+  `.xray`; `-o name` becomes `name.json`). Chunking does not apply: the
+  file is identical with or without `--no-chunk`. One `--path` only.
+
+**Diagrams** (`--format mermaid|dot`, one at a time; combine with a format):
+- `mermaid` - Mermaid diagram (default)
+- `dot` - DOT/Graphviz diagram
+
+The per-format flags `--txt`, `--csv`, `--xml`, `--json`, `--mermaid`, `--dot`
+remain as aliases (`--json` = `--format json`). `--format` wins over an alias
+on the same axis; two different aliases on one axis (`--json --csv`) is a
+usage error (exit 2), as is an unknown `--format` value. `xray lang list`
+takes `--format text|json` too (`--json` alias). Machine formats
+(`json`, `csv`, `xml`) keep advisory INFO hints on stderr quiet unless
+verbose.
 
 ### Advanced
 

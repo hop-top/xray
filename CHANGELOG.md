@@ -14,6 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "view the same repo through this angle" (e.g. `quick`, `detailed`,
   `api-only`).
 
+- `--format <fmt>` on `map`, `scan`, `graph` (`txt|csv|xml|json`, diagrams
+  `mermaid|dot`) and `lang list` (`text|json`), matching the rest of the
+  CLI family. `--json`, `--csv`, `--xml`, `--txt`, `--mermaid`, `--dot`
+  stay as aliases; `--format` wins, conflicting aliases exit 2.
+
+### Fixed
+
+- `xray map --json` (chunked and `--no-chunk`) wrote text into `.json`
+  files; it now writes one valid JSON graph document.
+- Bare `-v` before the subcommand (`xray -v map`) swallowed the
+  subcommand name and reset verbosity; all `-v` / `--verbose` forms now
+  resolve identically.
+
 ### Changed
 
 - **BREAKING:** renamed two CLI flags in a single release to resolve a
