@@ -25,17 +25,22 @@ export type GrammarLoader = () => GoParserHandle | null;
  * (optional language packs). Null when the pack is not installed; not cached
  * here so installing it mid-process is picked up (the registry caches).
  */
+let memo: { grammar: any; handle: GoParserHandle } | undefined;
+
 export const loadGoGrammar: GrammarLoader = () => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { getGrammar } = require('../../parser/grammars');
     const status = getGrammar('go');
     if (!status.ok) return null;
+    if (memo && memo.grammar === status.grammar) return memo.handle;
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const Parser = require('tree-sitter');
     const parser = new Parser();
     parser.setLanguage(status.grammar);
-    return { parse: (src: string) => parser.parse(src, undefined, { bufferSize: Math.max(32768, src.length * 2) }) };
+    const handle = { parse: (src: string) => parser.parse(src, undefined, { bufferSize: Math.max(32768, src.length * 2) }) };
+    memo = { grammar: status.grammar, handle };
+    return handle;
   } catch {
     return null;
   }

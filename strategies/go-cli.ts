@@ -101,11 +101,11 @@ export default class GoCliStrategy implements Strategy {
     commands: {
       description: 'Show the CLI command tree (AST by default; toolspec via --exec-binary/--binary)',
       options: {
-        binary: 'Run this prebuilt binary (`spec --format json`) inside an OS sandbox',
-        'exec-binary': '[flag] Build the main package and run it for its kit toolspec, inside an OS sandbox',
-        'unsafe-no-sandbox': '[flag] Allow --exec-binary/--binary without an OS sandbox (runs repo code unconfined)',
-        'allow-cgo': '[flag] With --exec-binary: build with cgo enabled (runs the C toolchain on repo code)',
-        format: 'Output format: text|json (default text)',
+        binary: { description: 'Run this prebuilt binary (`spec --format json`) inside an OS sandbox', placeholder: '<path>' },
+        'exec-binary': { type: 'boolean', description: 'Build the main package and run it for its kit toolspec, inside an OS sandbox' },
+        'unsafe-no-sandbox': { type: 'boolean', description: 'Allow --exec-binary/--binary without an OS sandbox (runs repo code unconfined)' },
+        'allow-cgo': { type: 'boolean', description: 'With --exec-binary: build with cgo enabled (runs the C toolchain on repo code)' },
+        format: { description: 'Output format: text|json (default text)', placeholder: '<text|json>' },
       },
       handler: async (ctx: StrategyContext, opts: any = {}) => this.runCommands(ctx, opts),
     },
