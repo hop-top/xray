@@ -1,6 +1,6 @@
 
 import Parser from 'tree-sitter';
-import { CPPGraphGenerator } from '../../../src/parser/graphs/cpp';
+import { CPPGraphGenerator } from '../../../src/lib/parser/graphs/cpp';
 const CPP = require('tree-sitter-cpp');
 
 describe('CPPGraphGenerator', () => {

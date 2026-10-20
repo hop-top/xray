@@ -1,6 +1,6 @@
 
 import Parser from 'tree-sitter';
-import { GoGraphGenerator } from '../../../src/parser/graphs/go';
+import { GoGraphGenerator } from '../../../src/lib/parser/graphs/go';
 const Go = require('tree-sitter-go');
 
 describe('GoGraphGenerator', () => {

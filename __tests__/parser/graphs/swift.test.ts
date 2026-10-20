@@ -1,6 +1,6 @@
 
 import Parser from 'tree-sitter';
-import { SwiftGraphGenerator } from '../../../src/parser/graphs/swift';
+import { SwiftGraphGenerator } from '../../../src/lib/parser/graphs/swift';
 const Swift = require('tree-sitter-swift');
 
 describe('SwiftGraphGenerator', () => {

@@ -1,6 +1,6 @@
 
 import Parser from 'tree-sitter';
-import { CGraphGenerator } from '../../../src/parser/graphs/c';
+import { CGraphGenerator } from '../../../src/lib/parser/graphs/c';
 const C = require('tree-sitter-c');
 
 describe('CGraphGenerator', () => {

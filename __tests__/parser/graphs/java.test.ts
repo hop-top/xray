@@ -1,6 +1,6 @@
 
 import Parser from 'tree-sitter';
-import { JavaGraphGenerator } from '../../../src/parser/graphs/java';
+import { JavaGraphGenerator } from '../../../src/lib/parser/graphs/java';
 const Java = require('tree-sitter-java');
 
 describe('JavaGraphGenerator', () => {

@@ -1,6 +1,6 @@
 
 import Parser from 'tree-sitter';
-import { RustGraphGenerator } from '../../../src/parser/graphs/rust';
+import { RustGraphGenerator } from '../../../src/lib/parser/graphs/rust';
 const Rust = require('tree-sitter-rust');
 
 describe('RustGraphGenerator', () => {

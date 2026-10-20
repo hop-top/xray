@@ -1,5 +1,5 @@
 import Parser from 'tree-sitter';
-import { TypeScriptGraphGenerator } from '../../../src/parser/graphs/typescript';
+import { TypeScriptGraphGenerator } from '../../../src/lib/parser/graphs/typescript';
 const TypeScript = require('tree-sitter-typescript').typescript;
 
 describe('TypeScriptGraphGenerator', () => {

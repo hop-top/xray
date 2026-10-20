@@ -1,5 +1,5 @@
 import Parser from 'tree-sitter';
-import { PythonGraphGenerator } from '../../../src/parser/graphs/python';
+import { PythonGraphGenerator } from '../../../src/lib/parser/graphs/python';
 const Python = require('tree-sitter-python');
 
 describe('PythonGraphGenerator', () => {
