@@ -4,7 +4,7 @@ import { addCommonOptions } from '../common';
 import { handleGenerateAction } from '../generate';
 import { handleClearCacheAction } from '../clear-cache';
 import { handleCompletionAction } from '../completion';
-import { handleQueryAction } from '../query';
+import { runQueryCommand } from '../query';
 import { handleDescribeAction } from '../describe';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
@@ -42,7 +42,7 @@ export function registerCoreCommands(program: Command): void {
     .option('--graph <file>', 'Path to saved graph JSON file')
     .option('--format <format>', 'Output format: json, table, tree (default: table)', 'table')
     .option('--list-adapters', 'List available query adapters')
-    .action(handleQueryAction);
+    .action(runQueryCommand);
 
   // Strategy management command
   program.addCommand(registerStrategyCommand());

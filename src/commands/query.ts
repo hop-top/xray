@@ -5,6 +5,8 @@ import { QueryAdapterRegistry } from '../lib/query/registry';
 import { FunctionAdapter } from '../lib/query/adapters/function';
 import type { QueryResult } from '../lib/query/types';
 import { QueryCommandOptions } from '../types/command-options';
+import { Logger } from '../lib/logger';
+import { NotFoundError, UsageError } from '../lib/error/types';
 
 export async function handleQueryAction(query: string, options: QueryCommandOptions): Promise<any> {
   if (options.listAdapters) {
@@ -12,11 +14,11 @@ export async function handleQueryAction(query: string, options: QueryCommandOpti
   }
 
   if (!query || !query.trim()) {
-    throw new Error('Query is required');
+    throw new UsageError('Query is required');
   }
 
   if (!options.graph) {
-    throw new Error('--graph flag is required');
+    throw new UsageError('--graph flag is required');
   }
 
   const graph = await loadGraph(options.graph);
@@ -25,18 +27,34 @@ export async function handleQueryAction(query: string, options: QueryCommandOpti
 
   const adapter = registry.find(query);
   if (!adapter) {
-    throw new Error('No query adapter found');
+    throw new UsageError('No query adapter found');
   }
 
-  const result = adapter.execute(query, graph);
+  let result: QueryResult;
+  try {
+    result = adapter.execute(query, graph);
+  } catch (error) {
+    throw new UsageError((error as Error).message, error as Error);
+  }
   const outputFormat = options.format || 'table';
 
   return formatOutput(result, outputFormat);
 }
 
+/**
+ * Commander action for `xray query`: run the query and print the result.
+ * Machine output (`--format json`) is one JSON document on stdout; human
+ * formats print their rendered text. Errors propagate (CodedError -> exit code).
+ */
+export async function runQueryCommand(query: string | undefined, options: QueryCommandOptions): Promise<void> {
+  const result = await handleQueryAction(query ?? '', options);
+  const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+  Logger.output(text.replace(/\n$/, ''));
+}
+
 async function loadGraph(graphPath: string): Promise<any> {
   if (!fs.existsSync(graphPath)) {
-    throw new Error('Graph file not found: ' + graphPath);
+    throw new NotFoundError('Graph file not found: ' + graphPath);
   }
 
   try {
@@ -46,7 +64,7 @@ async function loadGraph(graphPath: string): Promise<any> {
     return serializer.deserialize(serialized);
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new Error('Invalid JSON in graph file: ' + graphPath);
+      throw new UsageError('Invalid JSON in graph file: ' + graphPath);
     }
     throw error;
   }
