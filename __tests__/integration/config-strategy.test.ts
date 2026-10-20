@@ -251,6 +251,13 @@ hosts = [
       expect(output).toContain('config.toml');
     });
 
+    it('should print paths relative to the project root, not the cwd', () => {
+      // CLI runs from the repo (cwd != testRoot); paths must not climb out of testRoot.
+      const output = execSync(`node ${CLI_PATH} config list -p ${testRoot}`).toString();
+      expect(output).not.toContain('../');
+      expect(output).toMatch(/^\s+config\/database\.json$/m);
+    });
+
     it('should count config files correctly', () => {
       const output = execSync(`node ${CLI_PATH} config list -p ${testRoot}`).toString();
 
