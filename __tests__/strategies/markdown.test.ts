@@ -522,6 +522,11 @@ describe('MarkdownStrategy', () => {
         // Killed: gone shortly after rejection (poll, no fixed sleep).
         expect(await until(() => !alive(pid), 5000)).toBe(true);
       } finally {
+        // Never leak the fake mdq if an assertion above failed early.
+        try {
+          const leaked = parseInt(fs.readFileSync(pidFile, 'utf-8'), 10);
+          if (Number.isInteger(leaked) && leaked > 1) process.kill(leaked, 'SIGKILL');
+        } catch { /* already gone / never started */ }
         process.env.PATH = oldPath;
         if (oldTimeout === undefined) delete process.env.XRAY_MDQ_TIMEOUT_MS;
         else process.env.XRAY_MDQ_TIMEOUT_MS = oldTimeout;
