@@ -13,15 +13,22 @@ xray lang add go typescript
 xray map
 ```
 
-With nothing configured xray auto-detects: it parses every file whose language has
-an installed grammar, and prints one warning per missing language, then carries on:
+With nothing configured xray auto-detects: it discovers files in every catalog
+language, parses those whose grammar is installed, and prints one aggregated hint
+(stderr) for the rest, then carries on:
 
 ```
-⚠ skipping 12 .kt files: grammar not installed — run `xray lang add kotlin`
+ℹ found 12 .kt, 3 .swift files without installed grammars — install with: xray lang add kotlin swift
 ```
 
-xray never installs anything implicitly during a scan. Exit code is unchanged by
-skipped languages.
+The hint shows for human output (the default). Machine formats (`--json`, `--csv`,
+`--xml`) keep it quiet unless verbose (`-v`), where per-language counts and sample
+paths are listed too; `--quiet` always hides it. `xray lang list` shows the same
+languages under "Detected in this repo, not installed" (`detectedNotInstalled` in
+`--json`).
+
+xray never installs or builds anything implicitly during a scan. Exit code is
+unchanged by skipped languages.
 
 ## Commands
 

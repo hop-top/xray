@@ -3,7 +3,7 @@ import * as path from 'path';
 import { FileScanner } from './scanner';
 import { ParserManager } from './parser/manager';
 import { updateLanguageQuery } from './parser/language-registry';
-import { beginLanguageRun, flushSkippedWarnings } from './parser/grammars';
+import { beginLanguageRun, reportSkippedLanguages } from './parser/grammars';
 import { GraphBuilder } from './graph/builder';
 import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
@@ -413,7 +413,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     }
 
     await this.emitProgress('parsing', files.length, files.length, 'Parsing complete');
-    flushSkippedWarnings();
+    reportSkippedLanguages({ format: this.config.format });
 
     const graph = await graphBuilder.getGraph();
 

@@ -14,7 +14,8 @@
 import * as os from 'os';
 import * as path from 'path';
 import { createRequire } from 'module';
-import { Logger } from '../logger';
+import { Logger, LogLevel } from '../logger';
+import { isMachineFormat } from '../output-format';
 import { NotFoundError, UsageError } from '../error/types';
 
 export interface LanguagePack {
@@ -267,7 +268,10 @@ export function resetGrammarCache(): void {
 // ---------------------------------------------------------------------------
 
 let enabled: Set<string> | undefined;
-const skipped = new Map<string, { exts: Set<string>; count: number }>();
+const skipped = new Map<string, { byExt: Map<string, number>; files: string[] }>();
+
+/** Sample paths listed per language in the verbose detail. */
+const SAMPLE_PATHS = 3;
 
 /**
  * Restrict parsing to these languages/bundles (undefined or empty = auto: any
@@ -299,10 +303,10 @@ export function isUnavailable(ext: string): boolean {
   return !isLanguageEnabled(pack.name) || !getGrammar(pack.name).ok;
 }
 
-export function recordSkipped(language: string, ext: string): void {
-  const entry = skipped.get(language) ?? { exts: new Set<string>(), count: 0 };
-  entry.exts.add(ext);
-  entry.count++;
+export function recordSkipped(language: string, ext: string, file?: string): void {
+  const entry = skipped.get(language) ?? { byExt: new Map<string, number>(), files: [] };
+  entry.byExt.set(ext, (entry.byExt.get(ext) ?? 0) + 1);
+  if (file) entry.files.push(file);
   skipped.set(language, entry);
 }
 
@@ -310,25 +314,79 @@ export interface SkippedSummary {
   language: string;
   count: number;
   extensions: string[];
+  /** File count per extension. */
+  byExtension: Record<string, number>;
+  /** Up to SAMPLE_PATHS skipped paths (sorted). */
+  samples: string[];
   reason: 'missing' | 'broken' | 'blocked';
   message: string;
 }
 
-/** Emit one warning per language skipped during the run, then reset. */
-export function flushSkippedWarnings(): SkippedSummary[] {
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
+/** One-line hint for languages whose grammar is not installed. */
+export function missingGrammarHint(missing: Array<Pick<SkippedSummary, 'language' | 'count' | 'byExtension'>>): string {
+  const total = missing.reduce((n, s) => n + s.count, 0);
+  const parts = missing.flatMap(s =>
+    Object.entries(s.byExtension).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([ext, n]) => `${n} ${ext}`)
+  );
+  const what = total === 1 ? 'file without an installed grammar' : 'files without installed grammars';
+  return `found ${parts.join(', ')} ${what} — install with: xray lang add ${missing.map(s => s.language).join(' ')}`;
+}
+
+export interface ReportOptions {
+  /** Output format of the run; machine formats (json, csv, ...) keep the hint quiet unless verbose. */
+  format?: string;
+}
+
+/**
+ * Report files skipped during the run, then reset. Nothing is installed.
+ *
+ * - Grammar not installed: ONE aggregated INFO hint, shown for human formats,
+ *   hidden for machine formats unless verbose; with verbose, per-language
+ *   counts and sample paths at debug level. --quiet (log level error) hides it.
+ * - Grammar installed but failing to load: one warning per language.
+ *
+ * Returns the summaries as data either way.
+ */
+export function reportSkippedLanguages(opts: ReportOptions = {}): SkippedSummary[] {
   const out: SkippedSummary[] = [];
-  for (const [language, { exts, count }] of skipped) {
+  for (const [language, { byExt, files }] of skipped) {
     const s = getGrammar(language);
     if (s.ok) continue;
-    const extensions = Array.from(exts).sort();
-    const what = `skipping ${count} ${extensions.join('/')} file${count === 1 ? '' : 's'}`;
+    const extensions = Array.from(byExt.keys()).sort();
+    const count = Array.from(byExt.values()).reduce((n, c) => n + c, 0);
+    const reason = s.reason ?? 'missing';
+    const exts = extensions.join('/');
     const message =
-      s.reason === 'broken'
-        ? `${what}: grammar failed to load (${s.error}) — try \`xray lang add ${language}\``
-        : `${what}: grammar not installed — run \`xray lang add ${language}\``;
-    out.push({ language, count, extensions, reason: s.reason ?? 'missing', message });
-    Logger.warn(message);
+      reason === 'broken'
+        ? `skipping ${count} ${exts} ${plural(count, 'file', 'files')}: grammar failed to load (${s.error}) — try \`xray lang add ${language}\``
+        : `${count} ${exts} ${plural(count, 'file', 'files')}: grammar not installed — run \`xray lang add ${language}\``;
+    out.push({
+      language,
+      count,
+      extensions,
+      byExtension: Object.fromEntries(byExt),
+      samples: [...files].sort().slice(0, SAMPLE_PATHS),
+      reason,
+      message,
+    });
   }
   skipped.clear();
+  out.sort((a, b) => b.count - a.count || a.language.localeCompare(b.language));
+
+  for (const s of out) if (s.reason === 'broken') Logger.warn(s.message);
+
+  const missing = out.filter(s => s.reason !== 'broken');
+  if (missing.length === 0) return out;
+  const verbose = Logger.getLevel() >= LogLevel.DEBUG;
+  if (verbose || !isMachineFormat(opts.format)) Logger.info(missingGrammarHint(missing));
+  if (verbose) {
+    for (const s of missing) {
+      const more = s.count > s.samples.length ? ', …' : '';
+      const eg = s.samples.length ? ` — e.g. ${s.samples.join(', ')}${more}` : '';
+      Logger.debug(`  ${s.language}: ${s.count} ${plural(s.count, 'file', 'files')} (${s.extensions.join(', ')})${eg}`);
+    }
+  }
   return out;
 }

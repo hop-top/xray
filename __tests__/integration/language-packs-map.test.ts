@@ -10,12 +10,13 @@ let fixture = '';
 
 describe('map on a Go+TS(+py,java) repo with only go and typescript grammars', () => {
   let warn: jest.SpyInstance;
+  let info: jest.SpyInstance;
   let cacheDir: string;
   beforeEach(() => {
     process.env.XRAY_LANG_BLOCK = 'python,java,kotlin,rust,c,cpp,php';
     resetGrammarCache();
     warn = jest.spyOn(Logger, 'warn').mockImplementation();
-    jest.spyOn(Logger, 'info').mockImplementation();
+    info = jest.spyOn(Logger, 'info').mockImplementation();
     cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-cache-'));
     // Private copy: isolates the run from repo/git state and concurrent suites.
     fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-fx-'));
@@ -30,16 +31,13 @@ describe('map on a Go+TS(+py,java) repo with only go and typescript grammars', (
   const run = (extra: object = {}) =>
     new Xray({ path: fixture, cachePath: path.join(cacheDir, 'c.db'), chunked: false, ...extra }).run() as Promise<string>;
 
-  it('maps go and ts symbols, warns once per missing language, and continues', async () => {
+  it('maps go and ts symbols, reports missing languages in one INFO hint, and continues', async () => {
     const out = await run();
     expect(out).toContain('Greet');
     expect(out).toContain('Calculator');
-    const msgs = warn.mock.calls.map(c => c[0]).filter((m: string) => m.startsWith('skipping'));
-    expect(msgs).toEqual(expect.arrayContaining([
-      'skipping 1 .py file: grammar not installed — run `xray lang add python`',
-      'skipping 1 .java file: grammar not installed — run `xray lang add java`',
-    ]));
-    expect(msgs).toHaveLength(2);
+    const hints = info.mock.calls.map(c => String(c[0])).filter(m => m.includes('without installed grammar'));
+    expect(hints).toEqual(['found 1 .java, 1 .py files without installed grammars — install with: xray lang add java python']);
+    expect(warn.mock.calls.filter(c => /grammar|skipping/.test(String(c[0])))).toEqual([]);
   });
 
   it('does not cache skipped files, so installing the grammar later takes effect', async () => {
@@ -53,7 +51,8 @@ describe('map on a Go+TS(+py,java) repo with only go and typescript grammars', (
   it('explicit languages restrict parsing silently', async () => {
     const out = await run({ languages: ['go', 'typescript'] });
     expect(out).toContain('Greet');
-    expect(warn.mock.calls.filter(c => String(c[0]).startsWith('skipping'))).toHaveLength(0);
+    expect(info.mock.calls.filter(c => String(c[0]).includes('without installed grammar'))).toHaveLength(0);
+    expect(warn.mock.calls.filter(c => /grammar|skipping/.test(String(c[0])))).toEqual([]);
   });
 
   it('explicitly requiring a missing grammar fails the run', async () => {

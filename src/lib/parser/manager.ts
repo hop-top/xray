@@ -55,7 +55,7 @@ export class ParserManager {
     }
 
     const ext = path.extname(relPath);
-    const langConfig = getLanguageConfig(ext);
+    const langConfig = getLanguageConfig(ext, relPath);
 
     if (!langConfig) {
       // `skipped`: a supported language we could not parse (grammar missing or

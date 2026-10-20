@@ -8,7 +8,7 @@ import {
   UnknownLanguageError,
   beginLanguageRun,
   expandSelection,
-  flushSkippedWarnings,
+  reportSkippedLanguages,
   getGrammar,
   getPack,
   isGrammarAvailable,
@@ -63,7 +63,7 @@ describe('lazy loading and missing grammars', () => {
   afterEach(() => {
     delete process.env.XRAY_LANG_BLOCK;
     beginLanguageRun(undefined);
-    flushSkippedWarnings();
+    reportSkippedLanguages();
     resetGrammarCache();
     warn.mockRestore();
   });
@@ -84,20 +84,23 @@ describe('lazy loading and missing grammars', () => {
     expect(isGrammarAvailable('go')).toBe(true);
   });
 
-  it('warns once per language with a count and the fix', () => {
+  it('reports missing languages once, aggregated, as INFO (no warning)', () => {
+    const info = jest.spyOn(Logger, 'info').mockImplementation();
     process.env.XRAY_LANG_BLOCK = 'kotlin,python';
     beginLanguageRun(undefined);
     getLanguageConfig('.kt');
     getLanguageConfig('.kt');
     getLanguageConfig('.kt');
     getLanguageConfig('.py');
-    const out = flushSkippedWarnings();
-    expect(out.map(o => o.language).sort()).toEqual(['kotlin', 'python']);
-    expect(warn).toHaveBeenCalledWith('skipping 3 .kt files: grammar not installed — run `xray lang add kotlin`');
-    expect(warn).toHaveBeenCalledWith('skipping 1 .py file: grammar not installed — run `xray lang add python`');
-    expect(warn).toHaveBeenCalledTimes(2);
-    // reset after flush
-    expect(flushSkippedWarnings()).toEqual([]);
+    const out = reportSkippedLanguages();
+    expect(out.map(o => o.language)).toEqual(['kotlin', 'python']);
+    expect(out[0]).toMatchObject({ count: 3, byExtension: { '.kt': 3 } });
+    expect(info).toHaveBeenCalledTimes(1);
+    expect(info).toHaveBeenCalledWith('found 3 .kt, 1 .py files without installed grammars — install with: xray lang add kotlin python');
+    expect(warn).not.toHaveBeenCalled();
+    // reset after reporting
+    expect(reportSkippedLanguages()).toEqual([]);
+    info.mockRestore();
   });
 
   it('explicit selection is required: missing grammar throws, unselected languages are silent', () => {
@@ -108,7 +111,7 @@ describe('lazy loading and missing grammars', () => {
     beginLanguageRun(['typescript']);
     expect(getLanguageConfig('.ts')).toBeDefined();
     expect(getLanguageConfig('.go')).toBeUndefined();
-    expect(flushSkippedWarnings()).toEqual([]);
+    expect(reportSkippedLanguages()).toEqual([]);
   });
 });
 

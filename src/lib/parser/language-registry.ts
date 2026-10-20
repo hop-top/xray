@@ -31,10 +31,10 @@ function loadQuery(name: string): string {
 /**
  * Config for a file extension, or undefined when the extension is unknown,
  * the language is not enabled, or its grammar is not installed. In the
- * missing-grammar case the skip is recorded so the run can emit a single
- * warning per language (see flushSkippedWarnings).
+ * missing-grammar case the skip is recorded (with `file`, when given) so the
+ * run can report it once (see reportSkippedLanguages).
  */
-export function getLanguageConfig(ext: string): LanguageConfig | undefined {
+export function getLanguageConfig(ext: string, file?: string): LanguageConfig | undefined {
   const pack = packForExtension(ext);
   if (!pack || !isLanguageEnabled(pack.name)) return undefined;
 
@@ -44,7 +44,7 @@ export function getLanguageConfig(ext: string): LanguageConfig | undefined {
   const status = getGrammar(pack.name);
   if (!status.ok) {
     resolved.delete(ext);
-    recordSkipped(pack.name, ext);
+    recordSkipped(pack.name, ext, file);
     return undefined;
   }
 
