@@ -1,6 +1,7 @@
 import * as path from 'path';
 import Parser from 'tree-sitter';
 import { getLanguageConfig } from './language-registry';
+import { isUnavailable } from './grammars';
 import { Tag, Import } from './types';
 import { Logger } from '../logger';
 
@@ -41,7 +42,7 @@ export class ParserManager {
     this.root = root;
   }
 
-  async parse(relPath: string, content: string, includeVariables: boolean = false, docConfig: string = 'none', enableCfg: boolean = false, enableDfg: boolean = false): Promise<{ tags: Tag[], imports: Import[] }> {
+  async parse(relPath: string, content: string, includeVariables: boolean = false, docConfig: string = 'none', enableCfg: boolean = false, enableDfg: boolean = false): Promise<{ tags: Tag[], imports: Import[], skipped?: boolean }> {
     // Validate docConfig
     if (docConfig && docConfig !== 'none' && docConfig !== 'all') {
       const validKinds = ['class', 'interface', 'type', 'enum', 'function', 'method', 'const', 'field'];
@@ -57,7 +58,9 @@ export class ParserManager {
     const langConfig = getLanguageConfig(ext);
 
     if (!langConfig) {
-      return { tags: [], imports: [] };
+      // `skipped`: a supported language we could not parse (grammar missing or
+      // deselected). Callers must not cache this empty result.
+      return { tags: [], imports: [], skipped: isUnavailable(ext) };
     }
 
     const parser = new Parser();

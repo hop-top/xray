@@ -31,6 +31,8 @@ export interface XrayScopeConfig {
   queries?: string[];
   json?: boolean;
   chunked?: boolean;
+  /** Language packs (names or bundles) to parse; each must be installed. Default: auto-detect. */
+  languages?: string[];
   skipDetect?: boolean;
   share?: boolean | string;
   telemetry?: {

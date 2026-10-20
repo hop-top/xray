@@ -3,6 +3,7 @@ import * as path from 'path';
 import { FileScanner } from './scanner';
 import { ParserManager } from './parser/manager';
 import { updateLanguageQuery } from './parser/language-registry';
+import { beginLanguageRun, flushSkippedWarnings } from './parser/grammars';
 import { GraphBuilder } from './graph/builder';
 import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
@@ -49,6 +50,9 @@ export interface XrayConfig {
 
   // Advanced
   queries?: Record<string, string>;
+
+  // Languages (names or bundles) to parse; each is required. Default: auto-detect.
+  languages?: string[];
 
   // Internal
   onProgress?: (current: number, total: number, file: string) => void;
@@ -297,6 +301,10 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     // not leak stash entries across runs.
     this.stashes.clear();
 
+    // Language selection: explicit (programmatic or .xrayrc `languages`) means
+    // required; otherwise auto - parse whatever has an installed grammar.
+    beginLanguageRun(this.config.languages ?? loadConfig(undefined, this.config.path)?.languages);
+
     const parser = new ParserManager(this.config.path);
     const graphBuilder = new GraphBuilder();
 
@@ -362,7 +370,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         if (parseBeforeEvent.skip) continue;
 
         try {
-          const { tags, imports } = await parser.parse(
+          const { tags, imports, skipped } = await parser.parse(
             file,
             parseBeforeEvent.content,
             includeVars,
@@ -386,7 +394,11 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           // Event: Cache write
           const cacheWriteEvent = { file, tags: parseAfterEvent.tags, imports: parseAfterEvent.imports };
           await this.emitAsync('cache:write', cacheWriteEvent);
-          this.cache.set(file, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars);
+          // Never cache a file we could not parse for lack of a grammar:
+          // installing it later must take effect without touching the file.
+          if (!skipped) {
+            this.cache.set(file, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars);
+          }
         } catch (error) {
           // Event: Parse error
           await this.emitAsync('parse:error', {
@@ -401,6 +413,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     }
 
     await this.emitProgress('parsing', files.length, files.length, 'Parsing complete');
+    flushSkippedWarnings();
 
     const graph = await graphBuilder.getGraph();
 
