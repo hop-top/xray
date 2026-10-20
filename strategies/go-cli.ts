@@ -104,6 +104,7 @@ export default class GoCliStrategy implements Strategy {
         binary: 'Run this prebuilt binary (`spec --format json`) inside an OS sandbox',
         'exec-binary': '[flag] Build the main package and run it for its kit toolspec, inside an OS sandbox',
         'unsafe-no-sandbox': '[flag] Allow --exec-binary/--binary without an OS sandbox (runs repo code unconfined)',
+        'allow-cgo': '[flag] With --exec-binary: build with cgo enabled (runs the C toolchain on repo code)',
         format: 'Output format: text|json (default text)',
       },
       handler: async (ctx: StrategyContext, opts: any = {}) => this.runCommands(ctx, opts),
@@ -127,6 +128,8 @@ export default class GoCliStrategy implements Strategy {
         binary: opts.binary,
         execBinary: !!(opts.execBinary ?? opts['exec-binary']) || (!opts.binary && process.env.XRAY_GO_CLI_EXEC === '1'),
         unsafeNoSandbox: !!(opts.unsafeNoSandbox ?? opts['unsafe-no-sandbox']),
+        // cgo runs the C toolchain on repo code: explicit user opt-in only.
+        allowCgo: !!(opts.allowCgo ?? opts['allow-cgo']) || process.env.XRAY_GO_CLI_CGO === '1',
         ...this.toolspecOverrides,
       });
       report = out.report;

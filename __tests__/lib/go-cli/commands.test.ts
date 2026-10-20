@@ -5,7 +5,7 @@ import GoCliStrategy from '../../../strategies/go-cli';
 import { StrategyContextImpl } from '../../../src/lib/strategy/context';
 import { parseToolspec, ToolspecParseError } from '../../../src/lib/strategy/go-cli/toolspec';
 import { renderJson, renderText } from '../../../src/lib/strategy/go-cli/model';
-import { RunResult } from '../../../src/lib/strategy/go-cli/binary';
+import { RunResult, RunOptions } from '../../../src/lib/strategy/go-cli/binary';
 
 const FIX = path.join(__dirname, '..', '..', 'fixtures', 'go-cli');
 const CACHE = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-testcache-'));
@@ -144,13 +144,13 @@ describe('AST extraction', () => {
 });
 
 describe('execution is opt-in (trust model)', () => {
-  let calls: Array<{ cmd: string; args: string[] }>;
-  const mkRunner = (specOut: string, buildCode = 0) => async (cmd: string, args: string[]): Promise<RunResult> => {
-    calls.push({ cmd, args });
+  let calls: Array<{ cmd: string; args: string[]; env: NodeJS.ProcessEnv }>;
+  const mkRunner = (specOut: string, buildCode = 0, buildErr = 'boom: cannot build') => async (cmd: string, args: string[], ro: RunOptions): Promise<RunResult> => {
+    calls.push({ cmd, args, env: ro.env });
     const o = args.indexOf('-o');
     if (o >= 0) {
       if (buildCode === 0) fs.writeFileSync(args[o + 1], '#!/bin/sh\n');
-      return { code: buildCode, stdout: '', stderr: buildCode ? 'boom: cannot build' : '', timedOut: false };
+      return { code: buildCode, stdout: '', stderr: buildCode ? buildErr : '', timedOut: false };
     }
     return { code: 0, stdout: specOut, stderr: '', timedOut: false };
   };
@@ -183,6 +183,54 @@ describe('execution is opt-in (trust model)', () => {
     expect(calls[0].args.join(' ')).toContain('(deny network*)');
     expect(calls[1].args).toEqual(expect.arrayContaining(['spec', '--format', 'json']));
     expect(calls[1].args.join(' ')).toContain('(deny file-read* (subpath');
+  });
+
+  it('cgo is off by default and only on with --allow-cgo / XRAY_GO_CLI_CGO=1', async () => {
+    const s = new GoCliStrategy();
+    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: 'sandbox-exec', cacheDir: CACHE };
+    await run(s, path.join(FIX, 'stdspec'), { format: 'json', execBinary: true });
+    expect(calls[0].env.CGO_ENABLED).toBe('0');
+    calls = [];
+    await run(s, path.join(FIX, 'stdspec'), { format: 'json', execBinary: true, allowCgo: true });
+    expect(calls[0].env.CGO_ENABLED).toBe('1');
+    calls = [];
+    process.env.XRAY_GO_CLI_CGO = '1';
+    await run(s, path.join(FIX, 'stdspec'), { format: 'json', execBinary: true });
+    delete process.env.XRAY_GO_CLI_CGO;
+    expect(calls[0].env.CGO_ENABLED).toBe('1');
+    // build env is scrubbed of inherited secrets
+    process.env.XRAY_TEST_SECRET = 'hunter2';
+    calls = [];
+    await run(s, path.join(FIX, 'stdspec'), { format: 'json', execBinary: true });
+    delete process.env.XRAY_TEST_SECRET;
+    expect(calls[0].env.XRAY_TEST_SECRET).toBeUndefined();
+  });
+
+  it('repo config cannot enable cgo', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-cgocfg-'));
+    fs.cpSync(path.join(FIX, 'stdspec'), dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, '.xrayrc.json'), JSON.stringify({ goCli: { allowCgo: true } }));
+    const s = new GoCliStrategy();
+    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: 'sandbox-exec', cacheDir: CACHE };
+    await run(s, dir, { format: 'json', execBinary: true });
+    expect(calls[0].env.CGO_ENABLED).toBe('0');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('cgo-only build failure (undefined symbol) gives the --allow-cgo hint and falls back to AST', async () => {
+    const s = new GoCliStrategy();
+    s.toolspecOverrides = {
+      runner: mkRunner(specJson, 1, './x.go:42:12: undefined: handle.ErrUnsupported'),
+      sandbox: 'sandbox-exec',
+      cacheDir: CACHE,
+    };
+    const out = JSON.parse(await run(s, path.join(FIX, 'cobra'), { format: 'json', execBinary: true }));
+    expect(out.source).toBe('ast');
+    expect(out.warnings.join(' ')).toContain('build needs cgo; rerun with --allow-cgo');
+    // with cgo already allowed the hint is not repeated
+    s.toolspecOverrides = { ...s.toolspecOverrides, runner: mkRunner(specJson, 1, 'undefined: x') };
+    const out2 = JSON.parse(await run(s, path.join(FIX, 'cobra'), { format: 'json', execBinary: true, allowCgo: true }));
+    expect(out2.warnings.join(' ')).not.toContain('rerun with --allow-cgo');
   });
 
   it('XRAY_GO_CLI_EXEC=1 (user-level env) enables exec', async () => {

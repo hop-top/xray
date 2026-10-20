@@ -24,10 +24,11 @@ xray go-cli commands -p /path/to/repo
 # opt-in: ask the real binary (kit toolspec), see "Trust model"
 xray go-cli commands --exec-binary        # build the main package, run `spec --format json`
 xray go-cli commands --binary ./bin/tool  # run a binary you supply
+xray go-cli commands --exec-binary --allow-cgo           # builds needing cgo (runs the C toolchain)
 xray go-cli commands --exec-binary --unsafe-no-sandbox   # only if no OS sandbox exists
 ```
 
-`XRAY_GO_CLI_EXEC=1` in the *user's* environment is equivalent to `--exec-binary`.
+`XRAY_GO_CLI_EXEC=1` in the *user's* environment is equivalent to `--exec-binary`; `XRAY_GO_CLI_CGO=1` to `--allow-cgo`.
 
 The `source` field (and the text header) says which path produced the result.
 
@@ -93,20 +94,29 @@ own startup). A temp HOME is not isolation. So:
   (including `.xrayrc.json` and other repo-local config) can turn execution on. Only the user can:
   `--exec-binary`, `--binary <path>`, or `XRAY_GO_CLI_EXEC=1` in their own environment.
 - **Always sandboxed.** macOS: `sandbox-exec` with a profile that denies network, denies all
-  writes except a private temp dir, and (for the run step) denies reads of the user's home
-  except the binary and the temp dir. Linux: `bwrap` with `--unshare-net`, private `/tmp` and
+  writes except a private temp dir (plus the build cache for the build step), and denies reads of
+  the user's home except an explicit allow list (see Build hardening; for the run step only the
+  binary and the temp dir). Linux: `bwrap` with `--unshare-net`, private `/tmp` and
   `/home`, read-only binary. The Linux profile follows the same contract but has not been
   exercised on Linux.
-- **Build hardening.** Same semantics as a plain `go build` (cgo left at the Go default, so
-  cgo-tagged files and the C toolchain work), except: `GOPROXY=off`, `GOFLAGS=-mod=readonly`
-  (or `-mod=vendor`), `GOTOOLCHAIN=local`; `GOROOT` and `GOBIN` are removed from the child env (a
-  shell `GOROOT` for another toolchain breaks the build). Writes are confined to the private temp
-  dir plus one xray-managed build cache, `$XDG_CACHE_HOME/xray/go-cli/<hash of repo path>/gocache`
-  (`~/Library/Caches` on macOS, `~/.cache` elsewhere), one per scanned repo so repeat runs are fast
-  (cold build of a large CLI: minutes; warm: about a minute) and a hostile build can only poison
-  later xray builds of that same repo. The user's own `GOCACHE` is never touched. The module
-  cache is read-only. The build step can still *read* your home (toolchain, module cache); only
-  writes and network are denied. Build timeout 15 min.
+- **Build hardening.** `CGO_ENABLED=0` by default: cgo lets repo code drive the C toolchain
+  (clang/gcc) during the build, so it is enabled only by the user (`--allow-cgo` or
+  `XRAY_GO_CLI_CGO=1`; never by repo config). Trade-off: packages that need cgo-tagged files
+  (tlc's `handle.ErrUnsupported`, for example) fail to build by default; xray then reports
+  "build needs cgo; rerun with --allow-cgo" and falls back to AST. Other settings: `GOPROXY=off`,
+  `GOFLAGS=-mod=readonly` (or `-mod=vendor`), `GOTOOLCHAIN=local`; `GOROOT`/`GOBIN` are not
+  passed (a shell `GOROOT` for another toolchain breaks the build); the build env is scrubbed
+  (no inherited secrets). Reads of the user's home are denied for the build too, except
+  `GOROOT`, the `go` binary's directory, `GOMODCACHE`, the xray build cache, the repo root and the
+  private temp dir (plus, only with `--allow-cgo`, the C toolchain: Command Line Tools / Xcode,
+  `xcrun --show-sdk-path`, `/usr/lib`, `/usr/include`). Consequence: `replace` directives or
+  `go.work` entries pointing outside the repo root fail the build (and fall back to AST). On
+  Linux bwrap only those paths are mounted read-only instead of the whole filesystem. Writes are
+  confined to the private temp dir plus one xray-managed build cache,
+  `$XDG_CACHE_HOME/xray/go-cli/<hash of repo path>/gocache` (`~/Library/Caches` on macOS,
+  `~/.cache` elsewhere), one per scanned repo so repeat runs are fast and a hostile build can only
+  poison later xray builds of that same repo. The user's own `GOCACHE` is never touched. The
+  module cache is read-only. Build timeout 15 min.
 - **Run hardening.** Command is exactly `<bin> spec --format json`, scrubbed environment (no
   inherited secrets; temp HOME/XDG dirs, `NO_COLOR=1`), temp cwd, stdin closed, 15 s timeout,
   process group killed on timeout.

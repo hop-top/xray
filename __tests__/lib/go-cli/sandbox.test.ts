@@ -6,7 +6,7 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import GoCliStrategy from '../../../strategies/go-cli';
 import { StrategyContextImpl } from '../../../src/lib/strategy/context';
-import { detectSandbox, obtainToolspec } from '../../../src/lib/strategy/go-cli/binary';
+import { detectSandbox, obtainToolspec, runProcess, wrapSandbox } from '../../../src/lib/strategy/go-cli/binary';
 
 const FIX = path.join(__dirname, '..', '..', 'fixtures', 'go-cli');
 const sandbox = detectSandbox();
@@ -91,13 +91,40 @@ printf '{"tool":"fake","version":"1","schema_version":"1.0","commands":[{"path":
     fs.rmSync(plainDir, { recursive: true, force: true });
 
     const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-cache-'));
-    const out = await obtainToolspec(path.join(FIX, 'cgopair'), { execBinary: true, cacheDir, buildTimeoutMs: 240_000 });
+    const out = await obtainToolspec(path.join(FIX, 'cgopair'), { execBinary: true, allowCgo: true, cacheDir, buildTimeoutMs: 240_000 });
     fs.rmSync(cacheDir, { recursive: true, force: true });
     expect(out.reason).toBeUndefined();
     const short = out.report!.commands.find(c => c.path.join(' ') === 'cgopair probe')!.short;
     expect(short).toBe('cgo:3');
     expect(JSON.parse(plainOut).commands[0].short).toBe(short);
   }, 300_000);
+
+  (haveGo ? it : it.skip)('cgo off by default: cgo-only fixture fails with the --allow-cgo hint', async () => {
+    const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-cache-'));
+    const out = await obtainToolspec(path.join(FIX, 'cgopair'), { execBinary: true, cacheDir });
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+    expect(out.report).toBeUndefined();
+    expect(out.reason).toContain('build needs cgo; rerun with --allow-cgo');
+  }, 300_000);
+
+  it('build step cannot read the home directory (sentinel in a fake HOME)', async () => {
+    const fakeHome = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-fakehome-')));
+    const work = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-work-')));
+    const sentinel = path.join(fakeHome, 'secret.txt');
+    fs.writeFileSync(sentinel, 'TOP-SECRET');
+    const readIt = async (readAllow: string[]) => {
+      const w = wrapSandbox(sandbox!, 'build', { work, home: fakeHome, cmd: '/bin/cat', args: [sentinel], readAllow });
+      return runProcess(w.cmd, w.args, { cwd: work, env: { PATH: '/usr/bin:/bin' }, timeoutMs: 10_000 });
+    };
+    const denied = await readIt([]);
+    expect(denied.stdout).not.toContain('TOP-SECRET');
+    expect(denied.code).not.toBe(0);
+    // explicit allow works (proves the denial above is the profile, not a broken probe)
+    const allowed = await readIt([fakeHome]);
+    expect(allowed.stdout).toContain('TOP-SECRET');
+    fs.rmSync(fakeHome, { recursive: true, force: true });
+    fs.rmSync(work, { recursive: true, force: true });
+  });
 
   (haveGo ? it : it.skip)('second run reuses the persistent build cache', async () => {
     const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-cache-'));
