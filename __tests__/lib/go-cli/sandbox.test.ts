@@ -77,6 +77,42 @@ printf '{"tool":"fake","version":"1","schema_version":"1.0","commands":[{"path":
     expect(fs.existsSync(escape)).toBe(false);
   });
 
+  (haveGo ? it : it.skip)('sandboxed build matches a plain go build (cgo-tagged files, C toolchain)', async () => {
+    const plainDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-plain-'));
+    const env: NodeJS.ProcessEnv = { ...process.env };
+    delete env.GOROOT;
+    delete env.GOBIN;
+    const plain = spawnSync('go', ['build', '-o', path.join(plainDir, 'bin'), '.'], {
+      cwd: path.join(FIX, 'cgopair'),
+      env,
+    });
+    expect(plain.status).toBe(0);
+    const plainOut = spawnSync(path.join(plainDir, 'bin'), ['spec']).stdout.toString();
+    fs.rmSync(plainDir, { recursive: true, force: true });
+
+    const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-cache-'));
+    const out = await obtainToolspec(path.join(FIX, 'cgopair'), { execBinary: true, cacheDir, buildTimeoutMs: 240_000 });
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+    expect(out.reason).toBeUndefined();
+    const short = out.report!.commands.find(c => c.path.join(' ') === 'cgopair probe')!.short;
+    expect(short).toBe('cgo:3');
+    expect(JSON.parse(plainOut).commands[0].short).toBe(short);
+  }, 300_000);
+
+  (haveGo ? it : it.skip)('second run reuses the persistent build cache', async () => {
+    const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-cache-'));
+    const t0 = Date.now();
+    const a = await obtainToolspec(path.join(FIX, 'stdspec'), { execBinary: true, cacheDir });
+    const first = Date.now() - t0;
+    const t1 = Date.now();
+    const b = await obtainToolspec(path.join(FIX, 'stdspec'), { execBinary: true, cacheDir });
+    const second = Date.now() - t1;
+    expect(a.report && b.report).toBeTruthy();
+    expect(fs.readdirSync(cacheDir).length).toBeGreaterThan(0);
+    expect(second).toBeLessThan(first);
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+  }, 300_000);
+
   (haveGo ? it : it.skip)('builds and runs a real Go CLI under --exec-binary', async () => {
     const s = new GoCliStrategy();
     const out = JSON.parse(

@@ -8,6 +8,7 @@ import { renderJson, renderText } from '../../../src/lib/strategy/go-cli/model';
 import { RunResult } from '../../../src/lib/strategy/go-cli/binary';
 
 const FIX = path.join(__dirname, '..', '..', 'fixtures', 'go-cli');
+const CACHE = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-testcache-'));
 const specJson = fs.readFileSync(path.join(FIX, 'kit', 'spec.json'), 'utf-8');
 
 function ctxFor(dir: string) {
@@ -164,7 +165,7 @@ describe('execution is opt-in (trust model)', () => {
     fs.writeFileSync(path.join(dir, '.xrayrc.json'), JSON.stringify({ goCli: { exec: true, execBinary: true } }));
     fs.writeFileSync(path.join(dir, '.xray.yml'), 'goCli:\n  exec: true\n');
     const s = new GoCliStrategy();
-    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: 'sandbox-exec' };
+    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: 'sandbox-exec', cacheDir: CACHE };
     const out = JSON.parse(await run(s, dir, { format: 'json' }));
     expect(calls).toEqual([]);
     expect(out.source).toBe('ast');
@@ -173,7 +174,7 @@ describe('execution is opt-in (trust model)', () => {
 
   it('--exec-binary builds then runs, both wrapped in the sandbox', async () => {
     const s = new GoCliStrategy();
-    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: 'sandbox-exec' };
+    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: 'sandbox-exec', cacheDir: CACHE };
     const out = JSON.parse(await run(s, path.join(FIX, 'stdspec'), { format: 'json', execBinary: true }));
     expect(out.source).toBe('toolspec');
     expect(calls).toHaveLength(2);
@@ -187,7 +188,7 @@ describe('execution is opt-in (trust model)', () => {
   it('XRAY_GO_CLI_EXEC=1 (user-level env) enables exec', async () => {
     process.env.XRAY_GO_CLI_EXEC = '1';
     const s = new GoCliStrategy();
-    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: 'sandbox-exec' };
+    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: 'sandbox-exec', cacheDir: CACHE };
     const out = JSON.parse(await run(s, path.join(FIX, 'stdspec'), { format: 'json' }));
     expect(out.source).toBe('toolspec');
     expect(calls.length).toBe(2);
@@ -197,7 +198,7 @@ describe('execution is opt-in (trust model)', () => {
     const bin = path.join(os.tmpdir(), `gocli-bin-${process.pid}`);
     fs.writeFileSync(bin, '#!/bin/sh\n');
     const s = new GoCliStrategy();
-    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: 'sandbox-exec' };
+    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: 'sandbox-exec', cacheDir: CACHE };
     const out = JSON.parse(await run(s, path.join(FIX, 'cobra'), { format: 'json', binary: bin }));
     fs.rmSync(bin);
     expect(out.source).toBe('toolspec');
@@ -206,7 +207,7 @@ describe('execution is opt-in (trust model)', () => {
 
   it('no sandbox tool: refuses and falls back to AST', async () => {
     const s = new GoCliStrategy();
-    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: null };
+    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: null, cacheDir: CACHE };
     const out = JSON.parse(await run(s, path.join(FIX, 'cobra'), { format: 'json', execBinary: true }));
     expect(calls).toEqual([]);
     expect(out.source).toBe('ast');
@@ -215,7 +216,7 @@ describe('execution is opt-in (trust model)', () => {
 
   it('--unsafe-no-sandbox allows unconfined exec with a warning', async () => {
     const s = new GoCliStrategy();
-    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: null };
+    s.toolspecOverrides = { runner: mkRunner(specJson), sandbox: null, cacheDir: CACHE };
     const out = JSON.parse(await run(s, path.join(FIX, 'stdspec'), { format: 'json', execBinary: true, unsafeNoSandbox: true }));
     expect(out.source).toBe('toolspec');
     expect(calls[0].cmd).toBe('go');
@@ -224,7 +225,7 @@ describe('execution is opt-in (trust model)', () => {
 
   it('build failure fails closed to the AST path', async () => {
     const s = new GoCliStrategy();
-    s.toolspecOverrides = { runner: mkRunner(specJson, 1), sandbox: 'sandbox-exec' };
+    s.toolspecOverrides = { runner: mkRunner(specJson, 1), sandbox: 'sandbox-exec', cacheDir: CACHE };
     const out = JSON.parse(await run(s, path.join(FIX, 'cobra'), { format: 'json', execBinary: true }));
     expect(out.source).toBe('ast');
     expect(out.warnings.join(' ')).toContain('go build failed');
@@ -236,7 +237,7 @@ describe('execution is opt-in (trust model)', () => {
     ['JSON without commands', '{"code":"GENERIC"}'],
   ])('bad spec output (%s) falls back to AST', async (_n, stdout) => {
     const s = new GoCliStrategy();
-    s.toolspecOverrides = { runner: mkRunner(stdout), sandbox: 'sandbox-exec' };
+    s.toolspecOverrides = { runner: mkRunner(stdout), sandbox: 'sandbox-exec', cacheDir: CACHE };
     const out = JSON.parse(await run(s, path.join(FIX, 'cobra'), { format: 'json', execBinary: true }));
     expect(out.source).toBe('ast');
     expect(out.warnings.join(' ')).toContain('falling back to AST');

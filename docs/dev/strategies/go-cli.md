@@ -97,11 +97,16 @@ own startup). A temp HOME is not isolation. So:
   except the binary and the temp dir. Linux: `bwrap` with `--unshare-net`, private `/tmp` and
   `/home`, read-only binary. The Linux profile follows the same contract but has not been
   exercised on Linux.
-- **Build hardening.** `GOPROXY=off`, `GOFLAGS=-mod=readonly` (or `-mod=vendor`),
-  `GOTOOLCHAIN=local`, `CGO_ENABLED=0`, private `GOCACHE`; `GOROOT` and `GOBIN` are removed from
-  the child env (a shell `GOROOT` for another toolchain breaks the build). The module cache is
-  read-only under the sandbox. The build step can still *read* your home (toolchain, module
-  cache); only writes and network are denied.
+- **Build hardening.** Same semantics as a plain `go build` (cgo left at the Go default, so
+  cgo-tagged files and the C toolchain work), except: `GOPROXY=off`, `GOFLAGS=-mod=readonly`
+  (or `-mod=vendor`), `GOTOOLCHAIN=local`; `GOROOT` and `GOBIN` are removed from the child env (a
+  shell `GOROOT` for another toolchain breaks the build). Writes are confined to the private temp
+  dir plus one xray-managed build cache, `$XDG_CACHE_HOME/xray/go-cli/<hash of repo path>/gocache`
+  (`~/Library/Caches` on macOS, `~/.cache` elsewhere), one per scanned repo so repeat runs are fast
+  (cold build of a large CLI: minutes; warm: about a minute) and a hostile build can only poison
+  later xray builds of that same repo. The user's own `GOCACHE` is never touched. The module
+  cache is read-only. The build step can still *read* your home (toolchain, module cache); only
+  writes and network are denied. Build timeout 15 min.
 - **Run hardening.** Command is exactly `<bin> spec --format json`, scrubbed environment (no
   inherited secrets; temp HOME/XDG dirs, `NO_COLOR=1`), temp cwd, stdin closed, 15 s timeout,
   process group killed on timeout.

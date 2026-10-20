@@ -21,6 +21,7 @@
 //   written to the same contract but is untested on this platform.
 import { spawn } from 'child_process';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
 import * as os from 'os';
 import * as path from 'path';
 import { CommandsReport } from './model';
@@ -112,7 +113,13 @@ const sbq = (p: string) => `"${p.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
  * macOS SBPL profile. Last matching rule wins, so denials come before the
  * narrow allows. `readDenyHome` is set for the run step only.
  */
-export function sandboxProfile(opts: { work: string; home: string; bin?: string; readDenyHome: boolean }): string {
+export function sandboxProfile(opts: {
+  work: string;
+  home: string;
+  bin?: string;
+  readDenyHome: boolean;
+  writeDirs?: string[];
+}): string {
   const lines = [
     '(version 1)',
     '(allow default)',
@@ -120,6 +127,7 @@ export function sandboxProfile(opts: { work: string; home: string; bin?: string;
     '(deny file-write*)',
     `(allow file-write* (subpath ${sbq(opts.work)}) (literal "/dev/null") (literal "/dev/dtracehelper"))`,
   ];
+  for (const w of opts.writeDirs ?? []) lines.push(`(allow file-write* (subpath ${sbq(w)}))`);
   if (opts.readDenyHome) {
     lines.push(`(deny file-read* (subpath ${sbq(opts.home)}))`);
     lines.push(`(allow file-read* (subpath ${sbq(opts.work)})${opts.bin ? ` (literal ${sbq(opts.bin)})` : ''})`);
@@ -130,10 +138,16 @@ export function sandboxProfile(opts: { work: string; home: string; bin?: string;
 export function wrapSandbox(
   kind: SandboxKind,
   mode: 'build' | 'run',
-  p: { work: string; home: string; bin?: string; cmd: string; args: string[] }
+  p: { work: string; home: string; bin?: string; cmd: string; args: string[]; writeDirs?: string[] }
 ): { cmd: string; args: string[] } {
   if (kind === 'sandbox-exec') {
-    const profile = sandboxProfile({ work: p.work, home: p.home, bin: p.bin, readDenyHome: mode === 'run' });
+    const profile = sandboxProfile({
+      work: p.work,
+      home: p.home,
+      bin: p.bin,
+      readDenyHome: mode === 'run',
+      writeDirs: mode === 'build' ? p.writeDirs : undefined,
+    });
     return { cmd: '/usr/bin/sandbox-exec', args: ['-p', profile, p.cmd, ...p.args] };
   }
   const base = ['--die-with-parent', '--unshare-net', '--unshare-pid', '--unshare-ipc', '--dev', '/dev', '--proc', '/proc'];
@@ -141,7 +155,11 @@ export function wrapSandbox(
     // Whole fs readable (toolchain, module cache, repo); only work dir writable.
     return {
       cmd: 'bwrap',
-      args: [...base, '--ro-bind', '/', '/', '--tmpfs', '/tmp', '--bind', p.work, p.work, p.cmd, ...p.args],
+      args: [
+        ...base, '--ro-bind', '/', '/', '--tmpfs', '/tmp', '--bind', p.work, p.work,
+        ...(p.writeDirs ?? []).flatMap(w => ['--bind', w, w]),
+        p.cmd, ...p.args,
+      ],
     };
   }
   const ro: string[] = [];
@@ -235,6 +253,8 @@ export interface ToolspecOptions {
   unsafeNoSandbox?: boolean;
   buildTimeoutMs?: number;
   specTimeoutMs?: number;
+  /** Persistent build cache dir (default: per-repo dir under the user cache home). */
+  cacheDir?: string;
   /** Test seams. */
   runner?: Runner;
   sandbox?: SandboxKind | null;
@@ -244,6 +264,14 @@ export interface ToolspecOutcome {
   report?: CommandsReport;
   /** Why the toolspec path was not used. */
   reason?: string;
+}
+
+export function defaultCacheDir(root: string): string {
+  const base =
+    process.env.XDG_CACHE_HOME ||
+    (process.platform === 'darwin' ? path.join(os.homedir(), 'Library', 'Caches') : path.join(os.homedir(), '.cache'));
+  const key = crypto.createHash('sha1').update(path.resolve(root)).digest('hex').slice(0, 12);
+  return path.join(base, 'xray', 'go-cli', key, 'gocache');
 }
 
 /** True when the USER (flags or user-level env) asked for execution. */
@@ -272,9 +300,14 @@ export async function obtainToolspec(root: string, opts: ToolspecOptions = {}): 
       return os.homedir();
     }
   })();
+  // xray-managed Go build cache, one per scanned repo, so repeat runs are fast
+  // and a hostile build can only poison later xray builds of that same repo.
+  const wanted = opts.cacheDir ?? defaultCacheDir(root);
+  fs.mkdirSync(wanted, { recursive: true });
+  const cacheDir = fs.realpathSync(wanted); // sandbox rules match real paths
   const exec = (mode: 'build' | 'run', cmd: string, args: string[], o: RunOptions, bin?: string) => {
     if (!sandbox) return runner(cmd, args, o);
-    const w = wrapSandbox(sandbox, mode, { work, home: realHome, bin, cmd, args });
+    const w = wrapSandbox(sandbox, mode, { work, home: realHome, bin, cmd, args, writeDirs: [cacheDir] });
     return runner(w.cmd, w.args, o);
   };
 
@@ -292,7 +325,8 @@ export async function obtainToolspec(root: string, opts: ToolspecOptions = {}): 
       fs.mkdirSync(tmp, { recursive: true });
       // GOROOT/GOBIN dropped: a shell GOROOT for another toolchain breaks the
       // build ("compile: version mismatch"). No network: GOPROXY=off, module
-      // cache is read-only under the sandbox; go build cache is private.
+      // cache is read-only under the sandbox. CGO is left at the Go default so
+      // the build matches a plain `go build` (cgo-tagged files, C toolchain).
       const env: NodeJS.ProcessEnv = { ...process.env };
       delete env.GOROOT;
       delete env.GOBIN;
@@ -301,16 +335,15 @@ export async function obtainToolspec(root: string, opts: ToolspecOptions = {}): 
         GOFLAGS: '-mod=readonly',
         GOTOOLCHAIN: 'local',
         GOTELEMETRY: 'off',
-        GOCACHE: path.join(work, 'gocache'),
+        GOCACHE: cacheDir,
         GOTMPDIR: tmp,
         TMPDIR: tmp,
-        CGO_ENABLED: '0',
       });
       const vendor = fs.existsSync(path.join(root, 'vendor')) ? '-mod=vendor' : '-mod=readonly';
       const r = await exec('build', 'go', ['build', vendor, '-o', out, picked.pkg], {
         cwd: root,
         env,
-        timeoutMs: opts.buildTimeoutMs ?? 300_000,
+        timeoutMs: opts.buildTimeoutMs ?? 900_000,
       });
       if (r.spawnError) return { reason: `go not runnable: ${r.spawnError}` };
       if (r.timedOut) return { reason: 'go build timed out' };
