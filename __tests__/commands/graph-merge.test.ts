@@ -13,8 +13,6 @@ let work: string; // cwd for every run: contains roots `alpha/` and `beta/`
 let outDir: string;
 
 function run(args: string[]) {
-  // The parse cache lives in cwd; start every run cold so graphs are comparable.
-  fs.rmSync(path.join(work, '.xray_cache.db'), { force: true });
   return spawnSync(process.execPath, [BIN, ...args], {
     cwd: work,
     encoding: 'utf-8',

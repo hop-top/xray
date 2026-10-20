@@ -240,13 +240,37 @@ describe('SqliteCache', () => {
 
       // Manually insert corrupted JSON into cache
       const db = (cache as any).db;
-      db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables) VALUES (?, ?, ?, ?)').run(filePath, 123456, 'all', 0);
+      db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables, imports) VALUES (?, ?, ?, ?, ?)').run(filePath, 123456, 'all', 0, '[]');
       db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)').run(filePath, 'INVALID_JSON{{{');
 
       // Should skip corrupted entries and return empty array instead of throwing
       const result = cache.get(filePath, 123456, 'all', false);
       expect(result).not.toBeNull();
       expect(result?.tags).toEqual([]);
+    });
+
+    it('should round-trip imports', () => {
+      const imports = [{ file: 'a.go', source: 'example.com/m/cmd', alias: 'c' }];
+      cache.set('a.go', 5, [], imports as any, 'none', false);
+      expect(cache.get('a.go', 5, 'none', false)?.imports).toEqual(imports);
+    });
+
+    it('should treat an entry without stored imports (pre-upgrade cache) as a miss', () => {
+      const db = (cache as any).db;
+      db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables) VALUES (?, ?, ?, ?)').run('/old.ts', 1, 'none', 0);
+      expect(cache.get('/old.ts', 1, 'none', false)).toBeNull();
+    });
+
+    it('should add the imports column to a pre-upgrade database', () => {
+      const Database = require('better-sqlite3');
+      const p = path.join(os.tmpdir(), `xray-legacy-${process.pid}-${Date.now()}.db`);
+      const legacy = new Database(p);
+      legacy.exec('CREATE TABLE files_v2 (path TEXT PRIMARY KEY, mtime REAL, doc_config TEXT, include_variables INTEGER);');
+      legacy.close();
+      const c = new SqliteCache(p);
+      c.set('x.ts', 1, [], [{ file: 'x.ts', source: './y' }], 'none', false);
+      expect(c.get('x.ts', 1, 'none', false)?.imports).toHaveLength(1);
+      fs.rmSync(p, { force: true });
     });
 
     it('should handle corrupted analysis JSON gracefully', () => {
@@ -266,7 +290,7 @@ describe('SqliteCache', () => {
       const db = (cache as any).db;
 
       // Insert mix of valid and invalid tags
-      db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables) VALUES (?, ?, ?, ?)').run(filePath, 123456, 'all', 0);
+      db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables, imports) VALUES (?, ?, ?, ?, ?)').run(filePath, 123456, 'all', 0, '[]');
       db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)').run(filePath, JSON.stringify({ name: 'valid1', kind: 'function', line: 1, col: 0, file: filePath }));
       db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)').run(filePath, 'INVALID_JSON');
       db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)').run(filePath, JSON.stringify({ name: 'valid2', kind: 'class', line: 10, col: 0, file: filePath }));

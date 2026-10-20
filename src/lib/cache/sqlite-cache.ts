@@ -7,6 +7,7 @@ interface FileRow {
   mtime: number;
   doc_config: string;
   include_variables: number;
+  imports: string | null;
 }
 
 interface TagRow {
@@ -33,7 +34,8 @@ export class SqliteCache {
         path TEXT PRIMARY KEY,
         mtime REAL,
         doc_config TEXT,
-        include_variables INTEGER
+        include_variables INTEGER,
+        imports JSON
       );
       CREATE TABLE IF NOT EXISTS tags (
         file TEXT,
@@ -47,13 +49,31 @@ export class SqliteCache {
         analysis JSON
       );
     `);
+    // Caches written before imports were persisted lack the column. Add it;
+    // rows with a NULL value are treated as misses in get() and reparsed.
+    const cols = this.db.prepare('PRAGMA table_info(files_v2)').all() as Array<{ name: string }>;
+    if (!cols.some(c => c.name === 'imports')) {
+      this.db.exec('ALTER TABLE files_v2 ADD COLUMN imports JSON');
+    }
   }
 
   get(file: string, mtime: number, docConfig: string, includeVariables: boolean): { tags: Tag[], imports: Import[] } | null {
     try {
-      const row = this.db.prepare('SELECT mtime, doc_config, include_variables FROM files_v2 WHERE path = ?').get(file) as FileRow | undefined;
+      const row = this.db.prepare('SELECT mtime, doc_config, include_variables, imports FROM files_v2 WHERE path = ?').get(file) as FileRow | undefined;
 
       if (!row || row.mtime !== mtime || row.doc_config !== docConfig || Boolean(row.include_variables) !== includeVariables) {
+        return null;
+      }
+
+      // Entry written before imports were persisted (or unreadable): miss, so
+      // the file is reparsed rather than served with its imports dropped.
+      let imports: Import[];
+      try {
+        if (row.imports == null) return null;
+        imports = JSON.parse(row.imports);
+        if (!Array.isArray(imports)) return null;
+      } catch {
+        Logger.warn(`Corrupted imports cache for ${file}, treating as cache miss`);
         return null;
       }
 
@@ -70,7 +90,7 @@ export class SqliteCache {
         }
       }
 
-      return { tags, imports: [] }; // Imports caching omitted for brevity
+      return { tags, imports };
     } catch (err) {
       // Cache read failure shouldn't crash the application
       Logger.warn(`Failed to read from cache for ${file}: ${(err as Error).message}`);
@@ -80,12 +100,12 @@ export class SqliteCache {
 
   set(file: string, mtime: number, tags: Tag[], imports: Import[], docConfig: string, includeVariables: boolean) {
     try {
-      const insertFile = this.db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables) VALUES (?, ?, ?, ?)');
+      const insertFile = this.db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables, imports) VALUES (?, ?, ?, ?, ?)');
       const insertTag = this.db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)');
       const deleteTags = this.db.prepare('DELETE FROM tags WHERE file = ?');
 
       const transaction = this.db.transaction(() => {
-        insertFile.run(file, mtime, docConfig, includeVariables ? 1 : 0);
+        insertFile.run(file, mtime, docConfig, includeVariables ? 1 : 0, JSON.stringify(imports ?? []));
         deleteTags.run(file);
         for (const tag of tags) {
           insertTag.run(file, JSON.stringify(tag));

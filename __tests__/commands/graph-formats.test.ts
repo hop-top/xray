@@ -18,8 +18,6 @@ const parseCsv = (file: string): any[] =>
   parse(fs.readFileSync(file, 'utf-8'), { columns: true }) as any[];
 
 function run(args: string[]) {
-  // The parse cache lives in cwd; start every run cold so graphs are comparable.
-  fs.rmSync(path.join(work, '.xray_cache.db'), { force: true });
   return spawnSync(process.execPath, [BIN, ...args], {
     cwd: work,
     encoding: 'utf-8',
