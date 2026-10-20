@@ -71,7 +71,10 @@ printf '{"tool":"fake","version":"1","schema_version":"1.0","commands":[{"path":
   it('sandboxed: no network, no writes outside the private dir, no home reads', async () => {
     const r = await probe(sandbox);
     expect(r.net).not.toBe('0');
-    expect(r.write).not.toBe('0');
+    // bwrap gives the sandbox a private, writable tmpfs /tmp: the touch succeeds
+    // inside it by design and never reaches the host (asserted below via
+    // `escape`). sandbox-exec has no mount namespace, so there it must fail.
+    if (sandbox !== 'bwrap') expect(r.write).not.toBe('0');
     expect(r.home).not.toBe('0');
     expect(hits).toBe(0);
     expect(fs.existsSync(escape)).toBe(false);
@@ -151,4 +154,29 @@ printf '{"tool":"fake","version":"1","schema_version":"1.0","commands":[{"path":
     expect(out.source).toBe('toolspec');
     expect(out.commands.map((c: any) => c.path.join(' '))).toContain('demo item purge');
   }, 300_000);
+});
+
+// wrapSandbox('bwrap') is pure argument construction: checked on every OS.
+describe('bwrap argument order', () => {
+  it('private /tmp and /home are mounted before binds that live under them', () => {
+    const dir = fs.mkdtempSync('/tmp/xray-bwrap-order-');
+    try {
+      const { args } = wrapSandbox('bwrap', 'build', {
+        work: dir,
+        home: '/home/nobody',
+        cmd: 'go',
+        args: ['build'],
+        readAllow: [dir],
+      });
+      const tmpfsAt = (mp: string) => args.findIndex((a, i) => a === '--tmpfs' && args[i + 1] === mp);
+      const bindAt = args.findIndex((a, i) => a === '--ro-bind' && args[i + 1] === dir);
+      expect(tmpfsAt('/tmp')).toBeGreaterThanOrEqual(0);
+      expect(tmpfsAt('/home')).toBeGreaterThanOrEqual(0);
+      expect(bindAt).toBeGreaterThan(tmpfsAt('/tmp'));
+      expect(bindAt).toBeGreaterThan(tmpfsAt('/home'));
+      expect(args.findIndex((a, i) => a === '--bind' && args[i + 1] === dir)).toBeGreaterThan(tmpfsAt('/tmp'));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

@@ -166,6 +166,10 @@ export function wrapSandbox(
     return { cmd: '/usr/bin/sandbox-exec', args: ['-p', profile, p.cmd, ...p.args] };
   }
   const base = ['--die-with-parent', '--unshare-net', '--unshare-pid', '--unshare-ipc', '--dev', '/dev', '--proc', '/proc'];
+  // bwrap applies mounts in argument order: a later --tmpfs hides everything an
+  // earlier bind put under it. The private /tmp and /home therefore come first,
+  // so binds that live there (the repo, the module cache, the work dir) stay visible.
+  const priv = ['--tmpfs', '/tmp', '--tmpfs', '/home'];
   const ro: string[] = [];
   for (const d of ['/usr', '/lib', '/lib64', '/bin', '/sbin', '/etc']) if (fs.existsSync(d)) ro.push('--ro-bind', d, d);
   if (mode === 'build') {
@@ -174,7 +178,7 @@ export function wrapSandbox(
     return {
       cmd: 'bwrap',
       args: [
-        ...base, ...ro, ...extra, '--tmpfs', '/tmp', '--tmpfs', '/home', '--bind', p.work, p.work,
+        ...base, ...priv, ...ro, ...extra, '--bind', p.work, p.work,
         ...(p.writeDirs ?? []).flatMap(w => ['--bind', w, w]),
         p.cmd, ...p.args,
       ],
@@ -182,10 +186,7 @@ export function wrapSandbox(
   }
   return {
     cmd: 'bwrap',
-    args: [
-      ...base, ...ro, '--tmpfs', '/tmp', '--tmpfs', '/home', '--bind', p.work, p.work,
-      '--ro-bind', p.bin!, p.bin!, p.cmd, ...p.args,
-    ],
+    args: [...base, ...priv, ...ro, '--bind', p.work, p.work, '--ro-bind', p.bin!, p.bin!, p.cmd, ...p.args],
   };
 }
 
