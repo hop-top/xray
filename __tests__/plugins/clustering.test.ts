@@ -45,12 +45,12 @@ function makeBuiltGraph(): XrayGraph {
     for (const a of group) {
       for (const b of group) {
         if (a !== b) {
-          g.addEdgeWithKey(`c-${a}-${b}`, a, b, { type: 'calls' });
+          g.addEdgeWithKey(`c-${a}-${b}`, a, b, { type: 'calls', confidence: 'EXTRACTED' });
         }
       }
     }
   }
-  g.addEdgeWithKey('bridge', 'auth::login', 'db::read', { type: 'calls' });
+  g.addEdgeWithKey('bridge', 'auth::login', 'db::read', { type: 'calls', confidence: 'EXTRACTED' });
   return g;
 }
 

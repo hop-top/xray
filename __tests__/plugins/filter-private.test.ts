@@ -1,6 +1,10 @@
 import { Xray } from '../../src/lib/xray';
 import { FilterPrivatePlugin } from '../../examples/plugins/filter-private';
 import { Tag } from '../../src/lib/parser/types';
+import type { MapRenderer } from '../../src/lib/renderer/map-renderer';
+
+// The plugin does not touch the renderer; render:start requires one by type.
+const mockRenderer = {} as unknown as MapRenderer;
 
 // Mock console.log to capture output
 const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
@@ -234,7 +238,8 @@ describe('FilterPrivatePlugin', () => {
       await xray.emitAsync('render:start', {
         format: 'txt',
         chunked: false,
-        outputPath: '/output/xray.txt'
+        outputPath: '/output/xray.txt',
+        renderer: mockRenderer
       });
 
       expect(mockConsoleLog).toHaveBeenCalledWith(
@@ -248,7 +253,8 @@ describe('FilterPrivatePlugin', () => {
       await xray.emitAsync('render:start', {
         format: 'txt',
         chunked: false,
-        outputPath: '/output/xray.txt'
+        outputPath: '/output/xray.txt',
+        renderer: mockRenderer
       });
 
       expect(mockConsoleLog).not.toHaveBeenCalled();
@@ -265,7 +271,8 @@ describe('FilterPrivatePlugin', () => {
       await xray.emitAsync('render:start', {
         format: 'txt',
         chunked: false,
-        outputPath: '/output/xray.txt'
+        outputPath: '/output/xray.txt',
+        renderer: mockRenderer
       });
 
       expect(mockConsoleLog).toHaveBeenCalledWith(
