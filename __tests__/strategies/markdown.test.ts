@@ -4,6 +4,14 @@ import MarkdownStrategy from '../../strategies/markdown';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { spawnSync } from 'child_process';
+
+// The strategy shells out to the external `mdq` binary; suites that need it
+// are skipped (with the reason in their name) when it is not on PATH.
+const hasMdq = spawnSync('which', ['mdq']).status === 0;
+const skipNote = hasMdq ? '' : ' [skipped: mdq not installed]';
+const describeMdq = hasMdq ? describe : describe.skip;
+const itMdq = hasMdq ? it : it.skip;
 
 describe('MarkdownStrategy', () => {
   let strategy: MarkdownStrategy;
@@ -13,15 +21,23 @@ describe('MarkdownStrategy', () => {
     strategy = new MarkdownStrategy();
   });
 
+  // Mirrors the strategy runner (src/commands/strategy.ts): analyze() returns
+  // metadata and the runner stores it in the context under the project-relative
+  // path, which is what findFiles()/command handlers read back.
+  async function analyzeInto(ctx: StrategyContextImpl, relFile: string): Promise<void> {
+    const result = await strategy.analyze(relFile, ctx);
+    ctx.setFileMetadata(relFile, strategy.name, result.metadata);
+  }
+
   describe('metadata', () => {
     it('should have correct name and version', () => {
       expect(strategy.name).toBe('markdown');
-      expect(strategy.version).toBe('1.0.0');
+      expect(strategy.version).toBe('0.1.0');
     });
   });
 
   describe('detect()', () => {
-    it('should detect project with markdown files', async () => {
+    itMdq('should detect project with markdown files' + skipNote, async () => {
       const ctx = new StrategyContextImpl(fixtureRoot);
       const detected = await strategy.detect(ctx);
 
@@ -49,7 +65,7 @@ describe('MarkdownStrategy', () => {
       fs.rmSync(tempDir, { recursive: true, force: true });
     });
 
-    it('should detect .mdx files', async () => {
+    itMdq('should detect .mdx files' + skipNote, async () => {
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-mdx-'));
 
       fs.writeFileSync(
@@ -80,7 +96,7 @@ describe('MarkdownStrategy', () => {
     });
   });
 
-  describe('analyze()', () => {
+  describeMdq('analyze()' + skipNote, () => {
     it('should extract headings with line numbers', async () => {
       const ctx = new StrategyContextImpl(fixtureRoot);
       const readmePath = path.join(fixtureRoot, 'README.md');
@@ -204,14 +220,14 @@ describe('MarkdownStrategy', () => {
     });
   });
 
-  describe('commands', () => {
+  describeMdq('commands' + skipNote, () => {
     describe('toc', () => {
       it('should generate table of contents', async () => {
         const ctx = new StrategyContextImpl(fixtureRoot);
 
         // Pre-analyze files to populate metadata
-        await strategy.analyze(path.join(fixtureRoot, 'README.md'), ctx);
-        await strategy.analyze(path.join(fixtureRoot, 'docs/api.md'), ctx);
+        await analyzeInto(ctx, 'README.md');
+        await analyzeInto(ctx, 'docs/api.md');
 
         const result = await strategy.commands!.toc.handler(ctx);
 
@@ -223,7 +239,7 @@ describe('MarkdownStrategy', () => {
       it('should respect depth option', async () => {
         const ctx = new StrategyContextImpl(fixtureRoot);
 
-        await strategy.analyze(path.join(fixtureRoot, 'README.md'), ctx);
+        await analyzeInto(ctx, 'README.md');
 
         const result = await strategy.commands!.toc.handler(ctx, { depth: '1' });
 
@@ -238,8 +254,8 @@ describe('MarkdownStrategy', () => {
       it('should show cross-references between markdown files', async () => {
         const ctx = new StrategyContextImpl(fixtureRoot);
 
-        await strategy.analyze(path.join(fixtureRoot, 'README.md'), ctx);
-        await strategy.analyze(path.join(fixtureRoot, 'docs/api.md'), ctx);
+        await analyzeInto(ctx, 'README.md');
+        await analyzeInto(ctx, 'docs/api.md');
 
         const result = await strategy.commands!.refs.handler(ctx);
 
@@ -252,13 +268,13 @@ describe('MarkdownStrategy', () => {
       it('should find unlinked markdown files', async () => {
         const ctx = new StrategyContextImpl(fixtureRoot);
 
-        await strategy.analyze(path.join(fixtureRoot, 'README.md'), ctx);
-        await strategy.analyze(path.join(fixtureRoot, 'docs/api.md'), ctx);
-        await strategy.analyze(path.join(fixtureRoot, 'docs/orphan.md'), ctx);
+        await analyzeInto(ctx, 'README.md');
+        await analyzeInto(ctx, 'docs/api.md');
+        await analyzeInto(ctx, 'docs/orphan.md');
 
         const result = await strategy.commands!.orphans.handler(ctx);
 
-        expect(result.orphans).toContain(path.join(fixtureRoot, 'docs/orphan.md'));
+        expect(result.orphans).toContain('docs/orphan.md');
         expect(result.count).toBeGreaterThan(0);
       });
 
@@ -276,8 +292,8 @@ describe('MarkdownStrategy', () => {
       it('should find code references in documentation', async () => {
         const ctx = new StrategyContextImpl(fixtureRoot);
 
-        await strategy.analyze(path.join(fixtureRoot, 'README.md'), ctx);
-        await strategy.analyze(path.join(fixtureRoot, 'docs/installation.md'), ctx);
+        await analyzeInto(ctx, 'README.md');
+        await analyzeInto(ctx, 'docs/installation.md');
 
         const result = await strategy.commands!['code-refs'].handler(ctx);
 
@@ -288,7 +304,7 @@ describe('MarkdownStrategy', () => {
       it('should show which docs reference each code file', async () => {
         const ctx = new StrategyContextImpl(fixtureRoot);
 
-        await strategy.analyze(path.join(fixtureRoot, 'README.md'), ctx);
+        await analyzeInto(ctx, 'README.md');
 
         const result = await strategy.commands!['code-refs'].handler(ctx);
 
@@ -311,7 +327,7 @@ describe('MarkdownStrategy', () => {
         );
 
         const ctx = new StrategyContextImpl(tempDir);
-        await strategy.analyze(path.join(tempDir, 'README.md'), ctx);
+        await analyzeInto(ctx, 'README.md');
 
         const result = await strategy.commands!.coverage.handler(ctx);
 
@@ -347,7 +363,7 @@ describe('MarkdownStrategy', () => {
         );
 
         const ctx = new StrategyContextImpl(tempDir);
-        await strategy.analyze(path.join(tempDir, 'README.md'), ctx);
+        await analyzeInto(ctx, 'README.md');
 
         const result = await strategy.commands!.stale.handler(ctx);
 
@@ -367,7 +383,7 @@ describe('MarkdownStrategy', () => {
         );
 
         const ctx = new StrategyContextImpl(tempDir);
-        await strategy.analyze(path.join(tempDir, 'README.md'), ctx);
+        await analyzeInto(ctx, 'README.md');
 
         const result = await strategy.commands!.stale.handler(ctx);
 
@@ -375,6 +391,25 @@ describe('MarkdownStrategy', () => {
         const codeRef = result.stale.find((s: any) => s.type === 'code_reference');
         expect(codeRef).toBeDefined();
         expect(codeRef.reason).toBe('code_file_not_found');
+
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      });
+
+      it('should not flag existing targets when files were analyzed by absolute path', async () => {
+        const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-stale-abs-'));
+
+        fs.writeFileSync(path.join(tempDir, 'other.md'), '# Other\n');
+        fs.writeFileSync(path.join(tempDir, 'README.md'), '# Docs\n\n[Other](./other.md)');
+
+        const ctx = new StrategyContextImpl(tempDir);
+        // Runner registration passes absolute paths to analyze(), so links resolve to absolute paths
+        const abs = path.join(tempDir, 'README.md');
+        const result0 = await strategy.analyze(abs, ctx);
+        ctx.setFileMetadata('README.md', strategy.name, result0.metadata);
+
+        const result = await strategy.commands!.stale.handler(ctx);
+
+        expect(result.stale).toHaveLength(0);
 
         fs.rmSync(tempDir, { recursive: true, force: true });
       });
@@ -388,7 +423,7 @@ describe('MarkdownStrategy', () => {
         );
 
         const ctx = new StrategyContextImpl(tempDir);
-        await strategy.analyze(path.join(tempDir, 'README.md'), ctx);
+        await analyzeInto(ctx, 'README.md');
 
         const result = await strategy.commands!.stale.handler(ctx);
 
@@ -400,7 +435,7 @@ describe('MarkdownStrategy', () => {
   });
 
   describe('error handling', () => {
-    it('should handle mdq execution errors', async () => {
+    itMdq('should handle mdq execution errors' + skipNote, async () => {
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-bad-md-'));
       const badFile = path.join(tempDir, 'bad.md');
 

@@ -26,7 +26,7 @@ interface MdqParagraph {
 
 interface MdqCodeBlock {
   code_block: {
-    lang?: string;
+    language?: string;
     code: string;
   };
 }
@@ -77,6 +77,7 @@ export default class MarkdownStrategy implements Strategy {
     // Parse markdown with mdq (SAFE - no shell injection)
     const result = await execFileNoThrow('mdq', [
       '--output', 'json',
+      '',  // empty selector: first positional is a selector, not a path
       absolutePath
     ]);
 
@@ -174,7 +175,7 @@ export default class MarkdownStrategy implements Strategy {
       const codeBlock = element.code_block;
 
       metadata.codeBlocks.push({
-        language: codeBlock.lang || 'text',
+        language: codeBlock.language || 'text',
         code: codeBlock.code,
         file
       });
@@ -480,7 +481,7 @@ export default class MarkdownStrategy implements Strategy {
             for (const link of metadata.links) {
               // Check if target exists
               const targetPath = path.isAbsolute(link.url)
-                ? path.join(projectRoot, link.url)
+                ? link.url
                 : path.join(projectRoot, link.url);
 
               if (!fs.existsSync(targetPath)) {
@@ -499,7 +500,7 @@ export default class MarkdownStrategy implements Strategy {
           if (metadata?.codeReferences) {
             for (const ref of metadata.codeReferences) {
               const codePath = path.isAbsolute(ref.path)
-                ? path.join(projectRoot, ref.path)
+                ? ref.path
                 : path.join(projectRoot, ref.path);
 
               if (!fs.existsSync(codePath)) {
