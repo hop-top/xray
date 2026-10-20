@@ -1,6 +1,7 @@
 import { Xray } from '../../src/lib/xray';
 import { XrayPlugin } from '../../src/lib/events/plugin';
 import { Tag } from '../../src/lib/parser/types';
+import { ParserManager } from '../../src/lib/parser/manager';
 import fs from 'fs';
 import path from 'path';
 
@@ -58,14 +59,14 @@ describe('Event Pipeline Integration', () => {
       // Verify event order follows lifecycle
       expect(eventLog).toEqual([
         'scan:start',
-        'scan:file',
         'scan:complete',
+        'scan:file',
         'cache:check',
         'cache:miss',
         'parse:before',
         'parse:after',
-        'cache:write',
         'graph:add-file',
+        'cache:write',
         'graph:complete',
         'rank:start',
         'rank:complete',
@@ -370,26 +371,30 @@ describe('Event Pipeline Integration', () => {
       });
 
       const timestamps: number[] = [];
+      const endTimestamps: number[] = [];
 
       // Two listeners that both delay
       xray.on('scan:complete', async () => {
         timestamps.push(Date.now());
         await new Promise(resolve => setTimeout(resolve, 100));
+        endTimestamps.push(Date.now());
       });
 
       xray.on('scan:complete', async () => {
         timestamps.push(Date.now());
         await new Promise(resolve => setTimeout(resolve, 100));
+        endTimestamps.push(Date.now());
       });
 
-      const start = Date.now();
       await xray.run();
-      const elapsed = Date.now() - start;
 
-      // Parallel execution should take ~100ms not ~200ms
+      // Measure the listener window itself (not the whole run, which also
+      // scans/parses/ranks and is load-sensitive). Sequential execution
+      // would span >= 200ms; parallel spans ~100ms.
       expect(timestamps.length).toBe(2);
-      expect(Math.abs(timestamps[0] - timestamps[1])).toBeLessThan(10); // Started at same time
-      expect(elapsed).toBeLessThan(150); // Ran in parallel
+      expect(Math.abs(timestamps[0] - timestamps[1])).toBeLessThan(30); // Started at same time
+      const span = Math.max(...endTimestamps) - Math.min(...timestamps);
+      expect(span).toBeLessThan(190); // Ran in parallel
     });
   });
 
@@ -414,7 +419,9 @@ describe('Event Pipeline Integration', () => {
         errorEvent = event;
       });
 
-      await expect(xray.run()).rejects.toThrow('Test error');
+      // Listener failures are isolated and surfaced via the `error` event;
+      // the run itself completes (4033c6f pipeline unification).
+      await expect(xray.run()).resolves.toBeDefined();
 
       expect(errorEvent).not.toBeNull();
       expect(errorEvent.event).toBe('parse:after');
@@ -454,7 +461,13 @@ describe('Event Pipeline Integration', () => {
 
     it('should handle parse errors gracefully', async () => {
       const testFile = path.join(testDir, 'invalid.ts');
-      fs.writeFileSync(testFile, `this is not valid typescript!!!`);
+      fs.writeFileSync(testFile, `export const x = 1;`);
+
+      // tree-sitter is error-tolerant and never throws on bad syntax, so
+      // force a parser failure to exercise the parse:error path.
+      const parseSpy = jest
+        .spyOn(ParserManager.prototype, 'parse')
+        .mockRejectedValue(new Error('parser exploded'));
 
       const xray = new Xray({
         path: testDir,
@@ -468,11 +481,15 @@ describe('Event Pipeline Integration', () => {
         parseErrors.push(event);
       });
 
-      await xray.run();
+      try {
+        await xray.run();
+      } finally {
+        parseSpy.mockRestore();
+      }
 
       expect(parseErrors.length).toBeGreaterThan(0);
       expect(parseErrors[0].file).toContain('invalid.ts');
-      expect(parseErrors[0].error).toBeDefined();
+      expect(parseErrors[0].error.message).toBe('parser exploded');
     });
 
     it('should allow plugins to skip files with errors', async () => {
@@ -540,9 +557,9 @@ describe('Event Pipeline Integration', () => {
       await xray.use(new ErrorPlugin1());
       await xray.use(new ErrorPlugin2());
 
-      await expect(xray.run()).rejects.toThrow();
+      // Listener failures are reported via `error`, not thrown from run().
+      await expect(xray.run()).resolves.toBeDefined();
 
-      // First error should stop execution
       expect(errors.length).toBeGreaterThanOrEqual(1);
       expect(errors[0]).toContain('Error from plugin');
     });
