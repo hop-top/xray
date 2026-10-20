@@ -6,9 +6,11 @@ import { QueryResolver } from '../lib/query-resolver';
 import * as cliProgress from 'cli-progress';
 import { Logger } from '../lib/logger';
 import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase } from '../lib/config';
-import { CodedError, FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
+import { CodedError, FileWriteError, NotFoundError } from '../lib/error/types';
 import { resolveFormatFlags } from '../lib/output-format';
 import { GraphSerializer } from '../lib/graph/serializer';
+import { mergeSerializedGraphs } from '../lib/graph/merge';
+import type { SerializedGraph } from '../lib/query/types';
 import { FileScanner } from '../lib/scanner';
 import { StrategyLoader } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
@@ -116,6 +118,23 @@ const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<
   return { match, catch: catchPatterns, detectedStrategies };
 };
 
+/**
+ * Write the (merged) graph as JSON to `outputPath`. Returns the files written.
+ */
+const writeGraphOutput = (
+  graph: SerializedGraph,
+  _format: 'json',
+  outputPath: string
+): string[] => {
+  try {
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    fs.writeFileSync(outputPath, JSON.stringify(graph, null, 2) + '\n');
+  } catch (err: any) {
+    throw new FileWriteError(outputPath, err);
+  }
+  return [outputPath];
+};
+
 // Helper function to run a single xray generation
 export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
   // Auto-configure from detected strategies if enabled
@@ -174,14 +193,6 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
      mergedOptions.csv ? 'csv' :
      mergedOptions.xml ? 'xml' : 'txt');
 
-  // A raw JSON graph is a single document: reject up-front, before any
-  // analysis or file write, rather than emitting concatenated JSON.
-  if (format === 'json' && paths.length > 1) {
-    throw new UsageError(
-      `--format json writes a single graph document; got ${paths.length} paths. Run once per path.`
-    );
-  }
-
   const outputPath = resolveOutputPath(mergedOptions.output, format);
   const shareOption = mergedOptions.share;
   const shareRequested = shareOption !== undefined && shareOption !== false;
@@ -222,73 +233,81 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
   const chunkedEnabled = mergedOptions.chunked !== false;
 
   if (format === 'json') {
-    // The raw JSON graph is not a rendering: chunking (a token-budget
-    // concern of the text renderers) does not apply, and the same single
-    // SerializedGraph document is written with or without --no-chunk.
-    if (chunkedEnabled) Logger.debug('--format json: chunking does not apply; writing one graph file');
-    const currentPath = paths[0];
-    let barStarted = false;
-    const xray = new Xray({
-      path: currentPath,
-      limit: parseInt(mergedOptions.limit),
-      anchor,
-      depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
-      features,
-      queries,
-      match: mergedOptions.match || [],
-      catch: mergedOptions.catch || [],
-      languages: mergedOptions.languages,
-      format,
-      diagram,
-      chunked: false,
-      onProgress: (current, total, file) => {
-        if (!barStarted) {
-          progressBar.start(total, 0, { file: 'Starting...' });
-          barStarted = true;
-        }
-        progressBar.update(current, { file });
-        if (current >= total) {
-          progressBar.stop();
-        }
+    // The JSON graph is not a rendering: chunking (a
+    // token-budget concern of the text renderers) does not apply, and one
+    // graph (merged across all --path roots) is written with or without
+    // --no-chunk.
+    if (chunkedEnabled) Logger.debug(`--format ${format}: chunking does not apply; writing the graph once`);
+    const uniquePaths = Array.from(new Set(paths));
+    const parts: Array<{ root: string; graph: SerializedGraph }> = [];
+    const shareInputs: Array<{ currentPath: string; rankedNodes: any; graph: any }> = [];
+    for (let i = 0; i < uniquePaths.length; i++) {
+      const currentPath = uniquePaths[i];
+      if (uniquePaths.length > 1) {
+        Logger.info(`\nProcessing path ${i + 1}/${uniquePaths.length}: ${currentPath}`);
       }
-    });
-    await applyPresetFlags(xray, mergedOptions.preset, currentPath);
-    const { rankedNodes, graph } = await xray.buildGraph();
-
-    const serialized = new GraphSerializer().serialize(graph, currentPath);
-    try {
-      fs.mkdirSync(path.dirname(outputPath!), { recursive: true });
-      fs.writeFileSync(outputPath!, JSON.stringify(serialized, null, 2) + '\n');
-      Logger.success(`Graph written to ${outputPath}`);
-    } catch (err: any) {
-      throw new FileWriteError(outputPath!, err);
+      let barStarted = false;
+      const xray = new Xray({
+        path: currentPath,
+        limit: parseInt(mergedOptions.limit),
+        anchor,
+        depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
+        features,
+        queries,
+        match: mergedOptions.match || [],
+        catch: mergedOptions.catch || [],
+        languages: mergedOptions.languages,
+        format,
+        diagram,
+        chunked: false,
+        onProgress: (current, total, file) => {
+          if (!barStarted) {
+            progressBar.start(total, 0, { file: 'Starting...' });
+            barStarted = true;
+          }
+          progressBar.update(current, { file });
+          if (current >= total) {
+            progressBar.stop();
+          }
+        }
+      });
+      await applyPresetFlags(xray, mergedOptions.preset, currentPath);
+      const { rankedNodes, graph } = await xray.buildGraph();
+      parts.push({ root: currentPath, graph: new GraphSerializer().serialize(graph, currentPath) });
+      shareInputs.push({ currentPath, rankedNodes, graph });
     }
 
+    const merged = mergeSerializedGraphs(parts);
+    const written = writeGraphOutput(merged, format, outputPath!);
+    for (const f of written) Logger.success(`Graph written to ${f}`);
+
     if (shareRequested) {
-      const sharePath = resolveShareOutputPath({
-        outputPath: outputPath!,
-        projectPath: currentPath,
-        shareOption,
-        pathIndex: 0,
-        totalPaths: 1
+      shareInputs.forEach(({ currentPath, rankedNodes, graph }, i) => {
+        const sharePath = resolveShareOutputPath({
+          outputPath: outputPath!,
+          projectPath: currentPath,
+          shareOption,
+          pathIndex: i,
+          totalPaths: shareInputs.length
+        });
+        const summary = buildShareSummary({
+          projectPath: currentPath,
+          outputPath: outputPath!,
+          chunked: false,
+          rankedNodes,
+          graph,
+          command: commandUsed,
+          detectedStrategies,
+          tokenLimit: parseInt(mergedOptions.limit)
+        });
+        try {
+          fs.writeFileSync(sharePath, summary);
+          Logger.success(`Share summary written to ${sharePath}`);
+          Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
+        } catch (err: any) {
+          throw new FileWriteError(sharePath, err);
+        }
       });
-      const summary = buildShareSummary({
-        projectPath: currentPath,
-        outputPath: outputPath!,
-        chunked: false,
-        rankedNodes,
-        graph,
-        command: commandUsed,
-        detectedStrategies,
-        tokenLimit: parseInt(mergedOptions.limit)
-      });
-      try {
-        fs.writeFileSync(sharePath, summary);
-        Logger.success(`Share summary written to ${sharePath}`);
-        Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
-      } catch (err: any) {
-        throw new FileWriteError(sharePath, err);
-      }
     }
     return;
   }

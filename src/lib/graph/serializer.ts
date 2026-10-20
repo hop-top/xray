@@ -15,7 +15,7 @@ const WELL_KNOWN_EDGE_KEYS = ['type', 'confidence', 'community'] as const;
  *
  * This ensures compatibility between:
  * - Query system (xray query --graph)
- * - CQRS system (xray map --save-graph)
+ * - CQRS system (xray map --format json)
  */
 export class GraphSerializer {
   /**

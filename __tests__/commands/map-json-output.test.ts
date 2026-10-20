@@ -88,13 +88,6 @@ describe('map JSON output is valid JSON', () => {
     expect(res).toBeDefined();
   });
 
-  test('multiple --path with JSON is a usage error (exit 2), nothing written', () => {
-    const out = path.join(outDir, 'graph.json');
-    const r = run(['map', '-p', repo, '-p', path.join(repo, 'sub'), '--skip-detect', '--json', '-o', out]);
-    expect(r.status).toBe(2);
-    expect(fs.existsSync(out)).toBe(false);
-  });
-
   test('text output is unchanged (not JSON)', () => {
     const out = path.join(outDir, 'out.txt');
     expect(run([...base(), '--no-chunk', '-o', out]).status).toBe(0);

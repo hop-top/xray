@@ -50,7 +50,7 @@ export interface SerializedEdge {
  * Serialized graph format (single source of truth for graph persistence)
  * This schema is used by both:
  * - Query system (xray query --graph)
- * - CQRS system (xray map --save-graph)
+ * - CQRS system (xray map --format json)
  */
 export interface SerializedGraph {
   metadata: {
@@ -59,6 +59,12 @@ export interface SerializedGraph {
     projectPath: string;
     nodeCount: number;
     edgeCount: number;
+    /**
+     * Present only on merged multi-root graphs. Every node id (and
+     * `file`) in such a graph is prefixed `<label>/`; this maps each label
+     * to the absolute root it came from.
+     */
+    roots?: Array<{ label: string; path: string }>;
   };
   nodes: SerializedNode[];
   edges: SerializedEdge[];
