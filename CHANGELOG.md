@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Go calls written `pkg.Func()` now resolve to `calls` edges when `pkg` is an
+  import (alias honoured) of a package inside the module declared by
+  `go.mod`; the target is the exported function in that package's
+  directory. Edges are `INFERRED`. External packages, blank imports and
+  method calls on values (`x.Method()`) stay unresolved. `go.work` and
+  nested `go.mod` layouts are not supported: resolution is disabled for
+  them. Import-alias captured on `Import.alias`.
+- A warm `.xray_cache.db` no longer drops file-level `imports` edges: the
+  parse cache now persists imports (cache entries from older versions are
+  reparsed once). Warm and cold runs produce identical graphs.
+
 - `xray query` printed nothing; results now go to stdout per `--format`
   (`table` default, `tree`, `json`). A missing graph file exits 3; a bad
   query or missing `--graph` exits 2.
