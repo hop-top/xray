@@ -379,7 +379,7 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
 
   // Build final options with CLI taking precedence
   return {
-    path: cliOptions.path && cliOptions.path.length > 0 ? cliOptions.path : (baseConfig.paths || [process.cwd()]),
+    path: cliOptions.path && cliOptions.path.length > 0 ? cliOptions.path : (baseConfig.paths || []),
     output: cliOptions.output || baseConfig.output,
     limit: cliOptions.limit || baseConfig.limit?.toString() || '4096',
     anchor: cliOptions.anchor || baseConfig.anchor,
@@ -394,6 +394,7 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     dot: cliOptions.dot || baseConfig.diagram === 'dot',
     mermaid: cliOptions.mermaid || baseConfig.diagram === 'mermaid',
     chunked: cliOptions.chunk !== false && (cliOptions.chunk ?? (baseConfig.chunked !== false)),
+    detect: cliOptions.detect ?? false,
     skipDetect: cliOptions.skipDetect ?? baseConfig.skipDetect ?? false,
     share: cliOptions.share ?? baseConfig.share ?? false,
     extensions: mergeExtensionConfigs(

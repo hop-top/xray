@@ -121,6 +121,13 @@ describe('TelemetryConsent', () => {
       expect(config?.telemetry?.enabled).toBe(true);
     });
 
+    it('should not seed paths in the config it creates', () => {
+      saveConsentDecision(false);
+
+      const config = loadConfig();
+      expect(config?.paths).toBeUndefined();
+    });
+
     it('should update existing config with telemetry setting', () => {
       const configPath = path.join(tmpDir, '.xrayrc.json');
       fs.writeFileSync(configPath, JSON.stringify({

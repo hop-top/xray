@@ -82,10 +82,10 @@ export function saveConsentDecision(enabled: boolean): void {
     let config = loadConfig();
 
     if (!config) {
-      // Create minimal config if none exists
-      config = {
-        paths: [process.cwd()]
-      } as XrayConfig;
+      // Create minimal config if none exists. Do not seed `paths`: a seeded
+      // path is indistinguishable from a user-provided one and disables
+      // strategy auto-detection / auto-configuration.
+      config = {} as XrayConfig;
     }
 
     // Set telemetry preference

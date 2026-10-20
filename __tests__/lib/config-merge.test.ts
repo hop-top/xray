@@ -48,6 +48,27 @@ describe('mergeConfig — plugin preset + lens forwarding', () => {
   });
 });
 
+describe('mergeConfig — path and detect forwarding', () => {
+  it('leaves merged.path empty when neither CLI nor config set paths (keeps auto-detect eligible)', () => {
+    const merged = mergeConfig({ telemetry: { enabled: false } } as XrayConfig, {});
+    expect(merged.path).toEqual([]);
+  });
+
+  it('prefers config paths over the empty default', () => {
+    const merged = mergeConfig({ paths: ['./src'] }, {});
+    expect(merged.path).toEqual(['./src']);
+  });
+
+  it('forwards --detect so it still works when a config file is loaded', () => {
+    const merged = mergeConfig({ paths: ['./src'] }, { detect: true });
+    expect(merged.detect).toBe(true);
+  });
+
+  it('defaults merged.detect to false', () => {
+    expect(mergeConfig({ paths: ['./src'] }, {}).detect).toBe(false);
+  });
+});
+
 describe('mergeConfig — lens features deep-merge', () => {
   it('preserves base features not overridden by the lens', () => {
     const config: XrayConfig = {
