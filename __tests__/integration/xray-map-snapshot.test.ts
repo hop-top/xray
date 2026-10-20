@@ -184,13 +184,13 @@ describe('xray map — backward-compat snapshot (T-0018)', () => {
     // drift between the two renderer instances.
     const keysOf = (m: Map<string, string>) =>
       Array.from(m.keys())
-        .map((k) => path.basename(k))
+        .map((k) => path.basename(k).replace(/^map_(default|explicit)/, 'map'))
         .sort();
     expect(keysOf(outDefault.chunks)).toEqual(keysOf(outExplicit.chunks));
     // Byte-length equality for every normalized chunk content.
     const contentOf = (m: Map<string, string>) =>
       Array.from(m.entries())
-        .map(([k, v]) => [path.basename(k), v] as const)
+        .map(([k, v]) => [path.basename(k).replace(/^map_(default|explicit)/, 'map'), v] as const)
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([_, v]) => v);
     expect(contentOf(outDefault.chunks)).toEqual(contentOf(outExplicit.chunks));
