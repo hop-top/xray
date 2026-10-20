@@ -205,8 +205,12 @@ describe('GraphSerializer', () => {
 
       expect(result.size).toBe(1);
       expect(result.hasEdge('src/main.ts', 'src/main.ts::main')).toBe(true);
-      expect(result.getEdgeAttributes('src/main.ts', 'src/main.ts::main')).toEqual({
+      // Graphs are multi: resolve the edge key before reading attributes.
+      const [edgeKey] = result.edges('src/main.ts', 'src/main.ts::main');
+      expect(result.getEdgeAttributes(edgeKey)).toEqual({
         type: 'defines',
+        // Edges serialized without confidence are backfilled on load.
+        confidence: 'EXTRACTED',
       });
     });
 
@@ -272,8 +276,8 @@ describe('GraphSerializer', () => {
         label: 'processData',
         kind: 'function',
       });
-      graph.addEdge('src/main.ts', 'src/main.ts::main', { type: 'defines' });
-      graph.addEdge('src/main.ts::main', 'src/api.ts::processData', { type: 'calls' });
+      graph.addEdge('src/main.ts', 'src/main.ts::main', { type: 'defines', confidence: 'EXTRACTED' });
+      graph.addEdge('src/main.ts::main', 'src/api.ts::processData', { type: 'calls', confidence: 'EXTRACTED' });
 
       // Serialize
       const serialized = serializer.serialize(graph, '/test/project');
@@ -294,7 +298,8 @@ describe('GraphSerializer', () => {
       // Verify edges
       graph.forEachEdge((edgeId: string, attrs: any, source: string, target: string) => {
         expect(restored.hasEdge(source, target)).toBe(true);
-        expect(restored.getEdgeAttributes(source, target)).toEqual(attrs);
+        const [restoredKey] = restored.edges(source, target);
+        expect(restored.getEdgeAttributes(restoredKey)).toEqual(attrs);
       });
     });
   });

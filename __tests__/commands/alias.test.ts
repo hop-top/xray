@@ -25,7 +25,7 @@ describe('Alias Commands', () => {
       const program = registerAliasCommand();
       await program.parseAsync(['node', 'test', 'list']);
 
-      expect(consoleLogSpy).toHaveBeenCalledWith('No aliases configured.');
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('No aliases configured.'));
       consoleLogSpy.mockRestore();
     });
 

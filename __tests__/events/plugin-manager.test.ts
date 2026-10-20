@@ -1,6 +1,7 @@
 import { PluginManager, XrayPlugin } from '../../src/lib/events/plugin';
 import { AsyncEventEmitter } from '../../src/lib/events/async-emitter';
 import { XrayEvents } from '../../src/lib/events/types';
+import { Logger } from '../../src/lib/logger';
 
 // Mock Xray class for testing
 class MockXray extends AsyncEventEmitter<XrayEvents> {
@@ -352,8 +353,10 @@ describe('PluginManager', () => {
                 apply: applyFn
             };
 
+            // Static import: jest.config resetModules gives a fresh Logger to
+            // any in-test require(), which PluginManager would not share.
             const warnSpy = jest
-                .spyOn(require('../../src/lib/logger').Logger, 'warn')
+                .spyOn(Logger, 'warn')
                 .mockImplementation(() => {});
 
             try {
