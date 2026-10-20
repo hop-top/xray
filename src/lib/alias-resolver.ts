@@ -13,7 +13,7 @@ export class AliasResolver {
   private aliases: Map<string, string> = new Map();
   private builtInCommands: Set<string> = new Set([
     'map', 'scan', 'graph', 'find', 'detect', 'strategies', 'strategy',
-    'save', 'load', 'snapshot', 'plugin', 'alias', 'config',
+    'save', 'load', 'snapshot', 'plugin', 'alias', 'lang', 'config',
     'clear-cache', 'completion', 'help', 'version'
   ]);
 

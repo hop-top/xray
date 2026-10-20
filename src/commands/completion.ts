@@ -37,7 +37,7 @@ export const handleCompletionAction = async (shell: string) => {
 async function loadCommandsForCompletion() {
   const coreCommands = [
     'map', 'scan', 'graph', 'generate', 'query',
-    'strategy', 'alias', 'explore', 'clear-cache', 'completion', 'help'
+    'strategy', 'alias', 'lang', 'explore', 'clear-cache', 'completion', 'help'
   ];
 
   const strategyCommands: Record<string, string[]> = {};
@@ -246,6 +246,7 @@ function getCommandDescription(cmd: string): string {
     strategy: 'Manage strategies',
     alias: 'Manage aliases',
     explore: 'Find files and search code',
+    'lang': 'Manage language packs (tree-sitter grammars)',
     'clear-cache': 'Clear SQLite cache',
     completion: 'Generate shell completion',
     help: 'Display help'

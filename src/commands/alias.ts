@@ -60,7 +60,7 @@ export function registerAliasCommand(): Command {
       }
 
       // Check for built-in conflicts
-      const builtIns = ['map', 'scan', 'graph', 'find', 'detect', 'strategies', 'strategy', 'save', 'load', 'alias', 'config'];
+      const builtIns = ['map', 'scan', 'graph', 'find', 'detect', 'strategies', 'strategy', 'save', 'load', 'alias', 'config', 'lang'];
       if (builtIns.includes(name)) {
         throw new ConflictError(`Cannot create alias "${name}" - conflicts with built-in command`);
       }

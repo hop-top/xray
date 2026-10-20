@@ -9,6 +9,7 @@ import { handleDescribeAction } from '../describe';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
 import { registerPathsCommand } from '../paths';
+import { registerLangCommand } from '../lang';
 
 /**
  * Register all static core commands
@@ -48,6 +49,9 @@ export function registerCoreCommands(program: Command): void {
 
   // Alias management command
   program.addCommand(registerAliasCommand());
+
+  // Language pack management command
+  program.addCommand(registerLangCommand());
 
   // System commands
   // `cache` noun-verb group (canonical form)
