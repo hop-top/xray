@@ -89,8 +89,11 @@ describe('Strategy Command E2E', () => {
 
       const output = execSync(`node ${CLI_PATH} strategy detect -p ${plainProject}`).toString();
       expect(output).toContain('Detecting strategies');
-      expect(output).not.toContain('Detected Strategies');
+      // Generic strategies (build, package-manager) legitimately match any
+      // package.json project; only framework strategies must stay undetected.
       expect(output).not.toContain('react');
+      expect(output).not.toContain('nextjs');
+      expect(output).not.toContain('express');
     });
 
     test('should fail with non-existent path', () => {
@@ -311,8 +314,10 @@ describe('Strategy Command E2E', () => {
   });
 
   describe('backwards compatibility', () => {
-    test('explore strategy:list should still work', () => {
-      const output = execSync(`node ${CLI_PATH} explore strategy:list`).toString();
+    // The colon meta-command form (`strategy:list`) was replaced by the
+    // space-separated subcommand form in af1af00; `strategy list` supersedes it.
+    test('strategy list (replaces strategy:list) should list strategies', () => {
+      const output = execSync(`node ${CLI_PATH} strategy list`).toString();
       expect(output).toContain('Available Strategies');
       expect(output).toContain('react');
     });
@@ -323,8 +328,8 @@ describe('Strategy Command E2E', () => {
       expect(output).toContain('react');
     });
 
-    test('strategy:list should still work', () => {
-      const output = execSync(`node ${CLI_PATH} strategy:list`).toString();
+    test('strategy ls alias should list strategies', () => {
+      const output = execSync(`node ${CLI_PATH} strategy ls`).toString();
       expect(output).toContain('Available Strategies');
     });
   });
