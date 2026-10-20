@@ -10,6 +10,10 @@ describe('Ranker', () => {
         ranker = new Ranker(graph);
     });
 
+    it('should return an empty ranking for an empty graph', () => {
+        expect(ranker.rank()).toEqual([]);
+    });
+
     it('should rank nodes', () => {
         graph.addNode('A', { type: 'file' });
         graph.addNode('B', { type: 'tag' });

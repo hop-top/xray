@@ -10,6 +10,12 @@ export class Ranker {
   }
 
   rank(focusNode?: string): RankedNode[] {
+    // PageRank throws "failed to converge" on an empty graph (e.g. every
+    // file skipped or no parseable files); nothing to rank.
+    if (this.graph.order === 0) {
+      return [];
+    }
+
     // 1. Compute PageRank (Standard)
     const scores = pagerank.pagerank(this.graph, {
       getEdgeWeight: null,
