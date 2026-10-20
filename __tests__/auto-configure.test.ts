@@ -14,7 +14,7 @@ const CLI_PATH = path.join(__dirname, '../bin/xray');
  */
 function runCli(args: string, cwd: string): string {
   const withOut = args.includes('--no-chunk') ? `${args} -o out.txt` : args;
-  const stdout = execSync(`node ${CLI_PATH} ${withOut}`, {
+  const stdout = execSync(`node ${CLI_PATH} ${withOut} 2>&1`, {
     encoding: 'utf-8',
     timeout: 30000,
     cwd,

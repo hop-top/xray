@@ -5,8 +5,8 @@ exports[`xray map — backward-compat snapshot (T-0018) produces a stable chunk 
   "chunkCount": 1,
   "chunks": [
     {
-      "bytes": 45,
-      "hash": "2bb643dc8e19",
+      "bytes": 1695,
+      "hash": "ece3881fac94",
       "key": "map_plugins.md",
     },
   ],

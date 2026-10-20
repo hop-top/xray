@@ -199,7 +199,7 @@ export const NotificationContext = createContext({
 
   describe('Strategy Detection', () => {
     it('should detect React strategy', () => {
-      const output = execSync(`node ${CLI_PATH} strategy detect -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} strategy detect -p ${testRoot} 2>&1`).toString();
 
       expect(output).toContain('Detected Strategies:');
       expect(output).toContain('react');
@@ -207,7 +207,7 @@ export const NotificationContext = createContext({
     });
 
     it('should list React as available strategy', () => {
-      const output = execSync(`node ${CLI_PATH} strategy list`).toString();
+      const output = execSync(`node ${CLI_PATH} strategy list 2>&1`).toString();
 
       expect(output).toContain('Available Strategies:');
       expect(output).toContain('react');
@@ -275,7 +275,7 @@ export const NotificationContext = createContext({
       try {
         // Non-detected strategies warn and report nothing (exit 0) instead of failing.
         const output = execSync(`node ${CLI_PATH} react components -p ${nonReactDir} 2>&1`).toString();
-        expect(output).toContain('Strategy "react" did not detect applicable project');
+        expect(output).toContain('Extension "react" did not detect an applicable project');
         expect(output).toContain('Total: 0');
       } finally {
         fs.rmSync(nonReactDir, { recursive: true, force: true });

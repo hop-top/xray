@@ -213,14 +213,14 @@ hosts = [
 
   describe('Strategy Detection', () => {
     it('should detect config files strategy', () => {
-      const output = execSync(`node ${CLI_PATH} strategy detect -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} strategy detect -p ${testRoot} 2>&1`).toString();
 
       expect(output).toContain('Detected Strategies:');
       expect(output).toContain('config');
     });
 
     it('should list config as available strategy', () => {
-      const output = execSync(`node ${CLI_PATH} strategy list`).toString();
+      const output = execSync(`node ${CLI_PATH} strategy list 2>&1`).toString();
 
       expect(output).toContain('Available Strategies:');
       expect(output).toContain('config');
@@ -448,7 +448,7 @@ hosts = [
       try {
         // Non-detected strategies warn and report nothing (exit 0) instead of failing.
         const output = execSync(`node ${CLI_PATH} config list -p ${noConfigDir} 2>&1`).toString();
-        expect(output).toContain('Strategy "config" did not detect applicable project');
+        expect(output).toContain('Extension "config" did not detect an applicable project');
         expect(output).toMatch(/Total:\s*0\s*file\(s\)/);
       } finally {
         fs.rmSync(noConfigDir, { recursive: true, force: true });
