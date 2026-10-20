@@ -88,9 +88,18 @@ export function cluster(
     rng: opts.rng,
   });
 
-  const communities = detailed.communities as Record<string, number>;
+  // Louvain assigns every node of the copy a community, including nodes with
+  // no surviving edges (singleton noise). Report only nodes that actually
+  // participate in the filtered subgraph so `communities` / `count` agree
+  // with the `community` attributes written back below.
+  const communities: Record<string, number> = {};
+  for (const [nodeId, cid] of Object.entries(detailed.communities as Record<string, number>)) {
+    if (subgraph.degree(nodeId) > 0) {
+      communities[nodeId] = cid;
+    }
+  }
   const modularity = detailed.modularity;
-  const count = detailed.count;
+  const count = new Set(Object.values(communities)).size;
 
   // Write the community attribute back onto the original graph. Nodes that
   // were filtered out of the subgraph (e.g. no calls edges) still exist in

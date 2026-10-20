@@ -39,22 +39,22 @@ function makeThreeClusterGraph(): XrayGraph {
     g.addNode(fileId, { type: 'file', label: fileId });
     for (const m of members) {
       g.addNode(m, { type: 'tag', label: m, kind: 'function', file: fileId, line: 0 });
-      g.addEdgeWithKey(`def-${fileId}-${m}`, fileId, m, { type: 'defines' });
+      g.addEdgeWithKey(`def-${fileId}-${m}`, fileId, m, { type: 'defines', confidence: 'EXTRACTED' });
     }
     // Dense intra-cluster `calls` edges.
     for (let i = 0; i < members.length; i++) {
       for (let j = 0; j < members.length; j++) {
         if (i === j) continue;
         g.addEdgeWithKey(`call-${members[i]}-${members[j]}`, members[i], members[j], {
-          type: 'calls',
+          type: 'calls', confidence: 'EXTRACTED',
         });
       }
     }
   }
 
   // Weak bridge edges across clusters.
-  g.addEdgeWithKey('bridge-A0-B0', 'A0', 'B0', { type: 'calls' });
-  g.addEdgeWithKey('bridge-B0-C0', 'B0', 'C0', { type: 'calls' });
+  g.addEdgeWithKey('bridge-A0-B0', 'A0', 'B0', { type: 'calls', confidence: 'EXTRACTED' });
+  g.addEdgeWithKey('bridge-B0-C0', 'B0', 'C0', { type: 'calls', confidence: 'EXTRACTED' });
 
   return g;
 }
