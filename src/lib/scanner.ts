@@ -65,12 +65,17 @@ export class FileScanner {
         ignore: ['.git/**']
       });
 
-      // Filter using ignore rules and supported extensions
-      return allFiles.filter(f => {
-        if (this.ig.ignores(f)) return false;
-        const ext = path.extname(f);
-        return supportedExts.has(ext);
-      });
+      // Filter using ignore rules and supported extensions. glob lists entries in
+      // directory order, which differs per filesystem; sort so downstream ranking
+      // ties (and thus `map` output) are the same everywhere. Matches the order
+      // `git ls-files` returns above.
+      return allFiles
+        .filter(f => {
+          if (this.ig.ignores(f)) return false;
+          const ext = path.extname(f);
+          return supportedExts.has(ext);
+        })
+        .sort();
     }
   }
 }
