@@ -223,9 +223,9 @@ jobs:
   });
 
   describe('version', () => {
-    it('should have version 1.0.0', () => {
+    it('should have version 0.1.0', () => {
       const strategy = new CICDStrategy();
-      expect(strategy.version).toBe('1.0.0');
+      expect(strategy.version).toBe('0.1.0');
     });
   });
 

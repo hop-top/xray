@@ -15,7 +15,7 @@ describe('ReactStrategy', () => {
   describe('metadata', () => {
     it('should have correct name and version', () => {
       expect(strategy.name).toBe('react');
-      expect(strategy.version).toBe('2.0.0');
+      expect(strategy.version).toBe('0.1.0');
     });
   });
 

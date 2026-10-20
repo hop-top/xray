@@ -15,7 +15,7 @@ describe('GoCliStrategy', () => {
   describe('metadata', () => {
     it('should have correct name and version', () => {
       expect(strategy.name).toBe('go-cli');
-      expect(strategy.version).toBe('1.0.0');
+      expect(strategy.version).toBe('0.1.0');
     });
   });
 

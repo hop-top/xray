@@ -30,7 +30,7 @@ describe('Infrastructure Strategy', () => {
     it('should have correct name and version', () => {
       const strategy = new InfrastructureStrategy();
       expect(strategy.name).toBe('infrastructure');
-      expect(strategy.version).toBe('1.0.0');
+      expect(strategy.version).toBe('0.1.0');
     });
   });
 
