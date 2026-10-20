@@ -293,7 +293,7 @@ WHICH OUTPUT FORMAT SHOULD I USE?
     ├─ CSV?
     │   ├─ WHEN: Need tabular data
     │   ├─ COMMAND: xray map --format csv
-    │   └─ OUTPUT: Comma-separated values
+    │   └─ OUTPUT: <out>.nodes.csv + <out>.edges.csv (two tables)
     │
     ├─ Mermaid diagram?
     │   ├─ WHEN: Need visual relationships

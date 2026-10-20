@@ -18,7 +18,7 @@ xray produces output in different formats based on command:
 
 | Command | Default Format | Other Formats |
 |---------|----------------|---------------|
-| `map` | Markdown tree | JSON, CSV, XML |
+| `map` | Markdown tree | JSON, CSV (nodes+edges files), XML |
 | `explore` | Plain text list | Plain text |
 | `scan` | Plain text list | Plain text |
 | `graph` | Mermaid | DOT, TXT |

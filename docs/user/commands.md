@@ -239,12 +239,70 @@ Select the output with `--format <fmt>` (available on `map`, `scan`, `graph`):
 
 **Formats** (`--format txt|csv|xml|json`, one at a time):
 - `txt` - Text format (default)
-- `csv` - CSV format
-- `xml` - XML format
-- `json` - Raw JSON graph: one valid JSON document (`metadata`, `nodes`,
-  `edges`; the shape `xray query --graph` reads), written to `-o` (default
-  `.xray`; `-o name` becomes `name.json`). Chunking does not apply: the
-  file is identical with or without `--no-chunk`. One `--path` only.
+- `json`, `csv`, `xml` - the *graph formats*: the analysed graph as data.
+  All three carry the same nodes and edges, are written once (chunking does
+  not apply; identical with or without `--no-chunk`), are sorted
+  deterministically (nodes by `id`; edges by `source`, `target`, `type`),
+  and accept several `--path` roots (merged, see below).
+  `map`, `scan` and `graph` run the same analysis, so their graph outputs
+  are identical.
+
+| Format | Files written (`-o <out>`) |
+|--------|----------------------------|
+| `json` | `<out>` (`-o name` becomes `name.json`): one `{metadata, nodes, edges}` document, the shape `xray query --graph` reads |
+| `xml` | `<out>` (`-o name` becomes `name.xml`): one document, shape below |
+| `csv` | two RFC 4180 tables, `<out>.nodes.csv` and `<out>.edges.csv` (a trailing `.csv` on `-o` is not doubled; `-o name` gives `name.nodes.csv`) |
+
+CSV columns (fixed order, header row; empty = absent):
+
+- `<out>.nodes.csv`: `id,type,label,kind,file,line,endLine,signature,doc,rank,root`
+- `<out>.edges.csv`: `source,target,type,confidence,community`
+
+`root` is the root label for merged graphs and empty for a single root.
+File imports are not a column: they are the `imports` edges (JSON/XML also
+keep the raw import list). Load with any CSV tool, e.g.
+`duckdb -c "select * from 'g.edges.csv'"`.
+
+XML shape (text is escaped; control characters illegal in XML 1.0 become
+U+FFFD):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<graph>
+  <metadata version="1.0" timestamp="..." projectPath="..." nodeCount="8" edgeCount="9">
+    <roots><root label="api" path="/abs/api"/></roots>   <!-- merged graphs only -->
+  </metadata>
+  <nodes>
+    <node id="api/a.ts::f" type="tag" label="f" kind="function" file="api/a.ts" line="1" endLine="3" signature="()" rank="0.1" root="api">
+      <doc>...</doc>                                     <!-- only if present -->
+      <imports><import file="..." source="..." text="..."/></imports>  <!-- file nodes -->
+    </node>
+  </nodes>
+  <edges>
+    <edge source="..." target="..." type="calls" confidence="EXTRACTED" community="..."/>
+  </edges>
+</graph>
+```
+
+#### Merged multi-root graphs
+
+With more than one distinct `--path`, the graph formats write ONE graph: the
+union of every root's nodes and edges.
+
+- Every node `id` and `file` (and import `file`) gets a root-label prefix,
+  `<label>/<id>` (e.g. `api/src/main.ts::main`), so equal root-relative ids
+  from different roots cannot collide. A single root is never prefixed and
+  its output is unchanged.
+- Label = the root's path relative to the current directory with `/` turned
+  into `-` (`packages/api` becomes `packages-api`); roots outside the current
+  directory use their basename. Duplicate labels get `-2`, `-3`, ... in
+  argument order. Labels never contain `/`.
+- `metadata.roots` lists `{label, path}` (absolute path) per root;
+  `metadata.projectPath` is the roots' common ancestor.
+- No links between roots are invented: edges are only those each root's own
+  analysis produced. `rank` values are per-root.
+- `xray query` works unchanged: a bare name (`calls(main)`) matches that
+  function in every root; a full id (`calls(web/src/main.ts::main)`) picks one.
 
 **Diagrams** (`--format mermaid|dot`, one at a time; combine with a format):
 - `mermaid` - Mermaid diagram (default)
@@ -257,6 +315,18 @@ usage error (exit 2), as is an unknown `--format` value. `xray lang list`
 takes `--format text|json` too (`--json` alias). Machine formats
 (`json`, `csv`, `xml`) keep advisory INFO hints on stderr quiet unless
 verbose.
+
+### Query
+
+```bash
+xray map --format json -o graph
+xray query --graph graph.json "calls(main)"             # table (default)
+xray query --graph graph.json --format json "callers(helper)"
+```
+
+Results go to stdout (`--format table|tree|json`); diagnostics go to stderr.
+Exit 2: bad query / missing `--graph` or query; exit 3: graph file not found.
+See the [query guide](query-guide.md).
 
 ### Advanced
 

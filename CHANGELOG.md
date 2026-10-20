@@ -19,8 +19,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CLI family. `--json`, `--csv`, `--xml`, `--txt`, `--mermaid`, `--dot`
   stay as aliases; `--format` wins, conflicting aliases exit 2.
 
+- `--format json|csv|xml` accept several `--path` roots and write ONE merged
+  graph: ids/files prefixed `<root-label>/`, roots listed in
+  `metadata.roots`. Single-root output is unchanged. Replaces the exit-2
+  usage error for multi-path JSON.
+- Real `--format csv` / `--csv` (two files, `<out>.nodes.csv` and
+  `<out>.edges.csv`) and `--format xml` / `--xml` (one `<graph>` document)
+  renderers for `map`, `scan`, `graph`; node and edge sets equal the JSON
+  graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
+
 ### Fixed
 
+- `xray query` printed nothing; results now go to stdout per `--format`
+  (`table` default, `tree`, `json`). A missing graph file exits 3; a bad
+  query or missing `--graph` exits 2.
+- `--csv` / `--xml` emitted the normal text output; they now write real
+  CSV / XML.
+- `docs/user/query-guide.md` referenced a nonexistent `map --save-graph`;
+  it now documents `xray map --format json -o graph` then
+  `xray query --graph graph.json`.
 - `xray map --json` (chunked and `--no-chunk`) wrote text into `.json`
   files; it now writes one valid JSON graph document.
 - Bare `-v` before the subcommand (`xray -v map`) swallowed the

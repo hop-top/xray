@@ -16,14 +16,24 @@ The xray query system allows you to interactively explore your codebase's call g
 
 ### Prerequisites
 
-Before querying, you need a saved graph file. Generate one using:
+Before querying, you need a saved graph file. `xray map --format json`
+writes exactly that: one JSON document (`metadata`, `nodes`, `edges`).
 
 ```bash
-# Generate and save graph (future feature - Phase 3.3)
-xray map --save-graph graph.json
+# Write the graph (no extension on -o => ".json" is appended)
+xray map --format json -o graph
 
-# For now, query operations work with any serialized graph
+# Query it
+xray query --graph graph.json "calls(main)"
 ```
+
+Pass several `-p/--path` roots to query across projects at once: the roots
+merge into one graph, with every node id prefixed by a root label
+(`api/src/main.ts::main`, `web/src/main.ts::main`). See
+[Merged graphs](commands.md#merged-multi-root-graphs).
+
+`xray query` prints its result to stdout (`--format table|tree|json`) and
+exits 2 on a bad query or missing `--graph`, 3 if the graph file is not found.
 
 ### Basic Query Syntax
 
