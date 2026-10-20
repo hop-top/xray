@@ -6,6 +6,7 @@ import { handleFirstRunConsent } from './lib/telemetry-consent';
 import { createXrayUpgradeChecker } from './upgrade-checker';
 import { CodedError, UsageError, EXIT_USAGE, EXIT_GENERIC } from './lib/error/types';
 import { Logger } from './lib/logger';
+import { normalizeVerboseArgv } from './commands/root-options';
 
 /**
  * Reject argv whose first positional looks command-shaped but isn't a
@@ -83,11 +84,10 @@ function editDistance(a: string, b: string): number {
 }
 
 /**
- * Pre-scan argv for -v/--verbose [level] and --quiet so diagnostics emitted
- * before commander parses honour them. Stops at `--`.
+ * Pre-scan (normalized) argv for --verbose=<level> and --quiet so
+ * diagnostics emitted before commander parses honour them. Stops at `--`.
  */
 function applyEarlyVerbosity(argv: string[]): void {
-  const levels = ['silent', 'error', 'warn', 'info', 'debug'];
   const args = argv.slice(2);
   const end = args.indexOf('--');
   const scan = end === -1 ? args : args.slice(0, end);
@@ -95,13 +95,7 @@ function applyEarlyVerbosity(argv: string[]): void {
     Logger.setLevel('error');
     return;
   }
-  for (let i = 0; i < scan.length; i++) {
-    const a = scan[i];
-    if (a === '-v' || a === '--verbose') {
-      const next = scan[i + 1];
-      Logger.setLevel(next && levels.includes(next.toLowerCase()) ? next : 'debug');
-      return;
-    }
+  for (const a of scan) {
     if (a.startsWith('--verbose=')) {
       Logger.setLevel(a.slice('--verbose='.length));
       return;
@@ -113,7 +107,10 @@ function applyEarlyVerbosity(argv: string[]): void {
 export async function main() {
   // Apply verbosity first: config loading (consent, registration) emits
   // verbose-only diagnostics, and commander's preAction runs too late.
-  applyEarlyVerbosity(process.argv);
+  // Bare `-v` is pinned to an explicit level first so commander's optional
+  // [level] cannot swallow the subcommand name; the same argv feeds parse.
+  const argv = normalizeVerboseArgv(process.argv);
+  applyEarlyVerbosity(argv);
 
   // Handle first-run telemetry consent
   const telemetryEnabled = await handleFirstRunConsent(process.argv);
@@ -181,10 +178,10 @@ export async function main() {
   // no slashes/dots/parens/spaces) and isn't a registered name, throw a
   // UsageError before commander parses. Query strings (`"calls(main)"`),
   // file paths (`/tmp/foo`), and `--flag` values still fall through.
-  rejectUnknownSubcommand(program, process.argv);
+  rejectUnknownSubcommand(program, argv);
 
   try {
-    await program.parseAsync(process.argv);
+    await program.parseAsync(argv);
   } catch (err: any) {
     // Commander throws CommanderError for parse failures / unknown options / etc.
     // All those are usage errors → exit 2.

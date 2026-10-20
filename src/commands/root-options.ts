@@ -26,6 +26,42 @@ const ROOT_OPTION_KEYS = [
   'chdir',
 ] as const;
 
+const VERBOSITY_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'];
+
+/**
+ * Rewrite `-v` / `--verbose` so commander cannot mis-consume the next token.
+ *
+ * `-v, --verbose [level]` takes an OPTIONAL value, and commander binds the
+ * next non-dash token to it. In `xray -v map .` that token is the subcommand
+ * name, which becomes the "level" (silently falling back to info) while
+ * routing falls through to the default command. A bare flag (next token not
+ * a known level) is therefore pinned to `--verbose=debug`, which commander
+ * accepts without looking ahead. Explicit levels (`-v debug`,
+ * `--verbose=warn`) are left untouched. Stops at `--`. Pure: returns a copy.
+ */
+export function normalizeVerboseArgv(argv: string[]): string[] {
+  const out = argv.slice(0, 2);
+  const rest = argv.slice(2);
+  const end = rest.indexOf('--');
+  const head = end === -1 ? rest : rest.slice(0, end);
+  const tail = end === -1 ? [] : rest.slice(end);
+  for (let i = 0; i < head.length; i++) {
+    const a = head[i];
+    if (a === '-v' || a === '--verbose') {
+      const next = head[i + 1];
+      if (next !== undefined && VERBOSITY_LEVELS.includes(next.toLowerCase())) {
+        out.push('--verbose=' + next.toLowerCase());
+        i++;
+      } else {
+        out.push('--verbose=debug');
+      }
+    } else {
+      out.push(a);
+    }
+  }
+  return out.concat(tail);
+}
+
 export function configureRootProgram(program: Command, version: string): Command {
   return program
     .name('xray')
