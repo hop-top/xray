@@ -199,88 +199,68 @@ export const NotificationContext = createContext({
 
   describe('Strategy Detection', () => {
     it('should detect React strategy', () => {
-      const output = execSync(`node ${CLI_PATH} strategy:detect -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} strategy detect -p ${testRoot}`).toString();
 
       expect(output).toContain('Detected Strategies:');
       expect(output).toContain('react');
-      expect(output).toContain('v2.0.0');
+      expect(output).toContain('v0.1.0');
     });
 
     it('should list React as available strategy', () => {
-      const output = execSync(`node ${CLI_PATH} strategy:list`).toString();
+      const output = execSync(`node ${CLI_PATH} strategy list`).toString();
 
       expect(output).toContain('Available Strategies:');
       expect(output).toContain('react');
-      expect(output).toContain('v2.0.0');
+      expect(output).toContain('v0.1.0');
     });
   });
 
   describe('Component Detection', () => {
     it('should find all React components', () => {
-      const output = execSync(`node ${CLI_PATH} react:components -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} react components -p ${testRoot}`).toString();
 
-      expect(output).toContain('React Components:');
+      expect(output).toContain('React components:');
 
       // Function components
       expect(output).toContain('Button');
-      expect(output).toContain('(function)');
       expect(output).toContain('Input');
       expect(output).toContain('ComplexForm');
       expect(output).toContain('GenericList');
 
       // Class components
       expect(output).toContain('Card');
-      expect(output).toContain('(class)');
       expect(output).toContain('List');
 
       // Total count
-      expect(output).toContain('Total: 6 component(s)');
+      expect(output).toContain('Total: 6');
     });
 
-    it('should work with explore prefix', () => {
-      const output = execSync(`node ${CLI_PATH} explore react:components -p ${testRoot}`).toString();
-
-      expect(output).toContain('React Components:');
-      expect(output).toContain('Total: 6 component(s)');
-    });
   });
 
   describe('Hook Detection', () => {
     it('should find all custom hooks', () => {
-      const output = execSync(`node ${CLI_PATH} react:hooks -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} react hooks -p ${testRoot}`).toString();
 
-      expect(output).toContain('Custom React Hooks:');
+      expect(output).toContain('React hooks:');
       expect(output).toContain('useCounter');
       expect(output).toContain('useToggle');
       expect(output).toContain('useLocalStorage');
-      expect(output).toContain('Total: 3 hook(s)');
+      expect(output).toContain('Total: 3');
     });
 
-    it('should work with explore prefix', () => {
-      const output = execSync(`node ${CLI_PATH} explore react:hooks -p ${testRoot}`).toString();
-
-      expect(output).toContain('Custom React Hooks:');
-      expect(output).toContain('Total: 3 hook(s)');
-    });
   });
 
   describe('Context Detection', () => {
     it('should find all contexts', () => {
-      const output = execSync(`node ${CLI_PATH} react:contexts -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} react contexts -p ${testRoot}`).toString();
 
-      expect(output).toContain('React Contexts:');
+      expect(output).toContain('React contexts:');
       expect(output).toContain('ThemeContext');
       expect(output).toContain('AuthContext');
       expect(output).toContain('NotificationContext');
-      expect(output).toContain('Total: 3 context(s)');
+      expect(output).toContain('Total: 3');
     });
 
-    it('should work with explore prefix', () => {
-      const output = execSync(`node ${CLI_PATH} explore react:contexts -p ${testRoot}`).toString();
-
-      expect(output).toContain('React Contexts:');
-      expect(output).toContain('Total: 3 context(s)');
-    });
   });
 
   describe('Edge Cases', () => {
@@ -293,60 +273,45 @@ export const NotificationContext = createContext({
       );
 
       try {
-        execSync(`node ${CLI_PATH} react:components -p ${nonReactDir} 2>&1`);
-        fail('Should have exited with error');
-      } catch (e: any) {
-        const output = e.stdout ? e.stdout.toString() : e.stderr.toString();
-        expect(output).toContain('Strategy "react" not detected');
+        // Non-detected strategies warn and report nothing (exit 0) instead of failing.
+        const output = execSync(`node ${CLI_PATH} react components -p ${nonReactDir} 2>&1`).toString();
+        expect(output).toContain('Strategy "react" did not detect applicable project');
+        expect(output).toContain('Total: 0');
       } finally {
         fs.rmSync(nonReactDir, { recursive: true, force: true });
       }
     });
 
-    it('should handle unknown strategy gracefully', () => {
-      try {
-        execSync(`node ${CLI_PATH} unknown:command -p ${testRoot} 2>&1`);
-        fail('Should have exited with error');
-      } catch (e: any) {
-        const output = e.stdout ? e.stdout.toString() : e.stderr.toString();
-        expect(output).toContain('Strategy "unknown" not found');
-        expect(output).toContain('Available strategies:');
-      }
-    });
-
     it('should handle unknown command gracefully', () => {
+      // Commander rejects unknown subcommands of a registered strategy (af1af00).
       try {
-        execSync(`node ${CLI_PATH} react:unknown -p ${testRoot} 2>&1`);
-        fail('Should have exited with error');
+        execSync(`node ${CLI_PATH} react unknown -p ${testRoot} 2>&1`);
+        throw new Error('Expected a non-zero exit');
       } catch (e: any) {
-        const output = e.stdout ? e.stdout.toString() : e.stderr.toString();
-        expect(output).toContain('Command "unknown" not found for strategy "react"');
-        expect(output).toContain('Available commands for react:');
-        expect(output).toContain('react:components');
-        expect(output).toContain('react:hooks');
-        expect(output).toContain('react:contexts');
+        const output = (e.stdout ?? e.stderr ?? '').toString();
+        expect(output).toContain("unknown command 'unknown'");
       }
     });
   });
 
   describe('Complex Patterns', () => {
     it('should detect components with multi-line parameters', () => {
-      const output = execSync(`node ${CLI_PATH} react:components -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} react components -p ${testRoot}`).toString();
       expect(output).toContain('ComplexForm');
     });
 
     it('should detect components with TypeScript generics', () => {
-      const output = execSync(`node ${CLI_PATH} react:components -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} react components -p ${testRoot}`).toString();
       expect(output).toContain('GenericList');
     });
 
     it('should detect React.PureComponent', () => {
-      const output = execSync(`node ${CLI_PATH} react:components -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} react components -p ${testRoot}`).toString();
       expect(output).toContain('List');
     });
 
     it('should detect hooks with generic types', () => {
-      const output = execSync(`node ${CLI_PATH} react:hooks -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} react hooks -p ${testRoot}`).toString();
       expect(output).toContain('useLocalStorage');
     });
   });

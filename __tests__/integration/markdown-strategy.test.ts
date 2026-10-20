@@ -14,7 +14,7 @@ describe('Markdown Strategy Integration', () => {
 
     const markdown = strategies.find(s => s.name === 'markdown');
     expect(markdown).toBeDefined();
-    expect(markdown?.version).toBe('1.0.0');
+    expect(markdown?.version).toBe('0.1.0');
   });
 
   it('should detect markdown project', async () => {

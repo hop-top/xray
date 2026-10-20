@@ -81,7 +81,11 @@ export default class ConfigStrategy implements Strategy {
           if (typeFiles.length > 0) {
             Logger.output(`\n${type.toUpperCase()} Files:`);
             for (const file of typeFiles) {
-              const relativePath = path.relative(ctx.getProjectRoot(), file);
+              // globFiles() yields project-relative paths; path.relative() would
+              // resolve those against process.cwd() instead of the project root.
+              const relativePath = path.isAbsolute(file)
+                ? path.relative(ctx.getProjectRoot(), file)
+                : file;
               Logger.output(`  ${relativePath}`);
             }
           }
