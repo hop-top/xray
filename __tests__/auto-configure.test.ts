@@ -5,6 +5,24 @@ import * as os from 'os';
 
 const CLI_PATH = path.join(__dirname, '../bin/xray');
 
+
+/**
+ * Run the CLI and return stdout plus, for `--no-chunk` runs, the content of
+ * the single output file. Single-file mode writes the analysis to a file (not
+ * stdout), and the default `.xray` target collides with the `.xray/` state
+ * dir that strategy detection creates, so each run uses an explicit file.
+ */
+function runCli(args: string, cwd: string): string {
+  const withOut = args.includes('--no-chunk') ? `${args} -o out.txt` : args;
+  const stdout = execSync(`node ${CLI_PATH} ${withOut}`, {
+    encoding: 'utf-8',
+    timeout: 30000,
+    cwd,
+  });
+  const outFile = path.join(cwd, 'out.txt');
+  return fs.existsSync(outFile) ? stdout + fs.readFileSync(outFile, 'utf-8') : stdout;
+}
+
 describe('Auto-Configure Feature E2E', () => {
   let testRoot: string;
   let reactProject: string;
@@ -71,105 +89,75 @@ test('renders app', () => {
 
   describe('map command with auto-configure', () => {
     test('should detect strategies and auto-configure paths (default)', () => {
-      const output = execSync(
-        `node ${CLI_PATH} map --no-chunk --depth 1`,
-        { encoding: 'utf-8', timeout: 30000, cwd: reactProject }
-      );
+      const output = runCli(`map --no-chunk --depth 1`, reactProject);
 
-      expect(output).toContain('Detected strategies: react');
+      expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');
     });
 
     test('should not auto-configure when path is explicitly provided', () => {
-      const output = execSync(
-        `node ${CLI_PATH} map -p ${reactProject} --no-chunk --depth 1`,
-        { encoding: 'utf-8', timeout: 30000 }
-      );
+      const output = runCli(`map -p ${reactProject} --no-chunk --depth 1`, testRoot);
 
       expect(output).not.toContain('Detected strategies:');
       expect(output).not.toContain('Auto-configured paths');
     });
 
     test('should auto-configure with --detect even when path is provided', () => {
-      const output = execSync(
-        `node ${CLI_PATH} map -p ${reactProject} --no-chunk --detect --depth 1`,
-        { encoding: 'utf-8', timeout: 30000 }
-      );
+      const output = runCli(`map -p ${reactProject} --no-chunk --detect --depth 1`, testRoot);
 
-      expect(output).toContain('Detected strategies: react');
+      expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');
     });
 
     test('should include react file types in match patterns', () => {
-      const output = execSync(
-        `node ${CLI_PATH} map --no-chunk --depth 1`,
-        { encoding: 'utf-8', timeout: 30000, cwd: reactProject }
-      );
+      const output = runCli(`map --no-chunk --depth 1`, reactProject);
 
-      expect(output).toContain('Detected strategies: react');
+      expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');
       expect(output).toContain('App.tsx');
     });
 
     test('should filter based on strategy file types', () => {
-      const output = execSync(
-        `node ${CLI_PATH} map --no-chunk --depth 1`,
-        { encoding: 'utf-8', timeout: 30000, cwd: reactProject }
-      );
+      const output = runCli(`map --no-chunk --depth 1`, reactProject);
 
-      expect(output).toContain('Detected strategies: react');
+      expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');
       expect(output).toContain('App.tsx');
     });
 
     test('should not auto-configure with --skip-detect', () => {
-      const output = execSync(
-        `node ${CLI_PATH} map --no-chunk --skip-detect --depth 1`,
-        { encoding: 'utf-8', timeout: 30000, cwd: reactProject }
-      );
+      const output = runCli(`map --no-chunk --skip-detect --depth 1`, reactProject);
 
       expect(output).not.toContain('Detected strategies:');
       expect(output).not.toContain('Auto-configured paths');
     });
 
     test('should work with scan command', () => {
-      const output = execSync(
-        `node ${CLI_PATH} scan`,
-        { encoding: 'utf-8', timeout: 30000, cwd: reactProject }
-      );
+      const output = runCli(`scan`, reactProject);
 
-      expect(output).toContain('Detected strategies: react');
+      expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');
     });
 
     test('should work with graph command', () => {
-      const output = execSync(
-        `node ${CLI_PATH} graph --no-chunk`,
-        { encoding: 'utf-8', timeout: 30000, cwd: reactProject }
-      );
+      const output = runCli(`graph --no-chunk`, reactProject);
 
-      expect(output).toContain('Detected strategies: react');
+      expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');
     });
 
     test('should merge with existing match patterns', () => {
-      const output = execSync(
-        `node ${CLI_PATH} map --no-chunk -m "*.json" --depth 1`,
-        { encoding: 'utf-8', timeout: 30000, cwd: reactProject }
-      );
+      const output = runCli(`map --no-chunk -m "*.json" --depth 1`, reactProject);
 
-      expect(output).toContain('Detected strategies: react');
+      expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');
       expect(output).toContain('App.tsx');
     });
 
     test('should not duplicate existing match patterns', () => {
-      const output = execSync(
-        `node ${CLI_PATH} map --no-chunk -m "*.tsx" --depth 1`,
-        { encoding: 'utf-8', timeout: 30000, cwd: reactProject }
-      );
+      const output = runCli(`map --no-chunk -m "*.tsx" --depth 1`, reactProject);
 
-      expect(output).toContain('Detected strategies: react');
+      expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');
       expect(output).toContain('App.tsx');
     });
@@ -186,23 +174,18 @@ test('renders app', () => {
         'console.log("hello");'
       );
 
-      const output = execSync(
-        `node ${CLI_PATH} map --no-chunk --depth 1`,
-        { encoding: 'utf-8', timeout: 30000, cwd: plainProject }
-      );
+      const output = runCli(`map --no-chunk --depth 1`, plainProject);
 
-      expect(output).not.toContain('Detected strategies:');
-      expect(output).not.toContain('Auto-configured paths');
+      // Generic strategies (build, package-manager; 0be2d19) match any
+      // package.json, so assert only that no framework strategy is detected.
+      expect(output).not.toMatch(/Detected strategies: .*\breact\b/);
     });
 
     test('should be configurable via config file', () => {
       const configPath = path.join(reactProject, 'xray.config.json');
       fs.writeFileSync(configPath, JSON.stringify({ skipDetect: true }, null, 2));
 
-      const output = execSync(
-        `node ${CLI_PATH} map --no-chunk --depth 1`,
-        { encoding: 'utf-8', timeout: 30000, cwd: reactProject }
-      );
+      const output = runCli(`map --no-chunk --depth 1`, reactProject);
 
       expect(output).not.toContain('Detected strategies:');
       expect(output).not.toContain('Auto-configured paths');
@@ -214,12 +197,9 @@ test('renders app', () => {
     });
 
     test('should work with generate alias command', () => {
-      const output = execSync(
-        `node ${CLI_PATH} generate --no-chunk --depth 1`,
-        { encoding: 'utf-8', timeout: 30000, cwd: reactProject }
-      );
+      const output = runCli(`generate --no-chunk --depth 1`, reactProject);
 
-      expect(output).toContain('Detected strategies: react');
+      expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');
     });
   });
