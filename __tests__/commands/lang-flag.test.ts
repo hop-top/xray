@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { addCommonOptions } from '../../src/commands/common';
 import { mergeConfig } from '../../src/lib/config';
-import { UnknownLanguageError, MissingGrammarError, beginLanguageRun } from '../../src/lib/parser/grammars';
+import { UnknownLanguageError, MissingGrammarError, beginLanguageRun, resetGrammarCache } from '../../src/lib/parser/grammars';
 
 function parse(args: string[]) {
   const cmd = addCommonOptions(new Command('map')).exitOverride();
@@ -35,7 +35,6 @@ describe('--lang flag', () => {
 
   it('a required-but-missing grammar exits not-found', () => {
     process.env.XRAY_LANG_BLOCK = 'go';
-    const { resetGrammarCache } = require('../../src/lib/parser/grammars');
     resetGrammarCache();
     let err: any;
     try { beginLanguageRun(['go']); } catch (e) { err = e; }
