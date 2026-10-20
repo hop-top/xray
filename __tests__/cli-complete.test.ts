@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 
 const CLI_PATH = path.join(__dirname, '../bin/cli.js');
 
@@ -19,7 +20,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
         });
 
         test('should clear cache database', () => {
-            const root = path.join(__dirname, 'manual-cache');
+            const root = path.join(os.tmpdir(), 'xray-cli-complete-manual-cache');
             if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
 
             const cachePath = path.join(root, '.xray_cache.db');
@@ -39,7 +40,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
         });
 
         test('should handle non-existent cache gracefully', () => {
-            const root = path.join(__dirname, 'manual-cache-empty');
+            const root = path.join(os.tmpdir(), 'xray-cli-complete-manual-cache-empty');
             if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
 
             // Cache doesn't exist, should not error and might show message or be silent
@@ -81,7 +82,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
 
     describe('explore command features', () => {
         test('should list files by pattern with --match', () => {
-            const root = path.join(__dirname, 'manual-explore-match');
+            const root = path.join(os.tmpdir(), 'xray-cli-complete-manual-explore-match');
             if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
 
             fs.writeFileSync(path.join(root, 'app.ts'), 'const app = 1;');
@@ -99,7 +100,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
         });
 
         test('should search for keywords with --search', () => {
-            const root = path.join(__dirname, 'manual-explore-search');
+            const root = path.join(os.tmpdir(), 'xray-cli-complete-manual-explore-search');
             if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
 
             fs.writeFileSync(path.join(root, 'app.ts'), `
@@ -124,7 +125,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
         });
 
         test('should show statistics with --stats', () => {
-            const root = path.join(__dirname, 'manual-explore-stats');
+            const root = path.join(os.tmpdir(), 'xray-cli-complete-manual-explore-stats');
             if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
 
             fs.writeFileSync(path.join(root, 'app.ts'), 'const app = 1;const x = 2;');
@@ -144,7 +145,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
         });
 
         test('should show file list by default', () => {
-            const root = path.join(__dirname, 'manual-explore-default');
+            const root = path.join(os.tmpdir(), 'xray-cli-complete-manual-explore-default');
             if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
 
             fs.writeFileSync(path.join(root, 'app.ts'), 'const app = 1;');
