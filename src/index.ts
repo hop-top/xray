@@ -82,8 +82,39 @@ function editDistance(a: string, b: string): number {
   return dp[m][n];
 }
 
+/**
+ * Pre-scan argv for -v/--verbose [level] and --quiet so diagnostics emitted
+ * before commander parses honour them. Stops at `--`.
+ */
+function applyEarlyVerbosity(argv: string[]): void {
+  const levels = ['silent', 'error', 'warn', 'info', 'debug'];
+  const args = argv.slice(2);
+  const end = args.indexOf('--');
+  const scan = end === -1 ? args : args.slice(0, end);
+  if (scan.includes('--quiet')) {
+    Logger.setLevel('error');
+    return;
+  }
+  for (let i = 0; i < scan.length; i++) {
+    const a = scan[i];
+    if (a === '-v' || a === '--verbose') {
+      const next = scan[i + 1];
+      Logger.setLevel(next && levels.includes(next.toLowerCase()) ? next : 'debug');
+      return;
+    }
+    if (a.startsWith('--verbose=')) {
+      Logger.setLevel(a.slice('--verbose='.length));
+      return;
+    }
+  }
+}
+
 // Initialize and register all commands (async for alias registration)
 export async function main() {
+  // Apply verbosity first: config loading (consent, registration) emits
+  // verbose-only diagnostics, and commander's preAction runs too late.
+  applyEarlyVerbosity(process.argv);
+
   // Handle first-run telemetry consent
   const telemetryEnabled = await handleFirstRunConsent(process.argv);
 

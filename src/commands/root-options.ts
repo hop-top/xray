@@ -82,7 +82,8 @@ export function configureRootProgram(program: Command, version: string): Command
       if (rootOpts.quiet) {
         Logger.setLevel('error');
       } else if (rootOpts.verbose) {
-        Logger.setLevel(rootOpts.verbose);
+        // Bare `-v` yields `true`: treat as debug (verbose).
+        Logger.setLevel(rootOpts.verbose === true ? 'debug' : rootOpts.verbose);
       }
 
       // Propagate root globals onto the subcommand's opts so handlers

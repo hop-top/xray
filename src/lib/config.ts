@@ -234,7 +234,7 @@ export function loadConfig(configPath?: string, searchPath?: string): XrayConfig
     configPathLogged = true;
     const relativePath = path.relative(process.cwd(), projectConfigPath);
     const displayPath = relativePath.startsWith('..') ? projectConfigPath : relativePath;
-    Logger.info(`Using config file: ${displayPath}`);
+    Logger.debug(`Using config file: ${displayPath}`);
   }
 
   // Merge configs (project overrides global)
@@ -344,7 +344,7 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
   let baseConfig = config;
   if (lens && config.lenses && config.lenses[lens]) {
     const lensConfig = config.lenses[lens];
-    Logger.info(`Using lens: ${lens}`);
+    Logger.debug(`Using lens: ${lens}`);
     baseConfig = {
       ...config,
       ...lensConfig,

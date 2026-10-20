@@ -87,7 +87,7 @@ function handleStrategyDiscoveryError(error: any): void {
     Logger.warn(`Strategy discovery failed: ${error.message}`);
   }
 
-  Logger.info('Continuing with built-in commands only');
+  Logger.debug('Continuing with built-in commands only');
 }
 
 /**
