@@ -6,7 +6,8 @@ import { QueryResolver } from '../lib/query-resolver';
 import * as cliProgress from 'cli-progress';
 import { Logger } from '../lib/logger';
 import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase } from '../lib/config';
-import { CodedError, FileWriteError, NotFoundError } from '../lib/error/types';
+import { CodedError, FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
+import { GraphSerializer } from '../lib/graph/serializer';
 import { FileScanner } from '../lib/scanner';
 import { StrategyLoader } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
@@ -169,6 +170,14 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
     mergedOptions.csv ? 'csv' :
     mergedOptions.xml ? 'xml' : 'txt';
 
+  // A raw JSON graph is a single document: reject up-front, before any
+  // analysis or file write, rather than emitting concatenated JSON.
+  if (format === 'json' && paths.length > 1) {
+    throw new UsageError(
+      `--json writes a single graph document; got ${paths.length} paths. Run once per path.`
+    );
+  }
+
   const outputPath = resolveOutputPath(mergedOptions.output, format);
   const shareOption = mergedOptions.share;
   const shareRequested = shareOption !== undefined && shareOption !== false;
@@ -206,6 +215,78 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
 
   // Determine if chunked output is enabled
   const chunkedEnabled = mergedOptions.chunked !== false;
+
+  if (format === 'json') {
+    // The raw JSON graph is not a rendering: chunking (a token-budget
+    // concern of the text renderers) does not apply, and the same single
+    // SerializedGraph document is written with or without --no-chunk.
+    if (chunkedEnabled) Logger.debug('--json: chunking does not apply; writing one graph file');
+    const currentPath = paths[0];
+    let barStarted = false;
+    const xray = new Xray({
+      path: currentPath,
+      limit: parseInt(mergedOptions.limit),
+      anchor,
+      depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
+      features,
+      queries,
+      match: mergedOptions.match || [],
+      catch: mergedOptions.catch || [],
+      languages: mergedOptions.languages,
+      format,
+      diagram,
+      chunked: false,
+      onProgress: (current, total, file) => {
+        if (!barStarted) {
+          progressBar.start(total, 0, { file: 'Starting...' });
+          barStarted = true;
+        }
+        progressBar.update(current, { file });
+        if (current >= total) {
+          progressBar.stop();
+        }
+      }
+    });
+    await applyPresetFlags(xray, mergedOptions.preset, currentPath);
+    const { rankedNodes, graph } = await xray.buildGraph();
+
+    const serialized = new GraphSerializer().serialize(graph, currentPath);
+    try {
+      fs.mkdirSync(path.dirname(outputPath!), { recursive: true });
+      fs.writeFileSync(outputPath!, JSON.stringify(serialized, null, 2) + '\n');
+      Logger.success(`Graph written to ${outputPath}`);
+    } catch (err: any) {
+      throw new FileWriteError(outputPath!, err);
+    }
+
+    if (shareRequested) {
+      const sharePath = resolveShareOutputPath({
+        outputPath: outputPath!,
+        projectPath: currentPath,
+        shareOption,
+        pathIndex: 0,
+        totalPaths: 1
+      });
+      const summary = buildShareSummary({
+        projectPath: currentPath,
+        outputPath: outputPath!,
+        chunked: false,
+        rankedNodes,
+        graph,
+        command: commandUsed,
+        detectedStrategies,
+        tokenLimit: parseInt(mergedOptions.limit)
+      });
+      try {
+        fs.writeFileSync(sharePath, summary);
+        Logger.success(`Share summary written to ${sharePath}`);
+        Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
+      } catch (err: any) {
+        throw new FileWriteError(sharePath, err);
+      }
+    }
+    return;
+  }
 
   // Process each path and collect results
   if (chunkedEnabled) {
