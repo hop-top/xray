@@ -467,27 +467,60 @@ describe('MarkdownStrategy', () => {
     it('should kill mdq and fail fast when it exceeds the timeout', async () => {
       const binDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-fake-mdq-'));
       const pidFile = path.join(binDir, 'pid');
+      // Publish the pid atomically (write + rename) so a reader never sees a
+      // missing or half-written file once it exists. `exec` keeps the pid.
       fs.writeFileSync(
         path.join(binDir, 'mdq'),
-        `#!/bin/sh\necho $$ > "${pidFile}"\nexec sleep 30\n`,
+        `#!/bin/sh\necho $$ > "${pidFile}.tmp" && mv "${pidFile}.tmp" "${pidFile}"\nexec sleep 30\n`,
         { mode: 0o755 }
       );
       const mdFile = path.join(binDir, 'a.md');
       fs.writeFileSync(mdFile, '# A\n');
 
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      const until = async (cond: () => boolean, ms: number) => {
+        const end = Date.now() + ms;
+        while (!cond()) {
+          if (Date.now() > end) return false;
+          await sleep(10);
+        }
+        return true;
+      };
+      const alive = (pid: number) => {
+        try {
+          process.kill(pid, 0);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
       const oldPath = process.env.PATH;
       const oldTimeout = process.env.XRAY_MDQ_TIMEOUT_MS;
       process.env.PATH = `${binDir}:${oldPath}`;
-      process.env.XRAY_MDQ_TIMEOUT_MS = '300';
+      // Generous timeout: the child must be observed running (pid published)
+      // before the kill fires, however slow the machine is.
+      process.env.XRAY_MDQ_TIMEOUT_MS = '4000';
       try {
         const ctx = new StrategyContextImpl(binDir);
         const started = Date.now();
-        await expect(strategy.analyze(mdFile, ctx)).rejects.toThrow(/timed out/);
-        expect(Date.now() - started).toBeLessThan(10000);
+        const result = strategy.analyze(mdFile, ctx);
+        const outcome = result.then(
+          () => new Error('expected analyze to reject'),
+          (e: Error) => e
+        );
 
+        // Readiness: the fake mdq is up and has published its pid.
+        expect(await until(() => fs.existsSync(pidFile), 3500)).toBe(true);
         const pid = parseInt(fs.readFileSync(pidFile, 'utf-8'), 10);
-        await new Promise((r) => setTimeout(r, 200));
-        expect(() => process.kill(pid, 0)).toThrow(); // child is gone
+        expect(Number.isInteger(pid) && pid > 1).toBe(true);
+        expect(alive(pid)).toBe(true); // running before the timeout
+
+        const err = await outcome;
+        expect(err.message).toMatch(/timed out/);
+        expect(Date.now() - started).toBeLessThan(10000);
+        // Killed: gone shortly after rejection (poll, no fixed sleep).
+        expect(await until(() => !alive(pid), 5000)).toBe(true);
       } finally {
         process.env.PATH = oldPath;
         if (oldTimeout === undefined) delete process.env.XRAY_MDQ_TIMEOUT_MS;
