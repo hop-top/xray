@@ -2,6 +2,7 @@
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import { execFileNoThrow } from '../src/utils/execFileNoThrow';
 import { Logger } from '../src/lib/logger';
+import { mdqInstallHint } from '../src/utils/mdqInstall';
 import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -84,11 +85,11 @@ export default class MarkdownStrategy implements Strategy {
     try {
       const result = await execFileNoThrow('which', ['mdq']);
       if (result.status !== 0) {
-        Logger.warn('mdq not found. Install with: brew install mdq (or cargo install mdq)');
+        Logger.info(`mdq not found; markdown strategy disabled. ${mdqInstallHint()}`);
         return false;
       }
     } catch {
-      Logger.warn('mdq not found. Install with: brew install mdq (or cargo install mdq)');
+      Logger.info(`mdq not found; markdown strategy disabled. ${mdqInstallHint()}`);
       return false;
     }
 
