@@ -58,11 +58,22 @@ harmless by definition.
 
 The runner is portable: peak RSS comes from GNU `time -v` (BSD `-l` on macOS),
 `ps -axeww` and `setsid` work as-is, and the memory-pressure wait is macOS-only.
-CI (`.github/workflows/ci.yml`, job `test`) runs `npm test` on ubuntu-latest for
-Node 26 and 22 (about 6 minutes of suites each, ~8 minutes per job) with `XRAY_TEST_NO_LOCK=1`, and uploads
-the log on failure. The job installs Go, bubblewrap (plus an AppArmor `userns` grant
-for `bwrap`; see `docs/dev/strategies/go-cli.md`) and a pinned `mdq` release, so the
+CI (`.github/workflows/ci.yml`, job `test`) runs `npm test` on ubuntu-latest (x64) for
+Node 26 and 22 (about 6 minutes of suites each, ~8 minutes per job) plus one
+ubuntu-24.04-arm (arm64) leg on Node 22, with `XRAY_TEST_NO_LOCK=1`, and uploads
+the log on failure. Each job installs Go, bubblewrap (plus an AppArmor `userns` grant
+for `bwrap`; see `docs/dev/strategies/go-cli.md`) and a pinned `mdq`, so the
 go-cli sandbox suites and the markdown strategy suites run instead of skipping.
+
+`mdq` version is pinned in one place: `MDQ_VERSION` in `src/utils/mdqInstall.ts`
+(CI reads it from there). Upstream ships prebuilt assets for linux-x64, macos-arm64
+and windows-x64 only. x64 legs download the release tarball and check its sha256
+(update `MDQ_SHA256` in the workflow when bumping the version); the arm64 leg runs
+`cargo install mdq --version <pin> --locked`, with `~/.cargo/bin/mdq` cached by
+version, so a cache hit skips the build. macOS: `brew install mdq`; linux-arm64 and
+macos-x64 have no prebuilt asset, so use cargo there. When `mdq` is absent xray logs
+an info-level, platform-specific install hint (`mdqInstallHint`) and the markdown
+strategy is not detected.
 
 To reproduce locally on a Linux container: use Ubuntu 24.04 with Node, Go, `git`, `perl`,
 `procps`, `time`, `bubblewrap`; copy the tree (not host `node_modules`), then

@@ -59,7 +59,11 @@ Generic REST API detection and analysis.
 ### Language Strategies
 
 #### Markdown Strategy (`markdown.ts`)
-Analyzes markdown structure, cross-references, and code examples. Requires [mdq](https://github.com/rehandalal/mdq) to be installed.
+Analyzes markdown structure, cross-references, and code examples. Requires [mdq](https://github.com/yshavit/mdq) to be installed:
+macOS `brew install mdq`; Linux x64 / Windows x64 download the prebuilt asset from the
+[release page](https://github.com/yshavit/mdq/releases/tag/v0.10.0); Linux arm64, macOS x64 and
+other platforms `cargo install mdq --version 0.10.0 --locked`. When missing, xray logs an
+info-level hint with the right command for your platform.
 
 **Detects:**
 - `mdq` binary availability

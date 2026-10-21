@@ -29,13 +29,20 @@ jobs:
       - run: npm run typecheck:tests
 
   test:
-    name: test (node ${{ matrix.node }})
-    runs-on: ubuntu-latest
+    name: test (node ${{ matrix.node }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
+        arch: [x64]
         node: ['26', '22']
+        include:
+          # mdq publishes no linux-arm64 asset; this leg builds it from source.
+          - os: ubuntu-24.04-arm
+            arch: arm64
+            node: '22'
     env:
       # One CI job == one runner; the machine-wide lock only matters on dev boxes.
       XRAY_TEST_NO_LOCK: '1'
@@ -49,19 +56,39 @@ jobs:
         with:
           go-version: stable
           cache: false
-      - name: Install bubblewrap and mdq
+      - name: Install bubblewrap
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends bubblewrap
-          # Pinned release; tests for the markdown strategy skip when mdq is absent.
-          MDQ_VERSION=0.10.0
-          MDQ_SHA256=de00a4dcbfb4cc2f59152b52ae774702343fdc82e6cd4f87a2a40c7be09935d7
+      # Version pinned once, in src/utils/mdqInstall.ts. Tests for the markdown
+      # strategy skip when mdq is absent.
+      - name: Read pinned mdq version
+        run: echo "MDQ_VERSION=$(sed -n "s/^export const MDQ_VERSION = '\(.*\)';/\1/p" src/utils/mdqInstall.ts)" >> "$GITHUB_ENV"
+      - name: Install mdq (prebuilt release)
+        if: matrix.arch == 'x64'
+        run: |
+          MDQ_SHA256=de00a4dcbfb4cc2f59152b52ae774702343fdc82e6cd4f87a2a40c7be09935d7  # v0.10.0 linux-x64
           curl -fsSL -o "$RUNNER_TEMP/mdq.tar.gz" \
             "https://github.com/yshavit/mdq/releases/download/v${MDQ_VERSION}/mdq-linux-x64.tar.gz"
           echo "${MDQ_SHA256}  $RUNNER_TEMP/mdq.tar.gz" | sha256sum -c -
           mkdir -p "$HOME/.local/bin"
           tar -xzf "$RUNNER_TEMP/mdq.tar.gz" -C "$HOME/.local/bin" mdq
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Cache mdq (built from source)
+        if: matrix.arch != 'x64'
+        id: mdq-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/mdq
+          key: mdq-${{ runner.os }}-${{ runner.arch }}-${{ env.MDQ_VERSION }}
+      - name: Install mdq (cargo)
+        if: matrix.arch != 'x64' && steps.mdq-cache.outputs.cache-hit != 'true'
+        run: cargo install mdq --version "${MDQ_VERSION}" --locked
+      - name: Add cargo bin to PATH
+        if: matrix.arch != 'x64'
+        run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Verify mdq
+        run: mdq --version
       # Ubuntu 24.04 runners set kernel.apparmor_restrict_unprivileged_userns=1, which
       # strips capabilities from unprivileged user namespaces; bwrap then dies with
       # "loopback: Failed RTM_NEWADDR: Operation not permitted" and every sandboxed
@@ -86,6 +113,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-log-node-${{ matrix.node }}
+          name: test-log-node-${{ matrix.node }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/test.log
           if-no-files-found: ignore
