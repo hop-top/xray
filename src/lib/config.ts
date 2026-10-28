@@ -9,6 +9,11 @@ import {
 } from '../types/xray-config';
 import { FileReadError, FileWriteError } from './error/types';
 
+// require(): tsconfig moduleResolution 'node' ignores the kit exports map.
+const { configDir: xdgConfigDir } = require('@hop-top/kit/xdg') as {
+  configDir: (tool: string) => string;
+};
+
 let configPathLogged = false;
 
 const CONFIG_FILENAMES = [
@@ -81,19 +86,36 @@ export function findConfigPath(startDir?: string): string | null {
 }
 
 /**
- * Find global config file in user's home directory
- * Follows XDG Base Directory specification
+ * Directories searched for a global `config.json` / `config.js`, highest
+ * priority first: the kit XDG config dir, then the legacy
+ * `$XDG_CONFIG_HOME|~/.config/xray` location (differs from the kit dir on
+ * macOS/Windows when XDG_CONFIG_HOME is unset), so pre-existing user config
+ * keeps resolving.
+ */
+export function globalConfigDirs(): string[] {
+  const legacy = path.join(
+    process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'),
+    'xray'
+  );
+  const kit = xdgConfigDir('xray');
+  return kit === legacy ? [kit] : [kit, legacy];
+}
+
+/**
+ * Find global config file.
+ * Order: <kit config dir>/config.{json,js}, legacy ~/.config/xray/config.{json,js},
+ * then ~/.xrayrc.json, ~/.xrayrc.
  * Returns the absolute path to the global config, or null if not found
  */
 export function findGlobalConfigPath(): string | null {
   const homeDir = os.homedir();
-  const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config');
 
-  // Check XDG config directory first
-  for (const filename of ['config.json', 'config.js']) {
-    const filepath = path.join(xdgConfigHome, 'xray', filename);
-    if (fs.existsSync(filepath)) {
-      return filepath;
+  for (const dir of globalConfigDirs()) {
+    for (const filename of ['config.json', 'config.js']) {
+      const filepath = path.join(dir, filename);
+      if (fs.existsSync(filepath)) {
+        return filepath;
+      }
     }
   }
 
