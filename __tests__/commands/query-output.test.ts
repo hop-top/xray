@@ -44,7 +44,7 @@ describe('xray query prints results', () => {
   test('default (table) prints result rows on stdout', () => {
     const r = run(['query', '--graph', graphFile, 'calls(main)']);
     expect(r.status).toBe(0);
-    expect(r.stdout).toContain('Results (1)');
+    expect(r.stdout).toMatch(/^name\s+kind\s+file\s+line/);
     expect(r.stdout).toContain('helper');
   });
 
