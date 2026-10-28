@@ -1,186 +1,156 @@
-import Database from 'better-sqlite3';
 import { Tag, Import } from '../parser/types';
-import { CacheReadError, CacheWriteError } from '../error/types';
+import { CacheWriteError } from '../error/types';
 import { Logger } from '../logger';
 
-interface FileRow {
+// Minimal structural view of the driver handle exposed by Store.db(); keeps
+// xray free of a direct driver (and driver typings) dependency.
+interface Statement {
+  run(...params: unknown[]): unknown;
+}
+interface DatabaseHandle {
+  exec(sql: string): unknown;
+  prepare(sql: string): Statement;
+  pragma(sql: string, opts?: { simple?: boolean }): unknown;
+  transaction<T extends (...args: never[]) => unknown>(fn: T): T;
+}
+interface Store {
+  put(key: string, value: unknown): void;
+  get<T>(key: string): T | null;
+  db(): DatabaseHandle;
+  close(): void;
+}
+
+// require() because tsconfig moduleResolution is 'node' (legacy), which does
+// not honor @hop-top/kit's `exports` map. Runtime resolution does.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { open } = require('@hop-top/kit/sqlstore') as {
+  open: (path: string, opts?: { ttl?: number; migrateSql?: string }) => Store;
+};
+
+/**
+ * On-disk layout version, stored in PRAGMA user_version.
+ *  0 (unset): relational layout (files_v2 / tags / file_analysis tables).
+ *  3: kit sqlstore `kv` table; one JSON record per file.
+ * Any other value is invalidated (wiped) on open.
+ */
+export const CACHE_SCHEMA_VERSION = 3;
+
+const LEGACY_TABLES = ['tags', 'files_v2', 'file_analysis'];
+const TAGS_PREFIX = 'tags:';
+const ANALYSIS_PREFIX = 'analysis:';
+
+interface TagsEntry {
   mtime: number;
-  doc_config: string;
-  include_variables: number;
-  imports: string | null;
+  docConfig: string;
+  includeVariables: boolean;
+  tags: Tag[];
+  imports: Import[];
 }
 
-interface TagRow {
-  data: string;
-}
-
-interface FileAnalysisRow {
+interface AnalysisEntry {
   mtime: number;
   hash: string;
-  analysis: string;
+  analysis: any;
 }
 
 export class SqliteCache {
-  private db: Database.Database;
+  private store: Store;
 
   constructor(dbPath: string) {
-    this.db = new Database(dbPath);
-    this.init();
+    this.store = SqliteCache.openStore(dbPath);
   }
 
-  private init() {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS files_v2 (
-        path TEXT PRIMARY KEY,
-        mtime REAL,
-        doc_config TEXT,
-        include_variables INTEGER,
-        imports JSON
+  private static openStore(dbPath: string): Store {
+    try {
+      const store = open(dbPath);
+      SqliteCache.ensureSchema(store.db());
+      return store;
+    } catch (err) {
+      // Unreadable / foreign file at the cache path: run uncached for this
+      // process instead of crashing. Never delete it implicitly.
+      Logger.warn(
+        `Cache at ${dbPath} unusable (${(err as Error).message}); running without persistent cache. ` +
+        'Run `xray cache clear` to reset it.'
       );
-      CREATE TABLE IF NOT EXISTS tags (
-        file TEXT,
-        data JSON,
-        FOREIGN KEY(file) REFERENCES files_v2(path) ON DELETE CASCADE
-      );
-      CREATE TABLE IF NOT EXISTS file_analysis (
-        path TEXT PRIMARY KEY,
-        mtime REAL,
-        hash TEXT,
-        analysis JSON
-      );
-    `);
-    // Caches written before imports were persisted lack the column. Add it;
-    // rows with a NULL value are treated as misses in get() and reparsed.
-    const cols = this.db.prepare('PRAGMA table_info(files_v2)').all() as Array<{ name: string }>;
-    if (!cols.some(c => c.name === 'imports')) {
-      this.db.exec('ALTER TABLE files_v2 ADD COLUMN imports JSON');
+      const store = open(':memory:');
+      SqliteCache.ensureSchema(store.db());
+      return store;
+    }
+  }
+
+  private static ensureSchema(db: DatabaseHandle) {
+    const version = db.pragma('user_version', { simple: true }) as number;
+    if (version === CACHE_SCHEMA_VERSION) return;
+    db.transaction(() => {
+      for (const t of LEGACY_TABLES) db.exec(`DROP TABLE IF EXISTS ${t}`);
+      db.exec('DELETE FROM kv');
+      db.pragma(`user_version = ${CACHE_SCHEMA_VERSION}`);
+    })();
+  }
+
+  private read<T>(key: string, file: string): T | null {
+    try {
+      return this.store.get<T>(key);
+    } catch (err) {
+      Logger.warn(`Failed to read from cache for ${file}: ${(err as Error).message}`);
+      return null;
     }
   }
 
   get(file: string, mtime: number, docConfig: string, includeVariables: boolean): { tags: Tag[], imports: Import[] } | null {
-    try {
-      const row = this.db.prepare('SELECT mtime, doc_config, include_variables, imports FROM files_v2 WHERE path = ?').get(file) as FileRow | undefined;
-
-      if (!row || row.mtime !== mtime || row.doc_config !== docConfig || Boolean(row.include_variables) !== includeVariables) {
-        return null;
-      }
-
-      // Entry written before imports were persisted (or unreadable): miss, so
-      // the file is reparsed rather than served with its imports dropped.
-      let imports: Import[];
-      try {
-        if (row.imports == null) return null;
-        imports = JSON.parse(row.imports);
-        if (!Array.isArray(imports)) return null;
-      } catch {
-        Logger.warn(`Corrupted imports cache for ${file}, treating as cache miss`);
-        return null;
-      }
-
-      const tagRows = this.db.prepare('SELECT data FROM tags WHERE file = ?').all(file) as TagRow[];
-
-      // Parse tags with error handling for corrupted entries
-      const tags: Tag[] = [];
-      for (const row of tagRows) {
-        try {
-          tags.push(JSON.parse(row.data));
-        } catch (err) {
-          // Skip corrupted cache entry but continue processing
-          Logger.warn(`Corrupted cache entry for ${file}, skipping tag`);
-        }
-      }
-
-      return { tags, imports };
-    } catch (err) {
-      // Cache read failure shouldn't crash the application
-      Logger.warn(`Failed to read from cache for ${file}: ${(err as Error).message}`);
-      return null; // Treat as cache miss
+    const entry = this.read<TagsEntry>(TAGS_PREFIX + file, file);
+    if (
+      !entry ||
+      entry.mtime !== mtime ||
+      entry.docConfig !== docConfig ||
+      entry.includeVariables !== includeVariables
+    ) {
+      return null;
     }
+    if (!Array.isArray(entry.tags) || !Array.isArray(entry.imports)) {
+      Logger.warn(`Corrupted cache entry for ${file}, treating as cache miss`);
+      return null;
+    }
+    return { tags: entry.tags, imports: entry.imports };
   }
 
   set(file: string, mtime: number, tags: Tag[], imports: Import[], docConfig: string, includeVariables: boolean) {
+    const entry: TagsEntry = { mtime, docConfig, includeVariables, tags, imports: imports ?? [] };
     try {
-      const insertFile = this.db.prepare('INSERT OR REPLACE INTO files_v2 (path, mtime, doc_config, include_variables, imports) VALUES (?, ?, ?, ?, ?)');
-      const insertTag = this.db.prepare('INSERT INTO tags (file, data) VALUES (?, ?)');
-      const deleteTags = this.db.prepare('DELETE FROM tags WHERE file = ?');
-
-      const transaction = this.db.transaction(() => {
-        insertFile.run(file, mtime, docConfig, includeVariables ? 1 : 0, JSON.stringify(imports ?? []));
-        deleteTags.run(file);
-        for (const tag of tags) {
-          insertTag.run(file, JSON.stringify(tag));
-        }
-      });
-
-      transaction();
+      this.store.put(TAGS_PREFIX + file, entry);
     } catch (err) {
-      // Cache write failure shouldn't crash the application
       throw new CacheWriteError('sqlite', err as Error);
     }
   }
 
   // File analysis cache methods
-  setFileAnalysis(file: string, data: { mtime: number; hash: string; analysis: any }) {
+  setFileAnalysis(file: string, data: AnalysisEntry) {
     try {
-      const stmt = this.db.prepare(
-        'INSERT OR REPLACE INTO file_analysis (path, mtime, hash, analysis) VALUES (?, ?, ?, ?)'
-      );
-      stmt.run(file, data.mtime, data.hash, JSON.stringify(data.analysis));
+      this.store.put(ANALYSIS_PREFIX + file, { mtime: data.mtime, hash: data.hash, analysis: data.analysis });
     } catch (err) {
       throw new CacheWriteError('sqlite', err as Error);
     }
   }
 
-  getFileAnalysis(file: string): { mtime: number; hash: string; analysis: any } | null {
-    try {
-      const row = this.db.prepare(
-        'SELECT mtime, hash, analysis FROM file_analysis WHERE path = ?'
-      ).get(file) as FileAnalysisRow | undefined;
-
-      if (!row) {
-        return null;
-      }
-
-      try {
-        return {
-          mtime: row.mtime,
-          hash: row.hash,
-          analysis: JSON.parse(row.analysis)
-        };
-      } catch (jsonErr) {
-        // Corrupted JSON in cache
-        Logger.warn(`Corrupted analysis cache for ${file}, treating as cache miss`);
-        return null;
-      }
-    } catch (err) {
-      Logger.warn(`Failed to read analysis cache for ${file}: ${(err as Error).message}`);
-      return null;
-    }
+  getFileAnalysis(file: string): AnalysisEntry | null {
+    return this.read<AnalysisEntry>(ANALYSIS_PREFIX + file, file);
   }
 
   isFileAnalysisValid(file: string, mtime: number, hash: string): boolean {
-    try {
-      const row = this.db.prepare(
-        'SELECT mtime, hash FROM file_analysis WHERE path = ?'
-      ).get(file) as Pick<FileAnalysisRow, 'mtime' | 'hash'> | undefined;
-
-      if (!row) {
-        return false;
-      }
-
-      return row.mtime === mtime && row.hash === hash;
-    } catch (err) {
-      Logger.warn(`Failed to validate analysis cache for ${file}: ${(err as Error).message}`);
-      return false;
-    }
+    const entry = this.getFileAnalysis(file);
+    return entry !== null && entry.mtime === mtime && entry.hash === hash;
   }
 
   clearFileAnalysis(file: string) {
     try {
-      this.db.prepare('DELETE FROM file_analysis WHERE path = ?').run(file);
+      this.store.db().prepare('DELETE FROM kv WHERE key = ?').run(ANALYSIS_PREFIX + file);
     } catch (err) {
-      // Silently fail - clearing cache is not critical
+      // Clearing cache is not critical
       Logger.warn(`Failed to clear analysis cache for ${file}: ${(err as Error).message}`);
     }
+  }
+
+  close() {
+    this.store.close();
   }
 }
