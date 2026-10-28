@@ -8,7 +8,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Command } from 'commander';
-import { Logger } from '../lib/logger';
+import {
+  addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
+} from '../lib/output';
 import { findConfigPath, findGlobalConfigPath } from '../lib/config';
 
 // require(): tsconfig moduleResolution 'node' ignores the kit exports map.
@@ -18,7 +20,7 @@ const xdg = require('@hop-top/kit/xdg') as Record<
 >;
 
 interface PathsOptions {
-  format?: 'text' | 'json';
+  format?: string;
   path?: string;
 }
 
@@ -49,36 +51,43 @@ function collectPaths(projectRoot: string): PathsReport {
   };
 }
 
-function emit(report: PathsReport, format: 'text' | 'json'): void {
-  if (format === 'json') {
-    Logger.output(JSON.stringify(report, null, 2));
-    return;
-  }
-  Logger.output(`project-root:    ${report.projectRoot}`);
-  Logger.output(`project-config:  ${report.projectConfig ?? '(none)'}`);
-  Logger.output(`global-config:   ${report.globalConfig ?? '(none)'}`);
-  Logger.output(
-    `cache-db:        ${report.cacheDb}${report.cacheDbExists ? '' : ' (not yet created)'}`
-  );
-  Logger.output(`config-dir:      ${report.configDir}`);
-  Logger.output(`data-dir:        ${report.dataDir}`);
-  Logger.output(`cache-dir:       ${report.cacheDir}`);
-  Logger.output(`state-dir:       ${report.stateDir}`);
-}
+const PATHS_COLUMNS = columns(
+  'projectRoot', 'projectConfig', 'globalConfig', 'cacheDb', 'cacheDbExists',
+  'configDir', 'dataDir', 'cacheDir', 'stateDir',
+);
 
-export function handlePathsAction(opts: PathsOptions = {}): void {
-  const projectRoot = opts.path
-    ? path.resolve(opts.path)
-    : process.cwd();
-  const format: 'text' | 'json' = opts.format === 'json' ? 'json' : 'text';
-  emit(collectPaths(projectRoot), format);
+const pathsText = textFormatter<PathsReport | PathsReport[]>('text', (data, put) => {
+  const report = Array.isArray(data) ? data[0] : data;
+  put(`project-root:    ${report.projectRoot}`);
+  put(`project-config:  ${report.projectConfig ?? '(none)'}`);
+  put(`global-config:   ${report.globalConfig ?? '(none)'}`);
+  put(`cache-db:        ${report.cacheDb}${report.cacheDbExists ? '' : ' (not yet created)'}`);
+  put(`config-dir:      ${report.configDir}`);
+  put(`data-dir:        ${report.dataDir}`);
+  put(`cache-dir:       ${report.cacheDir}`);
+  put(`state-dir:       ${report.stateDir}`);
+});
+
+const registry = outputRegistry(pathsText);
+
+export async function handlePathsAction(opts: PathsOptions, cmd: Command): Promise<void> {
+  assertFormat(cmd, registry);
+  const projectRoot = opts.path ? path.resolve(opts.path) : process.cwd();
+  await emit(cmd, collectPaths(projectRoot), {
+    registry,
+    columns: PATHS_COLUMNS,
+    defaultFormat: 'text',
+  });
 }
 
 export function registerPathsCommand(program: Command): void {
-  program
+  const cmd = program
     .command('paths')
     .description("Show xray's active config, cache DB, and project root")
-    .option('-p, --path <path>', 'Project path to inspect', process.cwd())
-    .option('--format <format>', 'Output format: text or json', 'text')
-    .action((opts: PathsOptions) => handlePathsAction(opts));
+    .option('-p, --path <path>', 'Project path to inspect', process.cwd());
+  addOutputFlags(cmd, registry, {
+    defaultFormat: 'text',
+    description: 'Output format: text, json, yaml, table, csv',
+  });
+  cmd.action((opts: PathsOptions, c: Command) => handlePathsAction(opts, c));
 }

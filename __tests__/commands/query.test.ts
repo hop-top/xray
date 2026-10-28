@@ -1,7 +1,8 @@
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import * as fs from 'fs';
 import * as path from 'path';
-import { handleQueryAction } from '../../src/commands/query';
+import { Command } from 'commander';
+import { addQueryOutputFlags, handleQueryAction, runQueryCommand } from '../../src/commands/query';
 import type { QueryCommandOptions } from '../../src/types/command-options';
 import Graph from 'graphology';
 import { GraphSerializer } from '../../src/lib/graph/serializer';
@@ -101,41 +102,76 @@ describe('Query Command', () => {
       expect(result.metadata.syntax).toBe('function');
     });
 
-    test('outputs table format', async () => {
-      const options: QueryCommandOptions = {
-        graph: graphFile,
-        format: 'table',
-      };
+    test('returns the structured result regardless of format', async () => {
+      const result = await handleQueryAction('calls(main)', { graph: graphFile, format: 'table' });
+      expect(typeof result).toBe('object');
+      expect((result as any).nodes[0].name).toBe('processData');
+    });
+  });
 
-      const output = await handleQueryAction('calls(main)', options);
+  describe('xray query output (kit dispatch)', () => {
+    let writeSpy: jest.SpyInstance;
+    const captured = () => writeSpy.mock.calls.map(c => String(c[0])).join('');
 
-      // Table format returns string
-      expect(typeof output).toBe('string');
-      expect(output).toContain('processData');
+    beforeEach(() => {
+      writeSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    });
+    afterEach(() => writeSpy.mockRestore());
+
+    async function runQuery(...args: string[]): Promise<void> {
+      const program = new Command();
+      program.exitOverride();
+      addQueryOutputFlags(program.command('query').argument('[query]').option('--graph <file>'))
+        .option('--list-adapters')
+        .action(runQueryCommand);
+      await program.parseAsync(['node', 'test', 'query', ...args]);
+    }
+
+    test('json is byte-identical to JSON.stringify(result, null, 2)', async () => {
+      await runQuery('--graph', graphFile, '--format', 'json', 'calls(main)');
+      const out = captured();
+      const doc = JSON.parse(out);
+      expect(doc).toHaveProperty('nodes');
+      expect(doc).toHaveProperty('edges');
+      expect(doc).toHaveProperty('metadata');
+      expect(out).toBe(JSON.stringify(doc, null, 2) + '\n');
     });
 
-    test('outputs tree format', async () => {
-      const options: QueryCommandOptions = {
-        graph: graphFile,
-        format: 'tree',
-      };
-
-      const output = await handleQueryAction('calls(main)', options);
-
-      // Tree format returns string
-      expect(typeof output).toBe('string');
-      expect(output).toContain('main');
-      expect(output).toContain('processData');
+    test('table (default) renders node rows through kit table', async () => {
+      await runQuery('--graph', graphFile, 'calls(main)');
+      const lines = captured().trimEnd().split('\n');
+      expect(lines[0].split(/\s+/)).toEqual(['name', 'kind', 'file', 'line']);
+      expect(lines[1]).toMatch(/^processData\s+function\s+src\/api\.ts\s+10$/);
     });
 
-    test('defaults to table format when not specified', async () => {
-      const options: QueryCommandOptions = {
-        graph: graphFile,
-      };
+    test('csv honors --cols (incl. non-default columns)', async () => {
+      await runQuery('calls(main)', '--graph', graphFile, '--format', 'csv', '--cols', 'id,name');
+      expect(captured()).toBe('id,name\nsrc/api.ts::processData,processData\n');
+    });
 
-      const output = await handleQueryAction('calls(main)', options);
+    test('tree renders the call tree', async () => {
+      await runQuery('--graph', graphFile, '--format', 'tree', 'calls(main)');
+      const out = captured();
+      expect(out).toContain('Call Tree:');
+      expect(out).toContain('processData');
+    });
 
-      expect(typeof output).toBe('string');
+    test('yaml emits the whole result document', async () => {
+      await runQuery('--graph', graphFile, '--format', 'yaml', 'calls(main)');
+      expect(captured()).toMatch(/^nodes:/m);
+      expect(captured()).toMatch(/^metadata:/m);
+    });
+
+    test('unknown format is a usage error (exit 2)', async () => {
+      await expect(
+        runQuery('--graph', graphFile, '--format', 'xml', 'calls(main)')
+      ).rejects.toMatchObject({ exitCode: 2 });
+    });
+
+    test('unknown column is a usage error (exit 2)', async () => {
+      await expect(
+        runQuery('calls(main)', '--graph', graphFile, '--cols', 'nope')
+      ).rejects.toMatchObject({ exitCode: 2 });
     });
   });
 

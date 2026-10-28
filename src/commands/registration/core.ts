@@ -4,7 +4,7 @@ import { addCommonOptions } from '../common';
 import { handleGenerateAction } from '../generate';
 import { handleClearCacheAction } from '../clear-cache';
 import { handleCompletionAction } from '../completion';
-import { runQueryCommand } from '../query';
+import { addQueryOutputFlags, runQueryCommand } from '../query';
 import { handleDescribeAction } from '../describe';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
@@ -52,12 +52,13 @@ export function registerCoreCommands(program: Command): void {
     .action(handleGenerateAction);
 
   // Query command - call graph queries
-  program
-    .command('query')
-    .description('Query call graph using function-based syntax')
-    .argument('[query]', 'Query string (e.g., "calls(main)", "callers(processData)")')
-    .option('--graph <file>', 'Path to saved graph JSON file')
-    .option('--format <format>', 'Output format: json, table, tree (default: table)', 'table')
+  addQueryOutputFlags(
+    program
+      .command('query')
+      .description('Query call graph using function-based syntax')
+      .argument('[query]', 'Query string (e.g., "calls(main)", "callers(processData)")')
+      .option('--graph <file>', 'Path to saved graph JSON file')
+  )
     .option('--list-adapters', 'List available query adapters')
     .action(runQueryCommand);
 

@@ -37,18 +37,46 @@ describe('Alias Commands', () => {
           routes: 'express routes'
         }
       });
-      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      const writeSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
       const program = registerAliasCommand();
       await program.parseAsync(['node', 'test', 'list']);
 
-      const output = consoleLogSpy.mock.calls.map(call => call[0]).join('\n');
+      const output = writeSpy.mock.calls.map(call => String(call[0])).join('');
       expect(output).toContain('comp');
       expect(output).toContain('react components');
       expect(output).toContain('routes');
       expect(output).toContain('express routes');
       expect(output).toContain('Total: 2');
-      consoleLogSpy.mockRestore();
+      writeSpy.mockRestore();
+    });
+
+    it('should emit alias records as json / csv', async () => {
+      mockLoadConfig.mockReturnValue({
+        paths: ['./src'],
+        aliases: { comp: 'react components' }
+      });
+      const writeSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      const out = () => writeSpy.mock.calls.map(call => String(call[0])).join('');
+
+      await registerAliasCommand().parseAsync(['node', 'test', 'list', '--format', 'json']);
+      expect(JSON.parse(out())).toEqual([{ alias: 'comp', target: 'react components' }]);
+
+      writeSpy.mockClear();
+      await registerAliasCommand().parseAsync(['node', 'test', 'list', '--format', 'csv']);
+      expect(out()).toBe('alias,target\ncomp,react components\n');
+      writeSpy.mockRestore();
+    });
+
+    it('should emit an empty json array when no aliases configured', async () => {
+      mockLoadConfig.mockReturnValue(null as any);
+      const errSpy = jest.spyOn(console, 'error').mockImplementation();
+      const writeSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+      await registerAliasCommand().parseAsync(['node', 'test', 'list', '--format', 'json']);
+      expect(writeSpy.mock.calls.map(call => String(call[0])).join('')).toBe('[]\n');
+      writeSpy.mockRestore();
+      errSpy.mockRestore();
     });
   });
 

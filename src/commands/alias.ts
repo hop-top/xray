@@ -3,39 +3,54 @@ import { loadConfig, saveConfig } from '../lib/config';
 import { AliasResolver } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
 import { ConflictError, NotFoundError, UsageError } from '../lib/error/types';
-import { styles } from '../lib/tui';
+import {
+  addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
+} from '../lib/output';
+
+interface AliasRow { alias: string; target: string }
+
+const aliasListRegistry = outputRegistry(
+  textFormatter<AliasRow[]>('text', (rows, put, s) => {
+    if (rows.length === 0) return;
+    put(s.accent('\nConfigured Aliases:\n'));
+    for (const { alias, target } of rows) {
+      put(`  ${s.bold(alias)} → ${s.muted(target)}`);
+    }
+    put(`\nTotal: ${rows.length} alias(es)\n`);
+  })
+);
 
 export function registerAliasCommand(): Command {
   const program = new Command('alias')
     .description('Manage command aliases');
 
   // List aliases
-  program
+  const listCmd = program
     .command('list')
-    .description('List all configured aliases')
-    .action(async () => {
-      const config = loadConfig();
-      if (!config) {
-        Logger.info('No configuration file found.');
-        Logger.info('\nCreate .xrayrc.json to configure aliases.');
-        return;
-      }
+    .description('List all configured aliases');
+  addOutputFlags(listCmd, aliasListRegistry, {
+    defaultFormat: 'text',
+    description: 'Output format: text, json, yaml, table, csv',
+  }).action(async (_opts: unknown, cmd: Command) => {
+    assertFormat(cmd, aliasListRegistry);
+    const config = loadConfig();
+    const aliases = config ? new AliasResolver(config).getAll() : new Map<string, string>();
 
-      const resolver = new AliasResolver(config);
-      const aliases = resolver.getAll();
+    if (!config) {
+      Logger.info('No configuration file found.');
+      Logger.info('\nCreate .xrayrc.json to configure aliases.');
+    } else if (aliases.size === 0) {
+      Logger.info('No aliases configured.');
+      Logger.info('\nTo add aliases, use: xray alias set <name> <target>');
+    }
 
-      if (aliases.size === 0) {
-        Logger.info('No aliases configured.');
-        Logger.info('\nTo add aliases, use: xray alias set <name> <target>');
-        return;
-      }
-
-      Logger.output(styles().accent('\nConfigured Aliases:\n'));
-      for (const [alias, target] of aliases.entries()) {
-        Logger.output(`  ${styles().bold(alias)} → ${styles().muted(target)}`);
-      }
-      Logger.output(`\nTotal: ${aliases.size} alias(es)\n`);
+    const rows: AliasRow[] = [...aliases.entries()].map(([alias, target]) => ({ alias, target }));
+    await emit(cmd, rows, {
+      registry: aliasListRegistry,
+      columns: columns('alias', 'target'),
+      defaultFormat: 'text',
     });
+  });
 
   // Set alias
   program

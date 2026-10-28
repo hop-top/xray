@@ -275,4 +275,93 @@ describe('Dynamic Command Registration', () => {
       expect(program.constructor.name).toBe('Command');
     });
   });
+
+  describe('Strategy command output (kit dispatch)', () => {
+    const rows = [
+      { name: 'getUsers', file: 'src/a.ts', line: 3, meta: { verb: 'GET' } },
+      { name: 'addUser', file: 'src/b.ts' },
+    ];
+
+    async function setup(options?: Record<string, unknown>, result: unknown = rows) {
+      const handler = jest.fn().mockResolvedValue(result);
+      const strategy = {
+        name: 'glossary',
+        version: '0.1.0',
+        detect: jest.fn().mockResolvedValue(true),
+        commands: { scan: { description: 'Scan', options, handler } },
+      };
+      jest.spyOn(StrategyLoader.prototype, 'discoverStrategies').mockResolvedValue([strategy as any]);
+      jest.spyOn(StrategyCacheManager.prototype, 'getCached').mockResolvedValue(null);
+      jest.spyOn(StrategyCacheManager.prototype, 'save').mockResolvedValue();
+      jest.spyOn(console, 'error').mockImplementation();
+      const program = new Command();
+      program.exitOverride();
+      await registerStrategyCommands(program);
+      const run = (...args: string[]) =>
+        program.parseAsync(['node', 'test', 'glossary', 'scan', '-p', process.cwd(), ...args]);
+      return { program, handler, run };
+    }
+
+    let writeSpy: jest.SpyInstance;
+    const captured = () => writeSpy.mock.calls.map(c => String(c[0])).join('');
+    beforeEach(() => {
+      writeSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    });
+
+    it('keeps the titled text view by default', async () => {
+      const { run } = await setup();
+      await run();
+      expect(captured()).toBe(
+        '\nGlossary scan:\n\n  getUsers\n    → src/a.ts:3\n  addUser\n    → src/b.ts\n\nTotal: 2\n\n'
+      );
+    });
+
+    it('emits records as json; handler sees only an explicit --format', async () => {
+      const { run, handler } = await setup();
+      await run('--format', 'json');
+      expect(JSON.parse(captured())).toEqual(rows);
+      const handlerOpts = handler.mock.calls[0][1];
+      expect(handlerOpts.format).toBe('json');
+      expect(handlerOpts).not.toHaveProperty('cols');
+      expect(handlerOpts).not.toHaveProperty('output');
+      expect(handlerOpts).not.toHaveProperty('formatOpt');
+
+      await run();
+      expect(handler.mock.calls[1][1]).not.toHaveProperty('format');
+    });
+
+    it('dot prints a pre-rendered graph document, rejects anything else', async () => {
+      const { run } = await setup(undefined, { format: 'dot', content: 'digraph g {\n}' });
+      await run('--format', 'dot');
+      expect(captured()).toBe('digraph g {\n}\n');
+
+      const other = await setup();
+      await expect(other.run('--format', 'dot')).rejects.toMatchObject({ exitCode: 2 });
+    });
+
+    it('renders csv with --cols, nested cells as JSON, missing cells empty', async () => {
+      const { run } = await setup();
+      await run('--format', 'csv', '--cols', 'name,line,meta');
+      expect(captured()).toBe('name,line,meta\ngetUsers,3,"{""verb"":""GET""}"\naddUser,,\n');
+    });
+
+    it('keeps a csv column absent from the first row', async () => {
+      const { run } = await setup(undefined, [...rows].reverse());
+      await run('--format', 'csv', '--cols', 'name,line');
+      expect(captured()).toBe('name,line\naddUser,\ngetUsers,3\n');
+    });
+
+    it('rejects an unknown format before running the handler', async () => {
+      const { run, handler } = await setup();
+      await expect(run('--format', 'xml')).rejects.toMatchObject({ exitCode: 2 });
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('leaves commands that declare their own --format untouched', async () => {
+      const { program } = await setup({ format: { description: 'own format' } });
+      const scan = program.commands.find(c => c.name() === 'glossary')!.commands[0];
+      expect(scan.options.filter(o => o.long === '--format')).toHaveLength(1);
+      expect(scan.options.find(o => o.long === '--cols')).toBeUndefined();
+    });
+  });
 });

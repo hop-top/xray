@@ -8,28 +8,50 @@ import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { normalizeDetectedStrategy } from '../lib/strategy/types';
 import { FileWriteError, NotFoundError } from '../lib/error/types';
+import {
+  addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
+} from '../lib/output';
+
+interface StrategyRow { name: string; version: string; commands: string }
+
+const strategyListRegistry = outputRegistry(
+  textFormatter<StrategyRow[]>('text', (rows, put, s) => {
+    rows.forEach((r) => put(s.accent(`  ${r.name}`) + ' ' + s.muted(`v${r.version}`)));
+  })
+);
 
 export function registerStrategyCommand(): Command {
   const program = new Command('strategy')
     .description('Manage strategies (list, create, install, remove, enable, disable, info)');
 
-  program
+  const listCmd = program
     .command('list')
     .alias('ls')
-    .description('List all available strategies')
-    .action(async () => {
-      const loader = new StrategyLoader();
-      const strategies = await loader.discoverStrategies();
+    .description('List all available strategies');
+  addOutputFlags(listCmd, strategyListRegistry, {
+    defaultFormat: 'text',
+    description: 'Output format: text, json, yaml, table, csv',
+  }).action(async (_opts: unknown, cmd: Command) => {
+    assertFormat(cmd, strategyListRegistry);
+    const loader = new StrategyLoader();
+    const strategies = await loader.discoverStrategies();
 
-      Logger.info('Available Strategies:\n');
-      strategies.forEach(strategy => {
-        Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
-      });
-
-      if (strategies.length === 0) {
-        Logger.warn('No strategies found.');
-      }
+    Logger.info('Available Strategies:\n');
+    const rows: StrategyRow[] = strategies.map((s) => ({
+      name: s.name,
+      version: s.version,
+      commands: Object.keys(s.commands ?? {}).join(','),
+    }));
+    await emit(cmd, rows, {
+      registry: strategyListRegistry,
+      columns: columns('name', 'version', 'commands'),
+      defaultFormat: 'text',
     });
+
+    if (strategies.length === 0) {
+      Logger.warn('No strategies found.');
+    }
+  });
 
   program
     .command('detect')
