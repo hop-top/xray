@@ -233,7 +233,7 @@ describe('cli golden: introspection', () => {
   it('--version', async () => {
     const r = await run(['--version']);
     expect(r.status).toBe(0);
-    expect(r.stdout.trim()).toBe(PKG_VERSION);
+    expect(r.stdout.trim()).toBe(`xray v${PKG_VERSION}`);
     expect(r.stderr).toBe('');
   });
 

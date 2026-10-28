@@ -1,16 +1,11 @@
-import { Command } from 'commander';
 import { handleMetaStrategyCommand } from './strategy';
 import { handleExploreAction } from './explore';
-import { configureRootProgram } from './root-options';
+import { program, theme } from './root-program';
+import { setCommandGroup } from './kit-cli';
 import { registerCoreCommands } from './registration/core';
 import { registerStrategyCommands } from './registration/strategies';
 import { registerAliases } from './registration/aliases';
 import { ExploreCommandOptions } from '../types/command-options';
-
-// Read version from package.json
-const { version } = require('../../package.json');
-
-const program = configureRootProgram(new Command(), version);
 
 /**
  * Register all commands (static core + dynamic strategies + aliases)
@@ -35,7 +30,7 @@ export async function registerCommands() {
  * Register explore command as default
  */
 function registerExploreCommand(): void {
-  program
+  const explore = program
     .command('explore', { isDefault: true })
     .description('Quickly find files by patterns, search code for keywords, or explore codebase [default command]')
     .argument('[query]', 'Search query or pattern')
@@ -62,7 +57,8 @@ function registerExploreCommand(): void {
       // Handle regular explore options
       await handleExploreAction(query, options);
     });
+  setCommandGroup(explore, 'analyze');
 }
 
-// Export the program for testing
-export { program };
+// Export the program for testing; theme for themed output.
+export { program, theme };

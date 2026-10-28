@@ -1,6 +1,7 @@
 /**
- * Every spelling of "verbose" resolves identically: a bare leading `-v`
- * must not swallow the subcommand name as its optional [level] value.
+ * Every spelling of "verbose" resolves identically: `-V` (stackable
+ * count), `--verbose`, and `--log-level debug`, before or after the
+ * subcommand. `-v` is the version flag.
  * Marker: `Generate action started` is debug-only and emitted by the map
  * command handler itself, so it proves both the level AND the dispatch.
  */
@@ -9,7 +10,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { normalizeVerboseArgv } from '../../src/commands/root-options';
+import { levelForVerboseCount, resolveLogLevel } from '../../src/commands/root-options';
 
 const BIN = path.resolve(__dirname, '../..', 'bin', 'xray');
 const MARKER = 'Generate action started';
@@ -38,13 +39,13 @@ describe('verbosity: all forms resolve identically', () => {
   const rest = () => ['-p', repo, '--skip-detect', '--no-chunk', '-o', path.join(repo, 'out.txt')];
 
   const forms: Array<[string, () => string[]]> = [
-    ['leading bare -v', () => ['-v', 'map', ...rest()]],
-    ['leading bare --verbose', () => ['--verbose', 'map', ...rest()]],
-    ['-v after subcommand', () => ['map', '-v', ...rest()]],
-    ['trailing -v', () => ['map', ...rest(), '-v']],
-    ['leading -v debug', () => ['-v', 'debug', 'map', ...rest()]],
-    ['leading --verbose debug', () => ['--verbose', 'debug', 'map', ...rest()]],
-    ['--verbose=debug', () => ['--verbose=debug', 'map', ...rest()]],
+    ['leading -V', () => ['-V', 'map', ...rest()]],
+    ['leading --verbose', () => ['--verbose', 'map', ...rest()]],
+    ['-V after subcommand', () => ['map', '-V', ...rest()]],
+    ['trailing -V', () => ['map', ...rest(), '-V']],
+    ['stacked -VV', () => ['-VV', 'map', ...rest()]],
+    ['leading --log-level debug', () => ['--log-level', 'debug', 'map', ...rest()]],
+    ['--log-level=debug', () => ['--log-level=debug', 'map', ...rest()]],
   ];
 
   test.each(forms)('%s: runs map and emits debug output', (_name, args) => {
@@ -63,32 +64,49 @@ describe('verbosity: all forms resolve identically', () => {
     expect(r.stderr).not.toContain(CONFIG_MARKER);
   });
 
-  test('--verbose info: no debug output', () => {
-    const r = run(['--verbose', 'info', 'map', ...rest()]);
+  test('--log-level info: no debug output', () => {
+    const r = run(['--log-level', 'info', 'map', ...rest()]);
     expect(r.stderr).not.toContain(MARKER);
   });
 
-  test('--quiet beats a leading -v', () => {
-    const r = run(['-v', '--quiet', 'map', ...rest()]);
+  test('--log-level beats -V', () => {
+    const r = run(['-V', '--log-level', 'warn', 'map', ...rest()]);
     expect(r.stderr).not.toContain(MARKER);
+  });
+
+  test('--quiet beats a leading -V', () => {
+    const r = run(['-V', '--quiet', 'map', ...rest()]);
+    expect(r.stderr).not.toContain(MARKER);
+  });
+
+  test('invalid --log-level is a usage error', () => {
+    const r = run(['--log-level', 'loud', 'map', ...rest()]);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain("invalid --log-level 'loud'");
+  });
+
+  test('-v prints the version, not verbosity', () => {
+    const r = run(['-v']);
+    expect(r.status).toBe(0);
+    expect(r.stdout.trim()).toMatch(/^xray v\d+\.\d+\.\d+/);
   });
 });
 
-describe('normalizeVerboseArgv', () => {
-  const n = (...a: string[]) => normalizeVerboseArgv(['node', 'xray', ...a]).slice(2);
-  test('bare flag before a subcommand is pinned to debug', () => {
-    expect(n('-v', 'map')).toEqual(['--verbose=debug', 'map']);
-    expect(n('--verbose', 'map', '.')).toEqual(['--verbose=debug', 'map', '.']);
+describe('resolveLogLevel', () => {
+  test('-V count maps 0 -> unchanged, >=1 -> debug', () => {
+    expect(resolveLogLevel({ verbose: 0 })).toBeUndefined();
+    expect(resolveLogLevel({ verbose: 1 })).toBe('debug');
+    expect(resolveLogLevel({ verbose: 3 })).toBe('debug');
+    expect(levelForVerboseCount(0)).toBe('info');
   });
-  test('bare flag at end or before another flag is pinned to debug', () => {
-    expect(n('map', '-v')).toEqual(['map', '--verbose=debug']);
-    expect(n('map', '-v', '-p', 'x')).toEqual(['map', '--verbose=debug', '-p', 'x']);
+  test('--log-level overrides -V and is case-insensitive', () => {
+    expect(resolveLogLevel({ verbose: 2, logLevel: 'WARN' })).toBe('warn');
+    expect(resolveLogLevel({ logLevel: 'silent' })).toBe('silent');
   });
-  test('explicit levels are kept and lowercased', () => {
-    expect(n('-v', 'WARN', 'map')).toEqual(['--verbose=warn', 'map']);
-    expect(n('--verbose=info', 'map')).toEqual(['--verbose=info', 'map']);
+  test('--quiet beats everything', () => {
+    expect(resolveLogLevel({ quiet: true, verbose: 2, logLevel: 'debug' })).toBe('error');
   });
-  test('stops at --', () => {
-    expect(n('explore', '--', '-v', 'x')).toEqual(['explore', '--', '-v', 'x']);
+  test('unknown level throws a usage error', () => {
+    expect(() => resolveLogLevel({ logLevel: 'loud' })).toThrow(/invalid --log-level/);
   });
 });

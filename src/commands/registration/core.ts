@@ -10,6 +10,23 @@ import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
 import { registerPathsCommand } from '../paths';
 import { registerLangCommand } from '../lang';
+import { setCommandGroup, type HelpGroupId } from '../kit-cli';
+
+// Root help group per top-level command name; unlisted/hidden commands
+// fall into kit's default section.
+const CORE_GROUPS: Record<string, HelpGroupId> = {
+  map: 'analyze',
+  scan: 'analyze',
+  graph: 'analyze',
+  query: 'analyze',
+  strategy: 'strategy',
+  alias: 'management',
+  lang: 'management',
+  cache: 'management',
+  paths: 'management',
+  describe: 'management',
+  completion: 'management',
+};
 
 /**
  * Register all static core commands
@@ -88,4 +105,9 @@ export function registerCoreCommands(program: Command): void {
     .description('Generate shell completion script')
     .argument('<shell>', 'Shell type: bash, zsh, or fish')
     .action(handleCompletionAction);
+
+  for (const cmd of program.commands) {
+    const group = CORE_GROUPS[cmd.name()];
+    if (group) setCommandGroup(cmd, group);
+  }
 }

@@ -22,7 +22,7 @@ language, parses those whose grammar is installed, and prints one aggregated hin
 ```
 
 The hint shows for human output (the default). Machine formats (`--format json|csv|xml`,
-or the `--json`, `--csv`, `--xml` aliases) keep it quiet unless verbose (`-v`), where per-language counts and sample
+or the `--json`, `--csv`, `--xml` aliases) keep it quiet unless verbose (`-V`), where per-language counts and sample
 paths are listed too; `--quiet` always hides it. `xray lang list` shows the same
 languages under "Detected in this repo, not installed" (`detectedNotInstalled` in
 `--json`).

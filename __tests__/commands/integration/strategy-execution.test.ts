@@ -150,8 +150,8 @@ describe('Strategy Command Execution (Integration)', () => {
   });
 
   describe('Verbose Output', () => {
-    it('should show debug info with -v debug', async () => {
-      const { stdout, exitCode } = await runXray('-v debug express --help');
+    it('should show debug info with --log-level debug', async () => {
+      const { stdout, exitCode } = await runXray('--log-level debug express --help');
 
       expect(exitCode).toBe(0);
       // Debug output may appear in stdout

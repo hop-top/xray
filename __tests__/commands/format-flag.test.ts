@@ -120,8 +120,8 @@ describe('--format', () => {
       expect(run(args('map', '--format', 'txt')).stderr).toContain(HINT);
       expect(run(args('map')).stderr).toContain(HINT);
     });
-    test('--format json -v: hint shown', () => {
-      expect(run(['-v', ...args('map', '--format', 'json')]).stderr).toContain(HINT);
+    test('--format json -V: hint shown', () => {
+      expect(run(['-V', ...args('map', '--format', 'json')]).stderr).toContain(HINT);
     });
   });
 

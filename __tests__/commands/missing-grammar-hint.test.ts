@@ -88,7 +88,7 @@ describe('missing-grammar hint (CLI)', () => {
   }, 90_000);
 
   it('--json --verbose: hint plus per-language detail on stderr', () => {
-    const r = run(['--verbose', 'debug', ...mapArgs('out-v.json', '--json')]);
+    const r = run(['--log-level', 'debug', ...mapArgs('out-v.json', '--json')]);
     expect(r.status).toBe(0);
     expect(r.stderr).toContain(HINT);
     expect(r.stderr).toMatch(/kotlin: 2 files \(\.kt\).*Util\.kt/);

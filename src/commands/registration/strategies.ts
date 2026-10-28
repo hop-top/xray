@@ -18,6 +18,7 @@ import {
   normalizeExtensionOptions,
 } from '../common';
 import { UsageError } from '../../lib/error/types';
+import { setCommandGroup } from '../kit-cli';
 
 /**
  * Register dynamic strategy commands
@@ -105,6 +106,7 @@ function registerStrategyCommand(
   const strategyCmd = program
     .command(extension.name)
     .description(`${extension.name} commands`);
+  setCommandGroup(strategyCmd, 'strategy');
 
   for (const [cmdName, cmdDef] of Object.entries(
     extension.commands as Record<string, StrategyCommand>

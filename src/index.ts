@@ -6,7 +6,7 @@ import { handleFirstRunConsent } from './lib/telemetry-consent';
 import { createXrayUpgradeChecker } from './upgrade-checker';
 import { CodedError, UsageError, EXIT_USAGE, EXIT_GENERIC } from './lib/error/types';
 import { Logger } from './lib/logger';
-import { normalizeVerboseArgv } from './commands/root-options';
+import { resolveLogLevel } from './commands/root-options';
 
 /**
  * Reject argv whose first positional looks command-shaped but isn't a
@@ -84,22 +84,29 @@ function editDistance(a: string, b: string): number {
 }
 
 /**
- * Pre-scan (normalized) argv for --verbose=<level> and --quiet so
- * diagnostics emitted before commander parses honour them. Stops at `--`.
+ * Pre-scan argv for --quiet, --log-level and -V/--verbose so diagnostics
+ * emitted before commander parses honour them. Same precedence as the
+ * root preAction hook. Stops at `--`. Invalid levels are left for the
+ * parsed hook to reject.
  */
 function applyEarlyVerbosity(argv: string[]): void {
   const args = argv.slice(2);
   const end = args.indexOf('--');
   const scan = end === -1 ? args : args.slice(0, end);
-  if (scan.includes('--quiet')) {
-    Logger.setLevel('error');
-    return;
+  const opts: Record<string, unknown> = { verbose: 0 };
+  for (let i = 0; i < scan.length; i++) {
+    const a = scan[i];
+    if (a === '--quiet') opts.quiet = true;
+    else if (a === '--verbose') opts.verbose = (opts.verbose as number) + 1;
+    else if (/^-V+$/.test(a)) opts.verbose = (opts.verbose as number) + a.length - 1;
+    else if (a.startsWith('--log-level=')) opts.logLevel = a.slice('--log-level='.length);
+    else if (a === '--log-level' && i + 1 < scan.length) opts.logLevel = scan[++i];
   }
-  for (const a of scan) {
-    if (a.startsWith('--verbose=')) {
-      Logger.setLevel(a.slice('--verbose='.length));
-      return;
-    }
+  try {
+    const level = resolveLogLevel(opts);
+    if (level !== undefined) Logger.setLevel(level);
+  } catch {
+    // reported by the root preAction hook after parse
   }
 }
 
@@ -107,9 +114,7 @@ function applyEarlyVerbosity(argv: string[]): void {
 export async function main() {
   // Apply verbosity first: config loading (consent, registration) emits
   // verbose-only diagnostics, and commander's preAction runs too late.
-  // Bare `-v` is pinned to an explicit level first so commander's optional
-  // [level] cannot swallow the subcommand name; the same argv feeds parse.
-  const argv = normalizeVerboseArgv(process.argv);
+  const argv = process.argv;
   applyEarlyVerbosity(argv);
 
   // Handle first-run telemetry consent
@@ -160,7 +165,11 @@ export async function main() {
   // allowExcessArguments keeps pre-commander-13 parsing: surplus positionals
   // (and unknown options on allowUnknownOption commands such as aliases) are
   // ignored instead of rejected.
+  // Subtrees built standalone and attached via addCommand() do not inherit
+  // the root's help/output configuration; copy it down so every level
+  // renders with the kit help layout.
   const applyParseSettings = (cmd: any) => {
+    if (cmd.parent) cmd.copyInheritedSettings(cmd.parent);
     cmd.exitOverride();
     cmd.allowExcessArguments();
     if (Array.isArray(cmd.commands)) {

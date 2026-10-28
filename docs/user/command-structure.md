@@ -78,9 +78,21 @@ Available for all commands:
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `-v, --verbose [level]` | Set verbosity: silent, error, warn, info, debug (bare `-v` = debug; works before or after the subcommand) | `-v debug` |
+| `-V, --verbose` | Increase verbosity (stackable; any count = debug) | `-V` |
+| `--log-level <level>` | Set log level: silent, error, warn, info (default), debug; overrides `-V` | `--log-level warn` |
+| `--quiet` | Errors only; beats `-V` and `--log-level` | `--quiet` |
+| `--no-color` | Disable ANSI colour | `--no-color` |
+| `--no-hints` | Suppress next-step hints | `--no-hints` |
+| `--offline` | Disable network access | `--offline` |
+| `--config <path>` | Path to config file | `--config .xrayrc.json` |
+| `--no-telemetry` | Disable telemetry for this session | `--no-telemetry` |
+| `-C, --chdir <path>` | Change to `<path>` before running | `-C ../repo` |
 | `-h, --help` | Display help | `--help` |
-| `-V, --version` | Display version | `--version` |
+| `--help-<group>` | Show one command group (`analyze`, `strategy`, `management`) | `--help-strategy` |
+| `-v, --version` | Print version (`xray vX.Y.Z`) and exit | `-v` |
+
+Flags work before or after the subcommand. Root `--help` lists commands
+under ANALYZE, STRATEGY and MANAGEMENT.
 
 ## Strategy Command Options
 
@@ -99,9 +111,9 @@ xray --help
 ```
 
 Output includes:
-- Core commands
-- All registered strategy commands
-- Global options
+- Commands grouped as ANALYZE, STRATEGY (incl. registered strategy
+  commands) and MANAGEMENT
+- Global flags
 
 ### Strategy-Specific Commands
 
@@ -118,9 +130,9 @@ xray <strategy> <command> --help
 ```
 
 Shows detailed help including:
+- Usage
 - Description
-- Options
-- Examples
+- Flags
 
 ## Dynamic Registration
 

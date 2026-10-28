@@ -40,14 +40,14 @@ describe('startup diagnostics', () => {
   });
 
   test('--verbose: line appears on stderr, stdout stays JSON', () => {
-    const r = run(['--verbose', 'debug', 'describe', '--format', 'json'], tmp);
+    const r = run(['--log-level', 'debug', 'describe', '--format', 'json'], tmp);
     expect(r.stderr).toContain('Using config file');
     expect(r.stdout).not.toContain('Using config file');
     expect(() => JSON.parse(r.stdout)).not.toThrow();
   });
 
-  test('bare -v also enables it', () => {
-    const r = run(['-v', 'describe', '--format', 'json'], tmp);
+  test('bare -V also enables it', () => {
+    const r = run(['-V', 'describe', '--format', 'json'], tmp);
     expect(r.stderr).toContain('Using config file');
   });
 });
