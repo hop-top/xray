@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import chalk from 'chalk';
+import { styles } from '../lib/tui';
 import { Command } from 'commander';
 import { Logger } from '../lib/logger';
 import { StrategyLoader } from '../lib/strategy/loader';
@@ -23,7 +23,7 @@ export function registerStrategyCommand(): Command {
 
       Logger.info('Available Strategies:\n');
       strategies.forEach(strategy => {
-        Logger.output(chalk.cyan(`  ${strategy.name}`) + ' ' + chalk.gray(`v${strategy.version}`));
+        Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
       });
 
       if (strategies.length === 0) {
@@ -55,7 +55,7 @@ export function registerStrategyCommand(): Command {
       } else {
         Logger.info('Detected Strategies:\n');
         detected.forEach(strategy => {
-          Logger.output(chalk.cyan(`  ${strategy.name}`) + ' ' + chalk.gray(`v${strategy.version}`));
+          Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
         });
       }
     });
@@ -75,7 +75,7 @@ export function registerStrategyCommand(): Command {
       }
 
       Logger.info(`\nStrategy: ${strategy.name}`);
-      Logger.output(chalk.gray(`Version: ${strategy.version}`));
+      Logger.output(styles().muted(`Version: ${strategy.version}`));
 
       if (strategy.fileTypes) {
         Logger.output(`\nFile Types: ${strategy.fileTypes().join(', ')}`);
@@ -84,7 +84,7 @@ export function registerStrategyCommand(): Command {
       if (strategy.commands) {
         Logger.output('\nCommands:');
         Object.entries(strategy.commands).forEach(([cmd, details]) => {
-          Logger.output(`  - ${strategy.name}:${cmd} ${chalk.gray(`- ${details.description}`)}`);
+          Logger.output(`  - ${strategy.name}:${cmd} ${styles().muted(`- ${details.description}`)}`);
         });
       }
 
@@ -93,7 +93,7 @@ export function registerStrategyCommand(): Command {
         strategy,
         await strategy.detect(context)
       );
-      Logger.output(`\nDetected in current project: ${detected ? chalk.green('Yes') : chalk.red('No')}`);
+      Logger.output(`\nDetected in current project: ${detected ? styles().success('Yes') : styles().error('No')}`);
     });
 
   program
@@ -299,9 +299,9 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
           strategy,
           await strategy.detect(context)
         );
-        Logger.output(`  Detection test: ${detected ? chalk.green('Passed') : chalk.yellow('Not detected')}`);
+        Logger.output(`  Detection test: ${detected ? styles().success('Passed') : styles().warn('Not detected')}`);
       } catch (error: any) {
-        Logger.output(`  Detection test: ${chalk.red('Error')}`);
+        Logger.output(`  Detection test: ${styles().error('Error')}`);
         Logger.error(`  Error: ${error.message}`);
       }
 
@@ -318,7 +318,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       Logger.info('\nStrategy Search Paths:\n');
       paths.forEach((p, i) => {
         const exists = fs.existsSync(p);
-        Logger.output(`  ${i + 1}. ${p} ${chalk.gray(exists ? '' : '(not found)')}`);
+        Logger.output(`  ${i + 1}. ${p} ${styles().muted(exists ? '' : '(not found)')}`);
       });
     });
 

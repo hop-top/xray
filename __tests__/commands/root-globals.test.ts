@@ -6,9 +6,9 @@
  * Uses `createRootProgram` so the test stays at the commander layer and
  * does not load tree-sitter or any subcommand registrations.
  */
-import chalk from 'chalk';
 import type { Command } from 'commander';
 import { createRootProgram } from '../../src/commands/root-options';
+import { colorForcedOff, disableColor, getTheme } from '../../src/lib/tui';
 
 function buildRoot(): Command {
   return createRootProgram('0.0.0-test').program;
@@ -48,6 +48,11 @@ describe('root program global flags', () => {
     expect(theme.accent).toMatch(/^#[0-9A-Fa-f]{6}$/);
   });
 
+  it('installs its theme as the shared TUI theme', () => {
+    const { theme } = createRootProgram('0.0.0-test');
+    expect(getTheme()).toBe(theme);
+  });
+
   it('renders the globals and help groups in --help', () => {
     const program = buildRoot();
     const help = program.helpInformation();
@@ -58,12 +63,8 @@ describe('root program global flags', () => {
 });
 
 describe('root --no-color', () => {
-  let saved: typeof chalk.level;
-  beforeEach(() => {
-    saved = chalk.level;
-  });
   afterEach(() => {
-    chalk.level = saved;
+    disableColor(false);
   });
 
   function parse(args: string[]): { color: unknown } {
@@ -78,16 +79,14 @@ describe('root --no-color', () => {
   }
 
   it('keeps color on when the flag is absent (TTY-like run)', () => {
-    chalk.level = 3;
     const opts = parse(['noop']);
-    expect(chalk.level).toBe(3);
+    expect(colorForcedOff()).toBe(false);
     expect(opts.color).toBe(true);
   });
 
   it('turns color off when --no-color is passed', () => {
-    chalk.level = 3;
     const opts = parse(['--no-color', 'noop']);
-    expect(chalk.level).toBe(0);
+    expect(colorForcedOff()).toBe(true);
     expect(opts.color).toBe(false);
   });
 });

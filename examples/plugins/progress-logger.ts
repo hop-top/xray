@@ -1,6 +1,6 @@
 import { XrayPlugin } from '../../src/lib/events/plugin';
 import { Xray } from '../../src/lib/xray';
-import chalk from 'chalk';
+import { styles } from '../../src/lib/tui';
 
 /**
  * ProgressLoggerPlugin - Logs analysis progress to the console
@@ -20,11 +20,11 @@ export class ProgressLoggerPlugin implements XrayPlugin {
   apply(xray: Xray): void {
     xray.on('scan:start', (event) => {
       this.startTime = Date.now();
-      console.log(chalk.blue(`🔍 Scanning ${event.path}...`));
+      console.log(styles().accent(`🔍 Scanning ${event.path}...`));
     });
 
     xray.on('scan:complete', (event) => {
-      console.log(chalk.green(`✓ Found ${event.files.length} files`));
+      console.log(styles().success(`✓ Found ${event.files.length} files`));
     });
 
     xray.on('progress', (event) => {
@@ -39,12 +39,12 @@ export class ProgressLoggerPlugin implements XrayPlugin {
 
     xray.on('graph:complete', (event) => {
       const elapsed = ((Date.now() - this.startTime) / 1000).toFixed(2);
-      console.log(chalk.green(`✓ Built graph: ${event.nodeCount} nodes, ${event.edgeCount} edges (${elapsed}s)`));
+      console.log(styles().success(`✓ Built graph: ${event.nodeCount} nodes, ${event.edgeCount} edges (${elapsed}s)`));
     });
 
     xray.on('render:complete', (event) => {
       const total = ((Date.now() - this.startTime) / 1000).toFixed(2);
-      console.log(chalk.green(`✓ Analysis complete: ${event.outputPath} (${total}s total)`));
+      console.log(styles().success(`✓ Analysis complete: ${event.outputPath} (${total}s total)`));
     });
   }
 }

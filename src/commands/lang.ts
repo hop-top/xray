@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { globSync } from 'glob';
-import chalk from 'chalk';
+import { styles } from '../lib/tui';
 import { Logger } from '../lib/logger';
 import { EXIT_USAGE, UsageError } from '../lib/error/types';
 import { loadConfig } from '../lib/config';
@@ -128,28 +128,28 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
         }, null, 2));
         return;
       }
-      Logger.output(chalk.cyan('\nLanguage packs:\n'));
+      Logger.output(styles().accent('\nLanguage packs:\n'));
       for (const r of rows) {
-        const mark = r.status === 'installed' ? chalk.green('installed    ') : r.status === 'broken' ? chalk.red('broken       ') : chalk.yellow('not installed');
-        const where = r.source ? chalk.gray(` (${r.source})`) : '';
-        const repo = r.files ? chalk.gray(`  ${r.files} file${r.files === 1 ? '' : 's'} here`) : '';
-        const sel = r.selected ? chalk.cyan('  [configured]') : '';
+        const mark = r.status === 'installed' ? styles().success('installed    ') : r.status === 'broken' ? styles().error('broken       ') : styles().warn('not installed');
+        const where = r.source ? styles().muted(` (${r.source})`) : '';
+        const repo = r.files ? styles().muted(`  ${r.files} file${r.files === 1 ? '' : 's'} here`) : '';
+        const sel = r.selected ? styles().accent('  [configured]') : '';
         Logger.output(`  ${r.language.padEnd(11)} ${mark}${where}  ${r.extensions.join(' ')}${repo}${sel}`);
       }
-      Logger.output(chalk.cyan('\nBundles:\n'));
+      Logger.output(styles().accent('\nBundles:\n'));
       for (const [name, langs] of Object.entries(BUNDLES)) {
         Logger.output(`  ${name.padEnd(11)} ${langs.join(', ')}`);
       }
       if (detected.length) {
-        Logger.output(chalk.yellow('\nDetected in this repo, not installed:\n'));
+        Logger.output(styles().warn('\nDetected in this repo, not installed:\n'));
         for (const d of detected) {
           const exts = Object.keys(d.extensions).join(', ');
-          const broken = d.status === 'broken' ? chalk.red('  (installed, fails to load)') : '';
+          const broken = d.status === 'broken' ? styles().error('  (installed, fails to load)') : '';
           Logger.output(`  ${d.language.padEnd(11)} ${d.files} file${d.files === 1 ? '' : 's'} (${exts})${broken}`);
         }
         Logger.output(`\nInstall with: ${installHint(detected)}`);
       }
-      Logger.output(chalk.gray(`\nManaged dir: ${managedDir()}\n`));
+      Logger.output(styles().muted(`\nManaged dir: ${managedDir()}\n`));
     });
 
   lang

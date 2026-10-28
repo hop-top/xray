@@ -19,10 +19,10 @@
  * Kept free of parser / native-module imports so the wiring can be
  * exercised in isolation.
  */
-import chalk from 'chalk';
 import { Command } from 'commander';
 import { Logger } from '../lib/logger';
 import { UsageError } from '../lib/error/types';
+import { disableColor, setTheme } from '../lib/tui';
 import { createCLI, HELP_GROUPS, type CLIResult } from './kit-cli';
 
 // Root flag attribute keys forwarded onto the invoked subcommand's opts.
@@ -84,6 +84,7 @@ export function createRootProgram(version: string): CLIResult {
     disable: { format: true },
     groups: HELP_GROUPS.map((g) => ({ ...g })),
   });
+  setTheme(result.theme);
   respectTerminalColor(result.program);
   configureRootProgram(result.program);
   return result;
@@ -149,11 +150,9 @@ export function configureRootProgram(program: Command): Command {
         }
       }
 
-      // chalk auto-detects color support; --no-color forces it off.
+      // TUI styling auto-detects (NO_COLOR, TTY); --no-color forces it off.
       const colorOff = colorDisabledByFlag(thisCommand);
-      if (colorOff) {
-        chalk.level = 0;
-      }
+      if (colorOff) disableColor();
 
       const level = resolveLogLevel(rootOpts);
       if (level !== undefined) Logger.setLevel(level);

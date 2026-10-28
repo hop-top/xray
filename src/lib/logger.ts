@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import { styles } from './tui';
 
 export enum LogLevel {
   SILENT = 0,
@@ -32,33 +32,34 @@ export class Logger {
 
   static debug(message: string, ...args: any[]): void {
     if (this.level >= LogLevel.DEBUG) {
-      console.error(chalk.gray('◆') + ' ' + message, ...args);
+      console.error(styles(process.stderr).muted('◆') + ' ' + message, ...args);
     }
   }
 
   static info(message: string): void {
     if (this.level >= LogLevel.INFO) {
-      console.error(chalk.blue('ℹ') + ' ' + message);
+      console.error(styles(process.stderr).accent('ℹ') + ' ' + message);
     }
   }
 
   static success(message: string): void {
     if (this.level >= LogLevel.INFO) {
-      console.error(chalk.green('✔') + ' ' + message);
+      console.error(styles(process.stderr).success('✔') + ' ' + message);
     }
   }
 
   static warn(message: string): void {
     if (this.level >= LogLevel.WARN) {
-      console.warn(chalk.yellow('⚠') + ' ' + message);
+      console.warn(styles(process.stderr).warn('⚠') + ' ' + message);
     }
   }
 
   static error(message: string, error?: any): void {
     if (this.level >= LogLevel.ERROR) {
-      console.error(chalk.red('✖') + ' ' + message);
+      const paint = styles(process.stderr);
+      console.error(paint.error('✖') + ' ' + message);
       if (error) {
-        console.error(chalk.red(error));
+        console.error(paint.error(String(error)));
       }
     }
   }

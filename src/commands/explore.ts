@@ -4,6 +4,7 @@ import { Logger } from '../lib/logger';
 import { FileScanner } from '../lib/scanner';
 import { resolvePath } from './common';
 import { ExploreCommandOptions } from '../types/command-options';
+import { styles } from '../lib/tui';
 
 export const handleExploreAction = async (query: string | undefined, options: ExploreCommandOptions) => {
   const paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()])
@@ -97,12 +98,12 @@ export const handleExploreAction = async (query: string | undefined, options: Ex
 
       Logger.success(`Found matches in ${matches.length} file(s):\n`);
       matches.forEach(({ file, lines }) => {
-        Logger.output(require('chalk').cyan(`${file}:`));
+        Logger.output(styles().accent(`${file}:`));
         lines.slice(0, 5).forEach(({ lineNum, content, keyword }) => {
-          Logger.output(`  ${require('chalk').gray(`${lineNum}:`)} ${require('chalk').yellow(`[${keyword}]`)} ${content}`);
+          Logger.output(`  ${styles().muted(`${lineNum}:`)} ${styles().warn(`[${keyword}]`)} ${content}`);
         });
         if (lines.length > 5) {
-          Logger.output(require('chalk').gray(`  ... and ${lines.length - 5} more matches`));
+          Logger.output(styles().muted(`  ... and ${lines.length - 5} more matches`));
         }
         Logger.output('');
       });
@@ -127,9 +128,9 @@ export const handleExploreAction = async (query: string | undefined, options: Ex
       });
 
       Logger.info('Codebase Statistics:\n');
-      Logger.output(`  ${require('chalk').bold('Total Files:')} ${files.length}`);
-      Logger.output(`  ${require('chalk').bold('Total Lines:')} ${totalLines.toLocaleString()}\n`);
-      Logger.output(`  ${require('chalk').bold('Files by Type:')}`);
+      Logger.output(`  ${styles().bold('Total Files:')} ${files.length}`);
+      Logger.output(`  ${styles().bold('Total Lines:')} ${totalLines.toLocaleString()}\n`);
+      Logger.output(`  ${styles().bold('Files by Type:')}`);
 
       Object.entries(extStats)
         .sort((a, b) => b[1] - a[1])
@@ -153,10 +154,10 @@ export const handleExploreAction = async (query: string | undefined, options: Ex
     Object.entries(byExt)
       .sort((a, b) => b[1].length - a[1].length)
       .forEach(([ext, fileList]) => {
-        Logger.output(require('chalk').cyan(`${ext} (${fileList.length}):`));
+        Logger.output(styles().accent(`${ext} (${fileList.length}):`));
         fileList.slice(0, 10).forEach(f => Logger.output(`  ${f}`));
         if (fileList.length > 10) {
-          Logger.output(require('chalk').gray(`  ... and ${fileList.length - 10} more`));
+          Logger.output(styles().muted(`  ... and ${fileList.length - 10} more`));
         }
         Logger.output('');
       });
