@@ -1,5 +1,6 @@
 import { handleMetaStrategyCommand } from './strategy';
-import { handleExploreAction } from './explore';
+import type { Command } from 'commander';
+import { addExploreOutputFlags, handleExploreAction } from './explore';
 import { program, theme } from './root-program';
 import { setCommandGroup } from './kit-cli';
 import { registerCoreCommands } from './registration/core';
@@ -47,15 +48,16 @@ function registerExploreCommand(): void {
       return previous.concat([value]);
     }, [])
     .option('--stats', 'Show codebase statistics')
-    .option('--list-strategies', 'List all available strategies')
-    .action(async (query: string | undefined, options: ExploreCommandOptions) => {
+    .option('--list-strategies', 'List all available strategies');
+  addExploreOutputFlags(explore)
+    .action(async (query: string | undefined, options: ExploreCommandOptions, cmd: Command) => {
       if (options.listStrategies) {
         await handleMetaStrategyCommand('list', options as any);
         return;
       }
 
       // Handle regular explore options
-      await handleExploreAction(query, options);
+      await handleExploreAction(query, options, cmd);
     });
   setCommandGroup(explore, 'analyze');
 }

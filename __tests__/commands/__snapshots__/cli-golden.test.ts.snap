@@ -71,7 +71,7 @@ Usage: xray alias [options] [command]
 Manage command aliases
 
 COMMANDS:
-  list                 List all configured aliases
+  list [--flags]       List all configured aliases
   set <name> <target>  Create or update an alias
   remove <name>        Remove an alias
 
@@ -91,7 +91,8 @@ Usage: xray alias list [options]
 List all configured aliases
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text, json, yaml, table, csv (default: "text")
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -170,6 +171,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -200,6 +204,9 @@ FLAGS:
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
   --target <target>                   Target name to run
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -229,6 +236,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -312,6 +322,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -341,6 +354,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -370,6 +386,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -399,6 +418,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -480,6 +502,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --file <file>                       Specific config file to analyze (relative
                                       to project root)
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -511,6 +536,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --pattern <pattern>                 Filter files by pattern (e.g., *.env*,
                                       *.json)
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -543,6 +571,9 @@ FLAGS:
   --file <file>                       Specific config file to display (relative
                                       to project root)
   --show-secrets                      Show sensitive values (default: false)
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -592,6 +623,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -621,6 +655,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -650,6 +687,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -690,6 +730,8 @@ FLAGS:
                           (repeatable) (default: [])
   --stats                 Show codebase statistics
   --list-strategies       List all available strategies
+  --format <fmt>          Output format: text, json, yaml, table, csv (default:
+                          "text")
   -h, --help              Display help
 
 
@@ -740,6 +782,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -769,6 +814,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -798,6 +846,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -827,6 +878,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1113,6 +1167,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1142,6 +1199,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1171,6 +1231,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1200,6 +1263,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1229,6 +1295,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1434,6 +1503,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1463,6 +1535,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1492,6 +1567,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1521,6 +1599,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1550,6 +1631,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1580,6 +1664,9 @@ FLAGS:
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
   --depth <depth>                     Maximum heading depth (default: 3)
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1630,6 +1717,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1659,6 +1749,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1676,7 +1769,8 @@ Show xray's active config, cache DB, and project root
 FLAGS:
   -p, --path <path>  Project path to inspect (default:
                      "<CWD>")
-  --format <format>  Output format: text or json (default: "text")
+  --format <fmt>     Output format: text, json, yaml, table, csv (default:
+                     "text")
   -h, --help         Display help
 
 
@@ -1692,11 +1786,11 @@ Usage: xray query [options] [query]
 Query call graph using function-based syntax
 
 FLAGS:
-  --graph <file>     Path to saved graph JSON file
-  --format <format>  Output format: json, table, tree (default: table) (default:
-                     "table")
-  --list-adapters    List available query adapters
-  -h, --help         Display help
+  --graph <file>   Path to saved graph JSON file
+  --format <fmt>   Output format: table, json, yaml, csv, tree (default: table)
+                   (default: "table")
+  --list-adapters  List available query adapters
+  -h, --help       Display help
 
 
 --- stderr ---
@@ -1745,6 +1839,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1774,6 +1871,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1803,6 +1903,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1852,6 +1955,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1881,6 +1987,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -1910,6 +2019,9 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
   -h, --help                          Display help
 
 
@@ -2006,7 +2118,7 @@ Usage: xray strategy [options] [command]
 Manage strategies (list, create, install, remove, enable, disable, info)
 
 COMMANDS:
-  list                        List all available strategies
+  list [--flags]              List all available strategies
   detect [--flags]            Detect applicable strategies for the current
                               project
   info <name>                 Show detailed information about a strategy
@@ -2097,7 +2209,8 @@ Usage: xray strategy list|ls [options]
 List all available strategies
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text, json, yaml, table, csv (default: "text")
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -2170,6 +2283,8 @@ FLAGS:
                           (repeatable) (default: [])
   --stats                 Show codebase statistics
   --list-strategies       List all available strategies
+  --format <fmt>          Output format: text, json, yaml, table, csv (default:
+                          "text")
   -h, --help              Display help
 
 "
@@ -3978,12 +4093,60 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Path to saved graph JSON file"
         },
         {
+          "name": "--format-opt",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+        },
+        {
+          "name": "--format-help",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Show available formats and their options (use --format-help <key> for one)"
+        },
+        {
+          "name": "--cols",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Restrict columns to this comma-separated list (repeatable)"
+        },
+        {
+          "name": "--columns",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Alias for --cols"
+        },
+        {
+          "name": "--template",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "eta template applied to results (mutually exclusive with --cols)"
+        },
+        {
+          "name": "--output",
+          "short": "-o",
+          "type": "string",
+          "required": false,
+          "default": "",
+          "description": "Write output to path (use - or empty for stdout)"
+        },
+        {
           "name": "--format",
           "short": null,
           "type": "string",
           "required": false,
           "default": "table",
-          "description": "Output format: json, table, tree (default: table)"
+          "description": "Output format: table, json, yaml, csv, tree (default: table)"
         },
         {
           "name": "--list-adapters",
@@ -4017,7 +4180,64 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "List all available strategies",
           "hidden": false,
           "arguments": [],
-          "options": [],
+          "options": [
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "read",
           "idempotent": "yes",
@@ -4240,7 +4460,64 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "List all configured aliases",
           "hidden": false,
           "arguments": [],
-          "options": [],
+          "options": [
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "read",
           "idempotent": "yes",
@@ -4491,12 +4768,60 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Project path to inspect"
         },
         {
+          "name": "--format-opt",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+        },
+        {
+          "name": "--format-help",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Show available formats and their options (use --format-help <key> for one)"
+        },
+        {
+          "name": "--cols",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Restrict columns to this comma-separated list (repeatable)"
+        },
+        {
+          "name": "--columns",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Alias for --cols"
+        },
+        {
+          "name": "--template",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "eta template applied to results (mutually exclusive with --cols)"
+        },
+        {
+          "name": "--output",
+          "short": "-o",
+          "type": "string",
+          "required": false,
+          "default": "",
+          "description": "Write output to path (use - or empty for stdout)"
+        },
+        {
           "name": "--format",
           "short": null,
           "type": "string",
           "required": false,
           "default": "text",
-          "description": "Output format: text or json"
+          "description": "Output format: text, json, yaml, table, csv"
         }
       ],
       "subcommands": [],
@@ -4627,6 +4952,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -4700,6 +5081,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -4781,6 +5218,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": null,
               "description": "Target name to run"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -4871,6 +5364,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -4944,6 +5493,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5017,6 +5622,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5090,6 +5751,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5188,6 +5905,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": null,
               "description": "Filter files by pattern (e.g., *.env*, *.json)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5269,6 +6042,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": null,
               "description": "Specific config file to analyze (relative to project root)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5358,6 +6187,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": null,
               "description": "Show sensitive values (default: false)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5448,6 +6333,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5521,6 +6462,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5594,6 +6591,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5684,6 +6737,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5757,6 +6866,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5830,6 +6995,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -5903,6 +7124,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6123,6 +7400,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6196,6 +7529,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6269,6 +7658,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6342,6 +7787,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6415,6 +7916,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6513,6 +8070,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": null,
               "description": "Maximum heading depth (default: 3)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6586,6 +8199,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6659,6 +8328,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6732,6 +8457,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6805,6 +8586,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6878,6 +8715,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -6968,6 +8861,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -7041,6 +8990,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -7131,6 +9136,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -7204,6 +9265,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -7277,6 +9394,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -7367,6 +9540,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -7440,6 +9669,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -7513,6 +9798,62 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
             }
           ],
           "subcommands": [],
@@ -7594,6 +9935,62 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": null,
           "description": "List all available strategies"
+        },
+        {
+          "name": "--format-opt",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+        },
+        {
+          "name": "--format-help",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Show available formats and their options (use --format-help <key> for one)"
+        },
+        {
+          "name": "--cols",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Restrict columns to this comma-separated list (repeatable)"
+        },
+        {
+          "name": "--columns",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Alias for --cols"
+        },
+        {
+          "name": "--template",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "eta template applied to results (mutually exclusive with --cols)"
+        },
+        {
+          "name": "--output",
+          "short": "-o",
+          "type": "string",
+          "required": false,
+          "default": "",
+          "description": "Write output to path (use - or empty for stdout)"
+        },
+        {
+          "name": "--format",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "text",
+          "description": "Output format: text, json, yaml, table, csv"
         }
       ],
       "subcommands": [],
@@ -8147,17 +10544,11 @@ exports[`cli golden: map / query / explore on fixture repo query --format json c
 exports[`cli golden: map / query / explore on fixture repo query --format table calls(beta) 1`] = `
 "exit: 0
 --- stdout ---
-
-Results (4):
-
-Name                           File                                     Line      
---------------------------------------------------------------------------------
-alpha                          a.ts                                               
-alpha                          imports/a.ts                             L2        
-gamma                          c.ts                                     L2        
-gamma                          imports/c.ts                                       
-
-Query time: <N>ms
+name   kind      file          line
+alpha  function  a.ts          0   
+alpha  function  imports/a.ts  2   
+gamma  function  c.ts          2   
+gamma  function  imports/c.ts  0   
 
 --- stderr ---
 "

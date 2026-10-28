@@ -324,9 +324,42 @@ xray query --graph graph.json "calls(main)"             # table (default)
 xray query --graph graph.json --format json "callers(helper)"
 ```
 
-Results go to stdout (`--format table|tree|json`); diagnostics go to stderr.
-Exit 2: bad query / missing `--graph` or query; exit 3: graph file not found.
-See the [query guide](query-guide.md).
+Results go to stdout (`--format table|tree|json|yaml|csv`); diagnostics go to
+stderr. Exit 2: bad query / missing `--graph` or query / unknown format or
+column; exit 3: graph file not found. See the [query guide](query-guide.md).
+
+### Structured output (record commands)
+
+`query`, `explore`, `paths`, `alias list`, `strategy list` and the strategy
+commands (`express routes`, `react components`, `rest-api endpoints`, ...)
+render their results through one output layer:
+
+| Flag | Effect |
+|------|--------|
+| `--format <fmt>` | `text` (default; the human view) or `json`, `yaml`, `table`, `csv`. `query`: `table` (default), `json`, `yaml`, `csv`, `tree` |
+| `--cols=a,b` | Pick and order columns (`table`, `csv`; `json`/`yaml` too, except `query`). Unknown column: exit 2 |
+| `-o, --output <path>` | Write to a file; without `--format` the extension picks the format |
+| `--format-opt k=v` | Per-format option (`indent=4`, `delimiter=;`, `no-header`) |
+| `--format-help [fmt]` | List formats and their options |
+
+Records per command:
+
+| Command | Columns |
+|---------|---------|
+| `explore` | `type`, `path` |
+| `explore -m` | `path` |
+| `explore -s` | `file`, `line`, `keyword`, `content` (every match; the text view caps 5 per file) |
+| `explore --stats` | `type`, `files`, `lines` |
+| `paths` | one record: `projectRoot`, `projectConfig`, `globalConfig`, `cacheDb`, `cacheDbExists`, `configDir`, `dataDir`, `cacheDir`, `stateDir` |
+| `alias list` | `alias`, `target` |
+| `strategy list` | `name`, `version`, `commands` |
+| strategy commands | the fields each command returns (union across records); nested values render as JSON in `table`/`csv` |
+
+Use `--cols=a,b` (with `=`) on commands that take a positional argument: the
+space form takes every following word as a column. Graph strategy commands
+(`build graph`, `cicd graph`, `infrastructure graph`) also accept
+`--format dot`. `go-cli commands` keeps its own `--format text|json`.
+`map`/`scan`/`graph` keep their own `--format`/`-o` (above).
 
 ### Advanced
 
