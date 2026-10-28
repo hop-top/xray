@@ -1,10 +1,9 @@
 import { Xray } from '../lib/xray';
 import * as fs from 'fs';
 import * as path from 'path';
-import chalk from 'chalk';
+import { styles, fileProgress } from '../lib/tui';
 import { QueryResolver } from '../lib/query-resolver';
-import * as cliProgress from 'cli-progress';
-import { Logger } from '../lib/logger';
+import { Logger, LogLevel } from '../lib/logger';
 import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase } from '../lib/config';
 import { CodedError, FileWriteError, NotFoundError } from '../lib/error/types';
 import { resolveFormatFlags } from '../lib/output-format';
@@ -216,7 +215,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
   const commandUsed = getCommandString();
 
   if (scopeName) {
-    Logger.info(`Running scope: ${chalk.bold(scopeName)}`);
+    Logger.info(`Running scope: ${styles(process.stderr).bold(scopeName)}`);
   }
   Logger.info(`Analyzing repo at: ${paths.join(', ')}`);
 
@@ -238,13 +237,10 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
   const diagram: 'mermaid' | 'dot' =
     mergedOptions.outputDiagram ?? (mergedOptions.dot ? 'dot' : 'mermaid');
 
-  // Setup progress bar
-  const progressBar = new cliProgress.SingleBar({
-    format: 'Parsing |' + chalk.cyan('{bar}') + '| {percentage}% || {value}/{total} Files || Current: {file}',
-    barCompleteChar: '\u2588',
-    barIncompleteChar: '\u2591',
-    hideCursor: true
-  });
+  // Parse progress: suppressed under --quiet / below info level and on
+  // non-TTY stderr (see fileProgress).
+  const progressQuiet = Boolean(mergedOptions.quiet) || Logger.getLevel() < LogLevel.INFO;
+  const newProgress = () => fileProgress({ label: 'Parsing', quiet: progressQuiet });
 
   // Determine if chunked output is enabled
   const chunkedEnabled = mergedOptions.chunked !== false;
@@ -263,7 +259,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
       if (uniquePaths.length > 1) {
         Logger.info(`\nProcessing path ${i + 1}/${uniquePaths.length}: ${currentPath}`);
       }
-      let barStarted = false;
+      const progress = newProgress();
       const xray = new Xray({
         path: currentPath,
         limit: parseInt(mergedOptions.limit),
@@ -277,16 +273,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         format,
         diagram,
         chunked: false,
-        onProgress: (current, total, file) => {
-          if (!barStarted) {
-            progressBar.start(total, 0, { file: 'Starting...' });
-            barStarted = true;
-          }
-          progressBar.update(current, { file });
-          if (current >= total) {
-            progressBar.stop();
-          }
-        }
+        onProgress: (current, total, file) => progress.update(current, total, file)
       });
       await applyPresetFlags(xray, mergedOptions.preset, currentPath);
       const { rankedNodes, graph } = await xray.buildGraph();
@@ -338,7 +325,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${currentPath}`);
       }
 
-      let barStarted = false;
+      const progress = newProgress();
 
       const xray = new Xray({
         path: currentPath,
@@ -353,16 +340,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         format,
         diagram,
         chunked: true,
-        onProgress: (current, total, file) => {
-          if (!barStarted) {
-            progressBar.start(total, 0, { file: 'Starting...' });
-            barStarted = true;
-          }
-          progressBar.update(current, { file });
-          if (current >= total) {
-            progressBar.stop();
-          }
-        }
+        onProgress: (current, total, file) => progress.update(current, total, file)
       });
 
       // Apply any --preset plugin bundles before building the graph
@@ -463,7 +441,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${currentPath}`);
       }
 
-      let barStarted = false;
+      const progress = newProgress();
 
       const xray = new Xray({
         path: currentPath,
@@ -478,16 +456,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         format,
         diagram,
         chunked: false,
-        onProgress: (current, total, file) => {
-          if (!barStarted) {
-            progressBar.start(total, 0, { file: 'Starting...' });
-            barStarted = true;
-          }
-          progressBar.update(current, { file });
-          if (current >= total) {
-            progressBar.stop();
-          }
-        }
+        onProgress: (current, total, file) => progress.update(current, total, file)
       });
 
       // Apply --preset plugin bundles before run() so plugins

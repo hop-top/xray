@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import chalk from 'chalk';
+import { styles, statusLine } from './tui';
 import { Logger } from './logger';
 import { loadConfig, saveConfig } from './config';
 import type { XrayConfig } from '../types/xray-config';
@@ -33,41 +33,43 @@ export function isTelemetryDisabledByFlag(argv: string[]): boolean {
  * Returns true if user consents, false otherwise
  */
 export async function promptForConsent(): Promise<boolean> {
+  const paint = styles(process.stdout);
+
   // Clear any existing output
   console.log('');
 
   // Display telemetry information
-  console.log(chalk.bold.cyan('Welcome to Xray!'));
+  console.log(paint.bold(paint.accent('Welcome to Xray!')));
   console.log('');
-  console.log(chalk.gray('Xray can collect anonymous usage data to help improve the tool.'));
+  console.log(paint.muted('Xray can collect anonymous usage data to help improve the tool.'));
   console.log('');
-  console.log(chalk.bold('What data is collected:'));
+  console.log(paint.bold('What data is collected:'));
   console.log('  • Command usage (which commands you run)');
   console.log('  • Performance metrics (execution time, memory usage)');
   console.log('  • Error types (what errors occur)');
   console.log('  • System info (OS, architecture, Node version)');
   console.log('');
-  console.log(chalk.bold('What is NOT collected:'));
+  console.log(paint.bold('What is NOT collected:'));
   console.log('  • Your source code or file contents');
   console.log('  • File paths (except in error context)');
   console.log('  • Personal information');
   console.log('  • Network activity (data stays local)');
   console.log('');
-  console.log(chalk.gray('All data is stored locally in .xray/telemetry.json'));
-  console.log(chalk.gray('You can change this setting anytime in .xrayrc.json'));
+  console.log(paint.muted('All data is stored locally in .xray/telemetry.json'));
+  console.log(paint.muted('You can change this setting anytime in .xrayrc.json'));
   console.log('');
 
   const answer = await askQuestion(
-    chalk.bold('Enable telemetry?') + ' [Y/n]: '
+    paint.bold('Enable telemetry?') + ' [Y/n]: '
   );
 
   const consent = answer.toLowerCase() !== 'n' && answer.toLowerCase() !== 'no';
 
   console.log('');
   if (consent) {
-    console.log(chalk.green('✓ Telemetry enabled. Thank you!'));
+    console.log(statusLine('Telemetry enabled. Thank you!', 'success'));
   } else {
-    console.log(chalk.yellow('✓ Telemetry disabled.'));
+    console.log(paint.warn('✓ Telemetry disabled.'));
   }
   console.log('');
 

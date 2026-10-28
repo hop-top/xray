@@ -3,7 +3,7 @@ import { loadConfig, saveConfig } from '../lib/config';
 import { AliasResolver } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
 import { ConflictError, NotFoundError, UsageError } from '../lib/error/types';
-import chalk from 'chalk';
+import { styles } from '../lib/tui';
 
 export function registerAliasCommand(): Command {
   const program = new Command('alias')
@@ -30,9 +30,9 @@ export function registerAliasCommand(): Command {
         return;
       }
 
-      Logger.output(chalk.cyan('\nConfigured Aliases:\n'));
+      Logger.output(styles().accent('\nConfigured Aliases:\n'));
       for (const [alias, target] of aliases.entries()) {
-        Logger.output(`  ${chalk.bold(alias)} → ${chalk.gray(target)}`);
+        Logger.output(`  ${styles().bold(alias)} → ${styles().muted(target)}`);
       }
       Logger.output(`\nTotal: ${aliases.size} alias(es)\n`);
     });

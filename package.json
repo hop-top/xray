@@ -61,8 +61,6 @@
     "@opentelemetry/sdk-node": "^0.211.0",
     "@opentelemetry/sdk-trace-node": "^2.5.0",
     "@opentelemetry/semantic-conventions": "^1.39.0",
-    "chalk": "^4.1.2",
-    "cli-progress": "^3.12.0",
     "commander": "^14.0.3",
     "csv-stringify": "^6.9.0",
     "glob": "^10.3.10",
@@ -75,7 +73,6 @@
     "tree-sitter": "^0.25.1"
   },
   "devDependencies": {
-    "@types/cli-progress": "^3.11.6",
     "@types/glob": "^8.1.0",
     "@types/iarna__toml": "^2.0.5",
     "@types/jest": "^30.0.0",
