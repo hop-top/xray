@@ -157,13 +157,17 @@ export async function main() {
   // Convert commander parse/usage errors → exit 2 instead of commander's default exit 1.
   // exitOverride must be applied to subcommands too — commander does not
   // propagate it implicitly.
-  const applyExitOverride = (cmd: any) => {
+  // allowExcessArguments keeps pre-commander-13 parsing: surplus positionals
+  // (and unknown options on allowUnknownOption commands such as aliases) are
+  // ignored instead of rejected.
+  const applyParseSettings = (cmd: any) => {
     cmd.exitOverride();
+    cmd.allowExcessArguments();
     if (Array.isArray(cmd.commands)) {
-      for (const sub of cmd.commands) applyExitOverride(sub);
+      for (const sub of cmd.commands) applyParseSettings(sub);
     }
   };
-  applyExitOverride(program);
+  applyParseSettings(program);
 
   // Surface "Did you mean?" hints on unknown commands.
   program.showSuggestionAfterError(true);

@@ -156,8 +156,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -184,8 +184,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -213,8 +213,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -294,8 +294,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -322,8 +322,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -350,8 +350,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -378,8 +378,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -457,8 +457,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -487,8 +487,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -517,8 +517,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -568,8 +568,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -596,8 +596,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -624,8 +624,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -715,8 +715,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -743,8 +743,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -771,8 +771,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -799,8 +799,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -822,8 +822,8 @@ Generate code analysis visualization [alias: map]
 
 Options:
   -p, --path <path>                   Root directory to analyze (repeatable;
-                                      with --format json|csv|xml all roots
-                                      merge into one graph) [default: current
+                                      with --format json|csv|xml all roots merge
+                                      into one graph) [default: current
                                       directory] (default: [])
   -o, --output <path>                 Output file path [default: .xray,
                                       auto-appends format extension if no
@@ -865,8 +865,8 @@ Options:
                                       when no path is provided)
   --lang <list>                       Languages to parse, comma-separated names
                                       or bundles (e.g. go,ts or web); overrides
-                                      config \`languages\`; each must be
-                                      installed (repeatable) (default: [])
+                                      config \`languages\`; each must be installed
+                                      (repeatable) (default: [])
   --skip-detect                       Skip strategy detection and
                                       auto-configuration
   --share [path]                      Generate a shareable summary markdown
@@ -879,8 +879,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -926,8 +926,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -938,11 +938,10 @@ Options:
                                       json\`) inside an OS sandbox
   --exec-binary                       Build the main package and run it for its
                                       kit toolspec, inside an OS sandbox
-  --unsafe-no-sandbox                 Allow --exec-binary/--binary without an
-                                      OS sandbox (runs repo code unconfined)
-  --allow-cgo                         With --exec-binary: build with cgo
-                                      enabled (runs the C toolchain on repo
-                                      code)
+  --unsafe-no-sandbox                 Allow --exec-binary/--binary without an OS
+                                      sandbox (runs repo code unconfined)
+  --allow-cgo                         With --exec-binary: build with cgo enabled
+                                      (runs the C toolchain on repo code)
   --format <text|json>                Output format: text|json (default text)
   -h, --help                          display help for command
 
@@ -959,8 +958,8 @@ Generate control flow (CFG) and data flow (DFG) graphs
 
 Options:
   -p, --path <path>                   Root directory to analyze (repeatable;
-                                      with --format json|csv|xml all roots
-                                      merge into one graph) [default: current
+                                      with --format json|csv|xml all roots merge
+                                      into one graph) [default: current
                                       directory] (default: [])
   -o, --output <path>                 Output file path [default: .xray,
                                       auto-appends format extension if no
@@ -1002,8 +1001,8 @@ Options:
                                       when no path is provided)
   --lang <list>                       Languages to parse, comma-separated names
                                       or bundles (e.g. go,ts or web); overrides
-                                      config \`languages\`; each must be
-                                      installed (repeatable) (default: [])
+                                      config \`languages\`; each must be installed
+                                      (repeatable) (default: [])
   --skip-detect                       Skip strategy detection and
                                       auto-configuration
   --share [path]                      Generate a shareable summary markdown
@@ -1016,8 +1015,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1127,8 +1126,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1155,8 +1154,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1183,8 +1182,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1211,8 +1210,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1239,8 +1238,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1332,8 +1331,8 @@ Generate visual map of codebase
 
 Options:
   -p, --path <path>                   Root directory to analyze (repeatable;
-                                      with --format json|csv|xml all roots
-                                      merge into one graph) [default: current
+                                      with --format json|csv|xml all roots merge
+                                      into one graph) [default: current
                                       directory] (default: [])
   -o, --output <path>                 Output file path [default: .xray,
                                       auto-appends format extension if no
@@ -1375,8 +1374,8 @@ Options:
                                       when no path is provided)
   --lang <list>                       Languages to parse, comma-separated names
                                       or bundles (e.g. go,ts or web); overrides
-                                      config \`languages\`; each must be
-                                      installed (repeatable) (default: [])
+                                      config \`languages\`; each must be installed
+                                      (repeatable) (default: [])
   --skip-detect                       Skip strategy detection and
                                       auto-configuration
   --share [path]                      Generate a shareable summary markdown
@@ -1389,8 +1388,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1440,8 +1439,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1468,8 +1467,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1496,8 +1495,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1524,8 +1523,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1552,8 +1551,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1580,8 +1579,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1630,8 +1629,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1658,8 +1657,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1701,8 +1700,8 @@ Arguments:
 
 Options:
   --graph <file>     Path to saved graph JSON file
-  --format <format>  Output format: json, table, tree (default: table)
-                     (default: "table")
+  --format <format>  Output format: json, table, tree (default: table) (default:
+                     "table")
   --list-adapters    List available query adapters
   -h, --help         display help for command
 
@@ -1744,8 +1743,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1772,8 +1771,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1800,8 +1799,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1848,8 +1847,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1876,8 +1875,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1904,8 +1903,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -1927,8 +1926,8 @@ Scan and discover files in codebase
 
 Options:
   -p, --path <path>                   Root directory to analyze (repeatable;
-                                      with --format json|csv|xml all roots
-                                      merge into one graph) [default: current
+                                      with --format json|csv|xml all roots merge
+                                      into one graph) [default: current
                                       directory] (default: [])
   -o, --output <path>                 Output file path [default: .xray,
                                       auto-appends format extension if no
@@ -1970,8 +1969,8 @@ Options:
                                       when no path is provided)
   --lang <list>                       Languages to parse, comma-separated names
                                       or bundles (e.g. go,ts or web); overrides
-                                      config \`languages\`; each must be
-                                      installed (repeatable) (default: [])
+                                      config \`languages\`; each must be installed
+                                      (repeatable) (default: [])
   --skip-detect                       Skip strategy detection and
                                       auto-configuration
   --share [path]                      Generate a shareable summary markdown
@@ -1984,8 +1983,8 @@ Options:
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
                                       (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at
-                                      runtime (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
   --extension-hint <name=value>       Add an extension hint at runtime
                                       (repeatable) (default: [])
   --enable-surface <name:surface>     Enable an extension surface at runtime
@@ -2312,6 +2311,50 @@ exports[`cli golden: error paths xray strategy info 1`] = `
 
 --- stderr ---
 error: missing required argument 'name'
+"
+`;
+
+exports[`cli golden: excess arguments xray explore q extra 1`] = `
+"exit: 0
+--- stdout ---
+
+--- stderr ---
+⚠ Not a git repository or git is not available. Falling back to manual file scanning. This might be slower and include files ignored by git.
+ℹ Found 0 file(s):
+
+"
+`;
+
+exports[`cli golden: excess arguments xray paths extra 1`] = `
+"exit: 0
+--- stdout ---
+project-root:    <CWD>
+project-config:  <CWD>/.xrayrc.json
+global-config:   (none)
+cache-db:        <CWD>/.xray_cache.db (not yet created)
+
+--- stderr ---
+"
+`;
+
+exports[`cli golden: excess arguments xray strategy info express extra 1`] = `
+"exit: 0
+--- stdout ---
+Version: 0.1.0
+
+File Types: .js, .ts, .jsx, .tsx
+
+Commands:
+  - express:routes - List all Express routes
+  - express:routers - List all Express Router instances
+  - express:middleware - List all Express middleware
+  - express:error-handlers - List all Express error handlers
+
+Detected in current project: No
+
+--- stderr ---
+ℹ 
+Strategy: express
 "
 `;
 
