@@ -11,6 +11,12 @@ import { Command } from 'commander';
 import { Logger } from '../lib/logger';
 import { findConfigPath, findGlobalConfigPath } from '../lib/config';
 
+// require(): tsconfig moduleResolution 'node' ignores the kit exports map.
+const xdg = require('@hop-top/kit/xdg') as Record<
+  'configDir' | 'dataDir' | 'cacheDir' | 'stateDir',
+  (tool: string) => string
+>;
+
 interface PathsOptions {
   format?: 'text' | 'json';
   path?: string;
@@ -22,6 +28,10 @@ interface PathsReport {
   globalConfig: string | null;
   cacheDb: string;
   cacheDbExists: boolean;
+  configDir: string;
+  dataDir: string;
+  cacheDir: string;
+  stateDir: string;
 }
 
 function collectPaths(projectRoot: string): PathsReport {
@@ -32,6 +42,10 @@ function collectPaths(projectRoot: string): PathsReport {
     globalConfig: findGlobalConfigPath(),
     cacheDb,
     cacheDbExists: fs.existsSync(cacheDb),
+    configDir: xdg.configDir('xray'),
+    dataDir: xdg.dataDir('xray'),
+    cacheDir: xdg.cacheDir('xray'),
+    stateDir: xdg.stateDir('xray'),
   };
 }
 
@@ -46,6 +60,10 @@ function emit(report: PathsReport, format: 'text' | 'json'): void {
   Logger.output(
     `cache-db:        ${report.cacheDb}${report.cacheDbExists ? '' : ' (not yet created)'}`
   );
+  Logger.output(`config-dir:      ${report.configDir}`);
+  Logger.output(`data-dir:        ${report.dataDir}`);
+  Logger.output(`cache-dir:       ${report.cacheDir}`);
+  Logger.output(`state-dir:       ${report.stateDir}`);
 }
 
 export function handlePathsAction(opts: PathsOptions = {}): void {

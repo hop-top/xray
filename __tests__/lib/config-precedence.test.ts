@@ -84,6 +84,16 @@ describe('config precedence (characterization)', () => {
       expect(findGlobalConfigPath()).toBe(path.join(custom, 'xray', 'config.json'));
     });
 
+    it('kit config dir wins over legacy ~/.config/xray; legacy still found', () => {
+      const { configDir } = require('@hop-top/kit/xdg') as { configDir: (t: string) => string };
+      const kitDir = configDir('xray');
+      const legacy = path.join(home, '.config', 'xray', 'config.json');
+      write(legacy, '{}');
+      expect(findGlobalConfigPath()).toBe(legacy);
+      write(path.join(kitDir, 'config.json'), '{}');
+      expect(findGlobalConfigPath()).toBe(path.join(kitDir, 'config.json'));
+    });
+
     it('returns null when nothing exists', () => {
       expect(findGlobalConfigPath()).toBeNull();
     });

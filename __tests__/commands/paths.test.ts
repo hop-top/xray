@@ -55,4 +55,26 @@ describe('xray paths command', () => {
     expect(output).toContain('project-root:');
     expect(output).toContain(tmpRoot);
   });
+
+  it('reports kit XDG config/data/cache/state dirs (text + json)', () => {
+    const xdg = require('@hop-top/kit/xdg');
+    const expected = {
+      configDir: xdg.configDir('xray'),
+      dataDir: xdg.dataDir('xray'),
+      cacheDir: xdg.cacheDir('xray'),
+      stateDir: xdg.stateDir('xray'),
+    };
+
+    handlePathsAction({ path: tmpRoot, format: 'json' });
+    const parsed = JSON.parse(consoleLogSpy.mock.calls.map(c => c.join(' ')).join('\n'));
+    expect(parsed).toMatchObject(expected);
+
+    consoleLogSpy.mockClear();
+    handlePathsAction({ path: tmpRoot, format: 'text' });
+    const text = consoleLogSpy.mock.calls.map(c => c.join(' ')).join('\n');
+    expect(text).toContain(`config-dir:      ${expected.configDir}`);
+    expect(text).toContain(`data-dir:        ${expected.dataDir}`);
+    expect(text).toContain(`cache-dir:       ${expected.cacheDir}`);
+    expect(text).toContain(`state-dir:       ${expected.stateDir}`);
+  });
 });

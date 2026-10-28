@@ -2332,6 +2332,10 @@ project-root:    <CWD>
 project-config:  <CWD>/.xrayrc.json
 global-config:   (none)
 cache-db:        <CWD>/.xray_cache.db (not yet created)
+config-dir:      <TMP>/home/.config/xray
+data-dir:        <TMP>/home/.local/share/xray
+cache-dir:       <TMP>/home/.cache/xray
+state-dir:       <TMP>/home/.local/state/xray
 
 --- stderr ---
 "
@@ -7454,7 +7458,11 @@ exports[`cli golden: introspection paths --format json 1`] = `
   "projectConfig": "<CWD>/.xrayrc.json",
   "globalConfig": null,
   "cacheDb": "<CWD>/.xray_cache.db",
-  "cacheDbExists": false
+  "cacheDbExists": false,
+  "configDir": "<TMP>/home/.config/xray",
+  "dataDir": "<TMP>/home/.local/share/xray",
+  "cacheDir": "<TMP>/home/.cache/xray",
+  "stateDir": "<TMP>/home/.local/state/xray"
 }
 
 --- stderr ---
@@ -7468,6 +7476,10 @@ project-root:    <CWD>
 project-config:  <CWD>/.xrayrc.json
 global-config:   (none)
 cache-db:        <CWD>/.xray_cache.db (not yet created)
+config-dir:      <TMP>/home/.config/xray
+data-dir:        <TMP>/home/.local/share/xray
+cache-dir:       <TMP>/home/.cache/xray
+state-dir:       <TMP>/home/.local/state/xray
 
 --- stderr ---
 "
