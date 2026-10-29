@@ -3,6 +3,7 @@ import * as path from 'path';
 import { execSync } from 'child_process';
 import { globSync } from 'glob';
 import { styles } from '../lib/tui';
+import { bindFlag, staticValues } from './completion';
 import { Logger } from '../lib/logger';
 import { EXIT_USAGE, UsageError } from '../lib/error/types';
 import { loadConfig } from '../lib/config';
@@ -105,7 +106,7 @@ function parseSelection(names: string[]): LanguagePack[] | undefined {
 export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command {
   const lang = new Command('lang').description('Manage language packs (tree-sitter grammars)');
 
-  lang
+  const list = lang
     .command('list')
     .description('List language packs, install status, and files of each language in this repo')
     .option('-p, --path <path>', 'Repository to inspect', process.cwd())
@@ -151,6 +152,7 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
       }
       Logger.output(styles().muted(`\nManaged dir: ${managedDir()}\n`));
     });
+  bindFlag(list, 'format', staticValues('text', 'json'));
 
   lang
     .command('add <names...>')

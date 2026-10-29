@@ -11,6 +11,8 @@
  */
 import type { Command } from 'commander';
 import type * as KitOutput from '@hop-top/kit/dist/output';
+import type * as KitCompletion from '@hop-top/kit/dist/completion';
+import type * as KitValues from '@hop-top/kit/dist/completion-values';
 import { UsageError, FileWriteError } from './error/types';
 import { styles, type Styles } from './tui';
 
@@ -122,6 +124,12 @@ export function addOutputFlags(cmd: Command, registry: Registry, o: OutputFlagOp
     o.description ?? `Output format: ${registry.keys().join(', ')}`,
     o.defaultFormat
   );
+  // `--format <tab>` offers the registry's keys.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { bindFlag } = require('@hop-top/kit/completion') as typeof KitCompletion;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { staticValues } = require('@hop-top/kit/completion-values') as typeof KitValues;
+  bindFlag(cmd, 'format', staticValues(...registry.keys()));
   return cmd;
 }
 

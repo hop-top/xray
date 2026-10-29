@@ -166,10 +166,10 @@ xray clear-cache
 
 ### `xray completion`
 
-Generate shell completion scripts.
+Generate shell completion scripts: `bash`, `zsh`, `fish`, `powershell`.
 
 ```bash
-# For bash
+# For bash (needs bash-completion v2)
 eval "$(xray completion bash)"
 
 # For zsh
@@ -177,7 +177,15 @@ eval "$(xray completion zsh)"
 
 # For fish
 xray completion fish > ~/.config/fish/completions/xray.fish
+
+# For PowerShell
+xray completion powershell | Out-String | Invoke-Expression
 ```
+
+Scripts call back into `xray __complete` on each tab, so strategy
+commands, aliases, flags and flag values (`--format`, `--log-level`,
+`--lang`, paths) always match the installed xray. `--no-descriptions`
+omits descriptions. A missing or unknown shell exits 2.
 
 ## Flags & Options
 

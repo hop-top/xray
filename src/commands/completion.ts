@@ -1,256 +1,157 @@
-import { Logger } from '../lib/logger';
-import { StrategyLoader } from '../lib/strategy/loader';
-import { StrategyCacheManager } from './registration/cache';
+/**
+ * Shell completion via `@hop-top/kit/completion`.
+ *
+ * `xray completion bash|zsh|fish|powershell [--no-descriptions]` prints
+ * kit's cobra-protocol scripts. Those scripts hold no command list: on
+ * every tab they call `xray __complete <words...>`, which kit answers
+ * from the live commander tree before commander parses (no hook or
+ * action runs). Strategy commands and user aliases therefore complete
+ * as soon as they are registered; scripts never go stale.
+ *
+ * Value completion (flag values, positional args) is bound here with
+ * kit completers once the whole tree is registered.
+ *
+ * tsconfig uses legacy `node` module resolution, which ignores the
+ * package `exports` map, so types come from the dist path while the
+ * runtime require goes through the exported subpath.
+ */
+import type { Command } from 'commander';
+import type * as KitCompletion from '@hop-top/kit/dist/completion';
+import type * as KitValues from '@hop-top/kit/dist/completion-values';
+import type { Completer, CompletionItem } from '@hop-top/kit/dist/completion-values';
+import { UsageError } from '../lib/error/types';
+import { setCommandGroup } from './kit-cli';
+import { VERBOSITY_LEVELS } from './root-options';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const completion = require('@hop-top/kit/completion') as typeof KitCompletion;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const values = require('@hop-top/kit/completion-values') as typeof KitValues;
+
+export const { bindFlag, bindArgs } = completion;
+export const { staticValues, funcCompleter, fileCompleter, dirCompleter } = values;
+export type { Completer, CompletionItem };
+
+/** Whether argv (process.argv shape) is a shell completion request. */
+export function isCompletionRequest(argv: readonly string[]): boolean {
+  const first = argv[2];
+  return first === completion.REQUEST_CMD || first === completion.NO_DESC_REQUEST_CMD;
+}
 
 /**
- * Generate dynamic shell completion including strategy commands
+ * Add kit's `completion <shell>` command to `program` (MANAGEMENT group).
+ * A missing or unknown shell is a usage error (exit 2) rather than
+ * commander's help fallback.
  */
-export const handleCompletionAction = async (shell: string) => {
-  // Load strategies to include in completion
-  const { coreCommands, strategyCommands } = await loadCommandsForCompletion();
+export function registerCompletionCommand(program: Command): Command {
+  const cmd = completion.completionCommand(program);
+  cmd.action((_opts: unknown, self: Command) => {
+    const shells = completion.SHELLS.join(', ');
+    const [shell] = self.args;
+    throw new UsageError(
+      shell
+        ? `unsupported shell '${shell}' (expected one of: ${shells})`
+        : `missing shell (expected one of: ${shells})`
+    );
+  });
+  program.addCommand(cmd);
+  setCommandGroup(cmd, 'management');
+  return cmd;
+}
 
-  const generators: Record<string, () => string> = {
-    bash: () => generateBashCompletion(coreCommands, strategyCommands),
-    zsh: () => generateZshCompletion(coreCommands, strategyCommands),
-    fish: () => generateFishCompletion(coreCommands, strategyCommands)
-  };
+/** Values of `-w, --with <feature>` on analysis commands. */
+const WITH_FEATURES = ['vars', 'incs', 'cost', 'docs', 'df', 'cf'];
 
-  const generator = generators[shell.toLowerCase()];
+/** Values of `--group <mode>` on analysis commands. */
+const GROUP_MODES = ['directory', 'community'];
 
-  if (!generator) {
-    Logger.error(`Unsupported shell: ${shell}`);
-    Logger.info('Supported shells: bash, zsh, fish');
-    Logger.info('');
-    Logger.info('Usage:');
-    Logger.info('  eval "$(xray completion bash)"   # For bash');
-    Logger.info('  eval "$(xray completion zsh)"    # For zsh');
-    Logger.info('  xray completion fish > ~/.config/fish/completions/xray.fish  # For fish');
-    process.exit(1);
-  }
+/** Language pack names + bundles (`lang add`, `--lang`). */
+function languageItems(): CompletionItem[] {
+  // Lazy: only loaded on a completion request.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { LANGUAGE_PACKS, BUNDLES } = require('../lib/parser/grammars') as typeof import('../lib/parser/grammars');
+  return [
+    ...LANGUAGE_PACKS.map((p) => ({ value: p.name, description: p.extensions.join(' ') })),
+    ...Object.entries(BUNDLES).map(([name, langs]) => ({
+      value: name,
+      description: `bundle: ${langs.join(', ')}`,
+    })),
+  ];
+}
 
-  console.log(generator());
+/** Case-insensitive prefix filter (funcCompleter sees the raw prefix). */
+function byPrefix(items: CompletionItem[], prefix: string): CompletionItem[] {
+  const p = prefix.toLowerCase();
+  return items.filter((i) => i.value.toLowerCase().startsWith(p));
+}
+
+const languageCompleter = funcCompleter((prefix) => byPrefix(languageItems(), prefix));
+
+/** `--lang a,b,<tab>`: complete the last comma-separated element. */
+const languageListCompleter = funcCompleter((prefix) => {
+  const cut = prefix.lastIndexOf(',') + 1;
+  const head = prefix.slice(0, cut);
+  return byPrefix(languageItems(), prefix.slice(cut)).map((i) => ({
+    value: head + i.value,
+    description: i.description,
+  }));
+});
+
+/** Installed/built-in strategy names (`strategy info|remove|validate`). */
+const strategyCompleter = funcCompleter(async (prefix) => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { StrategyLoader } = require('../lib/strategy/loader') as typeof import('../lib/strategy/loader');
+  const strategies = await new StrategyLoader().discoverStrategies();
+  const items = strategies.map((s) => ({ value: s.name, description: `v${s.version}` }));
+  return byPrefix(items, prefix);
+});
+
+/** Flag completers bound on every command declaring the flag. */
+const FLAG_COMPLETERS: Record<string, () => Completer> = {
+  'log-level': () => staticValues(...VERBOSITY_LEVELS),
+  config: () => fileCompleter(),
+  chdir: () => dirCompleter(),
+  path: () => dirCompleter(),
+  dir: () => dirCompleter(),
+  output: () => fileCompleter(),
+  anchor: () => fileCompleter(),
+  graph: () => fileCompleter('json'),
+  with: () => staticValues(...WITH_FEATURES),
+  group: () => staticValues(...GROUP_MODES),
+  lang: () => languageListCompleter,
 };
 
+/** Positional-argument completers, by command path below the root. */
+const ARG_COMPLETERS: Record<string, () => Completer> = {
+  'strategy info': () => strategyCompleter,
+  'strategy remove': () => strategyCompleter,
+  'strategy validate': () => strategyCompleter,
+  'lang add': () => languageCompleter,
+  'lang remove': () => languageCompleter,
+};
+
+function commandPath(cmd: Command): string {
+  const parts: string[] = [];
+  for (let c: Command | null = cmd; c && c.parent; c = c.parent) parts.unshift(c.name());
+  return parts.join(' ');
+}
+
 /**
- * Load all commands for completion generation
+ * Bind value completers across the registered tree. Call once after
+ * every command (core, strategy, alias) is registered. `--format`
+ * values are bound where each command declares its formats.
  */
-async function loadCommandsForCompletion() {
-  const coreCommands = [
-    'map', 'scan', 'graph', 'generate', 'query',
-    'strategy', 'alias', 'lang', 'explore', 'clear-cache', 'completion', 'help'
-  ];
-
-  const strategyCommands: Record<string, string[]> = {};
-
-  try {
-    // Try to load from cache first for speed
-    const cacheManager = new StrategyCacheManager();
-    const cached = await cacheManager.getCached();
-
-    if (cached) {
-      // Use cached strategy information
-      for (const strategy of cached) {
-        if (strategy.commands) {
-          strategyCommands[strategy.name] = Object.keys(strategy.commands);
-        }
-      }
-    } else {
-      // Load strategies directly
-      const loader = new StrategyLoader();
-      const strategies = await loader.discoverStrategies();
-
-      for (const strategy of strategies) {
-        if (strategy.commands) {
-          strategyCommands[strategy.name] = Object.keys(strategy.commands);
-        }
-      }
+export function bindValueCompleters(program: Command): void {
+  const visit = (cmd: Command) => {
+    for (const opt of cmd.options) {
+      const name = opt.long?.replace(/^--/, '');
+      if (!name || !opt.required && !opt.optional) continue;
+      const make = FLAG_COMPLETERS[name];
+      if (make) bindFlag(cmd, name, make());
     }
-  } catch (error: any) {
-    Logger.debug(`Could not load strategies for completion: ${error.message}`);
-    // Continue with just core commands
-  }
-
-  return { coreCommands, strategyCommands };
-}
-
-/**
- * Generate Bash completion script
- */
-function generateBashCompletion(
-  coreCommands: string[],
-  strategyCommands: Record<string, string[]>
-): string {
-  const allCommands = [...coreCommands, ...Object.keys(strategyCommands)].join(' ');
-
-  const strategyCompletions = Object.entries(strategyCommands)
-    .map(([strategy, commands]) => {
-      return `    ${strategy})
-      COMPREPLY=( $(compgen -W "${commands.join(' ')}" -- "$cur") )
-      return 0
-      ;;`;
-    })
-    .join('\n');
-
-  return `# xray completion for bash
-# Add to ~/.bashrc or ~/.bash_profile:
-# eval "$(xray completion bash)"
-
-_xray_completions() {
-  local cur prev commands
-  COMPREPLY=()
-  cur="\${COMP_WORDS[COMP_CWORD]}"
-  prev="\${COMP_WORDS[COMP_CWORD-1]}"
-  commands="${allCommands}"
-
-  # First level: main commands
-  if [ $COMP_CWORD -eq 1 ]; then
-    COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
-    return 0
-  fi
-
-  # Second level: strategy subcommands
-  local main_cmd="\${COMP_WORDS[1]}"
-  case "$main_cmd" in
-${strategyCompletions}
-  esac
-
-  # Option completions
-  case "$prev" in
-    -p|--path|-o|--output|-a|--anchor|--config|--graph)
-      COMPREPLY=( $(compgen -f -- "$cur") )
-      return 0
-      ;;
-    --format)
-      COMPREPLY=( $(compgen -W "txt csv xml json mermaid dot table tree text" -- "$cur") )
-      return 0
-      ;;
-    *)
-      COMPREPLY=( $(compgen -W "--path --output --limit --anchor --depth --query --match --graph --format --json --csv --xml --txt --mermaid --dot --help" -- "$cur") )
-      return 0
-      ;;
-  esac
-}
-
-complete -F _xray_completions xray`;
-}
-
-/**
- * Generate Zsh completion script
- */
-function generateZshCompletion(
-  coreCommands: string[],
-  strategyCommands: Record<string, string[]>
-): string {
-  const coreCommandDefs = coreCommands
-    .map(cmd => `    '${cmd}:${getCommandDescription(cmd)}'`)
-    .join('\n');
-
-  const strategyCases = Object.entries(strategyCommands)
-    .map(([strategy, commands]) => {
-      const cmdDefs = commands
-        .map(cmd => `      '${cmd}:${strategy} ${cmd} command'`)
-        .join('\n');
-      return `    ${strategy})
-      local -a ${strategy}_commands
-      ${strategy}_commands=(
-${cmdDefs}
-      )
-      _describe '${strategy} commands' ${strategy}_commands
-      ;;`;
-    })
-    .join('\n');
-
-  return `# xray completion for zsh
-# Add to ~/.zshrc:
-# eval "$(xray completion zsh)"
-
-#compdef xray
-
-_xray() {
-  local -a commands
-  commands=(
-${coreCommandDefs}
-  )
-
-  _arguments -C \\
-    '1: :->command' \\
-    '*::arg:->args' \\
-    '(-p --path)'{-p,--path}'[Project path]:path:_files -/' \\
-    '(-o --output)'{-o,--output}'[Output file path]:file:_files' \\
-    '--graph[Load graph from file]:file:_files' \\
-    '--format[Output format]:format:(txt csv xml json mermaid dot table tree text)' \\
-    '(-h --help)'{-h,--help}'[Display help]'
-
-  case $state in
-    command)
-      _describe 'command' commands
-      ;;
-    args)
-      case "\${words[1]}" in
-${strategyCases}
-      esac
-      ;;
-  esac
-}
-
-_xray`;
-}
-
-/**
- * Generate Fish completion script
- */
-function generateFishCompletion(
-  coreCommands: string[],
-  strategyCommands: Record<string, string[]>
-): string {
-  const coreCompletions = coreCommands
-    .map(cmd => `complete -c xray -n '__fish_use_subcommand' -a ${cmd} -d '${getCommandDescription(cmd)}'`)
-    .join('\n');
-
-  const strategyCompletions = Object.entries(strategyCommands)
-    .map(([strategy, commands]) => {
-      const condition = `__fish_seen_subcommand_from ${strategy}`;
-      return commands
-        .map(cmd => `complete -c xray -n '${condition}' -a ${cmd} -d '${strategy} ${cmd} command'`)
-        .join('\n');
-    })
-    .join('\n\n');
-
-  return `# xray completion for fish
-# Save to ~/.config/fish/completions/xray.fish
-
-# Core commands
-${coreCompletions}
-
-# Strategy subcommands
-${strategyCompletions}
-
-# Global options
-complete -c xray -s p -l path -d 'Project path' -r
-complete -c xray -s o -l output -d 'Output file path' -r
-complete -c xray -l graph -d 'Load graph from file' -r
-complete -c xray -l format -d 'Output format' -xa 'txt csv xml json mermaid dot table tree text'
-complete -c xray -s h -l help -d 'Display help'`;
-}
-
-/**
- * Get description for core commands
- */
-function getCommandDescription(cmd: string): string {
-  const descriptions: Record<string, string> = {
-    map: 'Generate visual map of codebase',
-    scan: 'Scan and discover files',
-    graph: 'Generate CFG and DFG graphs',
-    generate: 'Generate analysis visualization',
-    query: 'Query call graph',
-    strategy: 'Manage strategies',
-    alias: 'Manage aliases',
-    explore: 'Find files and search code',
-    'lang': 'Manage language packs (tree-sitter grammars)',
-    'clear-cache': 'Clear SQLite cache',
-    completion: 'Generate shell completion',
-    help: 'Display help'
+    const args = ARG_COMPLETERS[commandPath(cmd)];
+    if (args) bindArgs(cmd, args());
+    for (const sub of cmd.commands) visit(sub);
   };
-
-  return descriptions[cmd] || cmd;
+  visit(program);
 }

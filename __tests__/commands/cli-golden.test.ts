@@ -252,7 +252,7 @@ describe('cli golden: introspection', () => {
     expect(golden(r)).toMatchSnapshot();
   });
 
-  it.each([['bash'], ['zsh'], ['fish']])('completion %s', async (shell) => {
+  it.each([['bash'], ['zsh'], ['fish'], ['powershell']])('completion %s', async (shell) => {
     const r = await run(['completion', shell]);
     expect(r.status).toBe(0);
     expect(golden(r)).toMatchSnapshot();

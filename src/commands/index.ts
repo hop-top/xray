@@ -6,6 +6,7 @@ import { setCommandGroup } from './kit-cli';
 import { registerCoreCommands } from './registration/core';
 import { registerStrategyCommands } from './registration/strategies';
 import { registerAliases } from './registration/aliases';
+import { bindValueCompleters } from './completion';
 import { ExploreCommandOptions } from '../types/command-options';
 
 /**
@@ -23,6 +24,9 @@ export async function registerCommands() {
 
   // 4. Register user-defined aliases from config
   await registerAliases(program);
+
+  // 5. Bind flag/argument value completers across the full tree.
+  bindValueCompleters(program);
 
   return program;
 }
