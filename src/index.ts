@@ -7,6 +7,7 @@ import { createXrayUpgradeChecker } from './upgrade-checker';
 import { CodedError, UsageError, EXIT_USAGE, EXIT_GENERIC } from './lib/error/types';
 import { Logger } from './lib/logger';
 import { resolveLogLevel } from './commands/root-options';
+import { isCompletionRequest } from './commands/completion';
 
 /**
  * Reject argv whose first positional looks command-shaped but isn't a
@@ -116,6 +117,16 @@ export async function main() {
   // verbose-only diagnostics, and commander's preAction runs too late.
   const argv = process.argv;
   applyEarlyVerbosity(argv);
+
+  // Shell completion (`xray __complete ...`, run on every tab): answered
+  // from the command tree only. No consent write, telemetry or network,
+  // and no code from the working directory: tab in an untrusted checkout
+  // must not run its strategies or JS config.
+  if (isCompletionRequest(argv)) {
+    const program = await registerCommands({ projectCode: false });
+    await program.parseAsync(argv);
+    return;
+  }
 
   // Handle first-run telemetry consent
   const telemetryEnabled = await handleFirstRunConsent(process.argv);

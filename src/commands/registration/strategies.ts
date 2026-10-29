@@ -1,6 +1,6 @@
 // src/commands/registration/strategies.ts
 import { Command } from 'commander';
-import { StrategyLoader } from '../../lib/strategy/loader';
+import { CodeLoadingOptions, StrategyLoader } from '../../lib/strategy/loader';
 import { StrategyContextImpl } from '../../lib/strategy/context';
 import {
   Extension,
@@ -28,22 +28,30 @@ import {
  * Register dynamic strategy commands
  * Discovers all available strategies and registers their commands
  */
-export async function registerStrategyCommands(program: Command): Promise<void> {
-  return registerExtensionCommands(program);
+export async function registerStrategyCommands(
+  program: Command,
+  options: CodeLoadingOptions = {}
+): Promise<void> {
+  return registerExtensionCommands(program, options);
 }
 
 export async function registerExtensionCommands(
-  program: Command
+  program: Command,
+  options: CodeLoadingOptions = {}
 ): Promise<void> {
-  const loader = new StrategyLoader();
+  const loader = new StrategyLoader(options);
+  const projectCode = options.projectCode ?? true;
   const cacheManager = new StrategyCacheManager();
 
   try {
-    // Try to use cached strategies first
-    const cached = await cacheManager.getCached();
+    // Try to use cached strategies first. The cache lives in the project
+    // (.xray/); without project code it is neither read nor written.
+    const cached = projectCode ? await cacheManager.getCached() : null;
     let strategies: Strategy[];
 
-    if (cached) {
+    if (!projectCode) {
+      strategies = await loader.discoverStrategies();
+    } else if (cached) {
       Logger.debug('Found valid strategy cache metadata');
       strategies = await loader.discoverStrategies();
 

@@ -4,6 +4,7 @@ import { StrategyContextImpl } from '../lib/strategy/context';
 import { ExtensionOverrideCommandOptions } from '../types/command-options';
 import type { XrayExtensionConfig } from '../types/xray-config';
 import { UsageError } from '../lib/error/types';
+import { bindFlag, staticValues } from './completion';
 
 const appendOptionValue = (
   value: string,
@@ -256,7 +257,7 @@ export const addExtensionOverrideOptions = (cmd: Command): Command => {
 
 // Common options for all commands
 export const addCommonOptions = (cmd: Command) => {
-  return addExtensionOverrideOptions(
+  const out = addExtensionOverrideOptions(
     cmd
     .option('-p, --path <path>', 'Root directory to analyze (repeatable; with --format json|csv|xml all roots merge into one graph) [default: current directory]', (value: string, previous: string[]) => {
       return previous.concat([value]);
@@ -302,4 +303,7 @@ export const addCommonOptions = (cmd: Command) => {
       []
     )
   );
+  bindFlag(out, 'format', staticValues('txt', 'json', 'csv', 'xml', 'mermaid', 'dot'));
+  bindFlag(out, 'preset', staticValues(...BUILTIN_PRESET_NAMES));
+  return out;
 };

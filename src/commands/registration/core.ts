@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import { addCommonOptions } from '../common';
 import { handleGenerateAction } from '../generate';
 import { handleClearCacheAction } from '../clear-cache';
-import { handleCompletionAction } from '../completion';
+import { bindFlag, registerCompletionCommand, staticValues } from '../completion';
 import { addQueryOutputFlags, runQueryCommand } from '../query';
 import { handleDescribeAction } from '../describe';
 import { registerStrategyCommand } from '../strategy-cmd';
@@ -95,17 +95,15 @@ export function registerCoreCommands(program: Command): void {
   // Walks the constructed commander tree and emits a JSON document
   // documenting every command's args, options, side-effect class,
   // idempotency, and exit codes.
-  program
+  const describe = program
     .command('describe')
     .description('Emit machine-readable capability surface (12fc Factor 1)')
     .option('--format <fmt>', 'Output format (json)', 'json')
     .action(handleDescribeAction);
+  bindFlag(describe, 'format', staticValues('json'));
 
-  program
-    .command('completion')
-    .description('Generate shell completion script')
-    .argument('<shell>', 'Shell type: bash, zsh, or fish')
-    .action(handleCompletionAction);
+  // `completion bash|zsh|fish|powershell` (kit, cobra protocol).
+  registerCompletionCommand(program);
 
   for (const cmd of program.commands) {
     const group = CORE_GROUPS[cmd.name()];

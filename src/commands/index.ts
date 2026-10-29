@@ -6,23 +6,30 @@ import { setCommandGroup } from './kit-cli';
 import { registerCoreCommands } from './registration/core';
 import { registerStrategyCommands } from './registration/strategies';
 import { registerAliases } from './registration/aliases';
+import { bindValueCompleters } from './completion';
 import { ExploreCommandOptions } from '../types/command-options';
+import type { CodeLoadingOptions } from '../lib/strategy/loader';
 
 /**
- * Register all commands (static core + dynamic strategies + aliases)
+ * Register all commands (static core + dynamic strategies + aliases).
+ * `projectCode: false` keeps strategy and config code in the working
+ * directory from loading (shell completion).
  */
-export async function registerCommands() {
+export async function registerCommands(options: CodeLoadingOptions = {}) {
   // 1. Register static core commands
   registerCoreCommands(program);
 
   // 2. Register dynamic strategy commands
-  await registerStrategyCommands(program);
+  await registerStrategyCommands(program, options);
 
   // 3. Register explore command (default) with backward compatibility
   registerExploreCommand();
 
   // 4. Register user-defined aliases from config
-  await registerAliases(program);
+  await registerAliases(program, options);
+
+  // 5. Bind flag/argument value completers across the full tree.
+  bindValueCompleters(program, options);
 
   return program;
 }
