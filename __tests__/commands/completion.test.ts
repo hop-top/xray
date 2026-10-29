@@ -232,6 +232,92 @@ describe('completion: xray __complete', () => {
   });
 });
 
+/**
+ * Tab runs `xray __complete` in whatever directory the shell is in, e.g. a
+ * freshly cloned repo. Nothing from that directory may execute: project
+ * strategies (`.xray/strategies`, `node_modules/xray-strategy-*`) and JS
+ * config (`.xrayrc.js`, `xray.config.js`) each write a marker when loaded.
+ */
+describe('completion: never executes project code', () => {
+  let marks: string;
+
+  function markerModule(name: string, body: string): string {
+    return `require('fs').writeFileSync(${JSON.stringify(path.join(marks, name))}, 'x');\n${body}\n`;
+  }
+
+  function untrustedProject(config: '.xrayrc.js' | 'xray.config.js'): string {
+    const cwd = fs.mkdtempSync(path.join(sandbox, 'untrusted-'));
+    const local = path.join(cwd, '.xray', 'strategies');
+    fs.mkdirSync(local, { recursive: true });
+    fs.writeFileSync(path.join(local, 'evil.js'), markerModule('local-strategy',
+      "module.exports = { name: 'evil', version: '1.0.0', detect: () => false," +
+      " commands: { pwn: { description: 'pwn', handler: () => null } } };"));
+
+    const pkg = path.join(cwd, 'node_modules', 'xray-strategy-evilpkg');
+    fs.mkdirSync(pkg, { recursive: true });
+    fs.writeFileSync(path.join(pkg, 'package.json'), JSON.stringify({
+      name: 'xray-strategy-evilpkg',
+      'xray-strategy': { name: 'evilpkg', entry: 'index.js' },
+    }));
+    fs.writeFileSync(path.join(pkg, 'index.js'), markerModule('npm-strategy',
+      "module.exports = { name: 'evilpkg', version: '1.0.0', detect: () => false };"));
+
+    fs.writeFileSync(path.join(cwd, config), markerModule(config,
+      "module.exports = { aliases: { rc: 'react components' } };"));
+    return cwd;
+  }
+
+  beforeEach(() => {
+    marks = fs.mkdtempSync(path.join(sandbox, 'marks-'));
+  });
+
+  it.each([
+    [['__complete', '']],
+    [['__completeNoDesc', '']],
+    [['__complete', 'strategy', 'info', '']],
+    [['__complete', 'evil', '']],
+  ])('%j loads no strategy or config code from cwd', (words: string[]) => {
+    const cwd = untrustedProject('.xrayrc.js');
+    const r = xray(words, cwd);
+    expect(r.status).toBe(0);
+    expect(fs.readdirSync(marks)).toEqual([]);
+    // Nor does a tab write the strategy cache into the project.
+    expect(fs.existsSync(path.join(cwd, '.xray', '.strategy-cache.json'))).toBe(false);
+  });
+
+  it('skips xray.config.js too', () => {
+    const cwd = untrustedProject('xray.config.js');
+    expect(xray(['__complete', ''], cwd).status).toBe(0);
+    expect(fs.readdirSync(marks)).toEqual([]);
+  });
+
+  it('omits project strategies and JS-config aliases from candidates', () => {
+    const cwd = untrustedProject('.xrayrc.js');
+    const v = values(xray(['__complete', ''], cwd).stdout);
+    expect(v).not.toContain('evil');
+    expect(v).not.toContain('evilpkg');
+    expect(v).not.toContain('rc');
+    expect(values(xray(['__complete', 'strategy', 'info', 'ev'], cwd).stdout)).toEqual([]);
+  });
+
+  it('still completes built-in strategy subcommands, flags and names', () => {
+    const cwd = untrustedProject('.xrayrc.js');
+    const v = values(xray(['__complete', ''], cwd).stdout);
+    for (const name of ['map', 'react', 'express', 'rest-api']) expect(v).toContain(name);
+    expect(values(xray(['__complete', 'react', ''], cwd).stdout)).toEqual(['components', 'contexts', 'hooks']);
+    expect(values(xray(['__complete', 'react', 'components', '--fo'], cwd).stdout)).toContain('--format');
+    expect(values(xray(['__complete', 'strategy', 'info', 're'], cwd).stdout)).toEqual(['react', 'rest-api']);
+  });
+
+  it('explicit runs still load project strategies (intended)', () => {
+    const cwd = untrustedProject('.xrayrc.js');
+    xray(['strategy', 'list'], cwd);
+    expect(fs.readdirSync(marks)).toEqual(
+      expect.arrayContaining(['local-strategy', 'npm-strategy', '.xrayrc.js'])
+    );
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Real shells
 // ---------------------------------------------------------------------------

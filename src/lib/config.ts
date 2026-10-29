@@ -232,7 +232,13 @@ function mergeConfigs(global: XrayConfig | null, project: XrayConfig | null): Xr
  * Load configuration from the project directory
  * Supports directory tree walking and global config merging
  */
-export function loadConfig(configPath?: string, searchPath?: string): XrayConfig | null {
+export function loadConfig(
+  configPath?: string,
+  searchPath?: string,
+  options: { projectCode?: boolean } = {}
+): XrayConfig | null {
+  const projectCode = options.projectCode ?? true;
+
   // If explicit path provided, use it (no merging)
   if (configPath) {
     const absPath = path.isAbsolute(configPath) ? configPath : path.resolve(process.cwd(), configPath);
@@ -249,7 +255,12 @@ export function loadConfig(configPath?: string, searchPath?: string): XrayConfig
   const globalConfig = globalConfigPath ? loadConfigFile(globalConfigPath) : null;
 
   // Find project config by walking up directory tree
-  const projectConfigPath = findConfigPath(searchPath);
+  let projectConfigPath = findConfigPath(searchPath);
+  if (projectConfigPath && !projectCode && path.extname(projectConfigPath) === '.js') {
+    // JS config is code; without project code only data configs load.
+    Logger.debug(`Skipping JS project config: ${projectConfigPath}`);
+    projectConfigPath = null;
+  }
   const projectConfig = projectConfigPath ? loadConfigFile(projectConfigPath) : null;
 
   if (projectConfigPath && !searchPath && !configPathLogged) {

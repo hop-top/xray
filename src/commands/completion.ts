@@ -22,6 +22,7 @@ import type { Completer, CompletionItem } from '@hop-top/kit/dist/completion-val
 import { UsageError } from '../lib/error/types';
 import { setCommandGroup } from './kit-cli';
 import { VERBOSITY_LEVELS } from './root-options';
+import type { CodeLoadingOptions } from '../lib/strategy/loader';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const completion = require('@hop-top/kit/completion') as typeof KitCompletion;
@@ -98,13 +99,15 @@ const languageListCompleter = funcCompleter((prefix) => {
 });
 
 /** Installed/built-in strategy names (`strategy info|remove|validate`). */
-const strategyCompleter = funcCompleter(async (prefix) => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { StrategyLoader } = require('../lib/strategy/loader') as typeof import('../lib/strategy/loader');
-  const strategies = await new StrategyLoader().discoverStrategies();
-  const items = strategies.map((s) => ({ value: s.name, description: `v${s.version}` }));
-  return byPrefix(items, prefix);
-});
+function strategyCompleter(options: CodeLoadingOptions): Completer {
+  return funcCompleter(async (prefix) => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { StrategyLoader } = require('../lib/strategy/loader') as typeof import('../lib/strategy/loader');
+    const strategies = await new StrategyLoader(options).discoverStrategies();
+    const items = strategies.map((s) => ({ value: s.name, description: `v${s.version}` }));
+    return byPrefix(items, prefix);
+  });
+}
 
 /** Flag completers bound on every command declaring the flag. */
 const FLAG_COMPLETERS: Record<string, () => Completer> = {
@@ -122,10 +125,10 @@ const FLAG_COMPLETERS: Record<string, () => Completer> = {
 };
 
 /** Positional-argument completers, by command path below the root. */
-const ARG_COMPLETERS: Record<string, () => Completer> = {
-  'strategy info': () => strategyCompleter,
-  'strategy remove': () => strategyCompleter,
-  'strategy validate': () => strategyCompleter,
+const ARG_COMPLETERS: Record<string, (options: CodeLoadingOptions) => Completer> = {
+  'strategy info': strategyCompleter,
+  'strategy remove': strategyCompleter,
+  'strategy validate': strategyCompleter,
   'lang add': () => languageCompleter,
   'lang remove': () => languageCompleter,
 };
@@ -140,8 +143,9 @@ function commandPath(cmd: Command): string {
  * Bind value completers across the registered tree. Call once after
  * every command (core, strategy, alias) is registered. `--format`
  * values are bound where each command declares its formats.
+ * `options` governs which strategy code the name completer may load.
  */
-export function bindValueCompleters(program: Command): void {
+export function bindValueCompleters(program: Command, options: CodeLoadingOptions = {}): void {
   const visit = (cmd: Command) => {
     for (const opt of cmd.options) {
       const name = opt.long?.replace(/^--/, '');
@@ -150,7 +154,7 @@ export function bindValueCompleters(program: Command): void {
       if (make) bindFlag(cmd, name, make());
     }
     const args = ARG_COMPLETERS[commandPath(cmd)];
-    if (args) bindArgs(cmd, args());
+    if (args) bindArgs(cmd, args(options));
     for (const sub of cmd.commands) visit(sub);
   };
   visit(program);

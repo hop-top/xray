@@ -363,3 +363,62 @@ describe('Config Resolution', () => {
     });
   });
 });
+
+describe('loadConfig projectCode: false', () => {
+  let home: string;
+  let project: string;
+  let marker: string;
+  let originalXdgConfigHome: string | undefined;
+
+  beforeEach(() => {
+    home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'xray-config-safe-')));
+    mockHomedir.mockReturnValue(home);
+    originalXdgConfigHome = process.env.XDG_CONFIG_HOME;
+    process.env.XDG_CONFIG_HOME = path.join(home, '.config');
+    project = path.join(home, 'project');
+    fs.mkdirSync(project);
+    marker = path.join(home, 'marker');
+  });
+
+  afterEach(() => {
+    fs.rmSync(home, { recursive: true, force: true });
+    if (originalXdgConfigHome) process.env.XDG_CONFIG_HOME = originalXdgConfigHome;
+    else delete process.env.XDG_CONFIG_HOME;
+  });
+
+  function writeJsConfig(name: string): void {
+    fs.writeFileSync(
+      path.join(project, name),
+      `require('fs').writeFileSync(${JSON.stringify(marker)}, 'x');\n` +
+      `module.exports = { aliases: { rc: 'react components' } };\n`
+    );
+  }
+
+  it.each(['.xrayrc.js', 'xray.config.js'])('does not execute project %s', (name) => {
+    writeJsConfig(name);
+    fs.mkdirSync(path.join(home, '.config', 'xray'), { recursive: true });
+    fs.writeFileSync(
+      path.join(home, '.config', 'xray', 'config.json'),
+      JSON.stringify({ aliases: { g: 'react hooks' } })
+    );
+
+    const config = loadConfig(undefined, project, { projectCode: false });
+    expect(fs.existsSync(marker)).toBe(false);
+    expect(config?.aliases).toEqual({ g: 'react hooks' });
+  });
+
+  it('still reads data-only project config', () => {
+    fs.writeFileSync(
+      path.join(project, '.xrayrc.json'),
+      JSON.stringify({ aliases: { rc: 'react components' } })
+    );
+    const config = loadConfig(undefined, project, { projectCode: false });
+    expect(config?.aliases).toEqual({ rc: 'react components' });
+  });
+
+  it('executes project JS config by default (explicit runs)', () => {
+    writeJsConfig('.xrayrc.js');
+    loadConfig(undefined, project);
+    expect(fs.existsSync(marker)).toBe(true);
+  });
+});

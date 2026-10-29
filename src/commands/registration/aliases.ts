@@ -1,20 +1,23 @@
 import { Command } from 'commander';
 import { AliasResolver } from '../../lib/alias-resolver';
-import { StrategyLoader } from '../../lib/strategy/loader';
+import { CodeLoadingOptions, StrategyLoader } from '../../lib/strategy/loader';
 import { StrategyContextImpl } from '../../lib/strategy/context';
 import { Logger } from '../../lib/logger';
 import { loadConfig } from '../../lib/config';
 import { AliasCommandOptions } from '../../types/command-options';
 
-export async function registerAliases(program: Command): Promise<void> {
-  const config = loadConfig();
+export async function registerAliases(
+  program: Command,
+  options: CodeLoadingOptions = {}
+): Promise<void> {
+  const config = loadConfig(undefined, undefined, options);
   if (!config || !config.aliases || Object.keys(config.aliases).length === 0) {
     Logger.debug('No aliases configured');
     return;
   }
 
   const resolver = new AliasResolver(config);
-  const loader = new StrategyLoader();
+  const loader = new StrategyLoader(options);
 
   // Validate aliases
   const errors = await resolver.validateAliases(loader);
