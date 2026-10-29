@@ -6,7 +6,7 @@ Thank you for your interest in contributing to xray! This guide will help you ge
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22.12+
 - npm or yarn
 - C++ build tools:
   - **macOS**: Xcode Command Line Tools (`xcode-select --install`)

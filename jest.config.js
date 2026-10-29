@@ -6,7 +6,14 @@ module.exports = {
     // `npm run build` (src) and `npm run typecheck:tests` (tests).
     transform: {
         '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
+        // commander >=15 ships ESM-only; Jest's CJS runtime cannot load it
+        // natively, so transpile just that package to CJS.
+        '^.+/node_modules/commander/.+\\.js$': [
+            'ts-jest',
+            { tsconfig: { allowJs: true, isolatedModules: true, module: 'commonjs' } },
+        ],
     },
+    transformIgnorePatterns: ['/node_modules/(?!commander/)'],
     testEnvironment: 'node',
     // Off by default: instrumenting every file inflates memory for bare `jest`.
     // Use `npm run test:coverage` for coverage.

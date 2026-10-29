@@ -22,7 +22,7 @@ npm run build
 npm link
 ```
 
-**Note**: Requires Node.js 20+ and C++ build tools (build-essential on Linux, Xcode on macOS).
+**Note**: Requires Node.js 22.12+ and C++ build tools (build-essential on Linux, Xcode on macOS).
 
 **C++ troubleshooting**:
 ```bash
