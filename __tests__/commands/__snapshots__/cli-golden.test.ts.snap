@@ -450,6 +450,9 @@ Usage: xray completion [options] <shell>
 
 Generate shell completion script
 
+ARGUMENTS:
+  shell       Shell type: bash, zsh, or fish
+
 FLAGS:
   -h, --help  Display help
 
@@ -719,6 +722,9 @@ exports[`cli golden: --help xray explore --help 1`] = `
 Usage: xray explore [options] [query]
 
 Quickly find files by patterns, search code for keywords, or explore codebase [default command]
+
+ARGUMENTS:
+  query                   Search query or pattern
 
 FLAGS:
   -p, --path <path>       Root directory to explore (repeatable) [default:
@@ -1110,9 +1116,9 @@ FLAGS:
 exports[`cli golden: --help xray help --help 1`] = `
 "exit: 0
 --- stdout ---
-Usage: xray help [options] [group]
+Usage: xray help [options] [operands...]
 
-Show help for a command group
+Show help for a command or command group
 
 FLAGS:
   -h, --help  Display help
@@ -1785,6 +1791,9 @@ Usage: xray query [options] [query]
 
 Query call graph using function-based syntax
 
+ARGUMENTS:
+  query            Query string (e.g., "calls(main)", "callers(processData)")
+
 FLAGS:
   --graph <file>   Path to saved graph JSON file
   --format <fmt>   Output format: table, json, yaml, csv, tree (default: table)
@@ -2273,6 +2282,9 @@ Usage: xray explore [options] [query]
 
 Quickly find files by patterns, search code for keywords, or explore codebase [default command]
 
+ARGUMENTS:
+  query                   Search query or pattern
+
 FLAGS:
   -p, --path <path>       Root directory to explore (repeatable) [default:
                           current directory] (default: [])
@@ -2318,6 +2330,9 @@ Usage: xray completion [options] <shell>
 
 Generate shell completion script
 
+ARGUMENTS:
+  shell       Shell type: bash, zsh, or fish
+
 FLAGS:
   -h, --help  Display help
 
@@ -2340,8 +2355,12 @@ exports[`cli golden: error paths xray completion pwsh 1`] = `
 `;
 
 exports[`cli golden: error paths xray help nosuch 1`] = `
-"exit: 0
+"exit: 2
 --- stdout ---
+
+--- stderr ---
+error: unknown help topic 'nosuch' for 'xray'
+
 Usage: xray [options] [command]
 
 X-ray your codebase - Generate AST, CFG, and DFG visualizations
@@ -2397,8 +2416,6 @@ FLAGS:
   -C, --chdir <path>         Change to <path> before running the command
   -h, --help                 Display help
 
-
---- stderr ---
 "
 `;
 
@@ -2958,13 +2975,13 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "help",
       "qualifiedName": "help",
-      "description": "Show help for a command group",
+      "description": "Show help for a command or command group",
       "hidden": true,
       "arguments": [
         {
-          "name": "group",
+          "name": "operands",
           "required": false,
-          "variadic": false,
+          "variadic": true,
           "description": ""
         }
       ],
