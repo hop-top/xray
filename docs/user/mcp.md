@@ -73,14 +73,23 @@ Tool names join the command path with `_`. Input schemas are derived
 from the command tree: each option is a property named after its long
 flag (`no-chunk`, `skip-detect`, `format`), repeatable options are string
 arrays, positional arguments are properties named after the argument
-(`query`), and every tool takes an optional `root`. `tools/list` shows
-the exact schemas, including any project strategies.
+(`query`), and every tool with a project scope takes an optional `root`.
+`tools/list` shows the exact schemas, including any project strategies.
+
+Options are allowlisted per tool: a tool exposes only the options vetted
+as read-only, and a call with any other argument is a tool error.
+Built-in strategy nouns get `path`, `format` and the extension-override
+flags, plus the options vetted per noun (`config list --pattern`,
+`config keys|values --file`, `build run --target`, `markdown toc
+--depth`). Options a project strategy declares for its own nouns are not
+exposed.
 
 Not exposed: commands that change state (`cache clear`, `alias set`,
-`strategy install`, `lang add`, ...) and flags that write files or run
-code: `--output`, `--share`, `--template`, `--preset`, and go-cli's
-`--exec-binary` / `--binary` / `--unsafe-no-sandbox` / `--allow-cgo`.
-`config values --show-secrets` is not exposed either.
+`strategy install`, `lang add`, ...) and flags that write files, load
+code or reveal secrets: `--output`, `--share`, `--template`, `--preset`,
+`--config`, go-cli's `--exec-binary` / `--binary` /
+`--unsafe-no-sandbox` / `--allow-cgo`, and `config values
+--show-secrets`.
 
 Behaviour per tool:
 
@@ -94,7 +103,8 @@ Behaviour per tool:
 ## Errors
 
 - Unknown tool: JSON-RPC error `-32602`.
-- Bad argument (unknown name, wrong type, path outside the server root):
+- Bad argument (unknown or unlisted name, wrong type, path outside the
+  server root, URL where a path is expected, sub-root with its own config):
   tool result with `isError: true` and the reason.
 - Command failure (non-zero exit): tool result with `isError: true`,
   stdout and the command's stderr (`[stderr] ...`).
@@ -104,22 +114,40 @@ The server never exits on a failed call.
 ## Trust model
 
 Running xray in a directory trusts that directory: project strategies
-(`.xray/strategies`, strategies in `node_modules`) and a JS project config
-(`.xrayrc.js`) are code, and xray loads them. `xray mcp` keeps that rule
-and fixes the trusted directory at startup:
+(`.xray/strategies`, strategies in `node_modules`), the strategy cache
+and a JS project config (`.xrayrc.js`) are code, and xray loads them.
+`xray mcp` keeps that rule and fixes the trusted directory at startup:
 
 - **Server root** = the directory the server starts in (working
   directory, or `-C <dir>`). You choose it when you configure the client.
-- Every call runs inside the server root. `root` selects a directory
-  inside it (absolute, or relative to the server root); anything outside,
-  including through symlinks, is refused. Path-valued arguments (`path`,
-  `anchor`, `graph`) are held to the same rule.
+- Every call's child process runs with the server root as its working
+  directory, so project strategies, aliases and config load from the
+  server root only, exactly as for `xray` run there.
+- `root` selects the project directory a tool analyzes, inside the
+  server root (absolute, or relative to the server root); anything
+  outside, including through symlinks, is refused. It never becomes the
+  working directory: it reaches the command as its `--path` (map, scan,
+  graph, explore, strategy detect, `<strategy>_<noun>`), and `query`
+  builds its graph over it. `strategy_list` has no project scope and
+  takes no `root`. Relative path arguments resolve against `root`.
+- map, scan and graph look for xray config by walking up from their
+  `--path`. A `root` or `path` inside the server root that has its own
+  config (`.xrayrc`, `.xrayrc.json`, `.xrayrc.js`, or a `package.json`
+  `xray` key), such as a vendored package, is refused: config comes
+  from the server root (or above it) only.
+- Every path-valued argument is held inside the server root: `path`,
+  `anchor`, `graph`, `config keys|values --file`, and each path in
+  map's `query` (`path`, `.ext:path`, comma lists). URLs are refused
+  wherever a path is expected; the server never makes the CLI fetch a
+  remote query file.
 - So project code only ever loads from the tree you started the server
-  in. A client cannot point the server at another checkout.
+  in, and only from its root. A client cannot point the server at
+  another checkout, or at a subtree's own strategies or config.
 - Each call runs the CLI command in a child process with
   `--no-telemetry --offline`: no consent prompt, no `.xrayrc.json`
   write, no upgrade check. Cache files (`.xray/`, `.xray_cache.db`) are
-  written exactly as the same CLI command would write them.
+  written in the server root exactly as the same CLI command run there
+  would write them.
 - No tool writes outside those caches or deletes anything.
 
 The server runs with your user's permissions; tools read whatever the
