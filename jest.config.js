@@ -28,6 +28,7 @@ module.exports = {
             statements: 90,
         },
     },
+    setupFiles: ['<rootDir>/__tests__/support/fresh-native.ts'],
     testMatch: ['**/*.test.ts'],
     roots: ['<rootDir>/__tests__'],
     verbose: true,
