@@ -48,6 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Read-only commands no longer write `.xrayrc.json` or `.xray/.strategy-cache.json` into the working directory; the strategy cache now lives in the user cache dir and non-interactive runs no longer persist a telemetry decision.
+- Argument-parser usage errors (unknown flag, missing argument or value, unknown help topic) print as `✖ <message>`, matching every other usage error; exit code stays 2.
+- `map -o <path>` and `--share <path>` create missing parent directories instead of exiting 1.
+- `query --format tree` shows `(file:L0)` for matches on line 0 instead of dropping the location.
+- Alias dispatch (e.g. `xray rc`) runs the target command's full pipeline (detect, analyze, handler, output); it previously printed "(none found)".
+- `--no-chunk` and other CLI options are honoured when no config file exists.
+- Pre-commit `strategy:detect` script runs `xray strategy detect` instead of falling through to `explore`.
 - Alias names that are empty or whitespace-only are now rejected.
 - Colour honours `--no-color` > `NO_COLOR` > `FORCE_COLOR` > TTY; the
   progress bar is suppressed under `--quiet` and when stderr is not a TTY.
