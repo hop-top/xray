@@ -39,6 +39,7 @@ MANAGEMENT:
                              root
   describe [--flags]         Emit machine-readable capability surface (12fc
                              Factor 1)
+  mcp [--flags]              Serve analysis commands as MCP tools over stdio
   completion [command]       Generate the autocompletion script for the
                              specified shell
 
@@ -1684,6 +1685,32 @@ FLAGS:
 "
 `;
 
+exports[`cli golden: --help xray mcp --help 1`] = `
+"exit: 0
+--- stdout ---
+Usage: xray mcp [options]
+
+Serve analysis commands as MCP tools over stdio
+
+FLAGS:
+  --timeout <seconds>  Per-call timeout in seconds (default: "300")
+  -h, --help           Display help
+
+Serves map, scan, graph, explore, query, strategy list/detect and every
+<strategy> <noun> command as MCP tools over stdin/stdout. Each call runs
+the CLI command in a child process inside the server root (the working
+directory, or -C <dir>); the optional "root" tool argument selects a
+directory inside it. Project strategies and config load from the server
+root only, as for any xray run there. See docs/user/mcp.md.
+
+Example (Claude Code):
+  claude mcp add xray -- xray -C /path/to/project mcp
+
+
+--- stderr ---
+"
+`;
+
 exports[`cli golden: --help xray package-manager --help 1`] = `
 "exit: 0
 --- stdout ---
@@ -2384,6 +2411,7 @@ MANAGEMENT:
                              root
   describe [--flags]         Emit machine-readable capability surface (12fc
                              Factor 1)
+  mcp [--flags]              Serve analysis commands as MCP tools over stdio
   completion [command]       Generate the autocompletion script for the
                              specified shell
 
@@ -5701,6 +5729,31 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": "json",
           "description": "Output format (json)"
+        }
+      ],
+      "subcommands": [],
+      "sideEffect": "read",
+      "idempotent": "yes",
+      "exitCodes": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "mcp",
+      "qualifiedName": "mcp",
+      "description": "Serve analysis commands as MCP tools over stdio",
+      "hidden": false,
+      "arguments": [],
+      "options": [
+        {
+          "name": "--timeout",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "300",
+          "description": "Per-call timeout in seconds"
         }
       ],
       "subcommands": [],

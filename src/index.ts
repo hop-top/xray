@@ -8,6 +8,7 @@ import { CodedError, UsageError, EXIT_USAGE, EXIT_GENERIC } from './lib/error/ty
 import { Logger } from './lib/logger';
 import { resolveLogLevel } from './commands/root-options';
 import { isCompletionRequest } from './commands/completion';
+import { applyMcpChdir, parseMcpRequest } from './commands/mcp';
 
 /**
  * Reject argv whose first positional looks command-shaped but isn't a
@@ -115,7 +116,7 @@ function applyEarlyVerbosity(argv: string[]): void {
 export async function main() {
   // Apply verbosity first: config loading (consent, registration) emits
   // verbose-only diagnostics, and commander's preAction runs too late.
-  const argv = process.argv;
+  let argv = process.argv;
   applyEarlyVerbosity(argv);
 
   // Shell completion (`xray __complete ...`, run on every tab): answered
@@ -128,8 +129,14 @@ export async function main() {
     return;
   }
 
+  // `xray mcp` owns stdin/stdout for the protocol: no consent prompt
+  // (or consent write), no telemetry, no upgrade check. -C applies now
+  // so strategy discovery sees the served project.
+  const mcpRequest = parseMcpRequest(argv);
+  if (mcpRequest) argv = applyMcpChdir(argv, mcpRequest);
+
   // Handle first-run telemetry consent
-  const telemetryEnabled = await handleFirstRunConsent(process.argv);
+  const telemetryEnabled = mcpRequest ? false : await handleFirstRunConsent(argv);
 
   // Initialize telemetry based on consent
   const telemetry = initializeTelemetry({
@@ -165,8 +172,11 @@ export async function main() {
     });
   }
 
-  // Startup update notification (async, non-blocking)
-  createXrayUpgradeChecker().notifyIfAvailable(process.stderr).catch(() => {});
+  // Startup update notification (async, non-blocking); --offline means
+  // no network access.
+  if (!mcpRequest && !argv.includes('--offline')) {
+    createXrayUpgradeChecker().notifyIfAvailable(process.stderr).catch(() => {});
+  }
 
   const program = await registerCommands();
 

@@ -36,7 +36,7 @@ const COMMANDS: string[][] = [
   ['alias'], ['alias', 'list'], ['alias', 'set'], ['alias', 'remove'],
   ['lang'], ['lang', 'list'], ['lang', 'add'], ['lang', 'remove'],
   ['cache'], ['cache', 'clear'], ['clear-cache'],
-  ['paths'], ['describe'], ['completion'], ['help'],
+  ['paths'], ['describe'], ['mcp'], ['completion'], ['help'],
   ['build'], ['build', 'targets'], ['build', 'graph'], ['build', 'run'],
   ['cicd'], ['cicd', 'workflows'], ['cicd', 'graph'], ['cicd', 'deploy'],
   ['cicd', 'triggers'],
