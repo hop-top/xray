@@ -195,6 +195,27 @@ describe('completion: xray __complete', () => {
     expect(v).not.toContain('completion');
   });
 
+  function aliasProject(): string {
+    const cwd = fs.mkdtempSync(path.join(sandbox, 'alias-'));
+    fs.writeFileSync(
+      path.join(cwd, '.xrayrc.json'),
+      JSON.stringify({ telemetry: { enabled: false }, aliases: { rc: 'react components' } })
+    );
+    return cwd;
+  }
+
+  it('lists an alias once, as the real command', () => {
+    const r = xray(['__complete', 'r'], aliasProject());
+    expect(r.status).toBe(0);
+    expect(values(r.stdout).filter((v) => v === 'rc')).toEqual(['rc']);
+    expect(r.stdout).toMatch(/^rc\tAlias for: react components$/m);
+  });
+
+  it('completes an alias with its own flags', () => {
+    const v = values(xray(['__complete', 'rc', '-'], aliasProject()).stdout);
+    expect(v).toEqual(expect.arrayContaining(['-p', '--path', '-h', '--help']));
+  });
+
   it('nested strategy subcommands and their flags', () => {
     expect(values(xray(['__complete', 'react', '']).stdout)).toEqual(['components', 'contexts', 'hooks']);
     expect(values(xray(['__complete', 'react', 'components', '--fo']).stdout)).toContain('--format');
