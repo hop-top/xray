@@ -116,25 +116,23 @@ export function createRootProgram(version: string): CLIResult {
 }
 
 /**
- * Kit styles help and errors whenever NO_COLOR / --no-color are absent,
- * even when the stream is not a terminal. Gate both on commander's own
- * color detection (TTY, NO_COLOR, FORCE_COLOR) so piped output stays plain.
+ * Kit styles help whenever NO_COLOR / --no-color are absent, even when
+ * the stream is not a terminal. Gate it on commander's own color
+ * detection (TTY, NO_COLOR, FORCE_COLOR) so piped output stays plain.
+ * Usage errors bypass kit's error styling and go through the logger.
  */
 function respectTerminalColor(program: Command): void {
   const defaults = new Command().configureOutput();
-  const current = program.configureOutput();
   const flagOff = () => process.argv.includes('--no-color');
   const outColors = () => !flagOff() && Boolean(defaults.getOutHasColors?.());
   const errColors = () => !flagOff() && Boolean(defaults.getErrHasColors?.());
-  const strip = (str: string) => (defaults.stripColor ? defaults.stripColor(str) : str);
-  const kitOutputError = current.outputError;
+  // Commander-raised usage errors (bad flag, missing argument, unknown
+  // help topic) render through the same `✖ <message>` path as UsageError.
   program.configureOutput({
     getOutHasColors: outColors,
     getErrHasColors: errColors,
-    outputError: (str, write) => {
-      const sink = (s: string) => write(errColors() ? s : strip(s));
-      if (kitOutputError) kitOutputError(str, sink);
-      else sink(str);
+    outputError: (str) => {
+      Logger.error(str.replace(/^error: /, '').trimEnd());
     },
   });
 }

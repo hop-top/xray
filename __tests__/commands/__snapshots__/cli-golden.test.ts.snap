@@ -2307,7 +2307,7 @@ exports[`cli golden: error paths xray --bogus 1`] = `
 --- stdout ---
 
 --- stderr ---
-error: unknown option '--bogus'
+✖ unknown option '--bogus'
 
 Usage: xray explore [options] [query]
 
@@ -2338,7 +2338,7 @@ exports[`cli golden: error paths xray alias remove 1`] = `
 --- stdout ---
 
 --- stderr ---
-error: missing required argument 'name'
+✖ missing required argument 'name'
 
 Usage: xray alias remove [options] <name>
 
@@ -2373,7 +2373,7 @@ exports[`cli golden: error paths xray help nosuch 1`] = `
 --- stdout ---
 
 --- stderr ---
-error: unknown help topic 'nosuch' for 'xray'
+✖ unknown help topic 'nosuch' for 'xray'
 
 Usage: xray [options] [command]
 
@@ -2440,7 +2440,7 @@ exports[`cli golden: error paths xray lang add 1`] = `
 --- stdout ---
 
 --- stderr ---
-error: missing required argument 'names'
+✖ missing required argument 'names'
 
 Usage: xray lang add [options] <names...>
 
@@ -2458,7 +2458,7 @@ exports[`cli golden: error paths xray map --bogus 1`] = `
 --- stdout ---
 
 --- stderr ---
-error: unknown option '--bogus'
+✖ unknown option '--bogus'
 
 Usage: xray map [options]
 
@@ -2586,7 +2586,7 @@ exports[`cli golden: error paths xray strategy info 1`] = `
 --- stdout ---
 
 --- stderr ---
-error: missing required argument 'name'
+✖ missing required argument 'name'
 
 Usage: xray strategy info [options] <name>
 
