@@ -22,6 +22,7 @@ Agent guidance for xray. Full guide at [`docs/agent/`](docs/agent/).
 - Analysis: `map`, `scan`, `graph`, `query`, `explore`, `generate`
 - Strategy: `strategy` + dynamic noun commands
 - Management: `alias`, `clear-cache`, `completion`, `upgrade`
+- Integration: `mcp` — stdio MCP server ([`docs/user/mcp.md`](docs/user/mcp.md))
 
 ## Reference
 

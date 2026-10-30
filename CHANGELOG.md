@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `xray paths` reports `config-dir`, `data-dir`, `cache-dir`, `state-dir`
   (text) / `configDir`, `dataDir`, `cacheDir`, `stateDir` (JSON).
 - `xray completion powershell` and `--no-descriptions`.
+- `xray mcp`: stdio MCP server exposing read-only analysis (`map`,
+  `scan`, `graph`, `explore`, `query`, `strategy_list`,
+  `strategy_detect`, `<strategy>_<noun>`) as tools. Calls are confined
+  to the server root (start dir or `-C`); see `docs/user/mcp.md`.
 - Help shows an ARGUMENTS section for described arguments; `help <cmd>`
   prints that command's help; root help groups commands into ANALYZE,
   STRATEGY and MANAGEMENT.
@@ -72,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `--offline` now also skips the upgrade check on every command.
 - **BREAKING:** Node.js >= 22.12 required (`engines.node`); the CLI is
   built on `@hop-top/kit` and commander 15 (ESM-only). Upgrade Node
   before upgrading xray.
