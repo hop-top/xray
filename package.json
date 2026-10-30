@@ -50,7 +50,7 @@
     "test:coverage": "./scripts/test-coverage.sh",
     "prepublishOnly": "npm run build && npm test",
     "prepare": "husky install",
-    "strategy:detect": "node dist/index.js strategy:detect"
+    "strategy:detect": "node dist/index.js strategy detect"
   },
   "dependencies": {
     "@hop-top/kit": "0.5.0-alpha.8",
