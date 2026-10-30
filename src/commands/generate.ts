@@ -118,6 +118,12 @@ const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<
   return { match, catch: catchPatterns, detectedStrategies };
 };
 
+/** Write `content` to `file`, creating missing parent directories. */
+const writeFileEnsuringDir = (file: string, content: string): void => {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content);
+};
+
 /**
  * Write a graph in a graph format. JSON/XML: one file at `outputPath`.
  * CSV: two files, `<base>.nodes.csv` and `<base>.edges.csv`, where `<base>`
@@ -142,8 +148,7 @@ const writeGraphOutput = (
           })();
   for (const [file, content] of files) {
     try {
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, content);
+      writeFileEnsuringDir(file, content);
     } catch (err: any) {
       throw new FileWriteError(file, err);
     }
@@ -310,7 +315,7 @@ export const runSingleXray = async (
           tokenLimit: parseInt(mergedOptions.limit)
         });
         try {
-          fs.writeFileSync(sharePath, summary);
+          writeFileEnsuringDir(sharePath, summary);
           Logger.success(`Share summary written to ${sharePath}`);
           Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
         } catch (err: any) {
@@ -428,7 +433,7 @@ export const runSingleXray = async (
         });
 
         try {
-          fs.writeFileSync(sharePath, summary);
+          writeFileEnsuringDir(sharePath, summary);
           Logger.success(`Share summary written to ${sharePath}`);
           Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
         } catch (err: any) {
@@ -512,7 +517,7 @@ export const runSingleXray = async (
     const finalOutput = outputs.join('\n');
 
     try {
-      fs.writeFileSync(outputPath!, finalOutput);
+      writeFileEnsuringDir(outputPath!, finalOutput);
       Logger.success(`Analysis written to ${outputPath}`);
     } catch (err: any) {
       throw new FileWriteError(outputPath!, err);
@@ -521,7 +526,7 @@ export const runSingleXray = async (
     if (shareRequested) {
       for (const share of shareSummaries) {
         try {
-          fs.writeFileSync(share.sharePath, share.summary);
+          writeFileEnsuringDir(share.sharePath, share.summary);
           Logger.success(`Share summary written to ${share.sharePath}`);
           Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
         } catch (err: any) {
