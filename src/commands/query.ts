@@ -135,6 +135,11 @@ function listAdapters(): string {
   return output;
 }
 
+/** ` (file:Lline)` suffix; line 0 is a real line, only null/undefined is absent. */
+function nodeLocation(node: { file?: string; line?: number }): string {
+  return node.file && node.line != null ? ' (' + node.file + ':L' + node.line + ')' : '';
+}
+
 /** Render the call tree for a query result. */
 export function formatTree(result: QueryResult, s: Styles = styles()): string {
   let output = s.bold('\nCall Tree:\n\n');
@@ -161,7 +166,7 @@ export function formatTree(result: QueryResult, s: Styles = styles()): string {
 
   if (result.edges.length === 0) {
     for (const node of result.nodes) {
-      const location = node.file && node.line ? (' (' + node.file + ':L' + node.line + ')') : '';
+      const location = nodeLocation(node);
       output += node.name + s.muted(location) + '\n';
     }
     return output;
@@ -194,7 +199,7 @@ export function formatTree(result: QueryResult, s: Styles = styles()): string {
   } else {
     // No clear roots, just print all nodes as a flat tree
     for (const node of result.nodes) {
-      const location = node.file && node.line ? (' (' + node.file + ':L' + node.line + ')') : '';
+      const location = nodeLocation(node);
       output += node.name + s.muted(location) + '\n';
     }
   }
@@ -214,7 +219,7 @@ function printNode(
   if (!node) return;
 
   const connector = isLast ? '└─→ ' : '├─→ ';
-  const location = node.file && node.line ? (' (' + node.file + ':L' + node.line + ')') : '';
+  const location = nodeLocation(node);
   print(prefix + connector + node.name + s.muted(location));
 
   const children = childrenMap.get(nodeId) || [];
