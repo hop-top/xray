@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bare `-v` before the subcommand (`xray -v map`) swallowed the
   subcommand name and reset verbosity; all `-v` / `--verbose` forms now
   resolve identically.
+- Root `--config` now applies to map/scan/graph/lang instead of being
+  overridden by config discovery from `--path`; aliases, telemetry
+  consent, `alias list|set|remove` and `paths` read (and `alias set` /
+  consent write) that file too. A relative value resolves against `-C`.
 
 ### Changed
 

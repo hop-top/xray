@@ -11,9 +11,10 @@ import { AliasCommandOptions } from '../../types/command-options';
 
 export async function registerAliases(
   program: Command,
-  options: CodeLoadingOptions = {}
+  options: CodeLoadingOptions = {},
+  configPath?: string
 ): Promise<void> {
-  const config = loadConfig(undefined, undefined, options);
+  const config = loadConfig(configPath, undefined, options);
   if (!config || !config.aliases || Object.keys(config.aliases).length === 0) {
     Logger.debug('No aliases configured');
     return;

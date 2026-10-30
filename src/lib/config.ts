@@ -348,6 +348,17 @@ export function mergeScopeWithBase(baseConfig: XrayConfig, scopeConfig: XrayScop
 }
 
 /**
+ * Whether `filepath` holds plain JSON config that `saveConfig` can
+ * rewrite: not JS (code) and not package.json (a manifest).
+ */
+export function isWritableConfigFile(filepath: string): boolean {
+  const base = path.basename(filepath);
+  if (base === 'package.json') return false;
+  const ext = path.extname(base);
+  return ext === '.json' || base === '.xrayrc';
+}
+
+/**
  * Save config to .xrayrc.json
  */
 export function saveConfig(config: XrayConfig, configPath?: string): void {

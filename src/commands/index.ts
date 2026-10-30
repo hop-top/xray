@@ -13,9 +13,10 @@ import type { CodeLoadingOptions } from '../lib/strategy/loader';
 /**
  * Register all commands (static core + dynamic strategies + aliases).
  * `projectCode: false` keeps strategy and config code in the working
- * directory from loading (shell completion).
+ * directory from loading (shell completion). `configPath` (root
+ * `--config`) is the config aliases come from instead of discovery.
  */
-export async function registerCommands(options: CodeLoadingOptions = {}) {
+export async function registerCommands(options: CodeLoadingOptions = {}, configPath?: string) {
   // 1. Register static core commands
   registerCoreCommands(program);
 
@@ -26,7 +27,7 @@ export async function registerCommands(options: CodeLoadingOptions = {}) {
   registerExploreCommand();
 
   // 4. Register user-defined aliases from config
-  await registerAliases(program, options);
+  await registerAliases(program, options, configPath);
 
   // 5. Bind flag/argument value completers across the full tree.
   bindValueCompleters(program, options);

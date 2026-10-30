@@ -6,7 +6,7 @@ import { handleFirstRunConsent } from './lib/telemetry-consent';
 import { createXrayUpgradeChecker } from './upgrade-checker';
 import { CodedError, UsageError, EXIT_USAGE, EXIT_GENERIC } from './lib/error/types';
 import { Logger } from './lib/logger';
-import { resolveLogLevel } from './commands/root-options';
+import { resolveLogLevel, rootConfigFromArgv } from './commands/root-options';
 import { isCompletionRequest } from './commands/completion';
 import { applyMcpChdir, parseMcpRequest } from './commands/mcp';
 
@@ -135,8 +135,12 @@ export async function main() {
   const mcpRequest = parseMcpRequest(argv);
   if (mcpRequest) argv = applyMcpChdir(argv, mcpRequest);
 
+  // Root --config replaces config discovery for every load in the run,
+  // including the ones below that happen before commander parses.
+  const rootConfig = rootConfigFromArgv(argv);
+
   // Handle first-run telemetry consent
-  const telemetryEnabled = mcpRequest ? false : await handleFirstRunConsent(argv);
+  const telemetryEnabled = mcpRequest ? false : await handleFirstRunConsent(argv, rootConfig);
 
   // Initialize telemetry based on consent
   const telemetry = initializeTelemetry({
@@ -178,7 +182,7 @@ export async function main() {
     createXrayUpgradeChecker().notifyIfAvailable(process.stderr).catch(() => {});
   }
 
-  const program = await registerCommands();
+  const program = await registerCommands({}, rootConfig);
 
   // Convert commander parse/usage errors → exit 2 instead of commander's default exit 1.
   // exitOverride must be applied to subcommands too — commander does not
