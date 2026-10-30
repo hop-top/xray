@@ -32,7 +32,7 @@ Before contributing, please:
 
 ### Prerequisites
 
-- Node.js 20+ (LTS recommended)
+- Node.js 22.12+
 - npm or yarn
 - C++ build tools (for tree-sitter compilation)
   - **macOS**: Xcode Command Line Tools (\`xcode-select --install\`)

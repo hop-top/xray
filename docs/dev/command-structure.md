@@ -184,13 +184,18 @@ xray clear-cache    # Clear the AST cache
 
 ### 7. Completion Command (`completion.ts`)
 
-Shell completion for bash, zsh, and fish.
+Shell completion for bash, zsh, fish and powershell via kit's dynamic
+completion: generated scripts call back into the hidden `xray __complete`
+command on each tab. The completion path never executes project-local code:
+cwd strategy dirs and JS project config (`.xrayrc.js`, `xray.config.js`) are
+skipped; data configs (`.xrayrc`, `.xrayrc.json`, `package.json`) are still read.
 
 **Command Definition:**
 ```
-xray completion bash    # Generate bash completion
-xray completion zsh     # Generate zsh completion
-xray completion fish    # Generate fish completion
+xray completion bash         # bash (needs bash-completion v2)
+xray completion zsh          # zsh
+xray completion fish         # fish
+xray completion powershell   # PowerShell
 ```
 
 ## Common Options
