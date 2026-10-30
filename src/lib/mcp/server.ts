@@ -15,7 +15,8 @@ import type * as KitMcp from '@hop-top/kit/dist/mcp';
 import type { Invocation, InvokeResult, Leaf, McpBridge } from '@hop-top/kit/dist/mcp';
 import { findCommand, isExposedPath, policyFor, shapeLeaf, buildArgv, type PathScope, type ToolDef } from './tools';
 import {
-  assertServerRootConfig, collectOutput, containPath, makeOutputDir, resolveCallRoot, runChild, type ChildResult,
+  assertConfigPinned, collectOutput, containPath, makeOutputDir, pinnedConfigArgs, resolveCallRoot, runChild,
+  type ChildResult,
 } from './runner';
 import { serveStdio } from './stdio';
 
@@ -32,6 +33,11 @@ export interface XrayBridgeOptions {
    * cwd, so project strategies and config load from here only.
    */
   serverRoot: string;
+  /**
+   * The server root's config file (realpath), or null. Every child runs
+   * with `-C <serverRoot> --config <it>`; see `resolveServerConfig`.
+   */
+  serverConfig: string | null;
   /** CLI entry script run per call. */
   entry: string;
   /** Per-call child timeout. */
@@ -102,7 +108,8 @@ async function withOutputDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
  * Run one tool call; argument errors throw (kit renders them as tool
  * errors). The child's cwd is always the server root: project
  * strategies, `node_modules` strategies, `.xrayrc.js` and the strategy
- * cache load from the trusted root only. The per-call `root` reaches the
+ * cache load from the trusted root only; with a server config, it is
+ * passed as `--config`, so no config walk-up from `--path` happens. The per-call `root` reaches the
  * command as its project path (`--path`), never as cwd.
  */
 async function runTool(
@@ -119,9 +126,14 @@ async function runTool(
   };
   const { argv, projectDirs } = buildArgv(def, cmd, args, scope);
   if (def.policy.configFromPath) {
-    for (const dir of projectDirs) assertServerRootConfig(o.serverRoot, dir);
+    for (const dir of projectDirs) assertConfigPinned(o.serverConfig, dir);
   }
-  const run = { entry: o.entry, cwd: o.serverRoot, timeoutMs: o.timeoutMs };
+  const run = {
+    entry: o.entry,
+    cwd: o.serverRoot,
+    timeoutMs: o.timeoutMs,
+    globalArgs: pinnedConfigArgs(o.serverRoot, o.serverConfig),
+  };
   const withFlag = (flag: string) => [...def.path, flag, ...argv.slice(def.path.length)];
 
   // map/scan/graph write files: point them at a private dir and return its content.
@@ -137,7 +149,7 @@ async function runTool(
   // over the call root.
   if (def.name === 'query' && args?.graph === undefined && args?.['list-adapters'] !== true) {
     const mapScope = scope.explicit ? [`--path=${callRoot}`, '--detect'] : [];
-    if (scope.explicit) assertServerRootConfig(o.serverRoot, callRoot);
+    if (scope.explicit) assertConfigPinned(o.serverConfig, callRoot);
     return withOutputDir(async (dir) => {
       const graph = path.join(dir, 'graph.json');
       const built = await runChild(['map', ...mapScope, '--format=json', `--output=${graph}`], run);

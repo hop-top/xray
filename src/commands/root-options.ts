@@ -19,6 +19,7 @@
  * Kept free of parser / native-module imports so the wiring can be
  * exercised in isolation.
  */
+import * as path from 'path';
 import { Command } from 'commander';
 import { Logger } from '../lib/logger';
 import { UsageError } from '../lib/error/types';
@@ -71,6 +72,30 @@ export function resolveLogLevel(rootOpts: Record<string, unknown>): string | und
   }
   const count = typeof rootOpts.verbose === 'number' ? rootOpts.verbose : 0;
   return count > 0 ? levelForVerboseCount(count) : undefined;
+}
+
+/**
+ * Root `--config` from argv (process.argv shape), as an absolute path,
+ * for config loads that run before commander parses (alias
+ * registration, telemetry consent). Relative values resolve against
+ * `-C/--chdir` (itself relative to `cwd`), matching where the parsed
+ * value resolves once the preAction hook has changed directory. Last
+ * occurrence wins; scanning stops at `--`.
+ */
+export function rootConfigFromArgv(argv: readonly string[], cwd: string = process.cwd()): string | undefined {
+  let config: string | undefined;
+  let chdir: string | undefined;
+  for (let i = 2; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--') break;
+    if (a.startsWith('--config=')) config = a.slice('--config='.length);
+    else if (a === '--config' && i + 1 < argv.length) config = argv[++i];
+    else if (a.startsWith('--chdir=')) chdir = a.slice('--chdir='.length);
+    else if ((a === '-C' || a === '--chdir') && i + 1 < argv.length) chdir = argv[++i];
+  }
+  if (config === undefined || config === '') return undefined;
+  const base = chdir ? path.resolve(cwd, chdir) : cwd;
+  return path.resolve(base, config);
 }
 
 /**

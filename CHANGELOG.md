@@ -73,6 +73,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `xray query --graph graph.json`.
 - `xray map --json` (chunked and `--no-chunk`) wrote text into `.json`
   files; it now writes one valid JSON graph document.
+- Root `--config` now applies to map/scan/graph/lang instead of being
+  overridden by config discovery from `--path`; aliases, telemetry
+  consent, `alias list|set|remove` and `paths` read (and `alias set` /
+  consent write) that file too. A relative value resolves against `-C`.
 
 ### Changed
 

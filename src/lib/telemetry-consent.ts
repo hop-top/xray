@@ -3,15 +3,15 @@ import * as path from 'path';
 import * as readline from 'readline';
 import { styles, statusLine } from './tui';
 import { Logger } from './logger';
-import { loadConfig, saveConfig } from './config';
+import { isWritableConfigFile, loadConfig, saveConfig } from './config';
 import type { XrayConfig } from '../types/xray-config';
 
 /**
  * Check if telemetry consent has been given
  * Returns true if consent exists (either enabled or explicitly disabled)
  */
-export function hasConsentDecision(): boolean {
-  const config = loadConfig();
+export function hasConsentDecision(configPath?: string): boolean {
+  const config = loadConfig(configPath);
 
   // If config exists and has telemetry setting, consent has been decided
   if (config && config.telemetry !== undefined) {
@@ -77,11 +77,16 @@ export async function promptForConsent(): Promise<boolean> {
 }
 
 /**
- * Save telemetry consent decision to config
+ * Save telemetry consent decision to config: the root `--config` file
+ * when given (skipped unless it is JSON), else `./.xrayrc.json`.
  */
-export function saveConsentDecision(enabled: boolean): void {
+export function saveConsentDecision(enabled: boolean, configPath?: string): void {
   try {
-    let config = loadConfig();
+    if (configPath !== undefined && !isWritableConfigFile(configPath)) {
+      Logger.debug(`Telemetry consent not saved: ${configPath} is not a JSON config file`);
+      return;
+    }
+    let config = loadConfig(configPath);
 
     if (!config) {
       // Create minimal config if none exists. Do not seed `paths`: a seeded
@@ -96,7 +101,8 @@ export function saveConsentDecision(enabled: boolean): void {
     };
 
     // Save config
-    saveConfig(config);
+    if (configPath === undefined) saveConfig(config);
+    else saveConfig(config, configPath);
 
     Logger.debug(`Telemetry consent saved: ${enabled}`);
   } catch (error) {
@@ -109,7 +115,7 @@ export function saveConsentDecision(enabled: boolean): void {
  * Handle first-run telemetry consent flow
  * Returns true if telemetry should be enabled
  */
-export async function handleFirstRunConsent(argv: string[]): Promise<boolean> {
+export async function handleFirstRunConsent(argv: string[], configPath?: string): Promise<boolean> {
   // Skip if --no-telemetry flag is present
   if (isTelemetryDisabledByFlag(argv)) {
     Logger.debug('Telemetry disabled by --no-telemetry flag');
@@ -117,9 +123,9 @@ export async function handleFirstRunConsent(argv: string[]): Promise<boolean> {
   }
 
   // Skip if consent decision already exists
-  if (hasConsentDecision()) {
+  if (hasConsentDecision(configPath)) {
     Logger.debug('Telemetry consent decision already exists');
-    const config = loadConfig();
+    const config = loadConfig(configPath);
     return config?.telemetry?.enabled ?? false;
   }
 
@@ -127,7 +133,7 @@ export async function handleFirstRunConsent(argv: string[]): Promise<boolean> {
   if (!isInteractive()) {
     Logger.debug('Non-interactive mode detected, skipping telemetry prompt');
     // Default to disabled in non-interactive mode
-    saveConsentDecision(false);
+    saveConsentDecision(false, configPath);
     return false;
   }
 
@@ -136,7 +142,7 @@ export async function handleFirstRunConsent(argv: string[]): Promise<boolean> {
   const consent = await promptForConsent();
 
   // Save decision
-  saveConsentDecision(consent);
+  saveConsentDecision(consent, configPath);
 
   return consent;
 }

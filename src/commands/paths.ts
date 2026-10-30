@@ -22,6 +22,8 @@ const xdg = require('@hop-top/kit/xdg') as Record<
 interface PathsOptions {
   format?: string;
   path?: string;
+  /** Root `--config`: reported as the project config (no discovery). */
+  config?: string;
 }
 
 interface PathsReport {
@@ -36,11 +38,11 @@ interface PathsReport {
   stateDir: string;
 }
 
-function collectPaths(projectRoot: string): PathsReport {
+function collectPaths(projectRoot: string, configPath?: string): PathsReport {
   const cacheDb = path.join(projectRoot, '.xray_cache.db');
   return {
     projectRoot,
-    projectConfig: findConfigPath(projectRoot),
+    projectConfig: configPath ? path.resolve(configPath) : findConfigPath(projectRoot),
     globalConfig: findGlobalConfigPath(),
     cacheDb,
     cacheDbExists: fs.existsSync(cacheDb),
@@ -73,7 +75,7 @@ const registry = outputRegistry(pathsText);
 export async function handlePathsAction(opts: PathsOptions, cmd: Command): Promise<void> {
   assertFormat(cmd, registry);
   const projectRoot = opts.path ? path.resolve(opts.path) : process.cwd();
-  await emit(cmd, collectPaths(projectRoot), {
+  await emit(cmd, collectPaths(projectRoot, opts.config), {
     registry,
     columns: PATHS_COLUMNS,
     defaultFormat: 'text',

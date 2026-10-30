@@ -55,9 +55,10 @@ function countFiles(root: string): Map<string, number> {
   return counts;
 }
 
-export function collectRows(root: string): LangRow[] {
+/** `configPath` (root `--config`) replaces config discovery from `root`. */
+export function collectRows(root: string, configPath?: string): LangRow[] {
   const counts = countFiles(root);
-  const selection = loadConfig(undefined, root)?.languages;
+  const selection = loadConfig(configPath, root)?.languages;
   const selected = new Set(selection && selection.length ? expandSelection(selection).map(p => p.name) : []);
   return LANGUAGE_PACKS.map(p => {
     const s = getGrammar(p.name);
@@ -112,12 +113,12 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
     .option('-p, --path <path>', 'Repository to inspect', process.cwd())
     .option('--format <fmt>', 'Output format: text (default) or json')
     .option('--json', 'Alias of --format json')
-    .action((opts: { path: string; json?: boolean; format?: string }) => {
+    .action((opts: { path: string; json?: boolean; format?: string; config?: string }) => {
       const fmt = (opts.format ?? (opts.json ? 'json' : 'text')).toLowerCase();
       if (fmt !== 'text' && fmt !== 'json') {
         throw new UsageError(`invalid --format '${opts.format}' (expected one of: text, json)`);
       }
-      const rows = collectRows(path.resolve(opts.path));
+      const rows = collectRows(path.resolve(opts.path), opts.config);
       const detected = detectedNotInstalled(rows);
       if (fmt === 'json') {
         Logger.output(JSON.stringify({

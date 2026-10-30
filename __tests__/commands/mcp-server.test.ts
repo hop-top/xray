@@ -407,3 +407,112 @@ describe('xray mcp trust boundary', () => {
     expect(marks()).toEqual([]);
   }, 60_000);
 });
+
+// Server root with a config file: children run with `--config <it>`, so
+// sub-roots with their own config are scopable and that config never
+// loads. `cobol` is an unknown language: a sub config that loads fails
+// the call.
+describe('xray mcp with a server root config', () => {
+  let markers: string;
+  let pinned: string;
+  let unpinned: string;
+  let client: StdioClient;
+  let explicitClient: StdioClient;
+
+  const marks = () => fs.readdirSync(markers).sort();
+  const clearMarks = () => {
+    for (const f of fs.readdirSync(markers)) fs.rmSync(path.join(markers, f));
+  };
+  const markerJs = (name: string, extra = '') =>
+    `require('fs').writeFileSync(${JSON.stringify(markers)} + '/${name}', '1');\nmodule.exports = {${extra}};\n`;
+  const subProjects = (dir: string) => {
+    fs.mkdirSync(path.join(dir, 'pkg'));
+    fs.writeFileSync(path.join(dir, 'pkg', '.xrayrc.json'), JSON.stringify({ languages: ['cobol'] }));
+    fs.writeFileSync(path.join(dir, 'pkg', 'p.ts'), 'export function epsilon(): number {\n  return 5;\n}\n');
+    fs.mkdirSync(path.join(dir, 'pkgjs'));
+    fs.writeFileSync(path.join(dir, 'pkgjs', '.xrayrc.js'), markerJs('subrcjs', " languages: ['cobol'] "));
+    fs.writeFileSync(path.join(dir, 'pkgjs', 'q.ts'), 'export function zeta(): number {\n  return 6;\n}\n');
+    spawnSync('git', ['init', '-q'], { cwd: dir, env });
+  };
+  const init = async (c: StdioClient) => {
+    await c.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 't', version: '0' } });
+    c.notify('notifications/initialized');
+  };
+
+  beforeAll(async () => {
+    markers = path.join(sandbox, 'pinned-markers');
+    fs.mkdirSync(markers);
+
+    // Discovered: server root's own .xrayrc.js (trusted code) marks each load.
+    pinned = path.join(sandbox, 'pinned');
+    fs.cpSync(FIXTURE, pinned, { recursive: true });
+    fs.writeFileSync(path.join(pinned, '.xrayrc.js'), markerJs('rootcfg'));
+    subProjects(pinned);
+
+    // Explicit: no discoverable root config; `xray mcp --config <file>`.
+    unpinned = path.join(sandbox, 'unpinned');
+    fs.cpSync(FIXTURE, unpinned, { recursive: true });
+    fs.writeFileSync(path.join(sandbox, 'served.json'), JSON.stringify({ limit: 4096 }));
+    subProjects(unpinned);
+
+    client = startServer(pinned);
+    explicitClient = startServer(unpinned, ['--config', path.join(sandbox, 'served.json')]);
+    await init(client);
+    await init(explicitClient);
+  }, 60_000);
+
+  afterAll(async () => {
+    if (client) await client.close();
+    if (explicitClient) await explicitClient.close();
+  });
+
+  beforeEach(clearMarks);
+
+  it.each(['map', 'scan', 'graph'])(
+    '%s scopes a sub-root with its own .xrayrc.json; the root config applies, not the sub one',
+    async (tool) => {
+      const r = await client.call(tool, { root: 'pkg', 'skip-detect': true, 'no-chunk': true });
+      expect(text(r)).not.toMatch(/cobol/);
+      expect(r.result.isError).toBe(false);
+      expect(marks()).toContain('rootcfg');
+      if (tool === 'map') {
+        expect(text(r)).toContain('epsilon');
+        expect(text(r)).not.toContain('alpha');
+      }
+    },
+    120_000
+  );
+
+  it.each([[{ root: 'pkgjs' }], [{ path: ['pkgjs'] }]])(
+    'map %j: a sub .xrayrc.js never runs',
+    async (args) => {
+      const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, ...args });
+      expect(r.result.isError).toBe(false);
+      expect(text(r)).toContain('zeta');
+      expect(marks()).toEqual(['rootcfg']);
+    },
+    120_000
+  );
+
+  it('query builds its graph over a configured sub-root', async () => {
+    const r = await client.call('query', { root: 'pkg', query: 'callers(epsilon)', format: 'json' });
+    expect(r.result.isError).toBe(false);
+    expect(marks()).not.toContain('subrcjs');
+  }, 120_000);
+
+  it('xray mcp --config pins that file: configured sub-roots are scopable', async () => {
+    for (const root of ['pkg', 'pkgjs']) {
+      const r = await explicitClient.call('map', { root, 'skip-detect': true, 'no-chunk': true });
+      expect(text(r)).not.toMatch(/cobol/);
+      expect(r.result.isError).toBe(false);
+    }
+    expect(marks()).toEqual([]);
+  }, 120_000);
+
+  it('xray mcp --config with a missing file is a usage error', () => {
+    const r = spawnSync(process.execPath, [BIN, '--config', 'nope.json', 'mcp'], { cwd: unpinned, env, encoding: 'utf-8', input: '' });
+    expect(r.status).toBe(2);
+    expect(r.stdout).toBe('');
+    expect(r.stderr).toMatch(/not found/);
+  });
+});

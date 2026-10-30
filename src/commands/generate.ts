@@ -152,7 +152,11 @@ const writeGraphOutput = (
 };
 
 // Helper function to run a single xray generation
-export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
+export const runSingleXray = async (
+  mergedOptions: any,
+  scopeName?: string,
+  configPath: string | undefined = mergedOptions.config
+) => {
   // Auto-configure from detected strategies if enabled
   // Only auto-detect when no path is explicitly provided (unless --detect is used)
   const hasExplicitPath = mergedOptions.path && mergedOptions.path.length > 0;
@@ -270,6 +274,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         match: mergedOptions.match || [],
         catch: mergedOptions.catch || [],
         languages: mergedOptions.languages,
+        configPath,
         format,
         diagram,
         chunked: false,
@@ -337,6 +342,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         match: mergedOptions.match || [],
         catch: mergedOptions.catch || [],
         languages: mergedOptions.languages,
+        configPath,
         format,
         diagram,
         chunked: true,
@@ -453,6 +459,7 @@ export const runSingleXray = async (mergedOptions: any, scopeName?: string) => {
         match: mergedOptions.match || [],
         catch: mergedOptions.catch || [],
         languages: mergedOptions.languages,
+        configPath,
         format,
         diagram,
         chunked: false,
@@ -574,7 +581,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
           },
           undefined
         );
-        await runSingleXray(mergedOptions, scopeName);
+        await runSingleXray(mergedOptions, scopeName, normalizedOptions.config);
       }
 
       return;
@@ -596,7 +603,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
         normalizedOptions,
         undefined
       );
-      await runSingleXray(mergedOptions, normalizedOptions.scope);
+      await runSingleXray(mergedOptions, normalizedOptions.scope, normalizedOptions.config);
 
       return;
     }
@@ -607,7 +614,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
       normalizedOptions,
       normalizedOptions.lens
     );
-    await runSingleXray(mergedOptions);
+    await runSingleXray(mergedOptions, undefined, normalizedOptions.config);
 
   } catch (error) {
     // CodedError (NotFoundError, UsageError, etc.) carries an exit code —

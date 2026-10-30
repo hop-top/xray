@@ -104,7 +104,8 @@ Behaviour per tool:
 
 - Unknown tool: JSON-RPC error `-32602`.
 - Bad argument (unknown or unlisted name, wrong type, path outside the
-  server root, URL where a path is expected, sub-root with its own config):
+  server root, URL where a path is expected, sub-root with its own config
+  when the server root has none):
   tool result with `isError: true` and the reason.
 - Command failure (non-zero exit): tool result with `isError: true`,
   stdout and the command's stderr (`[stderr] ...`).
@@ -120,9 +121,16 @@ and a JS project config (`.xrayrc.js`) are code, and xray loads them.
 
 - **Server root** = the directory the server starts in (working
   directory, or `-C <dir>`). You choose it when you configure the client.
+- **Server config** = the config file `xray` run in the server root
+  would use, resolved once at startup: `xray mcp --config <file>` when
+  given (a missing file fails startup), else the first `.xrayrc`,
+  `.xrayrc.json`, `.xrayrc.js`, `xray.config.js`, `xray.config.json` or
+  `package.json` with an `xray` key found walking up from the server root.
 - Every call's child process runs with the server root as its working
   directory, so project strategies, aliases and config load from the
-  server root only, exactly as for `xray` run there.
+  server root only, exactly as for `xray` run there. With a server
+  config, children also get `-C <server root> --config <server config>`:
+  every config load in the call reads that file.
 - `root` selects the project directory a tool analyzes, inside the
   server root (absolute, or relative to the server root); anything
   outside, including through symlinks, is refused. It never becomes the
@@ -130,11 +138,21 @@ and a JS project config (`.xrayrc.js`) are code, and xray loads them.
   graph, explore, strategy detect, `<strategy>_<noun>`), and `query`
   builds its graph over it. `strategy_list` has no project scope and
   takes no `root`. Relative path arguments resolve against `root`.
-- map, scan and graph look for xray config by walking up from their
-  `--path`. A `root` or `path` inside the server root that has its own
-  config (`.xrayrc`, `.xrayrc.json`, `.xrayrc.js`, or a `package.json`
-  `xray` key), such as a vendored package, is refused: config comes
-  from the server root (or above it) only.
+- Sub-roots with their own config (`.xrayrc*`, `xray.config.*`, a
+  `package.json` `xray` key), such as monorepo packages:
+
+  | Server config | Sub-root config | map / scan / graph / query on it |
+  |---------------|-----------------|----------------------------------|
+  | yes | no  | runs with the server config |
+  | yes | yes | runs with the server config; the sub-root's never loads |
+  | no  | no  | runs with no project config |
+  | no  | yes | refused |
+
+  Without `--config`, map, scan and graph look for config by walking up
+  from their `--path`, so with no server config to pin, a sub-root's
+  own file (and `.xrayrc.js` is code) would load; that case is refused.
+  Add a config file to the server root, or start the server with
+  `--config <file>`, to scope such sub-roots.
 - Every path-valued argument is held inside the server root: `path`,
   `anchor`, `graph`, `config keys|values --file`, and each path in
   map's `query` (`path`, `.ext:path`, comma lists). URLs are refused
