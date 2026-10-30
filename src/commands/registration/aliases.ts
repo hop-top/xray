@@ -1,7 +1,10 @@
 import { Command } from 'commander';
-import { AliasResolver } from '../../lib/alias-resolver';
+import {
+  aliasTargetErrors, circularAliases, kitAlias, splitAliasTarget, usableAliases,
+} from '../../lib/alias-resolver';
 import { CodeLoadingOptions, StrategyLoader } from '../../lib/strategy/loader';
 import { StrategyContextImpl } from '../../lib/strategy/context';
+import { StrategyCommand } from '../../lib/strategy/types';
 import { Logger } from '../../lib/logger';
 import { loadConfig } from '../../lib/config';
 import { AliasCommandOptions } from '../../types/command-options';
@@ -16,70 +19,68 @@ export async function registerAliases(
     return;
   }
 
-  const resolver = new AliasResolver(config);
-  const loader = new StrategyLoader(options);
+  const aliases = usableAliases(config);
+  const strategies = await new StrategyLoader(options).discoverStrategies();
 
-  // Validate aliases
-  const errors = await resolver.validateAliases(loader);
+  const errors = aliasTargetErrors(aliases, strategies);
   if (errors.length > 0) {
     Logger.warn('Alias validation errors:');
     errors.forEach(err => Logger.warn(`  - ${err}`));
   }
 
-  // Detect circular references
-  const circular = resolver.detectCircular();
+  const circular = circularAliases(aliases);
   if (circular.length > 0) {
     Logger.warn(`Circular alias references detected: ${circular.join(', ')}`);
     return;
   }
 
-  // Load strategies once for all aliases
-  const strategies = await loader.discoverStrategies();
+  // Keep only aliases whose target resolves (already warned above).
   const strategyMap = new Map(strategies.map(s => [s.name, s]));
+  const handlers = new Map<string, StrategyCommand>();
+  for (const [alias, target] of Object.entries(aliases)) {
+    const { strategyName, commandName } = splitAliasTarget(target);
+    const cmdDef = strategyMap.get(strategyName)?.commands?.[commandName];
+    if (cmdDef) handlers.set(alias, cmdDef);
+  }
+  const runnable = Object.fromEntries(
+    Object.entries(aliases).filter(([alias]) => handlers.has(alias))
+  );
 
-  // Register each alias as a command
-  for (const [alias, target] of resolver.getAll().entries()) {
-    registerAliasCommand(program, alias, target, strategyMap);
+  kitAlias.bridgeAliases(program, runnable, {
+    hidden: false,
+    describe: (_name, target) => `Alias for: ${target}`,
+    helpOption: true,
+    dispatch: (alias, target, cmd) =>
+      runAlias(alias, target, handlers.get(alias)!, cmd.opts<AliasCommandOptions>()),
+  });
+
+  // Bridge proxies accept any arguments; xray aliases take only --path.
+  for (const alias of handlers.keys()) {
+    program.commands.find(c => c.name() === alias)!
+      .option('-p, --path <path>', 'Project path', process.cwd())
+      .allowExcessArguments(false);
   }
 
-  Logger.debug(`Registered ${resolver.getAll().size} aliases`);
+  Logger.debug(`Registered ${handlers.size} aliases`);
 }
 
-function registerAliasCommand(
-  program: Command,
+async function runAlias(
   alias: string,
   target: string,
-  strategyMap: Map<string, any>
-): void {
-  const [strategyName, ...commandParts] = target.split(' ');
-  const commandName = commandParts.join(' ');
-  const strategy = strategyMap.get(strategyName);
+  cmdDef: StrategyCommand,
+  options: AliasCommandOptions
+): Promise<void> {
+  Logger.debug(`Executing alias "${alias}" → "${target}"`);
 
-  if (!strategy || !strategy.commands || !strategy.commands[commandName]) {
-    // Invalid alias - skip silently (already warned in validation)
-    return;
+  const context = new StrategyContextImpl(options.path || process.cwd());
+
+  try {
+    const result = await cmdDef.handler(context, options);
+    displayResult(target, result);
+  } catch (error: any) {
+    Logger.error(`Error executing alias "${alias}": ${error.message}`);
+    process.exit(1);
   }
-
-  const cmdDef = strategy.commands[commandName];
-
-  program
-    .command(alias)
-    .description(`Alias for: ${target}`)
-    .option('-p, --path <path>', 'Project path', process.cwd())
-    .allowUnknownOption()
-    .action(async (options: AliasCommandOptions) => {
-      Logger.debug(`Executing alias "${alias}" → "${target}"`);
-
-      const context = new StrategyContextImpl(options.path || process.cwd());
-
-      try {
-        const result = await cmdDef.handler(context, options);
-        displayResult(target, result);
-      } catch (error: any) {
-        Logger.error(`Error executing alias "${alias}": ${error.message}`);
-        process.exit(1);
-      }
-    });
 }
 
 function displayResult(target: string, result: any): void {

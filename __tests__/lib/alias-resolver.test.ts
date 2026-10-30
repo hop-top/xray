@@ -1,165 +1,102 @@
-import { AliasResolver } from '../../src/lib/alias-resolver';
+import {
+  aliasTargetErrors, circularAliases, splitAliasTarget, usableAliases,
+} from '../../src/lib/alias-resolver';
+import { Logger } from '../../src/lib/logger';
 import { XrayConfig } from '../../src/types/xray-config';
-import { StrategyLoader } from '../../src/lib/strategy/loader';
 
-describe('AliasResolver', () => {
-  describe('resolve', () => {
-    it('should resolve valid aliases', () => {
-      const config: XrayConfig = {
-        aliases: { comp: 'react components' }
-      };
-      const resolver = new AliasResolver(config);
+describe('alias rules', () => {
+  let warnSpy: jest.SpyInstance;
 
-      const result = resolver.resolve('comp');
+  beforeEach(() => {
+    warnSpy = jest.spyOn(Logger, 'warn').mockImplementation();
+  });
 
-      expect(result.isAlias).toBe(true);
-      expect(result.target).toBe('react components');
-      expect(result.strategyName).toBe('react');
-      expect(result.commandName).toBe('components');
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const warned = () => warnSpy.mock.calls.map(c => c[0]).join('\n');
+
+  describe('splitAliasTarget', () => {
+    it('splits strategy and command', () => {
+      expect(splitAliasTarget('react components'))
+        .toEqual({ strategyName: 'react', commandName: 'components' });
     });
 
-    it('should return isAlias=false for non-aliases', () => {
-      const resolver = new AliasResolver({});
-      const result = resolver.resolve('unknown');
-
-      expect(result.isAlias).toBe(false);
-      expect(result.target).toBeUndefined();
-    });
-
-    it('should handle multi-word command names', () => {
-      const config: XrayConfig = {
-        aliases: { api: 'rest-api list endpoints' }
-      };
-      const resolver = new AliasResolver(config);
-
-      const result = resolver.resolve('api');
-
-      expect(result.isAlias).toBe(true);
-      expect(result.strategyName).toBe('rest-api');
-      expect(result.commandName).toBe('list endpoints');
+    it('keeps multi-word command names', () => {
+      expect(splitAliasTarget('rest-api list endpoints'))
+        .toEqual({ strategyName: 'rest-api', commandName: 'list endpoints' });
     });
   });
 
-  describe('isAlias', () => {
-    it('should return true for configured aliases', () => {
+  describe('usableAliases', () => {
+    it('returns all valid aliases', () => {
       const config: XrayConfig = {
-        aliases: { comp: 'react components' }
+        aliases: { comp: 'react components', routes: 'express routes' },
       };
-      const resolver = new AliasResolver(config);
-
-      expect(resolver.isAlias('comp')).toBe(true);
+      expect(usableAliases(config)).toEqual({
+        comp: 'react components', routes: 'express routes',
+      });
     });
 
-    it('should return false for non-aliases', () => {
-      const resolver = new AliasResolver({});
+    it('returns empty map when no aliases configured', () => {
+      expect(usableAliases({})).toEqual({});
+    });
 
-      expect(resolver.isAlias('unknown')).toBe(false);
+    it('skips aliases that conflict with built-in commands', () => {
+      const aliases = usableAliases({
+        aliases: { map: 'react components', comp: 'react components' },
+      });
+      expect(aliases).toEqual({ comp: 'react components' });
+      expect(warned()).toContain('Alias "map" conflicts with built-in command, skipping');
+    });
+
+    it('skips aliases with invalid target format', () => {
+      const aliases = usableAliases({
+        aliases: { bad: 'invalidformat', good: 'react components' },
+      });
+      expect(aliases).toEqual({ good: 'react components' });
+      expect(warned()).toContain('Invalid alias target "invalidformat" for "bad"');
+    });
+
+    it('skips empty names and names containing whitespace', () => {
+      const aliases = usableAliases({
+        aliases: { '': 'react components', 'a b': 'react components', 'a b': 'react components' },
+      });
+      expect(aliases).toEqual({});
+      expect(warned()).toContain('Invalid alias name "a b"');
     });
   });
 
-  describe('getAll', () => {
-    it('should return all configured aliases', () => {
-      const config: XrayConfig = {
-        aliases: {
-          comp: 'react components',
-          routes: 'express routes'
-        }
-      };
-      const resolver = new AliasResolver(config);
+  describe('aliasTargetErrors', () => {
+    const strategies = [
+      { name: 'react', commands: { components: { description: '', handler: jest.fn() } } } as any,
+    ];
 
-      const aliases = resolver.getAll();
-
-      expect(aliases.size).toBe(2);
-      expect(aliases.get('comp')).toBe('react components');
-      expect(aliases.get('routes')).toBe('express routes');
-    });
-
-    it('should return empty map when no aliases configured', () => {
-      const resolver = new AliasResolver({});
-
-      const aliases = resolver.getAll();
-
-      expect(aliases.size).toBe(0);
+    it('reports unknown strategies and commands', () => {
+      expect(aliasTargetErrors(
+        { comp: 'react components', hooks: 'react hooks', w: 'vue widgets' },
+        strategies,
+      )).toEqual([
+        'Alias "hooks" targets unknown command "hooks" in strategy "react"',
+        'Alias "w" targets unknown strategy "vue"',
+      ]);
     });
   });
 
-  describe('validation', () => {
-    it('should skip aliases that conflict with built-in commands', () => {
-      const config: XrayConfig = {
-        aliases: {
-          map: 'react components',
-          comp: 'react components'
-        }
-      };
-      const resolver = new AliasResolver(config);
-
-      const aliases = resolver.getAll();
-
-      expect(aliases.size).toBe(1);
-      expect(aliases.has('map')).toBe(false);
-      expect(aliases.has('comp')).toBe(true);
+  describe('circularAliases', () => {
+    it('detects circular aliases', () => {
+      expect(circularAliases({ a: 'b commands', b: 'a commands' })).toEqual(['a', 'b']);
     });
 
-    it('should skip aliases with invalid target format', () => {
-      const config: XrayConfig = {
-        aliases: {
-          bad: 'invalidformat',
-          good: 'react components'
-        }
-      };
-      const resolver = new AliasResolver(config);
-
-      const aliases = resolver.getAll();
-
-      expect(aliases.size).toBe(1);
-      expect(aliases.has('bad')).toBe(false);
-      expect(aliases.has('good')).toBe(true);
-    });
-  });
-
-  describe('detectCircular', () => {
-    it('should detect circular aliases', () => {
-      const config: XrayConfig = {
-        aliases: {
-          a: 'b commands',
-          b: 'a commands'
-        }
-      };
-      const resolver = new AliasResolver(config);
-
-      const circular = resolver.detectCircular();
-
-      expect(circular).toContain('a');
-      expect(circular).toContain('b');
+    it('detects nothing for valid aliases', () => {
+      expect(circularAliases({ comp: 'react components', routes: 'express routes' }))
+        .toHaveLength(0);
     });
 
-    it('should not detect circular for valid aliases', () => {
-      const config: XrayConfig = {
-        aliases: {
-          comp: 'react components',
-          routes: 'express routes'
-        }
-      };
-      const resolver = new AliasResolver(config);
-
-      const circular = resolver.detectCircular();
-
-      expect(circular).toHaveLength(0);
-    });
-
-    it('should detect multi-level circular references', () => {
-      const config: XrayConfig = {
-        aliases: {
-          a: 'b commands',
-          b: 'c commands',
-          c: 'a commands'
-        }
-      };
-      const resolver = new AliasResolver(config);
-
-      const circular = resolver.detectCircular();
-
-      expect(circular.length).toBeGreaterThan(0);
+    it('detects multi-level circular references', () => {
+      expect(circularAliases({ b: 'c commands', c: 'a commands', a: 'b commands' }))
+        .toEqual(['a', 'b', 'c']);
     });
   });
 });

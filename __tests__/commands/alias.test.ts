@@ -143,6 +143,18 @@ describe('Alias Commands', () => {
 
       expect(mockSaveConfig).not.toHaveBeenCalled();
     });
+
+    it('should reject alias name containing whitespace (UsageError, exit 2)', async () => {
+      mockLoadConfig.mockReturnValue({ paths: ['./src'] });
+
+      const program = registerAliasCommand();
+      program.exitOverride();
+      await expect(
+        program.parseAsync(['node', 'test', 'set', 'my comp', 'react components'])
+      ).rejects.toMatchObject({ exitCode: 2, code: 'USAGE' });
+
+      expect(mockSaveConfig).not.toHaveBeenCalled();
+    });
   });
 
   describe('alias remove', () => {

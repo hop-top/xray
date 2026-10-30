@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { loadConfig, saveConfig } from '../lib/config';
-import { AliasResolver } from '../lib/alias-resolver';
+import { isAliasTarget, kitAlias, usableAliases } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
 import { ConflictError, NotFoundError, UsageError } from '../lib/error/types';
 import {
@@ -8,6 +8,11 @@ import {
 } from '../lib/output';
 
 interface AliasRow { alias: string; target: string }
+
+/** Names `alias set` refuses. */
+const SET_BUILTINS = [
+  'map', 'scan', 'graph', 'find', 'detect', 'strategies', 'strategy', 'save', 'load', 'alias', 'config', 'lang',
+];
 
 const aliasListRegistry = outputRegistry(
   textFormatter<AliasRow[]>('text', (rows, put, s) => {
@@ -34,17 +39,17 @@ export function registerAliasCommand(): Command {
   }).action(async (_opts: unknown, cmd: Command) => {
     assertFormat(cmd, aliasListRegistry);
     const config = loadConfig();
-    const aliases = config ? new AliasResolver(config).getAll() : new Map<string, string>();
+    const aliases = config ? usableAliases(config) : {};
 
     if (!config) {
       Logger.info('No configuration file found.');
       Logger.info('\nCreate .xrayrc.json to configure aliases.');
-    } else if (aliases.size === 0) {
+    } else if (Object.keys(aliases).length === 0) {
       Logger.info('No aliases configured.');
       Logger.info('\nTo add aliases, use: xray alias set <name> <target>');
     }
 
-    const rows: AliasRow[] = [...aliases.entries()].map(([alias, target]) => ({ alias, target }));
+    const rows: AliasRow[] = Object.entries(aliases).map(([alias, target]) => ({ alias, target }));
     await emit(cmd, rows, {
       registry: aliasListRegistry,
       columns: columns('alias', 'target'),
@@ -64,7 +69,7 @@ export function registerAliasCommand(): Command {
       }
 
       // Validate target format
-      if (!target.includes(' ')) {
+      if (!isAliasTarget(target)) {
         Logger.info('Example: xray alias set comp "react components"');
         throw new UsageError('Target must be in format "<strategy> <command>"');
       }
@@ -74,10 +79,15 @@ export function registerAliasCommand(): Command {
         config.aliases = {};
       }
 
-      // Check for built-in conflicts
-      const builtIns = ['map', 'scan', 'graph', 'find', 'detect', 'strategies', 'strategy', 'save', 'load', 'alias', 'config', 'lang'];
-      if (builtIns.includes(name)) {
-        throw new ConflictError(`Cannot create alias "${name}" - conflicts with built-in command`);
+      // Check name: empty, whitespace, built-in conflicts
+      try {
+        kitAlias.validateAliasName(name, { builtins: SET_BUILTINS });
+      } catch (err) {
+        if (!(err instanceof kitAlias.AliasNameError)) throw err;
+        if (err.kind === 'builtin') {
+          throw new ConflictError(`Cannot create alias "${name}" - conflicts with built-in command`);
+        }
+        throw new UsageError(`Invalid alias name "${name}": ${err.message}`);
       }
 
       // Update config
