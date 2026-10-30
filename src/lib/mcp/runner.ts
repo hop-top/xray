@@ -7,7 +7,10 @@
  * call reuses the exact CLI code path with its own cwd and exit code.
  *
  * Children always run in the server root (see server.ts): project code
- * and config load from the trusted directory only.
+ * and config load from the trusted directory only. When the server root
+ * has a config file, children also get `-C <server root> --config
+ * <file>`, so every config load reads that file and none walks up from
+ * a sub-root's `--path`.
  *
  * Children run with `--no-telemetry` (no consent prompt or
  * `.xrayrc.json` write), `--offline` (no upgrade check), no colour and
@@ -18,6 +21,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { findConfigPath } from '../config';
+import { UsageError } from '../error/types';
 import { ToolArgumentError } from './tools';
 
 /** Global flags every child gets, ahead of the command path. */
@@ -38,6 +42,8 @@ export interface RunOptions {
   cwd: string;
   /** Kill the child after this many ms. */
   timeoutMs: number;
+  /** Global flags after CHILD_FLAGS (see `pinnedConfigArgs`). */
+  globalArgs?: readonly string[];
 }
 
 /** Whether `child` is `parent` or inside it (both absolute, resolved). */
@@ -84,22 +90,42 @@ export function resolveCallRoot(serverRoot: string, root: unknown): string {
   return fs.realpathSync(abs);
 }
 
-function realOrNull(p: string | null): string | null {
-  return p === null ? null : realpathLoose(p);
+/**
+ * The server root's config file, resolved once at startup: `explicit`
+ * (`xray mcp --config <file>`, relative to the server root) when given,
+ * else what the CLI discovers from the server root as its working
+ * directory. Realpath, or null when there is none.
+ */
+export function resolveServerConfig(serverRoot: string, explicit?: string): string | null {
+  if (explicit !== undefined && explicit !== '') {
+    const abs = path.resolve(serverRoot, explicit);
+    if (!fs.existsSync(abs)) throw new UsageError(`--config: file not found: ${explicit}`);
+    return fs.realpathSync(abs);
+  }
+  const found = findConfigPath(serverRoot);
+  return found === null ? null : fs.realpathSync(found);
+}
+
+/** Child global flags pinning the server root and its config (none without a config). */
+export function pinnedConfigArgs(serverRoot: string, serverConfig: string | null): string[] {
+  return serverConfig === null ? [] : ['-C', serverRoot, '--config', serverConfig];
 }
 
 /**
- * Require `dir` to resolve to the server root's xray config. map, scan
- * and graph look for config by walking up from their `--path`: a
+ * Guard for map, scan and graph when the server root has no config to
+ * pin. They look for config by walking up from their `--path`, so a
  * directory inside the server root with its own `.xrayrc*` (or a
  * package.json `xray` key) would load that file, and `.xrayrc.js` is
- * code. Over MCP, config comes from the server root only.
+ * code. With a server config, children run with `--config` and the
+ * sub-root's config never loads, so any sub-root is accepted.
  */
-export function assertServerRootConfig(serverRoot: string, dir: string): void {
-  const own = realOrNull(findConfigPath(dir));
-  if (own === realOrNull(findConfigPath(serverRoot))) return;
+export function assertConfigPinned(serverConfig: string | null, dir: string): void {
+  if (serverConfig !== null) return;
+  const own = findConfigPath(dir);
+  if (own === null) return;
   throw new ToolArgumentError(
-    `path "${dir}" has its own xray config (${own}); over MCP, config loads from the server root only`
+    `path "${dir}" has its own xray config (${realpathLoose(own)}) and the server root has none to use instead; ` +
+      'over MCP, config loads from the server root only'
   );
 }
 
@@ -108,7 +134,7 @@ export function runChild(argv: string[], o: RunOptions): Promise<ChildResult> {
   return new Promise((resolve, reject) => {
     const env: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: '1' };
     delete env.FORCE_COLOR;
-    const child = spawn(process.execPath, [o.entry, ...CHILD_FLAGS, ...argv], {
+    const child = spawn(process.execPath, [o.entry, ...CHILD_FLAGS, ...(o.globalArgs ?? []), ...argv], {
       cwd: o.cwd,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],

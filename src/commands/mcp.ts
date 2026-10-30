@@ -87,15 +87,19 @@ export function registerMcpCommand(program: Command): Command {
     .description('Serve analysis commands as MCP tools over stdio')
     .option('--timeout <seconds>', 'Per-call timeout in seconds', '300')
     .addHelpText('after', HELP_AFTER)
-    .action(async (opts: { timeout: string }, cmd: Command) => {
+    .action(async (opts: { timeout: string; config?: string }, cmd: Command) => {
       const seconds = Number(opts.timeout);
       if (!Number.isFinite(seconds) || seconds <= 0) {
         throw new UsageError(`invalid --timeout '${opts.timeout}' (expected a positive number of seconds)`);
       }
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const server = require('../lib/mcp/server') as typeof import('../lib/mcp/server');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { resolveServerConfig } = require('../lib/mcp/runner') as typeof import('../lib/mcp/runner');
+      const serverRoot = fs.realpathSync(process.cwd());
       await server.startMcpServer(cmd.parent ?? cmd, {
-        serverRoot: fs.realpathSync(process.cwd()),
+        serverRoot,
+        serverConfig: resolveServerConfig(serverRoot, opts.config),
         entry: server.defaultEntry(),
         timeoutMs: Math.round(seconds * 1000),
         version,

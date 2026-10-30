@@ -12,7 +12,9 @@ import {
   buildArgv, findCommand, isExposedPath, isUrlLike, policyFor, shapeLeaf, ToolArgumentError,
   type PathScope,
 } from '../../src/lib/mcp/tools';
-import { assertServerRootConfig, containPath, isWithin, resolveCallRoot } from '../../src/lib/mcp/runner';
+import {
+  assertConfigPinned, containPath, isWithin, pinnedConfigArgs, resolveCallRoot, resolveServerConfig,
+} from '../../src/lib/mcp/runner';
 import { setCommandGroup } from '../../src/commands/kit-cli';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -255,16 +257,31 @@ describe('root containment', () => {
     expect(() => buildArgv(shaped(r, ['config', 'keys']).def, c, { file: '../other/x.json' }, scope)).toThrow(/outside/);
   });
 
-  it('accepts only directories whose config resolves to the server root config', () => {
+  it('without a server config, refuses sub-roots with their own config; with one, accepts all', () => {
     fs.mkdirSync(path.join(serverRoot, 'plain'), { recursive: true });
     fs.mkdirSync(path.join(serverRoot, 'own'), { recursive: true });
     fs.writeFileSync(path.join(serverRoot, 'own', '.xrayrc.js'), 'module.exports = {};');
-    expect(() => assertServerRootConfig(serverRoot, path.join(serverRoot, 'plain'))).not.toThrow();
-    expect(() => assertServerRootConfig(serverRoot, path.join(serverRoot, 'own'))).toThrow(/has its own xray config/);
+    expect(resolveServerConfig(serverRoot)).toBeNull();
+    expect(() => assertConfigPinned(null, path.join(serverRoot, 'plain'))).not.toThrow();
+    expect(() => assertConfigPinned(null, path.join(serverRoot, 'own'))).toThrow(/has its own xray config/);
     fs.writeFileSync(path.join(serverRoot, '.xrayrc.json'), '{}');
-    expect(() => assertServerRootConfig(serverRoot, path.join(serverRoot, 'plain'))).not.toThrow();
-    expect(() => assertServerRootConfig(serverRoot, path.join(serverRoot, 'own'))).toThrow(/has its own xray config/);
+    const pinned = resolveServerConfig(serverRoot);
+    expect(pinned).toBe(fs.realpathSync(path.join(serverRoot, '.xrayrc.json')));
+    expect(() => assertConfigPinned(pinned, path.join(serverRoot, 'plain'))).not.toThrow();
+    expect(() => assertConfigPinned(pinned, path.join(serverRoot, 'own'))).not.toThrow();
     fs.rmSync(path.join(serverRoot, '.xrayrc.json'));
+  });
+
+  it('resolves an explicit server config against the server root; missing is a usage error', () => {
+    fs.writeFileSync(path.join(serverRoot, 'pinned.json'), '{}');
+    expect(resolveServerConfig(serverRoot, 'pinned.json')).toBe(fs.realpathSync(path.join(serverRoot, 'pinned.json')));
+    expect(() => resolveServerConfig(serverRoot, 'nope.json')).toThrow(/not found/);
+    fs.rmSync(path.join(serverRoot, 'pinned.json'));
+  });
+
+  it('pins -C and --config on children only when there is a server config', () => {
+    expect(pinnedConfigArgs('/r', null)).toEqual([]);
+    expect(pinnedConfigArgs('/r', '/r/.xrayrc.json')).toEqual(['-C', '/r', '--config', '/r/.xrayrc.json']);
   });
 
   it('contains path values, including not-yet-existing ones', () => {
