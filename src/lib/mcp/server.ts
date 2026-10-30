@@ -13,9 +13,9 @@ import * as path from 'path';
 import type { Command } from 'commander';
 import type * as KitMcp from '@hop-top/kit/dist/mcp';
 import type { Invocation, InvokeResult, Leaf, McpBridge } from '@hop-top/kit/dist/mcp';
-import { findCommand, isExposedPath, shapeLeaf, buildArgv, type ToolDef } from './tools';
+import { findCommand, isExposedPath, policyFor, shapeLeaf, buildArgv, type PathScope, type ToolDef } from './tools';
 import {
-  collectOutput, containPath, makeOutputDir, resolveCallRoot, runChild, type ChildResult,
+  assertServerRootConfig, collectOutput, containPath, makeOutputDir, resolveCallRoot, runChild, type ChildResult,
 } from './runner';
 import { serveStdio } from './stdio';
 
@@ -27,7 +27,10 @@ function kitMcp(): typeof KitMcp {
 }
 
 export interface XrayBridgeOptions {
-  /** Trusted project directory (realpath); every call runs inside it. */
+  /**
+   * Trusted project directory (realpath). Every child runs with it as
+   * cwd, so project strategies and config load from here only.
+   */
   serverRoot: string;
   /** CLI entry script run per call. */
   entry: string;
@@ -63,7 +66,8 @@ export function createXrayBridge(program: Command, o: XrayBridgeOptions): McpBri
     for (const leaf of inner.leaves()) {
       if (leaf.enabled?.mcp === false) continue;
       const cmd = findCommand(program, leaf.path);
-      if (cmd) out.push(shapeLeaf(leaf, cmd));
+      const policy = policyFor(program, leaf.path);
+      if (cmd && policy) out.push(shapeLeaf(leaf, cmd, policy));
     }
     return out;
   };
@@ -94,17 +98,30 @@ async function withOutputDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   }
 }
 
-/** Run one tool call; argument errors throw (kit renders them as tool errors). */
+/**
+ * Run one tool call; argument errors throw (kit renders them as tool
+ * errors). The child's cwd is always the server root: project
+ * strategies, `node_modules` strategies, `.xrayrc.js` and the strategy
+ * cache load from the trusted root only. The per-call `root` reaches the
+ * command as its project path (`--path`), never as cwd.
+ */
 async function runTool(
   def: ToolDef,
   cmd: Command,
   args: Record<string, unknown> | undefined,
   o: XrayBridgeOptions
 ): Promise<InvokeResult> {
-  const cwd = resolveCallRoot(o.serverRoot, args?.root);
-  const mapPath = (v: string) => containPath(o.serverRoot, cwd, v, 'path');
-  const argv = buildArgv(def, cmd, args, mapPath);
-  const run = { entry: o.entry, cwd, timeoutMs: o.timeoutMs };
+  const callRoot = resolveCallRoot(o.serverRoot, args?.root);
+  const scope: PathScope = {
+    dir: callRoot,
+    explicit: callRoot !== o.serverRoot,
+    contain: (value, base, label) => containPath(o.serverRoot, base, value, label),
+  };
+  const { argv, projectDirs } = buildArgv(def, cmd, args, scope);
+  if (def.policy.configFromPath) {
+    for (const dir of projectDirs) assertServerRootConfig(o.serverRoot, dir);
+  }
+  const run = { entry: o.entry, cwd: o.serverRoot, timeoutMs: o.timeoutMs };
   const withFlag = (flag: string) => [...def.path, flag, ...argv.slice(def.path.length)];
 
   // map/scan/graph write files: point them at a private dir and return its content.
@@ -116,11 +133,14 @@ async function runTool(
   }
 
   // query needs a graph file; without --graph, build one the way the CLI
-  // documents (`xray map --format json -o graph.json`) in a private dir.
+  // documents (`xray map --format json -o graph.json`) in a private dir,
+  // over the call root.
   if (def.name === 'query' && args?.graph === undefined && args?.['list-adapters'] !== true) {
+    const mapScope = scope.explicit ? [`--path=${callRoot}`, '--detect'] : [];
+    if (scope.explicit) assertServerRootConfig(o.serverRoot, callRoot);
     return withOutputDir(async (dir) => {
       const graph = path.join(dir, 'graph.json');
-      const built = await runChild(['map', '--format=json', `--output=${graph}`], run);
+      const built = await runChild(['map', ...mapScope, '--format=json', `--output=${graph}`], run);
       if (built.exitCode !== 0) {
         return toResult(built, `building graph (xray map --format json) failed\n${built.stdout}`);
       }

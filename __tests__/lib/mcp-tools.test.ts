@@ -1,16 +1,18 @@
 /**
  * MCP tool shaping: selection of read-only leaves, schema derived from
- * the commander tree (positionals, repeatable options, denied flags,
- * root), argv building and root containment.
+ * the commander tree (positionals, repeatable options, per-tool option
+ * allowlist, root), argv building, path containment and the
+ * server-root config rule.
  */
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
-  buildArgv, DENIED_FLAGS, findCommand, isExposedPath, shapeLeaf, ToolArgumentError,
+  buildArgv, findCommand, isExposedPath, isUrlLike, policyFor, shapeLeaf, ToolArgumentError,
+  type PathScope,
 } from '../../src/lib/mcp/tools';
-import { containPath, isWithin, resolveCallRoot } from '../../src/lib/mcp/runner';
+import { assertServerRootConfig, containPath, isWithin, resolveCallRoot } from '../../src/lib/mcp/runner';
 import { setCommandGroup } from '../../src/commands/kit-cli';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -26,7 +28,15 @@ function tree(): Command {
     .option('--stats', 'Show statistics')
     .option('-o, --output <path>', 'Output file')
     .action(() => undefined);
-  root.command('map').option('-o, --output <path>', 'Output file').option('--no-chunk', 'Single file');
+  root.command('map')
+    .option('-p, --path <path>', 'Root directory (repeatable)', repeat, [])
+    .option('-o, --output <path>', 'Output file')
+    .option('-a, --anchor <path>', 'Focus file')
+    .option('-q, --query <item>', 'Override query (repeatable)', repeat, [])
+    .option('--share [path]', 'Share summary')
+    .option('--detect', 'Detect')
+    .option('--skip-detect', 'Skip detect')
+    .option('--no-chunk', 'Single file');
   const strategy = root.command('strategy');
   setCommandGroup(strategy, 'strategy');
   strategy.command('list');
@@ -35,9 +45,17 @@ function tree(): Command {
   cache.command('clear');
   const react = root.command('react');
   setCommandGroup(react, 'strategy');
-  react.command('hooks').option('--exec-binary', 'run code');
+  react.command('hooks').option('-p, --path <path>', 'Project path').option('--exec-binary', 'run code');
+  const config = root.command('config');
+  setCommandGroup(config, 'strategy');
+  config.command('keys').option('-p, --path <path>', 'Project path').option('--file <file>', 'Config file');
+  config.command('values').option('-p, --path <path>', 'Project path').option('--show-secrets', 'Secrets');
   root.command('alias').command('set');
   return root;
+}
+
+function shaped(root: Command, p: string[]) {
+  return shapeLeaf(kitLeaf(root, p), findCommand(root, p)!, policyFor(root, p)!);
 }
 
 function kitLeaf(root: Command, p: string[]) {
@@ -60,54 +78,55 @@ describe('isExposedPath', () => {
 describe('shapeLeaf', () => {
   const root = tree();
 
-  it('adds positionals, widens repeatable options, adds root, drops denied flags', () => {
-    const cmd = findCommand(root, ['explore'])!;
-    const { leaf, def } = shapeLeaf(kitLeaf(root, ['explore']), cmd);
+  it('adds positionals, widens repeatable options, adds root, keeps only allowlisted options', () => {
+    const { leaf, def } = shaped(root, ['explore']);
     expect(leaf.path).toEqual(['explore']);
     expect(leaf.properties.query).toEqual({ type: 'string', description: 'Search query' });
     expect(leaf.properties.path).toMatchObject({ type: 'array', items: { type: 'string' } });
     expect(leaf.properties.stats.type).toBe('boolean');
     expect(leaf.properties.root.type).toBe('string');
     expect(leaf.properties.output).toBeUndefined();
-    expect(def).toEqual({ name: 'explore', path: ['explore'], positionals: ['query'], fileOutput: false });
+    expect(def).toMatchObject({ name: 'explore', path: ['explore'], positionals: ['query'], fileOutput: false });
   });
 
-  it('names nested tools with _ and marks required positionals', () => {
-    const cmd = findCommand(root, ['strategy', 'remove'])!;
-    const { leaf } = shapeLeaf(kitLeaf(root, ['strategy', 'remove']), cmd);
-    expect(leaf.path).toEqual(['strategy_remove']);
-    expect(leaf.required).toEqual(['name']);
+  it('names nested tools with _', () => {
+    expect(shaped(root, ['config', 'keys']).leaf.path).toEqual(['config_keys']);
   });
 
-  it('drops code-running strategy flags and flags file-output tools', () => {
-    const hooks = shapeLeaf(kitLeaf(root, ['react', 'hooks']), findCommand(root, ['react', 'hooks'])!);
+  it('omits options not on the allowlist (writers, code runners, secrets)', () => {
+    const hooks = shaped(root, ['react', 'hooks']);
     expect(hooks.leaf.properties['exec-binary']).toBeUndefined();
-    const map = shapeLeaf(kitLeaf(root, ['map']), findCommand(root, ['map'])!);
+    expect(hooks.leaf.properties.path.type).toBe('string');
+    expect(shaped(root, ['config', 'values']).leaf.properties['show-secrets']).toBeUndefined();
+    const map = shaped(root, ['map']);
     expect(map.def.fileOutput).toBe(true);
     expect(map.leaf.properties['no-chunk'].type).toBe('boolean');
+    expect(map.leaf.properties.query.type).toBe('array');
+    expect(map.leaf.properties.output).toBeUndefined();
+    expect(map.leaf.properties.share).toBeUndefined();
   });
 
-  it('denies writers and code loaders', () => {
-    for (const f of ['output', 'share', 'template', 'preset', 'exec-binary', 'unsafe-no-sandbox']) {
-      expect(DENIED_FLAGS.has(f)).toBe(true);
-    }
+  it('offers root only on tools with a project scope', () => {
+    expect(shaped(root, ['strategy', 'list']).leaf.properties.root).toBeUndefined();
+    expect(shaped(root, ['map']).leaf.properties.root.type).toBe('string');
   });
 });
 
 describe('buildArgv', () => {
   const root = tree();
   const cmd = findCommand(root, ['explore'])!;
-  const def = shapeLeaf(kitLeaf(root, ['explore']), cmd).def;
-  const id = (v: string) => `<${v}>`;
+  const def = shaped(root, ['explore']).def;
+  const id: PathScope = { dir: '/srv', explicit: false, contain: (v) => `<${v}>` };
+  const argv = (d = def, c = cmd, args: Record<string, unknown>, scope = id) => buildArgv(d, c, args, scope).argv;
 
   it('maps options, booleans, arrays and positionals after --', () => {
-    expect(buildArgv(def, cmd, { query: '-x', stats: true, path: ['a', 'b'], root: '/r' }, id)).toEqual([
-      'explore', '--stats', '--path=<a>', '--path=<b>', '--', '-x',
+    expect(argv(def, cmd, { query: '-x', stats: true, path: ['a', 'b'] })).toEqual([
+      'explore', '--path=<a>', '--path=<b>', '--stats', '--', '-x',
     ]);
   });
 
   it('omits false booleans and absent positionals', () => {
-    expect(buildArgv(def, cmd, { stats: false }, id)).toEqual(['explore']);
+    expect(argv(def, cmd, { stats: false })).toEqual(['explore']);
   });
 
   it.each([
@@ -115,9 +134,70 @@ describe('buildArgv', () => {
     [{ output: 'x' }, /unknown argument "output"/],
     [{ stats: 'yes' }, /must be a boolean/],
     [{ query: { a: 1 } }, /must be a string/],
+    [{ path: ['http://169.254.169.254/latest'] }, /not a URL/],
   ])('rejects %j', (args, msg) => {
-    expect(() => buildArgv(def, cmd, args as Record<string, unknown>, id)).toThrow(ToolArgumentError);
-    expect(() => buildArgv(def, cmd, args as Record<string, unknown>, id)).toThrow(msg);
+    expect(() => argv(def, cmd, args as Record<string, unknown>)).toThrow(ToolArgumentError);
+    expect(() => argv(def, cmd, args as Record<string, unknown>)).toThrow(msg);
+  });
+
+  it('rejects options a command has but the allowlist does not', () => {
+    const c = findCommand(root, ['react', 'hooks'])!;
+    const d = shaped(root, ['react', 'hooks']).def;
+    expect(() => argv(d, c, { 'exec-binary': true })).toThrow(/unknown argument "exec-binary"/);
+    const v = findCommand(root, ['config', 'values'])!;
+    expect(() => argv(shaped(root, ['config', 'values']).def, v, { 'show-secrets': true })).toThrow(/unknown argument/);
+    const m = findCommand(root, ['map'])!;
+    expect(() => argv(shaped(root, ['map']).def, m, { share: 'x.md' })).toThrow(/unknown argument "share"/);
+  });
+
+  it('contains every map --query path, including .ext:path and comma lists', () => {
+    const m = findCommand(root, ['map'])!;
+    const d = shaped(root, ['map']).def;
+    expect(argv(d, m, { query: ['q/ts.scm', '.go:q/go.scm,.rs:q/rs.scm'] })).toEqual([
+      'map', '--query=<q/ts.scm>', '--query=.go:<q/go.scm>,.rs:<q/rs.scm>',
+    ]);
+    for (const q of ['https://evil.test/typescript.scm', '.ts:http://127.0.0.1/x.scm', 'a.scm,.ts:file:///etc/x.scm']) {
+      expect(() => argv(d, m, { query: [q] })).toThrow(/not a URL/);
+    }
+  });
+
+  it('passes an explicit root as --path, never as cwd, and keeps map auto-detect', () => {
+    const scope: PathScope = { dir: '/srv/sub', explicit: true, contain: (v, base) => path.resolve(base, v) };
+    const m = findCommand(root, ['map'])!;
+    const d = shaped(root, ['map']).def;
+    expect(buildArgv(d, m, { root: 'sub' }, scope)).toEqual({
+      argv: ['map', '--path=/srv/sub', '--detect'], projectDirs: ['/srv/sub'],
+    });
+    expect(argv(d, m, { 'skip-detect': true }, scope)).toEqual(['map', '--path=/srv/sub', '--skip-detect']);
+    expect(buildArgv(d, m, { path: ['x'], anchor: 'x/a.ts' }, scope)).toEqual({
+      argv: ['map', '--path=/srv/sub/x', '--anchor=/srv/sub/x/a.ts'], projectDirs: ['/srv/sub/x'],
+    });
+    expect(argv(def, cmd, { stats: true }, scope)).toEqual(['explore', '--path=/srv/sub', '--stats']);
+    const h = findCommand(root, ['react', 'hooks'])!;
+    expect(argv(shaped(root, ['react', 'hooks']).def, h, {}, scope)).toEqual(['react', 'hooks', '--path=/srv/sub']);
+  });
+
+  it('rejects root on tools without a project scope', () => {
+    const c = findCommand(root, ['strategy', 'list'])!;
+    expect(() => argv(shaped(root, ['strategy', 'list']).def, c, { root: 'sub' })).toThrow(/unknown argument "root"/);
+  });
+
+  it('passes config --file project-relative after containment', () => {
+    const scope: PathScope = { dir: '/srv', explicit: false, contain: (v, base) => path.resolve(base, v) };
+    const c = findCommand(root, ['config', 'keys'])!;
+    const d = shaped(root, ['config', 'keys']).def;
+    expect(argv(d, c, { file: 'cfg/app.json', path: 'pkg' }, scope)).toEqual([
+      'config', 'keys', '--path=/srv/pkg', '--file=cfg/app.json',
+    ]);
+  });
+});
+
+describe('isUrlLike', () => {
+  it.each(['http://x', 'https://x/y.scm', 'file:///etc/passwd', ' ftp://x', 'git+ssh://h/r'])('url: %s', (v) => {
+    expect(isUrlLike(v)).toBe(true);
+  });
+  it.each(['a/b.scm', '/abs/x', 'C:\\x', './http://x', '.ts'])('not url: %s', (v) => {
+    expect(isUrlLike(v)).toBe(false);
   });
 });
 
@@ -149,6 +229,42 @@ describe('root containment', () => {
   it('rejects missing roots and non-strings', () => {
     expect(() => resolveCallRoot(serverRoot, 'nope')).toThrow(/does not exist/);
     expect(() => resolveCallRoot(serverRoot, 3)).toThrow(/must be a string/);
+  });
+
+  it('contains map --query paths through the real resolver (outside, .ext:.., symlink)', () => {
+    const r = tree();
+    const m = findCommand(r, ['map'])!;
+    const d = shaped(r, ['map']).def;
+    const scope: PathScope = {
+      dir: serverRoot, explicit: false, contain: (v, b, l) => containPath(serverRoot, b, v, l),
+    };
+    for (const q of [path.join(outside, 'typescript.scm'), '.ts:../other/x.scm', 'escape/typescript.scm', 'a.scm,.go:../../x.scm']) {
+      expect(() => buildArgv(d, m, { query: [q] }, scope)).toThrow(/outside the server root/);
+    }
+    expect(buildArgv(d, m, { query: ['.ts:sub/q.scm'] }, scope).argv).toEqual([
+      'map', `--query=.ts:${path.join(serverRoot, 'sub/q.scm')}`,
+    ]);
+  });
+
+  it('contains config --file against the project path', () => {
+    const r = tree();
+    const c = findCommand(r, ['config', 'keys'])!;
+    const scope: PathScope = {
+      dir: serverRoot, explicit: false, contain: (v, b, l) => containPath(serverRoot, b, v, l),
+    };
+    expect(() => buildArgv(shaped(r, ['config', 'keys']).def, c, { file: '../other/x.json' }, scope)).toThrow(/outside/);
+  });
+
+  it('accepts only directories whose config resolves to the server root config', () => {
+    fs.mkdirSync(path.join(serverRoot, 'plain'), { recursive: true });
+    fs.mkdirSync(path.join(serverRoot, 'own'), { recursive: true });
+    fs.writeFileSync(path.join(serverRoot, 'own', '.xrayrc.js'), 'module.exports = {};');
+    expect(() => assertServerRootConfig(serverRoot, path.join(serverRoot, 'plain'))).not.toThrow();
+    expect(() => assertServerRootConfig(serverRoot, path.join(serverRoot, 'own'))).toThrow(/has its own xray config/);
+    fs.writeFileSync(path.join(serverRoot, '.xrayrc.json'), '{}');
+    expect(() => assertServerRootConfig(serverRoot, path.join(serverRoot, 'plain'))).not.toThrow();
+    expect(() => assertServerRootConfig(serverRoot, path.join(serverRoot, 'own'))).toThrow(/has its own xray config/);
+    fs.rmSync(path.join(serverRoot, '.xrayrc.json'));
   });
 
   it('contains path values, including not-yet-existing ones', () => {

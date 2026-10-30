@@ -6,6 +6,9 @@
  * protocol stream and serialize every call through one cwd. A child per
  * call reuses the exact CLI code path with its own cwd and exit code.
  *
+ * Children always run in the server root (see server.ts): project code
+ * and config load from the trusted directory only.
+ *
  * Children run with `--no-telemetry` (no consent prompt or
  * `.xrayrc.json` write), `--offline` (no upgrade check), no colour and
  * `--log-level warn` (stderr keeps warnings and errors only).
@@ -14,6 +17,7 @@ import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { findConfigPath } from '../config';
 import { ToolArgumentError } from './tools';
 
 /** Global flags every child gets, ahead of the command path. */
@@ -78,6 +82,25 @@ export function resolveCallRoot(serverRoot: string, root: unknown): string {
   }
   if (!stat.isDirectory()) throw new ToolArgumentError(`root "${root}" is not a directory`);
   return fs.realpathSync(abs);
+}
+
+function realOrNull(p: string | null): string | null {
+  return p === null ? null : realpathLoose(p);
+}
+
+/**
+ * Require `dir` to resolve to the server root's xray config. map, scan
+ * and graph look for config by walking up from their `--path`: a
+ * directory inside the server root with its own `.xrayrc*` (or a
+ * package.json `xray` key) would load that file, and `.xrayrc.js` is
+ * code. Over MCP, config comes from the server root only.
+ */
+export function assertServerRootConfig(serverRoot: string, dir: string): void {
+  const own = realOrNull(findConfigPath(dir));
+  if (own === realOrNull(findConfigPath(serverRoot))) return;
+  throw new ToolArgumentError(
+    `path "${dir}" has its own xray config (${own}); over MCP, config loads from the server root only`
+  );
 }
 
 /** Spawn `node <entry> <CHILD_FLAGS> <argv>`; resolves with captured output. */

@@ -4,10 +4,12 @@
  *
  * Covers initialize, tools/list (read-only set, derived schemas),
  * explore + query + map on a fixture repo, error mapping (JSON-RPC
- * errors vs isError tool results), root containment, and stdout
+ * errors vs isError tool results), root and path containment, the trust
+ * boundary (project code only from the server root), and stdout
  * cleanliness (every byte on stdout is a protocol message).
  */
 import { spawn, spawnSync, ChildProcessWithoutNullStreams } from 'child_process';
+import * as http from 'http';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -163,8 +165,12 @@ describe('xray mcp over stdio', () => {
     expect(map.properties.share).toBeUndefined();
     expect(map.properties.preset).toBeUndefined();
     expect(map.properties['no-chunk'].type).toBe('boolean');
+    expect(map.properties.query).toMatchObject({ type: 'array', items: { type: 'string' } });
     const goCli = tools.find((t) => t.name === 'go-cli_commands')!.inputSchema;
-    expect(goCli.properties['exec-binary']).toBeUndefined();
+    for (const f of ['exec-binary', 'binary', 'unsafe-no-sandbox', 'allow-cgo']) expect(goCli.properties[f]).toBeUndefined();
+    expect(tools.find((t) => t.name === 'config_values')!.inputSchema.properties['show-secrets']).toBeUndefined();
+    expect(tools.find((t) => t.name === 'config_keys')!.inputSchema.properties.file.type).toBe('string');
+    expect(tools.find((t) => t.name === 'strategy_list')!.inputSchema.properties.root).toBeUndefined();
   });
 
   it('calls explore', async () => {
@@ -258,4 +264,146 @@ describe('xray mcp startup', () => {
     expect(r.stdout).toBe('');
     expect(r.stderr).toMatch(/invalid --timeout/);
   });
+});
+
+describe('xray mcp trust boundary', () => {
+  let proj: string;
+  let markers: string;
+  let outside: string;
+  let client: StdioClient;
+  let httpServer: http.Server;
+  let port: number;
+  const hits: string[] = [];
+
+  const marks = () => fs.readdirSync(markers).sort();
+  const clearMarks = () => {
+    for (const f of fs.readdirSync(markers)) fs.rmSync(path.join(markers, f));
+  };
+  const strategy = (name: string) =>
+    `require('fs').writeFileSync(${JSON.stringify(markers)} + '/${name}', '1');\n` +
+    `module.exports = { name: '${name}', version: '1.0.0', detect: async () => false };\n`;
+
+  beforeAll(async () => {
+    proj = path.join(sandbox, 'trust');
+    markers = path.join(sandbox, 'markers');
+    outside = path.join(sandbox, 'outside');
+    fs.cpSync(FIXTURE, proj, { recursive: true });
+    fs.mkdirSync(markers);
+    fs.mkdirSync(outside);
+    fs.writeFileSync(path.join(outside, 'typescript.scm'), '(identifier) @name');
+
+    // Trusted: the server root's own project strategy.
+    fs.mkdirSync(path.join(proj, '.xray', 'strategies'), { recursive: true });
+    fs.writeFileSync(path.join(proj, '.xray', 'strategies', 'trusted.js'), strategy('trusted'));
+
+    // Untrusted subtree: strategies, a node_modules strategy package, JS config.
+    const vendor = path.join(proj, 'vendor');
+    fs.mkdirSync(path.join(vendor, '.xray', 'strategies'), { recursive: true });
+    fs.writeFileSync(path.join(vendor, '.xray', 'strategies', 'evil.js'), strategy('evil'));
+    const pkg = path.join(vendor, 'node_modules', 'xray-strategy-evilpkg');
+    fs.mkdirSync(pkg, { recursive: true });
+    fs.writeFileSync(path.join(pkg, 'package.json'), JSON.stringify({
+      name: 'xray-strategy-evilpkg', 'xray-strategy': { name: 'evilpkg', entry: 'index.js' },
+    }));
+    fs.writeFileSync(path.join(pkg, 'index.js'), strategy('evilpkg'));
+    fs.writeFileSync(path.join(vendor, '.xrayrc.js'),
+      `require('fs').writeFileSync(${JSON.stringify(markers)} + '/rcjs', '1');\nmodule.exports = {};\n`);
+    fs.writeFileSync(path.join(vendor, 'v.ts'), 'export function vendored(): number {\n  return 1;\n}\n');
+
+    // Plain subdirectory: no config, no strategies.
+    fs.mkdirSync(path.join(proj, 'clean'));
+    fs.writeFileSync(path.join(proj, 'clean', 'c.ts'), 'export function gamma(): number {\n  return 3;\n}\n');
+    fs.symlinkSync(outside, path.join(proj, 'escape'));
+    spawnSync('git', ['init', '-q'], { cwd: proj, env });
+
+    httpServer = http.createServer((req, res) => {
+      hits.push(req.url ?? '');
+      res.end('(identifier) @name');
+    });
+    await new Promise<void>((r) => httpServer.listen(0, '127.0.0.1', () => r()));
+    port = (httpServer.address() as { port: number }).port;
+
+    client = startServer(proj);
+    await client.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 't', version: '0' } });
+    client.notify('notifications/initialized');
+  }, 60_000);
+
+  afterAll(async () => {
+    if (client) await client.close();
+    if (httpServer) await new Promise((r) => httpServer.close(r));
+  });
+
+  beforeEach(clearMarks);
+
+  it('loads the server root\'s own project strategies', async () => {
+    const r = await client.call('strategy_list', { format: 'json' });
+    expect(r.result.isError).toBe(false);
+    const names = JSON.parse(text(r)).map((s: any) => s.name);
+    expect(names).toContain('trusted');
+    expect(names).not.toContain('evil');
+    expect(names).not.toContain('evilpkg');
+    expect(marks()).toEqual(['trusted']);
+  }, 60_000);
+
+  it.each([
+    ['explore', { root: 'vendor', search: ['vendored'], format: 'json' }],
+    ['strategy_detect', { root: 'vendor' }],
+    ['react_hooks', { root: 'vendor' }],
+    ['config_list', { root: 'vendor' }],
+  ])('%s with root inside an untrusted subtree runs none of its code', async (name, args) => {
+    const r = await client.call(name, args);
+    expect(r.result.isError).toBe(false);
+    expect(marks()).toEqual(['trusted']);
+  }, 60_000);
+
+  it('scopes explore to the call root via --path', async () => {
+    const r = await client.call('explore', { root: 'vendor', search: ['vendored'], format: 'json' });
+    expect(JSON.parse(text(r)).map((x: any) => x.file)).toEqual([path.join(proj, 'vendor', 'v.ts')]);
+  }, 60_000);
+
+  it.each([[{ root: 'vendor' }], [{ path: ['vendor'] }]])(
+    'map refuses %j: the subtree has its own config, which is code',
+    async (args) => {
+      const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, ...args });
+      expect(r.result.isError).toBe(true);
+      expect(text(r)).toMatch(/has its own xray config/);
+      expect(marks()).toEqual([]);
+    },
+    60_000
+  );
+
+  it('maps a plain sub-root', async () => {
+    const r = await client.call('map', { root: 'clean', 'no-chunk': true });
+    expect(r.result.isError).toBe(false);
+    expect(text(r)).toContain('gamma');
+    expect(text(r)).not.toContain('alpha');
+    expect(marks()).toEqual(['trusted']);
+  }, 120_000);
+
+  it('queries a graph built over a plain sub-root', async () => {
+    const r = await client.call('query', { root: 'clean', query: 'callers(gamma)', format: 'json' });
+    expect(r.result.isError).toBe(false);
+    expect(client.stderr).not.toMatch(/evil/);
+  }, 120_000);
+
+  it.each([
+    ['query outside root', 'map', () => ({ query: [path.join(outside, 'typescript.scm')] }), /outside the server root/],
+    ['query .ext:../ escape', 'map', () => ({ query: ['.ts:../outside/typescript.scm'] }), /outside the server root/],
+    ['query through symlink', 'map', () => ({ query: ['escape/typescript.scm'] }), /outside the server root/],
+    ['query .ext:http URL', 'map', () => ({ query: [`.ts:http://127.0.0.1:${port}/typescript.scm`] }), /not a URL/],
+    ['query URL in comma list', 'map', () => ({ query: [`clean,https://127.0.0.1:${port}/typescript.scm`] }), /not a URL/],
+    ['anchor through symlink', 'map', () => ({ anchor: 'escape/typescript.scm' }), /outside the server root/],
+    ['config --file outside root', 'config_keys', () => ({ file: '../outside/typescript.scm' }), /outside the server root/],
+    ['unlisted code-running flag', 'go-cli_commands', () => ({ 'exec-binary': true }), /unknown argument "exec-binary"/],
+    ['unlisted secrets flag', 'config_values', () => ({ 'show-secrets': true }), /unknown argument "show-secrets"/],
+    ['unlisted writer flag', 'map', () => ({ share: 'x.md' }), /unknown argument "share"/],
+    ['root on an unscoped tool', 'strategy_list', () => ({ root: 'vendor' }), /unknown argument "root"/],
+  ])('rejects %s', async (_label, name, args, msg) => {
+    const r = await client.call(name, { 'skip-detect': name === 'map' ? true : undefined, ...args() });
+    expect(r.error).toBeUndefined();
+    expect(r.result.isError).toBe(true);
+    expect(text(r)).toMatch(msg);
+    expect(hits).toEqual([]);
+    expect(marks()).toEqual([]);
+  }, 60_000);
 });

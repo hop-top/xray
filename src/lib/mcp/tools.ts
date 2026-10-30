@@ -5,51 +5,146 @@
  * JSON Schema; this module narrows that set to xray's read-only
  * analysis commands and fills what the kit projection leaves out:
  * positional arguments, repeatable options as arrays, negated flags
- * (`--no-x`) as booleans, the per-call
- * `root`, and removal of flags that write files or run code.
+ * (`--no-x`) as booleans and the per-call `root`.
  *
- * Pure (no I/O): tool selection, schema shaping and argv building are
- * unit-tested against small commander trees.
+ * Options are allowlisted per tool (`ToolPolicy`): an option is exposed
+ * only when listed, and every listed option that names a file or
+ * directory is contained in the server root.
+ *
+ * Pure (no I/O beyond the injected path resolver): tool selection,
+ * schema shaping and argv building are unit-tested against small
+ * commander trees.
  */
+import * as path from 'path';
 import type { Argument, Command, Option } from 'commander';
 import type { FlagSchema, Leaf } from '@hop-top/kit/dist/mcp';
 import { getCommandGroup } from '../../commands/kit-cli';
 
-/** Per-call working directory parameter, present on every tool. */
+/** Per-call project scope parameter (a directory inside the server root). */
 export const ROOT_PARAM = 'root';
 
-/** Core commands exposed as tools (strategy noun commands are added generically). */
-const CORE_TOOLS: readonly string[][] = [
-  ['map'], ['scan'], ['graph'], ['explore'], ['query'],
-  ['strategy', 'list'], ['strategy', 'detect'],
-];
+/**
+ * How a tool argument value is handled.
+ *
+ * - `value`: passed through (flag, name, pattern, number).
+ * - `path`: filesystem path; resolved against the call root and held
+ *   inside the server root (symlinks resolved). URLs are refused.
+ * - `query-source`: map's `--query` (`path`, `.ext:path`, comma lists);
+ *   every path part is contained like `path`. URLs are refused (the CLI
+ *   would fetch them).
+ * - `project-file`: a file the command joins onto its project path
+ *   (`config keys --file`); contained, then passed project-relative.
+ */
+export type ParamKind = 'value' | 'path' | 'query-source' | 'project-file';
+
+/**
+ * How the per-call `root` reaches a command. Children always run in the
+ * server root, so `root` is never a working directory:
+ * - `path`: passed as the command's `--path` (when no `path` is given).
+ * - `graph`: query; the graph it builds is mapped with `--path=<root>`.
+ * - `none`: the command has no project scope; `root` is not offered.
+ */
+export type RootScope = 'path' | 'graph' | 'none';
+
+/** Per-tool allowlist: only these options are exposed and accepted. */
+export interface ToolPolicy {
+  options: Readonly<Record<string, ParamKind>>;
+  root: RootScope;
+  /**
+   * The command loads xray config by walking up from its `--path`
+   * (map/scan/graph): every such directory must resolve to the server
+   * root's config, never one of its own.
+   */
+  configFromPath: boolean;
+  /** Keep auto-detection when `root` becomes `--path` (map/scan/graph). */
+  detectOnRoot: boolean;
+}
+
+const EXTENSION_OVERRIDES: Record<string, ParamKind> = {
+  'enable-extension': 'value',
+  'disable-extension': 'value',
+  'enable-surface': 'value',
+  'disable-surface': 'value',
+  'extension-hint': 'value',
+  'extension-threshold': 'value',
+};
+
+/** map / scan / graph. Not offered: --output (runner-owned), --share, --config. */
+const ANALYSIS: ToolPolicy = {
+  options: {
+    path: 'path',
+    anchor: 'path',
+    query: 'query-source',
+    limit: 'value',
+    with: 'value',
+    depth: 'value',
+    match: 'value',
+    catch: 'value',
+    format: 'value',
+    xml: 'value',
+    json: 'value',
+    csv: 'value',
+    txt: 'value',
+    mermaid: 'value',
+    dot: 'value',
+    'no-chunk': 'value',
+    group: 'value',
+    lens: 'value',
+    scope: 'value',
+    'all-scopes': 'value',
+    detect: 'value',
+    'skip-detect': 'value',
+    lang: 'value',
+    ...EXTENSION_OVERRIDES,
+  },
+  root: 'path',
+  configFromPath: true,
+  detectOnRoot: true,
+};
+
+const scoped = (options: Record<string, ParamKind>, root: RootScope = 'path'): ToolPolicy => ({
+  options, root, configFromPath: false, detectOnRoot: false,
+});
+
+/** Core commands exposed as tools, keyed by tool name. */
+const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
+  map: ANALYSIS,
+  scan: ANALYSIS,
+  graph: ANALYSIS,
+  explore: scoped({
+    path: 'path', match: 'value', search: 'value', type: 'value',
+    stats: 'value', 'list-strategies': 'value', format: 'value',
+  }),
+  query: scoped({ graph: 'path', 'list-adapters': 'value', format: 'value' }, 'graph'),
+  strategy_list: scoped({ format: 'value' }, 'none'),
+  strategy_detect: scoped({ path: 'path' }),
+};
+
+/** Options every `<strategy> <noun>` command gets from registration. */
+const STRATEGY_NOUN: Record<string, ParamKind> = { path: 'path', format: 'value', ...EXTENSION_OVERRIDES };
+
+/**
+ * Options built-in strategies declare per noun, vetted as safe. Options a
+ * strategy declares that are not listed here (go-cli's `--binary`,
+ * `--exec-binary`, config's `--show-secrets`, any project strategy's own
+ * options) are not exposed.
+ */
+const STRATEGY_NOUN_EXTRA: Readonly<Record<string, Record<string, ParamKind>>> = {
+  'config_list': { pattern: 'value' },
+  'config_keys': { file: 'project-file' },
+  'config_values': { file: 'project-file' },
+  'build_run': { target: 'value' },
+  'markdown_toc': { depth: 'value' },
+};
 
 /** Commands whose CLI result is files (`-o`), collected by the runner. */
 const FILE_OUTPUT_TOOLS = new Set(['map', 'scan', 'graph']);
 
-/**
- * Flags never offered over MCP: they write files the server does not
- * own, load code from an arbitrary path, or build and run project code.
- */
-export const DENIED_FLAGS: ReadonlySet<string> = new Set([
-  'output',            // file output; the runner owns it for map/scan/graph
-  'share',             // writes a summary file into the project
-  'template',          // template files are executable
-  'preset',            // loads plugin code from a path or package
-  'exec-binary',       // go-cli: builds + runs the scanned repo
-  'binary',            // go-cli: runs a given binary
-  'unsafe-no-sandbox', // go-cli: disables the sandbox
-  'allow-cgo',         // go-cli: runs the C toolchain on repo code
-  'show-secrets',      // config: prints secret values verbatim
-]);
-
-/** Flags whose values are filesystem paths, kept inside the server root. */
-export const PATH_FLAGS: ReadonlySet<string> = new Set(['path', 'anchor', 'graph']);
-
-/** One exposed tool: MCP name, command path and parameter kinds. */
+/** One exposed tool: MCP name, command path, policy and parameter kinds. */
 export interface ToolDef {
   name: string;
   path: string[];
+  policy: ToolPolicy;
   /** Parameters bound to positional arguments, in declaration order. */
   positionals: string[];
   /** Map/scan/graph: output goes to files the runner collects. */
@@ -64,15 +159,21 @@ export function toolNameFor(path: string[]): string {
   return path.join('_');
 }
 
+/** Allowlist policy for a command path, or undefined when it is not a tool. */
+export function policyFor(root: Command, path: string[]): ToolPolicy | undefined {
+  const name = toolNameFor(path);
+  if (Object.prototype.hasOwnProperty.call(CORE_TOOLS, name)) return CORE_TOOLS[name];
+  // `<strategy> <noun>`: every subcommand of a dynamic strategy group.
+  if (path.length !== 2 || path[0] === 'strategy') return undefined;
+  const top = (root.commands as Command[]).find((c) => c.name() === path[0]);
+  if (top === undefined || getCommandGroup(top) !== 'strategy') return undefined;
+  const extra = Object.prototype.hasOwnProperty.call(STRATEGY_NOUN_EXTRA, name) ? STRATEGY_NOUN_EXTRA[name] : {};
+  return scoped({ ...STRATEGY_NOUN, ...extra });
+}
+
 /** Whether a command path is one of the read-only tools. */
 export function isExposedPath(root: Command, path: string[]): boolean {
-  if (CORE_TOOLS.some((p) => p.length === path.length && p.every((s, i) => s === path[i]))) {
-    return true;
-  }
-  // `<strategy> <noun>`: every subcommand of a dynamic strategy group.
-  if (path.length !== 2 || path[0] === 'strategy') return false;
-  const top = (root.commands as Command[]).find((c) => c.name() === path[0]);
-  return top !== undefined && getCommandGroup(top) === 'strategy';
+  return policyFor(root, path) !== undefined;
 }
 
 /** Resolve a command path back to its commander Command. */
@@ -105,21 +206,26 @@ function isRepeatable(opt: Option): boolean {
   return opt.variadic || Array.isArray(opt.defaultValue);
 }
 
+function allowed(policy: ToolPolicy, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(policy.options, key);
+}
+
 /**
- * Shape one kit leaf into the exposed tool leaf + its ToolDef: drop
- * denied flags, widen repeatable options to arrays, add positional
- * arguments and `root`.
+ * Shape one kit leaf into the exposed tool leaf + its ToolDef: keep only
+ * allowlisted options, widen repeatable options to arrays, add
+ * positional arguments and (when the tool has a project scope) `root`.
  */
-export function shapeLeaf(leaf: Leaf, cmd: Command): { leaf: Leaf; def: ToolDef } {
+export function shapeLeaf(leaf: Leaf, cmd: Command, policy: ToolPolicy): { leaf: Leaf; def: ToolDef } {
   const properties: Record<string, FlagSchema> = {};
   const required: string[] = [];
 
   for (const [key, schema] of Object.entries(leaf.properties)) {
-    if (DENIED_FLAGS.has(key) || key === ROOT_PARAM) continue;
+    if (!allowed(policy, key) || key === ROOT_PARAM) continue;
     const opt = findOption(cmd, key);
-    if (opt && isFlag(opt)) {
+    if (!opt) continue;
+    if (isFlag(opt)) {
       properties[key] = { type: 'boolean', description: schema.description };
-    } else if (opt && isRepeatable(opt)) {
+    } else if (isRepeatable(opt)) {
       properties[key] = { type: 'array', items: { type: 'string' }, description: schema.description };
     } else {
       properties[key] = schema;
@@ -141,11 +247,14 @@ export function shapeLeaf(leaf: Leaf, cmd: Command): { leaf: Leaf; def: ToolDef 
   }
 
   const fileOutput = leaf.path.length === 1 && FILE_OUTPUT_TOOLS.has(leaf.path[0]);
-  properties[ROOT_PARAM] = {
-    type: 'string',
-    description:
-      'Directory to run in (absolute, or relative to the server root); must be inside the server root. Default: server root.',
-  };
+  if (policy.root !== 'none') {
+    properties[ROOT_PARAM] = {
+      type: 'string',
+      description:
+        'Project directory to analyze (absolute, or relative to the server root); must be inside the server root. ' +
+        'Relative path arguments resolve against it. Default: server root.',
+    };
+  }
 
   const name = toolNameFor(leaf.path);
   const shaped: Leaf = {
@@ -155,7 +264,7 @@ export function shapeLeaf(leaf: Leaf, cmd: Command): { leaf: Leaf; def: ToolDef 
     ...(required.length > 0 ? { required } : {}),
     ...(leaf.class ? { class: leaf.class } : {}),
   };
-  return { leaf: shaped, def: { name, path: leaf.path, positionals, fileOutput } };
+  return { leaf: shaped, def: { name, path: leaf.path, policy, positionals, fileOutput } };
 }
 
 /** Error for a bad tool argument; surfaces as an MCP tool error. */
@@ -176,26 +285,83 @@ function values(key: string, v: unknown): string[] {
   return Array.isArray(v) ? v.map((x) => scalar(key, x)) : [scalar(key, v)];
 }
 
+/** `scheme://...`: a URL, never accepted where a path is expected. */
+export function isUrlLike(value: string): boolean {
+  return /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(value.trim());
+}
+
+/**
+ * Containment for path-valued arguments, injected so this module stays
+ * pure. `contain` resolves `value` against `base`, requires the result
+ * inside the server root (symlinks resolved) and returns it absolute.
+ */
+export interface PathScope {
+  /** Per-call project directory (absolute); the server root by default. */
+  dir: string;
+  /** Whether the call selected `dir` with `root` (vs the default). */
+  explicit: boolean;
+  contain(value: string, base: string, label: string): string;
+}
+
+/** Argv for one call plus the project directories passed as `--path`. */
+export interface BuiltArgv {
+  argv: string[];
+  /** Absolute `--path` values (given, or the call root); empty = server root. */
+  projectDirs: string[];
+}
+
+function containedPath(key: string, value: string, base: string, scope: PathScope): string {
+  if (isUrlLike(value)) throw new ToolArgumentError(`argument "${key}" must be a path inside the server root, not a URL: "${value}"`);
+  return scope.contain(value, base, key);
+}
+
+/** map `--query`: comma list of `path` or `.ext:path`; every path contained. */
+function containQuerySource(key: string, value: string, scope: PathScope): string {
+  return value
+    .split(',')
+    .map((raw) => {
+      const part = raw.trim();
+      if (part === '') return part;
+      const colon = part.indexOf(':');
+      if (colon > 0 && part.startsWith('.')) {
+        return `${part.slice(0, colon)}:${containedPath(key, part.slice(colon + 1), scope.dir, scope)}`;
+      }
+      return containedPath(key, part, scope.dir, scope);
+    })
+    .join(',');
+}
+
 /**
  * Translate tool arguments into the command's argv (path first,
- * options as `--key=value`, positionals after `--`). `mapPath` rewrites
- * path-valued flags (containment + absolutising). Unknown or denied
- * keys and type mismatches throw ToolArgumentError.
+ * options as `--key=value`, positionals after `--`). Only options in the
+ * tool's policy are accepted; path-like values are contained through
+ * `scope`. With an explicit `root` and no `path`, `root` becomes the
+ * command's `--path`. Unknown or unlisted keys and type mismatches
+ * throw ToolArgumentError.
  */
 export function buildArgv(
   def: ToolDef,
   cmd: Command,
   args: Record<string, unknown> | undefined,
-  mapPath: (value: string) => string
-): string[] {
+  scope: PathScope
+): BuiltArgv {
+  const { policy } = def;
   const opts: string[] = [];
   const positionals: string[] = [];
+  const projectDirs: string[] = [];
   const given = args ?? {};
 
-  for (const [key, v] of Object.entries(given)) {
+  if (policy.root === 'none' && given[ROOT_PARAM] !== undefined && given[ROOT_PARAM] !== null) {
+    throw new ToolArgumentError(`unknown argument "${ROOT_PARAM}" for tool ${def.name}`);
+  }
+
+  // `path` first: a project-file resolves against the (first) project path.
+  const keys = Object.keys(given).sort((a, b) => Number(b === 'path') - Number(a === 'path'));
+  for (const key of keys) {
+    const v = given[key];
     if (key === ROOT_PARAM || v === undefined || v === null) continue;
     if (def.positionals.includes(key)) continue;
-    const opt = DENIED_FLAGS.has(key) ? undefined : findOption(cmd, key);
+    const opt = allowed(policy, key) ? findOption(cmd, key) : undefined;
     if (!opt) throw new ToolArgumentError(`unknown argument "${key}" for tool ${def.name}`);
 
     if (isFlag(opt)) {
@@ -208,8 +374,33 @@ export function buildArgv(
       throw new ToolArgumentError(`argument "${key}" takes a single value`);
     }
     for (const val of vals) {
-      opts.push(`--${key}=${PATH_FLAGS.has(key) ? mapPath(val) : val}`);
+      let out = val;
+      switch (policy.options[key]) {
+        case 'path':
+          out = containedPath(key, val, scope.dir, scope);
+          if (key === 'path') projectDirs.push(out);
+          break;
+        case 'query-source':
+          out = containQuerySource(key, val, scope);
+          break;
+        case 'project-file': {
+          const project = projectDirs[0] ?? scope.dir;
+          out = path.relative(project, containedPath(key, val, project, scope));
+          break;
+        }
+        default:
+          break;
+      }
+      opts.push(`--${key}=${out}`);
     }
+  }
+
+  // The call root reaches the command as its project path, never as cwd.
+  if (scope.explicit && policy.root === 'path' && projectDirs.length === 0) {
+    opts.unshift(`--path=${scope.dir}`);
+    projectDirs.push(scope.dir);
+    // map/scan/graph auto-detect only without --path; keep the default.
+    if (policy.detectOnRoot && given.detect === undefined && given['skip-detect'] !== true) opts.push('--detect');
   }
 
   for (const key of def.positionals) {
@@ -218,5 +409,8 @@ export function buildArgv(
     positionals.push(...values(key, v));
   }
 
-  return [...def.path, ...opts, ...(positionals.length > 0 ? ['--', ...positionals] : [])];
+  return {
+    argv: [...def.path, ...opts, ...(positionals.length > 0 ? ['--', ...positionals] : [])],
+    projectDirs,
+  };
 }
