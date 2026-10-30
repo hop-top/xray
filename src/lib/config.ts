@@ -378,8 +378,10 @@ export function saveConfig(config: XrayConfig, configPath?: string): void {
  * Merge CLI options with config file, with CLI taking precedence
  */
 export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: string): any {
+  // No config file: resolve CLI options against an empty base so the
+  // result has the same shape (chunked, outputFormat, ...) as with one.
   if (!config) {
-    return cliOptions;
+    config = {} as XrayConfig;
   }
 
   // If lens specified, use it as base. Deep-merge features so a lens

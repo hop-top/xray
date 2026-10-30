@@ -41,10 +41,9 @@ describe('mergeConfig — plugin preset + lens forwarding', () => {
     expect(merged.lens).toBe('quick');
   });
 
-  it('returns cliOptions unchanged when config is null (short-circuit path)', () => {
-    const cli = { preset: ['insights'], lens: 'quick' };
-    const merged = mergeConfig(null, cli);
-    expect(merged).toBe(cli);
+  it('still forwards preset when config is null', () => {
+    const merged = mergeConfig(null, { preset: ['insights'] });
+    expect(merged.preset).toEqual(['insights']);
   });
 });
 
@@ -241,5 +240,15 @@ describe('mergeConfig — extension contract forwarding', () => {
         export: true,
       },
     });
+  });
+});
+
+describe('mergeConfig — no config file', () => {
+  it('resolves --no-chunk to chunked:false', () => {
+    expect(mergeConfig(null, { chunk: false }).chunked).toBe(false);
+  });
+
+  it('defaults to chunked output', () => {
+    expect(mergeConfig(null, {}).chunked).toBe(true);
   });
 });
