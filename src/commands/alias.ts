@@ -1,55 +1,96 @@
 import { Command } from 'commander';
-import { loadConfig, saveConfig } from '../lib/config';
-import { AliasResolver } from '../lib/alias-resolver';
+import { isWritableConfigFile, loadConfig, saveConfig } from '../lib/config';
+import { isAliasTarget, kitAlias, usableAliases } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
 import { ConflictError, NotFoundError, UsageError } from '../lib/error/types';
-import chalk from 'chalk';
+import {
+  addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
+} from '../lib/output';
+
+interface AliasRow { alias: string; target: string }
+
+/** Names `alias set` refuses. */
+const SET_BUILTINS = [
+  'map', 'scan', 'graph', 'find', 'detect', 'strategies', 'strategy', 'save', 'load', 'alias', 'config', 'lang',
+];
+
+const aliasListRegistry = outputRegistry(
+  textFormatter<AliasRow[]>('text', (rows, put, s) => {
+    if (rows.length === 0) return;
+    put(s.accent('\nConfigured Aliases:\n'));
+    for (const { alias, target } of rows) {
+      put(`  ${s.bold(alias)} → ${s.muted(target)}`);
+    }
+    put(`\nTotal: ${rows.length} alias(es)\n`);
+  })
+);
+
+/** Root `--config` (propagated onto the running subcommand's opts). */
+const rootConfig = (cmd: Command): string | undefined => cmd.opts().config;
+
+/**
+ * Config file alias changes write to: the root `--config` file, which
+ * must be JSON (checked before it loads), else `./.xrayrc.json`.
+ */
+function aliasWriteTarget(cmd: Command): string | undefined {
+  const configPath = rootConfig(cmd);
+  if (configPath !== undefined && !isWritableConfigFile(configPath)) {
+    throw new UsageError(`--config ${configPath} is not a JSON config file; alias changes need one`);
+  }
+  return configPath;
+}
+
+function saveAliases(config: Parameters<typeof saveConfig>[0], configPath: string | undefined): void {
+  if (configPath === undefined) saveConfig(config);
+  else saveConfig(config, configPath);
+}
 
 export function registerAliasCommand(): Command {
   const program = new Command('alias')
     .description('Manage command aliases');
 
   // List aliases
-  program
+  const listCmd = program
     .command('list')
-    .description('List all configured aliases')
-    .action(async () => {
-      const config = loadConfig();
-      if (!config) {
-        Logger.info('No configuration file found.');
-        Logger.info('\nCreate .xrayrc.json to configure aliases.');
-        return;
-      }
+    .description('List all configured aliases');
+  addOutputFlags(listCmd, aliasListRegistry, {
+    defaultFormat: 'text',
+    description: 'Output format: text, json, yaml, table, csv',
+  }).action(async (_opts: unknown, cmd: Command) => {
+    assertFormat(cmd, aliasListRegistry);
+    const config = loadConfig(rootConfig(cmd));
+    const aliases = config ? usableAliases(config) : {};
 
-      const resolver = new AliasResolver(config);
-      const aliases = resolver.getAll();
+    if (!config) {
+      Logger.info('No configuration file found.');
+      Logger.info('\nCreate .xrayrc.json to configure aliases.');
+    } else if (Object.keys(aliases).length === 0) {
+      Logger.info('No aliases configured.');
+      Logger.info('\nTo add aliases, use: xray alias set <name> <target>');
+    }
 
-      if (aliases.size === 0) {
-        Logger.info('No aliases configured.');
-        Logger.info('\nTo add aliases, use: xray alias set <name> <target>');
-        return;
-      }
-
-      Logger.output(chalk.cyan('\nConfigured Aliases:\n'));
-      for (const [alias, target] of aliases.entries()) {
-        Logger.output(`  ${chalk.bold(alias)} → ${chalk.gray(target)}`);
-      }
-      Logger.output(`\nTotal: ${aliases.size} alias(es)\n`);
+    const rows: AliasRow[] = Object.entries(aliases).map(([alias, target]) => ({ alias, target }));
+    await emit(cmd, rows, {
+      registry: aliasListRegistry,
+      columns: columns('alias', 'target'),
+      defaultFormat: 'text',
     });
+  });
 
   // Set alias
   program
     .command('set <name> <target>')
     .description('Create or update an alias')
-    .action(async (name: string, target: string) => {
-      let config = loadConfig();
+    .action(async (name: string, target: string, _opts: unknown, cmd: Command) => {
+      const configPath = aliasWriteTarget(cmd);
+      let config = loadConfig(configPath);
       if (!config) {
         // Create default config if none exists
         config = { paths: [process.cwd()] };
       }
 
       // Validate target format
-      if (!target.includes(' ')) {
+      if (!isAliasTarget(target)) {
         Logger.info('Example: xray alias set comp "react components"');
         throw new UsageError('Target must be in format "<strategy> <command>"');
       }
@@ -59,10 +100,15 @@ export function registerAliasCommand(): Command {
         config.aliases = {};
       }
 
-      // Check for built-in conflicts
-      const builtIns = ['map', 'scan', 'graph', 'find', 'detect', 'strategies', 'strategy', 'save', 'load', 'alias', 'config', 'lang'];
-      if (builtIns.includes(name)) {
-        throw new ConflictError(`Cannot create alias "${name}" - conflicts with built-in command`);
+      // Check name: empty, whitespace, built-in conflicts
+      try {
+        kitAlias.validateAliasName(name, { builtins: SET_BUILTINS });
+      } catch (err) {
+        if (!(err instanceof kitAlias.AliasNameError)) throw err;
+        if (err.kind === 'builtin') {
+          throw new ConflictError(`Cannot create alias "${name}" - conflicts with built-in command`);
+        }
+        throw new UsageError(`Invalid alias name "${name}": ${err.message}`);
       }
 
       // Update config
@@ -70,7 +116,7 @@ export function registerAliasCommand(): Command {
       config.aliases[name] = target;
 
       // Save config
-      saveConfig(config);
+      saveAliases(config, configPath);
 
       if (isUpdate) {
         Logger.success(`Updated alias "${name}" → "${target}"`);
@@ -85,8 +131,9 @@ export function registerAliasCommand(): Command {
   program
     .command('remove <name>')
     .description('Remove an alias')
-    .action(async (name: string) => {
-      const config = loadConfig();
+    .action(async (name: string, _opts: unknown, cmd: Command) => {
+      const configPath = aliasWriteTarget(cmd);
+      const config = loadConfig(configPath);
       if (!config) {
         throw new NotFoundError('No configuration file found');
       }
@@ -98,7 +145,7 @@ export function registerAliasCommand(): Command {
       const target = config.aliases[name];
       delete config.aliases[name];
 
-      saveConfig(config);
+      saveAliases(config, configPath);
 
       Logger.success(`Removed alias "${name}" (was: "${target}")`);
     });

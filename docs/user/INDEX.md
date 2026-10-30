@@ -199,6 +199,7 @@ Start here, then pick your next path based on what you want to do.
 - [Command Aliases](aliases.md) - Create shortcuts for frequently-used commands
 - [Chunked Output Guide](chunked-output.md) - Multi-file output
 - [Automation Guide](automation.md) - GitHub Actions & hooks
+- [MCP Server](mcp.md) - Expose xray analysis to MCP clients over stdio
 
 ### Problem-Solving
 - [Troubleshooting Guide](troubleshooting.md) - Common issues

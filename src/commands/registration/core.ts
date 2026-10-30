@@ -3,13 +3,32 @@ import { Command } from 'commander';
 import { addCommonOptions } from '../common';
 import { handleGenerateAction } from '../generate';
 import { handleClearCacheAction } from '../clear-cache';
-import { handleCompletionAction } from '../completion';
-import { runQueryCommand } from '../query';
+import { bindFlag, registerCompletionCommand, staticValues } from '../completion';
+import { addQueryOutputFlags, runQueryCommand } from '../query';
 import { handleDescribeAction } from '../describe';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
 import { registerPathsCommand } from '../paths';
 import { registerLangCommand } from '../lang';
+import { registerMcpCommand } from '../mcp';
+import { setCommandGroup, type HelpGroupId } from '../kit-cli';
+
+// Root help group per top-level command name; unlisted/hidden commands
+// fall into kit's default section.
+const CORE_GROUPS: Record<string, HelpGroupId> = {
+  map: 'analyze',
+  scan: 'analyze',
+  graph: 'analyze',
+  query: 'analyze',
+  strategy: 'strategy',
+  alias: 'management',
+  lang: 'management',
+  cache: 'management',
+  paths: 'management',
+  describe: 'management',
+  mcp: 'management',
+  completion: 'management',
+};
 
 /**
  * Register all static core commands
@@ -35,12 +54,13 @@ export function registerCoreCommands(program: Command): void {
     .action(handleGenerateAction);
 
   // Query command - call graph queries
-  program
-    .command('query')
-    .description('Query call graph using function-based syntax')
-    .argument('[query]', 'Query string (e.g., "calls(main)", "callers(processData)")')
-    .option('--graph <file>', 'Path to saved graph JSON file')
-    .option('--format <format>', 'Output format: json, table, tree (default: table)', 'table')
+  addQueryOutputFlags(
+    program
+      .command('query')
+      .description('Query call graph using function-based syntax')
+      .argument('[query]', 'Query string (e.g., "calls(main)", "callers(processData)")')
+      .option('--graph <file>', 'Path to saved graph JSON file')
+  )
     .option('--list-adapters', 'List available query adapters')
     .action(runQueryCommand);
 
@@ -77,15 +97,21 @@ export function registerCoreCommands(program: Command): void {
   // Walks the constructed commander tree and emits a JSON document
   // documenting every command's args, options, side-effect class,
   // idempotency, and exit codes.
-  program
+  const describe = program
     .command('describe')
     .description('Emit machine-readable capability surface (12fc Factor 1)')
     .option('--format <fmt>', 'Output format (json)', 'json')
     .action(handleDescribeAction);
+  bindFlag(describe, 'format', staticValues('json'));
 
-  program
-    .command('completion')
-    .description('Generate shell completion script')
-    .argument('<shell>', 'Shell type: bash, zsh, or fish')
-    .action(handleCompletionAction);
+  // Read-only analysis commands as MCP tools over stdio.
+  registerMcpCommand(program);
+
+  // `completion bash|zsh|fish|powershell` (kit, cobra protocol).
+  registerCompletionCommand(program);
+
+  for (const cmd of program.commands) {
+    const group = CORE_GROUPS[cmd.name()];
+    if (group) setCommandGroup(cmd, group);
+  }
 }

@@ -33,6 +33,37 @@ describe('StrategyLoader', () => {
     expect(paths[0]).toBe(customPath);
   });
 
+  describe('projectCode: false', () => {
+    const cwdPaths = () => [
+      path.join(process.cwd(), '.xray/strategies'),
+      path.join(process.cwd(), 'node_modules'),
+    ];
+
+    it('includes cwd strategy dirs by default', () => {
+      expect(loader.getStrategyPaths()).toEqual(expect.arrayContaining(cwdPaths()));
+    });
+
+    it('excludes cwd strategy dirs and cwd-relative env entries', () => {
+      process.env.XRAY_STRATEGIES_PATH = '/abs/strategies:rel/strategies';
+      process.env.XDG_DATA_HOME = 'rel-data';
+      const paths = new StrategyLoader({ projectCode: false }).getStrategyPaths();
+
+      for (const p of cwdPaths()) expect(paths).not.toContain(p);
+      expect(paths).toContain('/abs/strategies');
+      expect(paths).not.toContain('rel/strategies');
+      expect(paths).not.toContain(path.join('rel-data', 'xray/strategies'));
+      expect(paths.every(p => path.isAbsolute(p))).toBe(true);
+    });
+
+    it('keeps absolute XDG_DATA_HOME and built-in strategies', async () => {
+      process.env.XDG_DATA_HOME = '/abs/data';
+      const safe = new StrategyLoader({ projectCode: false });
+      expect(safe.getStrategyPaths()).toContain(path.join('/abs/data', 'xray/strategies'));
+      const names = (await safe.discoverStrategies()).map(s => s.name);
+      expect(names).toEqual(expect.arrayContaining(['react', 'express', 'rest-api']));
+    });
+  });
+
   it('should load YAML strategy', async () => {
     const strategyPath = path.join(__dirname, 'fixtures/strategies/simple.yml');
     const strategy = await loader.loadStrategy(strategyPath);

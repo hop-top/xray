@@ -1,83 +1,92 @@
 /**
- * Verifies the root program exposes the standard global flags
- * (`--config`, `--no-telemetry`, `--quiet`, `--no-color`, `-C/--chdir`)
- * plus the existing `-v/--verbose` as persistent options that
- * subcommands inherit.
+ * Root program global flags: kit contract (`-v/--version`, `-V/--verbose`,
+ * `--quiet`, `--no-color`, help groups) plus xray's own globals
+ * (`--log-level`, `--config`, `--no-telemetry`, `-C/--chdir`).
  *
- * Uses the extracted `configureRootProgram` helper so the test stays
- * at the commander layer and does not load tree-sitter or any
- * subcommand registrations.
+ * Uses `createRootProgram` so the test stays at the commander layer and
+ * does not load tree-sitter or any subcommand registrations.
  */
-import { Command } from 'commander';
-import { configureRootProgram } from '../../src/commands/root-options';
+import type { Command } from 'commander';
+import { createRootProgram } from '../../src/commands/root-options';
+import { colorForcedOff, disableColor, getTheme } from '../../src/lib/tui';
 
 function buildRoot(): Command {
-  return configureRootProgram(new Command(), '0.0.0-test');
+  return createRootProgram('0.0.0-test').program;
 }
 
 describe('root program global flags', () => {
-  const collect = () => {
-    const program = buildRoot();
-    return program.options.map((opt) => ({
+  const collect = () =>
+    buildRoot().options.map((opt) => ({
       long: (opt as { long?: string }).long,
       short: (opt as { short?: string }).short,
       attr: opt.attributeName(),
     }));
-  };
 
-  it('declares -v/--verbose on root', () => {
-    expect(collect()).toContainEqual(
-      expect.objectContaining({ long: '--verbose', short: '-v' })
-    );
+  it.each([
+    ['--version', '-v', 'version'],
+    ['--verbose', '-V', 'verbose'],
+    ['--log-level', undefined, 'logLevel'],
+    ['--config', undefined, 'config'],
+    ['--no-telemetry', undefined, 'telemetry'],
+    ['--quiet', undefined, 'quiet'],
+    ['--no-color', undefined, 'color'],
+    ['--chdir', '-C', 'chdir'],
+  ])('declares %s on root', (long, short, attr) => {
+    const match: Record<string, unknown> = { long, attr };
+    if (short) match.short = short;
+    expect(collect()).toContainEqual(expect.objectContaining(match));
   });
 
-  it('declares --config on root', () => {
-    expect(collect()).toContainEqual(
-      expect.objectContaining({ long: '--config', attr: 'config' })
-    );
+  it('leaves --format / -o to subcommands', () => {
+    const longs = collect().map((o) => o.long);
+    expect(longs).not.toContain('--format');
+    expect(longs).not.toContain('--output');
   });
 
-  it('declares --no-telemetry on root', () => {
-    expect(collect()).toContainEqual(
-      expect.objectContaining({
-        long: '--no-telemetry',
-        attr: 'telemetry',
-      })
-    );
+  it('exposes a theme', () => {
+    const { theme } = createRootProgram('0.0.0-test');
+    expect(theme.accent).toMatch(/^#[0-9A-Fa-f]{6}$/);
   });
 
-  it('declares --quiet on root', () => {
-    expect(collect()).toContainEqual(
-      expect.objectContaining({ long: '--quiet', attr: 'quiet' })
-    );
+  it('installs its theme as the shared TUI theme', () => {
+    const { theme } = createRootProgram('0.0.0-test');
+    expect(getTheme()).toBe(theme);
   });
 
-  it('declares --no-color on root', () => {
-    expect(collect()).toContainEqual(
-      expect.objectContaining({
-        long: '--no-color',
-        attr: 'color',
-      })
-    );
-  });
-
-  it('declares -C/--chdir on root', () => {
-    expect(collect()).toContainEqual(
-      expect.objectContaining({
-        long: '--chdir',
-        short: '-C',
-        attr: 'chdir',
-      })
-    );
-  });
-
-  it('renders all five new globals in --help', () => {
+  it('renders the globals and help groups in --help', () => {
     const program = buildRoot();
     const help = program.helpInformation();
-    expect(help).toContain('--config');
-    expect(help).toContain('--no-telemetry');
-    expect(help).toContain('--quiet');
-    expect(help).toContain('--no-color');
-    expect(help).toContain('--chdir');
+    for (const s of ['--log-level', '--config', '--no-telemetry', '--quiet', '--no-color', '--chdir', '--verbose', '--version']) {
+      expect(help).toContain(s);
+    }
+  });
+});
+
+describe('root --no-color', () => {
+  afterEach(() => {
+    disableColor(false);
+  });
+
+  function parse(args: string[]): { color: unknown } {
+    const program = buildRoot();
+    program.exitOverride();
+    let seen: { color: unknown } = { color: undefined };
+    program.command('noop').action((opts) => {
+      seen = opts;
+    });
+    program.parse(args, { from: 'user' });
+    return seen;
+  }
+
+  it('keeps color on when the flag is absent (TTY-like run)', () => {
+    const opts = parse(['noop']);
+    expect(colorForcedOff()).toBe(false);
+    expect(opts.color).toBe(true);
+  });
+
+  it('turns color off when --no-color is passed', () => {
+    const opts = parse(['--no-color', 'noop']);
+    expect(colorForcedOff()).toBe(true);
+    expect(opts.color).toBe(false);
   });
 });

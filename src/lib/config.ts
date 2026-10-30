@@ -9,6 +9,11 @@ import {
 } from '../types/xray-config';
 import { FileReadError, FileWriteError } from './error/types';
 
+// require(): tsconfig moduleResolution 'node' ignores the kit exports map.
+const { configDir: xdgConfigDir } = require('@hop-top/kit/xdg') as {
+  configDir: (tool: string) => string;
+};
+
 let configPathLogged = false;
 
 const CONFIG_FILENAMES = [
@@ -81,19 +86,36 @@ export function findConfigPath(startDir?: string): string | null {
 }
 
 /**
- * Find global config file in user's home directory
- * Follows XDG Base Directory specification
+ * Directories searched for a global `config.json` / `config.js`, highest
+ * priority first: the kit XDG config dir, then the legacy
+ * `$XDG_CONFIG_HOME|~/.config/xray` location (differs from the kit dir on
+ * macOS/Windows when XDG_CONFIG_HOME is unset), so pre-existing user config
+ * keeps resolving.
+ */
+export function globalConfigDirs(): string[] {
+  const legacy = path.join(
+    process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'),
+    'xray'
+  );
+  const kit = xdgConfigDir('xray');
+  return kit === legacy ? [kit] : [kit, legacy];
+}
+
+/**
+ * Find global config file.
+ * Order: <kit config dir>/config.{json,js}, legacy ~/.config/xray/config.{json,js},
+ * then ~/.xrayrc.json, ~/.xrayrc.
  * Returns the absolute path to the global config, or null if not found
  */
 export function findGlobalConfigPath(): string | null {
   const homeDir = os.homedir();
-  const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config');
 
-  // Check XDG config directory first
-  for (const filename of ['config.json', 'config.js']) {
-    const filepath = path.join(xdgConfigHome, 'xray', filename);
-    if (fs.existsSync(filepath)) {
-      return filepath;
+  for (const dir of globalConfigDirs()) {
+    for (const filename of ['config.json', 'config.js']) {
+      const filepath = path.join(dir, filename);
+      if (fs.existsSync(filepath)) {
+        return filepath;
+      }
     }
   }
 
@@ -210,7 +232,13 @@ function mergeConfigs(global: XrayConfig | null, project: XrayConfig | null): Xr
  * Load configuration from the project directory
  * Supports directory tree walking and global config merging
  */
-export function loadConfig(configPath?: string, searchPath?: string): XrayConfig | null {
+export function loadConfig(
+  configPath?: string,
+  searchPath?: string,
+  options: { projectCode?: boolean } = {}
+): XrayConfig | null {
+  const projectCode = options.projectCode ?? true;
+
   // If explicit path provided, use it (no merging)
   if (configPath) {
     const absPath = path.isAbsolute(configPath) ? configPath : path.resolve(process.cwd(), configPath);
@@ -227,7 +255,12 @@ export function loadConfig(configPath?: string, searchPath?: string): XrayConfig
   const globalConfig = globalConfigPath ? loadConfigFile(globalConfigPath) : null;
 
   // Find project config by walking up directory tree
-  const projectConfigPath = findConfigPath(searchPath);
+  let projectConfigPath = findConfigPath(searchPath);
+  if (projectConfigPath && !projectCode && path.extname(projectConfigPath) === '.js') {
+    // JS config is code; without project code only data configs load.
+    Logger.debug(`Skipping JS project config: ${projectConfigPath}`);
+    projectConfigPath = null;
+  }
   const projectConfig = projectConfigPath ? loadConfigFile(projectConfigPath) : null;
 
   if (projectConfigPath && !searchPath && !configPathLogged) {
@@ -312,6 +345,17 @@ export function mergeScopeWithBase(baseConfig: XrayConfig, scopeConfig: XrayScop
     json: scopeConfig.json !== undefined ? scopeConfig.json : baseConfig.json,
     chunked: scopeConfig.chunked !== undefined ? scopeConfig.chunked : (baseConfig.chunked !== undefined ? baseConfig.chunked : true),
   };
+}
+
+/**
+ * Whether `filepath` holds plain JSON config that `saveConfig` can
+ * rewrite: not JS (code) and not package.json (a manifest).
+ */
+export function isWritableConfigFile(filepath: string): boolean {
+  const base = path.basename(filepath);
+  if (base === 'package.json') return false;
+  const ext = path.extname(base);
+  return ext === '.json' || base === '.xrayrc';
 }
 
 /**

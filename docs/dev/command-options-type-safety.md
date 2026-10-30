@@ -137,8 +137,8 @@ export interface CommonAnalysisOptions {
 
 ```typescript
 export interface QueryCommandOptions {
-  /** Output format: json, table, tree (default: table) */
-  format?: 'json' | 'table' | 'tree';  // ✅ Only valid values allowed
+  /** Output format: table (default), json, yaml, csv, tree */
+  format?: string;  // validated against the command's formatter registry (exit 2)
 }
 ```
 

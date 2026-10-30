@@ -147,7 +147,7 @@ console.log(chalk.cyan(`  ${strategy.name}`));  // Always prints
 ```
 
 **Impact:**
-- User sets `--verbose=silent` but still sees output
+- User sets `--log-level silent` but still sees output
 - Can't suppress verbose command output
 - Breaks CI/CD scripts expecting quiet mode
 

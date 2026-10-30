@@ -15,26 +15,54 @@ import { isGrammarAvailable } from '../parser/grammars';
 
 const warnedStrategies = new Set<string>();
 
+/**
+ * Whether code living in the current project may be loaded.
+ *
+ * `projectCode: false` is for implicit invocations such as shell
+ * completion, which runs on every tab in whatever directory the shell is
+ * in (e.g. a freshly cloned, untrusted repo). Only code shipped with xray
+ * or installed in the user's own directories loads; nothing resolved from
+ * the working directory does.
+ */
+export interface CodeLoadingOptions {
+  /** Load strategies/config code from the working directory. Default true. */
+  projectCode?: boolean;
+}
+
 export class StrategyLoader {
+  private readonly projectCode: boolean;
+
+  constructor(options: CodeLoadingOptions = {}) {
+    this.projectCode = options.projectCode ?? true;
+  }
+
   getStrategyPaths(): string[] {
     const paths: string[] = [];
+    // Without project code, a relative entry would resolve against cwd.
+    const usable = (p: string) => p !== '' && (this.projectCode || path.isAbsolute(p));
 
     // 1. XRAY_STRATEGIES_PATH (highest priority)
     if (process.env.XRAY_STRATEGIES_PATH) {
       const customPaths = process.env.XRAY_STRATEGIES_PATH.split(':');
-      paths.push(...customPaths);
+      paths.push(...customPaths.filter(usable));
     }
 
     // 2. Local project strategies
-    paths.push(path.join(process.cwd(), '.xray/strategies'));
+    if (this.projectCode) {
+      paths.push(path.join(process.cwd(), '.xray/strategies'));
+    }
 
     // 3. XDG_DATA_HOME or platform default
-    const xdgDataHome = process.env.XDG_DATA_HOME ||
-                        this.getDefaultDataHome();
+    const envDataHome = process.env.XDG_DATA_HOME;
+    const xdgDataHome = envDataHome && usable(envDataHome)
+      ? envDataHome
+      : this.getDefaultDataHome();
     paths.push(path.join(xdgDataHome, 'xray/strategies'));
 
     // 4. NPM packages (will scan node_modules)
-    paths.push(path.join(process.cwd(), 'node_modules'));
+    if (this.projectCode) {
+      paths.push(path.join(process.cwd(), 'node_modules'));
+    }
 
     // 5. Built-in strategies
     // When running from bin/strategy/loader.js, __dirname is bin/strategy/

@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--log-level <level>` (`silent|error|warn|info|debug`, case-insensitive)
+  sets an explicit log level; beats `-V`, loses to `--quiet`. Bad value
+  exits 2.
+- `--format table|json|yaml|csv`, `--cols`, `-o`, `--template`,
+  `--format-help` on `query`, `explore`, `paths`, `alias list`,
+  `strategy list` and strategy commands. JSON output is byte-identical to
+  before.
+- `xray paths` reports `config-dir`, `data-dir`, `cache-dir`, `state-dir`
+  (text) / `configDir`, `dataDir`, `cacheDir`, `stateDir` (JSON).
+- `xray completion powershell` and `--no-descriptions`.
+- `xray mcp`: stdio MCP server exposing read-only analysis (`map`,
+  `scan`, `graph`, `explore`, `query`, `strategy_list`,
+  `strategy_detect`, `<strategy>_<noun>`) as tools. Calls are confined
+  to the server root (start dir or `-C`); see `docs/user/mcp.md`.
+- Help shows an ARGUMENTS section for described arguments; `help <cmd>`
+  prints that command's help; root help groups commands into ANALYZE,
+  STRATEGY and MANAGEMENT.
+
 - `--lens <name>` CLI flag and `lenses:` config-file key. A lens is a
   named set of CLI option defaults you can recall with one flag —
   "view the same repo through this angle" (e.g. `quick`, `detailed`,
@@ -29,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+
+- Alias names that are empty or whitespace-only are now rejected.
+- Colour honours `--no-color` > `NO_COLOR` > `FORCE_COLOR` > TTY; the
+  progress bar is suppressed under `--quiet` and when stderr is not a TTY.
 
 - Go calls written `pkg.Func()` now resolve to `calls` edges when `pkg` is an
   import (alias honoured) of a package inside the module declared by
@@ -51,11 +73,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `xray query --graph graph.json`.
 - `xray map --json` (chunked and `--no-chunk`) wrote text into `.json`
   files; it now writes one valid JSON graph document.
-- Bare `-v` before the subcommand (`xray -v map`) swallowed the
-  subcommand name and reset verbosity; all `-v` / `--verbose` forms now
-  resolve identically.
+- Root `--config` now applies to map/scan/graph/lang instead of being
+  overridden by config discovery from `--path`; aliases, telemetry
+  consent, `alias list|set|remove` and `paths` read (and `alias set` /
+  consent write) that file too. A relative value resolves against `-C`.
+- Retry backoff skipped the wait before the first retry (delays ran
+  0, base, 2×base instead of base, 2×base, 4×base); retries now back off
+  from the first one.
 
 ### Changed
+
+- `--offline` now also skips the upgrade check on every command.
+- **BREAKING:** Node.js >= 22.12 required (`engines.node`); the CLI is
+  built on `@hop-top/kit` and commander 15 (ESM-only). Upgrade Node
+  before upgrading xray.
+- **BREAKING:** `-v` now prints the version instead of raising
+  verbosity. Verbosity is `-V` / `--verbose` (stackable, takes no value;
+  any count = debug). `--verbose=debug` now exits 2; `-v debug` prints
+  the version.
+  Migrate: `xray -v map` -> `xray -V map`; `--verbose debug` ->
+  `--log-level debug`.
+- **BREAKING:** `--version` / `-v` prints `xray vX.Y.Z` (was `X.Y.Z`).
+  Scripts parsing the version must strip the `xray v` prefix.
+- **BREAKING:** shell completion is dynamic: generated scripts call back
+  into `xray __complete` on each tab, so strategy commands, aliases and
+  flag values stay current without regenerating. Bash needs
+  bash-completion v2. Migrate: regenerate every saved completion script
+  once (e.g. `xray completion fish > ~/.config/fish/completions/xray.fish`;
+  re-source the `eval "$(xray completion bash|zsh)"` line).
+- **BREAKING:** help layout follows the kit contract: `FLAGS` instead of
+  `Options:`, grouped command sections, `[--flags]` / `[command]` terms.
+  `help <unknown>` and `completion <unknown-shell>` exit 2 (usage error).
+  Usage errors append the command's help on stderr; exit codes unchanged.
+- `query --format table` renders a kit table (name/kind/file/line,
+  `--cols` selectable); the `Results (N)` banner and query-time line are
+  gone. Use `--format json` for machine parsing.
+- Global config dir resolves via the platform default when
+  `XDG_CONFIG_HOME` is unset (`~/Library/Preferences/xray` on macOS,
+  `%APPDATA%\xray` on Windows); the legacy `~/.config/xray` is still read
+  as a fallback. Project `.xrayrc` discovery and layering are unchanged.
+- SQLite cache (`.xray_cache.db`) is stored in a new schema; caches from
+  older versions are dropped and rebuilt on the next run.
+- Aliases are visible commands with their own `--help`
+  (`Alias for: <target>`); output unchanged.
+- Logging and terminal styling run on `@hop-top/kit` (log, tui);
+  output text and stdout/stderr routing unchanged.
+- Unescaped negative numbers (e.g. `-1`) are parsed as arguments rather
+  than rejected as unknown options.
 
 - **BREAKING:** renamed two CLI flags in a single release to resolve a
   naming collision with no backward compatibility:
@@ -66,6 +130,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `BUILTIN_PRESETS` catalog, and the `preset:applied` telemetry
     event. Runtime behaviour unchanged.
   Combined example: `xray map --lens quick --preset insights`.
+
+### Removed
+
+- Dependencies `chalk`, `cli-progress`, `better-sqlite3` (now provided
+  through `@hop-top/kit`), unused `@opentelemetry/*` packages, and
+  `@types/better-sqlite3`, `@types/cli-progress`, `@types/glob`.
+
+### Security
+
+- Tab completion never executes project-local code: strategies from the
+  current directory (`.xray/strategies`, `node_modules`) and JS project
+  config (`.xrayrc.js`, `xray.config.js`) are not loaded during
+  completion. Data configs (`.xrayrc`, `.xrayrc.json`, `package.json`)
+  are still read.
 
 ## [0.1.0] - 2025-02-13
 

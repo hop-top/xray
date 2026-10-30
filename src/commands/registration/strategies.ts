@@ -1,6 +1,6 @@
 // src/commands/registration/strategies.ts
 import { Command } from 'commander';
-import { StrategyLoader } from '../../lib/strategy/loader';
+import { CodeLoadingOptions, StrategyLoader } from '../../lib/strategy/loader';
 import { StrategyContextImpl } from '../../lib/strategy/context';
 import {
   Extension,
@@ -18,27 +18,40 @@ import {
   normalizeExtensionOptions,
 } from '../common';
 import { UsageError } from '../../lib/error/types';
+import { setCommandGroup } from '../kit-cli';
+import {
+  OUTPUT_FLAG_NAMES, addOutputFlags, assertFormat, emit, outputRegistry, textFormatter,
+  unionColumns,
+} from '../../lib/output';
 
 /**
  * Register dynamic strategy commands
  * Discovers all available strategies and registers their commands
  */
-export async function registerStrategyCommands(program: Command): Promise<void> {
-  return registerExtensionCommands(program);
+export async function registerStrategyCommands(
+  program: Command,
+  options: CodeLoadingOptions = {}
+): Promise<void> {
+  return registerExtensionCommands(program, options);
 }
 
 export async function registerExtensionCommands(
-  program: Command
+  program: Command,
+  options: CodeLoadingOptions = {}
 ): Promise<void> {
-  const loader = new StrategyLoader();
+  const loader = new StrategyLoader(options);
+  const projectCode = options.projectCode ?? true;
   const cacheManager = new StrategyCacheManager();
 
   try {
-    // Try to use cached strategies first
-    const cached = await cacheManager.getCached();
+    // Try to use cached strategies first. The cache lives in the project
+    // (.xray/); without project code it is neither read nor written.
+    const cached = projectCode ? await cacheManager.getCached() : null;
     let strategies: Strategy[];
 
-    if (cached) {
+    if (!projectCode) {
+      strategies = await loader.discoverStrategies();
+    } else if (cached) {
       Logger.debug('Found valid strategy cache metadata');
       strategies = await loader.discoverStrategies();
 
@@ -105,6 +118,7 @@ function registerStrategyCommand(
   const strategyCmd = program
     .command(extension.name)
     .description(`${extension.name} commands`);
+  setCommandGroup(strategyCmd, 'strategy');
 
   for (const [cmdName, cmdDef] of Object.entries(
     extension.commands as Record<string, StrategyCommand>
@@ -138,21 +152,83 @@ function registerStrategyCommand(
       }
     }
 
+    // Commands that declare their own output flag (e.g. `--format`) keep
+    // their semantics; every other command gets the kit output suite.
+    const registry = ownsOutputFlag(cmdDef)
+      ? undefined
+      : outputRegistry(strategyTextFormatter(extension.name, cmdName), DOT_FORMATTER);
+    if (registry) {
+      addOutputFlags(cmd, registry, {
+        defaultFormat: 'text',
+        description: 'Output format: text, json, yaml, table, csv; dot for graph commands',
+      });
+    }
+
     // Intentionally NOT allowUnknownOption(): unknown flags must surface
     // as commander parse errors → UsageError (exit 2) so typos like
     // `--extenson-threshold` fail loudly instead of being silently
     // swallowed and bypassing the rest of the validation chain.
-    cmd.action(async (options: StrategyCommandOptions) => {
-      const normalizedOptions = normalizeExtensionOptions(options);
-      await executeStrategyCommand(
+    cmd.action(async (options: StrategyCommandOptions, command: Command) => {
+      if (registry) assertFormat(command, registry);
+      const normalizedOptions = normalizeExtensionOptions(
+        registry ? withoutOutputFlags(options, command) : options
+      );
+      const result = await executeStrategyCommand(
         extension,
         cmdName,
         cmdDef,
         normalizedOptions
       );
+      if (registry) {
+        await emit(command, result ?? null, {
+          registry,
+          columns: unionColumns(result),
+          defaultFormat: 'text',
+        });
+      } else {
+        writeStrategyResult(extension.name, cmdName, result, process.stdout);
+      }
     });
   }
 }
+
+/** Option keys the kit output suite adds to a command. */
+const OUTPUT_OPTION_KEYS = new Set([
+  'format', 'formatOpt', 'formatHelp', 'cols', 'columns', 'template', 'output',
+]);
+
+/** Whether a strategy command declares an option the kit suite would add. */
+function ownsOutputFlag(cmdDef: StrategyCommand): boolean {
+  return Object.entries(cmdDef.options ?? {}).some(([name, def]) =>
+    (OUTPUT_FLAG_NAMES as readonly string[]).includes(name) ||
+    (typeof def === 'object' && def.alias === 'o')
+  );
+}
+
+/**
+ * Strip kit output flags so handlers see only their own options. An
+ * explicit `--format` stays visible: graph handlers pre-render `dot`.
+ */
+function withoutOutputFlags(options: StrategyCommandOptions, cmd: Command): StrategyCommandOptions {
+  const explicitFormat = cmd.getOptionValueSource('format') === 'cli';
+  return Object.fromEntries(
+    Object.entries(options).filter(
+      ([k]) => !OUTPUT_OPTION_KEYS.has(k) || (k === 'format' && explicitFormat)
+    )
+  ) as StrategyCommandOptions;
+}
+
+/**
+ * `dot`: graph handlers asked for `--format dot` return a pre-rendered
+ * `{ format: 'dot', content }` document; anything else cannot be drawn.
+ */
+const DOT_FORMATTER = textFormatter<unknown>('dot', (result, put) => {
+  const doc = result as { format?: unknown; content?: unknown } | null;
+  if (!doc || doc.format !== 'dot' || typeof doc.content !== 'string') {
+    throw new Error('format "dot" is only supported by graph commands');
+  }
+  put(doc.content);
+});
 
 /**
  * Execute an extension command
@@ -162,7 +238,7 @@ async function executeStrategyCommand(
   cmdName: string,
   cmdDef: StrategyCommand,
   options: StrategyCommandOptions
-): Promise<void> {
+): Promise<unknown> {
   const projectPath = options.path || process.cwd();
   const detectionSource =
     'strategy' in extension && extension.strategy
@@ -186,11 +262,9 @@ async function executeStrategyCommand(
 
     await analyzeProjectFiles(extension, context);
 
-    const result = await cmdDef.handler(context, options);
-
-    displayStrategyResult(extension.name, cmdName, result);
+    return await cmdDef.handler(context, options);
   } catch (error: any) {
-    handleStrategyCommandError(error, extension.name, cmdName, projectPath);
+    return await handleStrategyCommandError(error, extension.name, cmdName, projectPath);
   }
 }
 
@@ -362,40 +436,57 @@ async function handleStrategyCommandError(
 }
 
 /**
- * Format and display strategy command results
+ * Human (`text`) view of a strategy command result: titled list for arrays,
+ * pretty JSON for objects, raw value otherwise.
  */
-function displayStrategyResult(strategyName: string, cmdName: string, result: any): void {
+function strategyTextFormatter(strategyName: string, cmdName: string) {
+  return textFormatter<unknown>('text', (result, put) => {
+    renderStrategyResult(strategyName, cmdName, result, put);
+  });
+}
+
+function writeStrategyResult(
+  strategyName: string, cmdName: string, result: unknown, out: NodeJS.WritableStream
+): void {
+  renderStrategyResult(strategyName, cmdName, result, (line = '') => {
+    out.write(line + '\n');
+  });
+}
+
+function renderStrategyResult(
+  strategyName: string, cmdName: string, result: any, put: (line?: string) => void
+): void {
   const title = formatTitle(strategyName, cmdName);
 
   if (Array.isArray(result)) {
-    Logger.output(`\n${title}:\n`);
+    put(`\n${title}:\n`);
 
     if (result.length === 0) {
-      Logger.output('  (none found)');
+      put('  (none found)');
     } else {
       result.forEach((item: any) => {
         if (typeof item === 'object') {
           const name = item.name || item.title || item.id || JSON.stringify(item);
-          Logger.output(`  ${name}`);
+          put(`  ${name}`);
 
           if (item.file) {
-            Logger.output(`    → ${item.file}${item.line ? `:${item.line}` : ''}`);
+            put(`    → ${item.file}${item.line ? `:${item.line}` : ''}`);
           }
 
           if (item.description) {
-            Logger.output(`    ${item.description}`);
+            put(`    ${item.description}`);
           }
         } else {
-          Logger.output(`  ${item}`);
+          put(`  ${item}`);
         }
       });
     }
 
-    Logger.output(`\nTotal: ${result.length}\n`);
+    put(`\nTotal: ${result.length}\n`);
   } else if (typeof result === 'object' && result !== null) {
-    Logger.output(JSON.stringify(result, null, 2));
+    put(JSON.stringify(result, null, 2));
   } else if (result !== undefined && result !== null) {
-    Logger.output(result);
+    put(String(result));
   }
 }
 

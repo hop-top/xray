@@ -1,23 +1,33 @@
 /**
- * Standard global flags for the xray root program.
+ * Root program for xray, built on the hop-top kit CLI contract.
  *
- * Declared once on the root `Command` so every subcommand inherits the
- * same surface. The preAction hook propagates root values onto the
- * active subcommand's opts so existing handlers that read
+ * Kit (`createCLI`) owns: `-v/--version`, `-h/--help`, `--quiet`,
+ * `--no-color`, `--no-hints`, `--offline`, `-V/--verbose` (stackable
+ * count), help layout + ANALYZE/STRATEGY/MANAGEMENT groups. Kit's root
+ * output-flag suite (`--format`, `-o`, ...) is disabled so leaf commands
+ * keep their own `--format` / `-o`.
+ *
+ * xray adds: `--log-level <level>`, `--config`, `--no-telemetry`,
+ * `-C/--chdir`. The preAction hook applies them and propagates root
+ * values onto the active subcommand's opts so handlers that read
  * `options.config`, `options.telemetry`, etc. keep working without
  * walking the parent chain.
  *
- * Extracted from `index.ts` so the option wiring can be exercised in
- * isolation (no parser / native-module imports).
+ * Verbosity precedence: `--quiet` (error) > `--log-level <level>` >
+ * `-V` count (0 = info, >=1 = debug).
+ *
+ * Kept free of parser / native-module imports so the wiring can be
+ * exercised in isolation.
  */
-import chalk from 'chalk';
-import type { Command } from 'commander';
+import * as path from 'path';
+import { Command } from 'commander';
 import { Logger } from '../lib/logger';
 import { UsageError } from '../lib/error/types';
+import { disableColor, setTheme } from '../lib/tui';
+import { createCLI, HELP_GROUPS, type CLIResult } from './kit-cli';
 
 // Root flag attribute keys forwarded onto the invoked subcommand's opts.
-// `color` covers `--no-color` (commander stores the boolean under
-// `color`). `telemetry` covers `--no-telemetry` the same way.
+// `color` covers `--no-color`, `telemetry` covers `--no-telemetry`.
 const ROOT_OPTION_KEYS = [
   'config',
   'telemetry',
@@ -26,64 +36,120 @@ const ROOT_OPTION_KEYS = [
   'chdir',
 ] as const;
 
-const VERBOSITY_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'];
+export const VERBOSITY_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'] as const;
 
-/**
- * Rewrite `-v` / `--verbose` so commander cannot mis-consume the next token.
- *
- * `-v, --verbose [level]` takes an OPTIONAL value, and commander binds the
- * next non-dash token to it. In `xray -v map .` that token is the subcommand
- * name, which becomes the "level" (silently falling back to info) while
- * routing falls through to the default command. A bare flag (next token not
- * a known level) is therefore pinned to `--verbose=debug`, which commander
- * accepts without looking ahead. Explicit levels (`-v debug`,
- * `--verbose=warn`) are left untouched. Stops at `--`. Pure: returns a copy.
- */
-export function normalizeVerboseArgv(argv: string[]): string[] {
-  const out = argv.slice(0, 2);
-  const rest = argv.slice(2);
-  const end = rest.indexOf('--');
-  const head = end === -1 ? rest : rest.slice(0, end);
-  const tail = end === -1 ? [] : rest.slice(end);
-  for (let i = 0; i < head.length; i++) {
-    const a = head[i];
-    if (a === '-v' || a === '--verbose') {
-      const next = head[i + 1];
-      if (next !== undefined && VERBOSITY_LEVELS.includes(next.toLowerCase())) {
-        out.push('--verbose=' + next.toLowerCase());
-        i++;
-      } else {
-        out.push('--verbose=debug');
-      }
-    } else {
-      out.push(a);
-    }
-  }
-  return out.concat(tail);
+/** Map a `-V` count onto xray's level ladder (0 = info, >=1 = debug). */
+export function levelForVerboseCount(count: number): string {
+  return count > 0 ? 'debug' : 'info';
 }
 
-export function configureRootProgram(program: Command, version: string): Command {
+/**
+ * Whether `--no-color` was passed on the command line.
+ *
+ * Kit registers `--no-color` with an explicit `false` default, so
+ * `opts().color` is `false` even when the flag is absent. The option
+ * value source distinguishes an explicit flag from that default.
+ */
+export function colorDisabledByFlag(program: Command): boolean {
+  return program.getOptionValueSource('color') === 'cli';
+}
+
+/**
+ * Resolve the effective log level from parsed root opts, or `undefined`
+ * when nothing was requested (keep the current level).
+ */
+export function resolveLogLevel(rootOpts: Record<string, unknown>): string | undefined {
+  if (rootOpts.quiet) return 'error';
+  const explicit = rootOpts.logLevel;
+  if (typeof explicit === 'string' && explicit.length > 0) {
+    const lvl = explicit.toLowerCase();
+    if (!(VERBOSITY_LEVELS as readonly string[]).includes(lvl)) {
+      throw new UsageError(
+        `invalid --log-level '${explicit}' (expected one of: ${VERBOSITY_LEVELS.join(', ')})`
+      );
+    }
+    return lvl;
+  }
+  const count = typeof rootOpts.verbose === 'number' ? rootOpts.verbose : 0;
+  return count > 0 ? levelForVerboseCount(count) : undefined;
+}
+
+/**
+ * Root `--config` from argv (process.argv shape), as an absolute path,
+ * for config loads that run before commander parses (alias
+ * registration, telemetry consent). Relative values resolve against
+ * `-C/--chdir` (itself relative to `cwd`), matching where the parsed
+ * value resolves once the preAction hook has changed directory. Last
+ * occurrence wins; scanning stops at `--`.
+ */
+export function rootConfigFromArgv(argv: readonly string[], cwd: string = process.cwd()): string | undefined {
+  let config: string | undefined;
+  let chdir: string | undefined;
+  for (let i = 2; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--') break;
+    if (a.startsWith('--config=')) config = a.slice('--config='.length);
+    else if (a === '--config' && i + 1 < argv.length) config = argv[++i];
+    else if (a.startsWith('--chdir=')) chdir = a.slice('--chdir='.length);
+    else if ((a === '-C' || a === '--chdir') && i + 1 < argv.length) chdir = argv[++i];
+  }
+  if (config === undefined || config === '') return undefined;
+  const base = chdir ? path.resolve(cwd, chdir) : cwd;
+  return path.resolve(base, config);
+}
+
+/**
+ * Build the kit root program and attach xray's root flags + hooks.
+ */
+export function createRootProgram(version: string): CLIResult {
+  const result = createCLI({
+    name: 'xray',
+    version,
+    description: 'X-ray your codebase - Generate AST, CFG, and DFG visualizations',
+    disable: { format: true },
+    groups: HELP_GROUPS.map((g) => ({ ...g })),
+  });
+  setTheme(result.theme);
+  respectTerminalColor(result.program);
+  configureRootProgram(result.program);
+  return result;
+}
+
+/**
+ * Kit styles help and errors whenever NO_COLOR / --no-color are absent,
+ * even when the stream is not a terminal. Gate both on commander's own
+ * color detection (TTY, NO_COLOR, FORCE_COLOR) so piped output stays plain.
+ */
+function respectTerminalColor(program: Command): void {
+  const defaults = new Command().configureOutput();
+  const current = program.configureOutput();
+  const flagOff = () => process.argv.includes('--no-color');
+  const outColors = () => !flagOff() && Boolean(defaults.getOutHasColors?.());
+  const errColors = () => !flagOff() && Boolean(defaults.getErrHasColors?.());
+  const strip = (str: string) => (defaults.stripColor ? defaults.stripColor(str) : str);
+  const kitOutputError = current.outputError;
+  program.configureOutput({
+    getOutHasColors: outColors,
+    getErrHasColors: errColors,
+    outputError: (str, write) => {
+      const sink = (s: string) => write(errColors() ? s : strip(s));
+      if (kitOutputError) kitOutputError(str, sink);
+      else sink(str);
+    },
+  });
+}
+
+export function configureRootProgram(program: Command): Command {
   return program
-    .name('xray')
-    .description(
-      'X-ray your codebase - Generate AST, CFG, and DFG visualizations'
-    )
-    .version(version)
     .option(
-      '-v, --verbose [level]',
-      'Set verbosity level: silent, error, warn, info (default), debug',
-      'info'
+      '--log-level <level>',
+      `Set log level: ${VERBOSITY_LEVELS.join(', ')} (default: info; overrides -V)`
     )
     .option(
       '--config <path>',
       'Path to config file (auto-detect if not specified)'
     )
     .option('--no-telemetry', 'Disable telemetry for this session')
-    .option(
-      '--quiet',
-      'Suppress info and success output (errors still shown)'
-    )
-    .option('--no-color', 'Disable ANSI color output')
     .option(
       '-C, --chdir <path>',
       'Change to <path> before running the command'
@@ -109,42 +175,28 @@ export function configureRootProgram(program: Command, version: string): Command
         }
       }
 
-      // chalk auto-detects color support; --no-color forces it off.
-      if (rootOpts.color === false) {
-        chalk.level = 0;
-      }
+      // TUI styling auto-detects (NO_COLOR, TTY); --no-color forces it off.
+      const colorOff = colorDisabledByFlag(thisCommand);
+      if (colorOff) disableColor();
 
-      // --quiet wins over --verbose for the user-visible streams.
-      if (rootOpts.quiet) {
-        Logger.setLevel('error');
-      } else if (rootOpts.verbose) {
-        // Bare `-v` yields `true`: treat as debug (verbose).
-        Logger.setLevel(rootOpts.verbose === true ? 'debug' : rootOpts.verbose);
-      }
+      const level = resolveLogLevel(rootOpts);
+      if (level !== undefined) Logger.setLevel(level);
 
       // Propagate root globals onto the subcommand's opts so handlers
       // that read `options.config` / `options.telemetry` keep working.
+      const effective: Record<string, unknown> = { ...rootOpts, color: !colorOff };
       const subOpts = actionCommand.opts();
       for (const key of ROOT_OPTION_KEYS) {
         if (
           subOpts[key] === undefined &&
-          rootOpts[key] !== undefined
+          effective[key] !== undefined
         ) {
           actionCommand.setOptionValueWithSource(
             key,
-            rootOpts[key],
+            effective[key],
             'cli'
           );
         }
       }
-    })
-    .addHelpText(
-      'after',
-      `
-Groups:
-  ANALYZE:     map  scan  graph  query  explore
-  STRATEGY:    strategy  build  cicd  config  container  express  infrastructure  markdown  package-manager  react  rest-api
-  MANAGEMENT:  alias  cache  completion  describe  paths
-`
-    );
+    });
 }

@@ -6,7 +6,9 @@ import { handleFirstRunConsent } from './lib/telemetry-consent';
 import { createXrayUpgradeChecker } from './upgrade-checker';
 import { CodedError, UsageError, EXIT_USAGE, EXIT_GENERIC } from './lib/error/types';
 import { Logger } from './lib/logger';
-import { normalizeVerboseArgv } from './commands/root-options';
+import { resolveLogLevel, rootConfigFromArgv } from './commands/root-options';
+import { isCompletionRequest } from './commands/completion';
+import { applyMcpChdir, parseMcpRequest } from './commands/mcp';
 
 /**
  * Reject argv whose first positional looks command-shaped but isn't a
@@ -84,22 +86,29 @@ function editDistance(a: string, b: string): number {
 }
 
 /**
- * Pre-scan (normalized) argv for --verbose=<level> and --quiet so
- * diagnostics emitted before commander parses honour them. Stops at `--`.
+ * Pre-scan argv for --quiet, --log-level and -V/--verbose so diagnostics
+ * emitted before commander parses honour them. Same precedence as the
+ * root preAction hook. Stops at `--`. Invalid levels are left for the
+ * parsed hook to reject.
  */
 function applyEarlyVerbosity(argv: string[]): void {
   const args = argv.slice(2);
   const end = args.indexOf('--');
   const scan = end === -1 ? args : args.slice(0, end);
-  if (scan.includes('--quiet')) {
-    Logger.setLevel('error');
-    return;
+  const opts: Record<string, unknown> = { verbose: 0 };
+  for (let i = 0; i < scan.length; i++) {
+    const a = scan[i];
+    if (a === '--quiet') opts.quiet = true;
+    else if (a === '--verbose') opts.verbose = (opts.verbose as number) + 1;
+    else if (/^-V+$/.test(a)) opts.verbose = (opts.verbose as number) + a.length - 1;
+    else if (a.startsWith('--log-level=')) opts.logLevel = a.slice('--log-level='.length);
+    else if (a === '--log-level' && i + 1 < scan.length) opts.logLevel = scan[++i];
   }
-  for (const a of scan) {
-    if (a.startsWith('--verbose=')) {
-      Logger.setLevel(a.slice('--verbose='.length));
-      return;
-    }
+  try {
+    const level = resolveLogLevel(opts);
+    if (level !== undefined) Logger.setLevel(level);
+  } catch {
+    // reported by the root preAction hook after parse
   }
 }
 
@@ -107,13 +116,31 @@ function applyEarlyVerbosity(argv: string[]): void {
 export async function main() {
   // Apply verbosity first: config loading (consent, registration) emits
   // verbose-only diagnostics, and commander's preAction runs too late.
-  // Bare `-v` is pinned to an explicit level first so commander's optional
-  // [level] cannot swallow the subcommand name; the same argv feeds parse.
-  const argv = normalizeVerboseArgv(process.argv);
+  let argv = process.argv;
   applyEarlyVerbosity(argv);
 
+  // Shell completion (`xray __complete ...`, run on every tab): answered
+  // from the command tree only. No consent write, telemetry or network,
+  // and no code from the working directory: tab in an untrusted checkout
+  // must not run its strategies or JS config.
+  if (isCompletionRequest(argv)) {
+    const program = await registerCommands({ projectCode: false });
+    await program.parseAsync(argv);
+    return;
+  }
+
+  // `xray mcp` owns stdin/stdout for the protocol: no consent prompt
+  // (or consent write), no telemetry, no upgrade check. -C applies now
+  // so strategy discovery sees the served project.
+  const mcpRequest = parseMcpRequest(argv);
+  if (mcpRequest) argv = applyMcpChdir(argv, mcpRequest);
+
+  // Root --config replaces config discovery for every load in the run,
+  // including the ones below that happen before commander parses.
+  const rootConfig = rootConfigFromArgv(argv);
+
   // Handle first-run telemetry consent
-  const telemetryEnabled = await handleFirstRunConsent(process.argv);
+  const telemetryEnabled = mcpRequest ? false : await handleFirstRunConsent(argv, rootConfig);
 
   // Initialize telemetry based on consent
   const telemetry = initializeTelemetry({
@@ -149,21 +176,32 @@ export async function main() {
     });
   }
 
-  // Startup update notification (async, non-blocking)
-  createXrayUpgradeChecker().notifyIfAvailable(process.stderr).catch(() => {});
+  // Startup update notification (async, non-blocking); --offline means
+  // no network access.
+  if (!mcpRequest && !argv.includes('--offline')) {
+    createXrayUpgradeChecker().notifyIfAvailable(process.stderr).catch(() => {});
+  }
 
-  const program = await registerCommands();
+  const program = await registerCommands({}, rootConfig);
 
   // Convert commander parse/usage errors → exit 2 instead of commander's default exit 1.
   // exitOverride must be applied to subcommands too — commander does not
   // propagate it implicitly.
-  const applyExitOverride = (cmd: any) => {
+  // allowExcessArguments keeps pre-commander-13 parsing: surplus positionals
+  // (and unknown options on allowUnknownOption commands such as aliases) are
+  // ignored instead of rejected.
+  // Subtrees built standalone and attached via addCommand() do not inherit
+  // the root's help/output configuration; copy it down so every level
+  // renders with the kit help layout.
+  const applyParseSettings = (cmd: any) => {
+    if (cmd.parent) cmd.copyInheritedSettings(cmd.parent);
     cmd.exitOverride();
+    cmd.allowExcessArguments();
     if (Array.isArray(cmd.commands)) {
-      for (const sub of cmd.commands) applyExitOverride(sub);
+      for (const sub of cmd.commands) applyParseSettings(sub);
     }
   };
-  applyExitOverride(program);
+  applyParseSettings(program);
 
   // Surface "Did you mean?" hints on unknown commands.
   program.showSuggestionAfterError(true);

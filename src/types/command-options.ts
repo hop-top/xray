@@ -143,8 +143,8 @@ export interface QueryCommandOptions extends BaseCommandOptions {
   /** Path to saved graph JSON file */
   graph?: string;
 
-  /** Output format: json, table, tree (default: table) */
-  format?: 'json' | 'table' | 'tree';
+  /** Output format: table (default), json, yaml, csv, tree */
+  format?: string;
 
   /** List available query adapters */
   listAdapters?: boolean;

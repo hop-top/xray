@@ -32,8 +32,13 @@ The search stops at the first config file found or at the filesystem root.
 
 You can create a global configuration that applies to all projects. xray follows the **XDG Base Directory specification** and searches these locations:
 
-1. `$XDG_CONFIG_HOME/xray/config.json` (or `~/.config/xray/config.json` if `XDG_CONFIG_HOME` is not set)
-2. `$XDG_CONFIG_HOME/xray/config.js` (or `~/.config/xray/config.js`)
+1. `<config-dir>/config.json`, then `<config-dir>/config.js`, where
+   `<config-dir>` is `$XDG_CONFIG_HOME/xray` when `XDG_CONFIG_HOME` is set,
+   else the platform default (`~/.config/xray` on Linux,
+   `~/Library/Preferences/xray` on macOS, `%APPDATA%\xray` on Windows).
+   `xray paths` prints the resolved `config-dir`.
+2. `~/.config/xray/config.{json,js}` (legacy location; still read on macOS
+   and Windows so existing configs keep working)
 3. `~/.xrayrc.json` (fallback)
 4. `~/.xrayrc` (fallback)
 

@@ -22,7 +22,7 @@ npm run build
 npm link
 ```
 
-**Note**: Requires Node.js 20+ and C++ build tools (build-essential on Linux, Xcode on macOS).
+**Note**: Requires Node.js 22.12+ and C++ build tools (build-essential on Linux, Xcode on macOS).
 
 **C++ troubleshooting**:
 ```bash
@@ -185,6 +185,8 @@ Make typing xray commands faster:
 
 ### Bash
 
+Requires bash-completion v2.
+
 ```bash
 eval "$(xray completion bash)"
 
@@ -205,6 +207,12 @@ echo 'eval "$(xray completion zsh)"' >> ~/.zshrc
 
 ```bash
 xray completion fish > ~/.config/fish/completions/xray.fish
+```
+
+### PowerShell
+
+```powershell
+xray completion powershell | Out-String | Invoke-Expression
 ```
 
 Now you can type `xray m<TAB>` and it autocompletes!

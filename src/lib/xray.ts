@@ -55,6 +55,9 @@ export interface XrayConfig {
   // Languages (names or bundles) to parse; each is required. Default: auto-detect.
   languages?: string[];
 
+  // Config file to read (root `--config`). Unset: discover from `path`.
+  configPath?: string;
+
   // Internal
   onProgress?: (current: number, total: number, file: string) => void;
 }
@@ -78,7 +81,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     this.pluginManager = new PluginManager();
 
     // Auto-register telemetry plugin if enabled
-    const fileConfig = loadConfig(undefined, config.path);
+    const fileConfig = loadConfig(config.configPath, config.path);
     const telemetryConfig = fileConfig?.telemetry;
     if (telemetryConfig?.enabled) {
       const telemetryPlugin = new TelemetryPlugin({
@@ -304,7 +307,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
 
     // Language selection: explicit (programmatic or .xrayrc `languages`) means
     // required; otherwise auto - parse whatever has an installed grammar.
-    beginLanguageRun(this.config.languages ?? loadConfig(undefined, this.config.path)?.languages);
+    beginLanguageRun(this.config.languages ?? loadConfig(this.config.configPath, this.config.path)?.languages);
 
     const parser = new ParserManager(this.config.path);
     const graphBuilder = new GraphBuilder();

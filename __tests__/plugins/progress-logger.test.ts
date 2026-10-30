@@ -5,13 +5,13 @@ import { ProgressLoggerPlugin } from '../../examples/plugins/progress-logger';
 const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
 const mockStdoutWrite = jest.spyOn(process.stdout, 'write').mockImplementation();
 
-// Mock chalk to avoid ANSI codes in tests
-jest.mock('chalk', () => ({
-  blue: (str: string) => str,
-  green: (str: string) => str,
-  yellow: (str: string) => str,
-  red: (str: string) => str
-}));
+// Styling follows the color policy; keep it off so assertions see plain text.
+const savedNoColor = process.env.NO_COLOR;
+process.env.NO_COLOR = '1';
+afterAll(() => {
+  if (savedNoColor === undefined) delete process.env.NO_COLOR;
+  else process.env.NO_COLOR = savedNoColor;
+});
 
 describe('ProgressLoggerPlugin', () => {
   let xray: Xray;

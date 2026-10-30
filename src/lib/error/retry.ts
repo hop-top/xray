@@ -154,7 +154,7 @@ export class RetryHandler {
             this.onRetry(attempts + 1, xrayError);
           }
 
-          await this.delay(attempts);
+          await this.delay(attempts + 1);
         }
       }
     }

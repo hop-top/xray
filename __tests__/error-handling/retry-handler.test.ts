@@ -126,70 +126,67 @@ describe('RetryHandler', () => {
   });
 
   describe('exponential backoff', () => {
-    it('waits between retry attempts', async () => {
-      const handler = new RetryHandler({
-        maxAttempts: 3,
-        baseDelay: 10,
-      });
+    // Record the delay of every timer the handler schedules and fire it at
+    // once, so the backoff schedule is asserted exactly, not via wall clock.
+    let delays: number[];
+    let timeoutSpy: jest.SpyInstance;
 
-      const start = Date.now();
+    beforeEach(() => {
+      delays = [];
+      timeoutSpy = jest
+        .spyOn(global, 'setTimeout')
+        .mockImplementation(((fn: () => void, ms?: number) => {
+          delays.push(ms ?? 0);
+          fn();
+          return 0 as unknown as NodeJS.Timeout;
+        }) as typeof setTimeout);
+    });
+
+    afterEach(() => {
+      timeoutSpy.mockRestore();
+    });
+
+    it('waits baseDelay before the first retry', async () => {
+      const handler = new RetryHandler({ maxAttempts: 2, baseDelay: 10 });
 
       await handler.execute(async () => {
         throw new CacheReadError('test');
       });
 
-      const elapsed = Date.now() - start;
-
-      // Should have delayed between attempts
-      // baseDelay=10ms: attempt 1 immediate, attempt 2 after 10ms, attempt 3 after 20ms
-      // Total minimum: ~30ms (but be lenient due to timing variance)
-      expect(elapsed).toBeGreaterThanOrEqual(10);
+      expect(delays).toEqual([10]);
     });
 
-    it('uses exponential backoff (delay doubles each retry)', async () => {
-      const handler = new RetryHandler({
-        maxAttempts: 4,
-        baseDelay: 10,
-      });
+    it('doubles the delay before each further retry', async () => {
+      const handler = new RetryHandler({ maxAttempts: 4, baseDelay: 10 });
 
-      const timestamps: number[] = [];
-
-      await handler.execute(async () => {
-        timestamps.push(Date.now());
+      const result = await handler.execute(async () => {
         throw new CacheReadError('test');
       });
 
-      // Check delays increased: ~0ms, ~10ms, ~20ms, ~40ms
-      expect(timestamps).toHaveLength(4);
-
-      if (timestamps.length >= 3) {
-        const delay1 = timestamps[1] - timestamps[0];
-        const delay2 = timestamps[2] - timestamps[1];
-
-        // Second delay should be roughly double the first (within tolerance)
-        expect(delay2).toBeGreaterThanOrEqual(delay1 * 1.5);
-      }
+      expect(result.attempts).toBe(4);
+      expect(delays).toEqual([10, 20, 40]);
     });
 
-    it('respects maxDelay cap', async () => {
+    it('caps each delay at maxDelay', async () => {
       const handler = new RetryHandler({
         maxAttempts: 5,
         baseDelay: 100,
         maxDelay: 150,
       });
 
-      const timestamps: number[] = [];
-
       await handler.execute(async () => {
-        timestamps.push(Date.now());
         throw new CacheReadError('test');
       });
 
-      // Even with exponential backoff, delays should not exceed maxDelay
-      for (let i = 1; i < timestamps.length; i++) {
-        const delay = timestamps[i] - timestamps[i - 1];
-        expect(delay).toBeLessThanOrEqual(200); // maxDelay + tolerance
-      }
+      expect(delays).toEqual([100, 150, 150, 150]);
+    });
+
+    it('does not wait when the operation succeeds first time', async () => {
+      const handler = new RetryHandler({ maxAttempts: 3, baseDelay: 10 });
+
+      await handler.execute(async () => 'ok');
+
+      expect(delays).toEqual([]);
     });
   });
 

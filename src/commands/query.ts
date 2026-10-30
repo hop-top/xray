@@ -1,5 +1,6 @@
 import * as fs from 'fs';
-import chalk from 'chalk';
+import type { Command } from 'commander';
+import { styles, type Styles } from '../lib/tui';
 import { GraphSerializer } from '../lib/graph/serializer';
 import { QueryAdapterRegistry } from '../lib/query/registry';
 import { FunctionAdapter } from '../lib/query/adapters/function';
@@ -7,7 +8,15 @@ import type { QueryResult } from '../lib/query/types';
 import { QueryCommandOptions } from '../types/command-options';
 import { Logger } from '../lib/logger';
 import { NotFoundError, UsageError } from '../lib/error/types';
+import {
+  adaptFormatter, addOutputFlags, assertFormat, colsRequested, columns, emit, formatterOf,
+  outputRegistry, textFormatter,
+} from '../lib/output';
 
+/**
+ * Run a query. Returns the structured QueryResult, or the rendered adapter
+ * list for `--list-adapters`.
+ */
 export async function handleQueryAction(query: string, options: QueryCommandOptions): Promise<any> {
   if (options.listAdapters) {
     return listAdapters();
@@ -30,26 +39,69 @@ export async function handleQueryAction(query: string, options: QueryCommandOpti
     throw new UsageError('No query adapter found');
   }
 
-  let result: QueryResult;
   try {
-    result = adapter.execute(query, graph);
+    return adapter.execute(query, graph);
   } catch (error) {
     throw new UsageError((error as Error).message, error as Error);
   }
-  const outputFormat = options.format || 'table';
+}
 
-  return formatOutput(result, outputFormat);
+/** Table/csv columns (and the `--cols` vocabulary) for result nodes. */
+export const QUERY_COLUMNS = columns('name', 'kind', 'file', 'line', 'depth', 'score', 'id');
+const DEFAULT_QUERY_COLUMNS = columns('name', 'kind', 'file', 'line');
+
+const nodeRows = (r: QueryResult) => r.nodes;
+
+/**
+ * Formats: json/yaml emit the whole QueryResult document (nodes, edges,
+ * metadata); table/csv render result nodes; tree renders the call tree.
+ */
+function buildRegistry() {
+  const base = outputRegistry();
+  return outputRegistry(
+    adaptFormatter<QueryResult>(formatterOf(base, 'json'), (r) => r, true),
+    adaptFormatter<QueryResult>(formatterOf(base, 'yaml'), (r) => r, true),
+    adaptFormatter<QueryResult>(formatterOf(base, 'table'), nodeRows),
+    adaptFormatter<QueryResult>(formatterOf(base, 'csv'), nodeRows),
+    textFormatter<QueryResult>('tree', (r, put, s) => {
+      put(formatTree(r, s).replace(/\n$/, ''));
+    })
+  );
+}
+const queryRegistry = buildRegistry();
+
+/** Attach query's output flags (`--format json|yaml|table|csv|tree`, ...). */
+export function addQueryOutputFlags(cmd: Command): Command {
+  return addOutputFlags(cmd, queryRegistry, {
+    defaultFormat: 'table',
+    description: 'Output format: table, json, yaml, csv, tree (default: table)',
+  });
 }
 
 /**
- * Commander action for `xray query`: run the query and print the result.
- * Machine output (`--format json`) is one JSON document on stdout; human
- * formats print their rendered text. Errors propagate (CodedError -> exit code).
+ * Commander action for `xray query`: run the query and render it through
+ * kit output. `--format json` is one JSON document on stdout. Errors
+ * propagate (CodedError -> exit code).
  */
-export async function runQueryCommand(query: string | undefined, options: QueryCommandOptions): Promise<void> {
-  const result = await handleQueryAction(query ?? '', options);
-  const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-  Logger.output(text.replace(/\n$/, ''));
+export async function runQueryCommand(
+  query: string | undefined,
+  options: QueryCommandOptions,
+  cmd: Command
+): Promise<void> {
+  if (options.listAdapters) {
+    Logger.output(listAdapters().replace(/\n$/, ''));
+    return;
+  }
+  assertFormat(cmd, queryRegistry);
+  const result = (await handleQueryAction(query ?? '', options)) as QueryResult;
+  // tree prints its own empty notice; other formats stay pure data.
+  if (result.nodes.length === 0 && cmd.opts().format !== 'tree') Logger.info('No results found');
+  await emit(cmd, result, {
+    registry: queryRegistry,
+    // Validate --cols against every node column; default to the short set.
+    columns: colsRequested(cmd) ? QUERY_COLUMNS : DEFAULT_QUERY_COLUMNS,
+    defaultFormat: 'table',
+  });
 }
 
 async function loadGraph(graphPath: string): Promise<any> {
@@ -75,55 +127,20 @@ function listAdapters(): string {
   registry.register(new FunctionAdapter());
   const adapters = registry.list();
 
-  let output = chalk.bold('\nAvailable Query Adapters:\n\n');
+  let output = styles().bold('\nAvailable Query Adapters:\n\n');
   for (const adapter of adapters) {
-    output += chalk.cyan('  ' + adapter.syntax) + chalk.gray(' - ' + adapter.name + '\n');
+    output += styles().accent('  ' + adapter.syntax) + styles().muted(' - ' + adapter.name + '\n');
   }
-  output += chalk.gray('\nExample: xray query --graph graph.json "calls(main)"\n');
+  output += styles().muted('\nExample: xray query --graph graph.json "calls(main)"\n');
   return output;
 }
 
-function formatOutput(result: QueryResult, format: string): any {
-  switch (format) {
-    case 'json': return result;
-    case 'table': return formatTable(result);
-    case 'tree': return formatTree(result);
-    default: return formatTable(result);
-  }
-}
-
-function formatTable(result: QueryResult): string {
-  const nodeCount = result.nodes.length;
-  let output = chalk.bold('\nResults (' + nodeCount + '):\n\n');
+/** Render the call tree for a query result. */
+export function formatTree(result: QueryResult, s: Styles = styles()): string {
+  let output = s.bold('\nCall Tree:\n\n');
 
   if (result.nodes.length === 0) {
-    output += chalk.gray('  No results found\n');
-    return output;
-  }
-
-  const nameHeader = 'Name'.padEnd(30);
-  const fileHeader = 'File'.padEnd(40);
-  const lineHeader = 'Line'.padEnd(10);
-  output += chalk.bold(nameHeader + ' ' + fileHeader + ' ' + lineHeader + '\n');
-  output += '-'.repeat(80) + '\n';
-
-  for (const node of result.nodes) {
-    const name = (node.name || '').padEnd(30).substring(0, 30);
-    const file = (node.file || '').padEnd(40).substring(0, 40);
-    const lineStr = node.line ? ('L' + node.line).padEnd(10) : ''.padEnd(10);
-    output += name + ' ' + chalk.gray(file) + ' ' + chalk.cyan(lineStr) + '\n';
-  }
-
-  const timeMsg = 'Query time: ' + result.metadata.executionTime + 'ms';
-  output += '\n' + chalk.gray(timeMsg) + '\n';
-  return output;
-}
-
-function formatTree(result: QueryResult): string {
-  let output = chalk.bold('\nCall Tree:\n\n');
-
-  if (result.nodes.length === 0) {
-    output += chalk.gray('  No results found\n');
+    output += s.muted('  No results found\n');
     return output;
   }
 
@@ -145,7 +162,7 @@ function formatTree(result: QueryResult): string {
   if (result.edges.length === 0) {
     for (const node of result.nodes) {
       const location = node.file && node.line ? (' (' + node.file + ':L' + node.line + ')') : '';
-      output += node.name + chalk.gray(location) + '\n';
+      output += node.name + s.muted(location) + '\n';
     }
     return output;
   }
@@ -170,7 +187,7 @@ function formatTree(result: QueryResult): string {
   if (roots.size > 0) {
     const rootArray = Array.from(roots);
     for (let i = 0; i < rootArray.length; i++) {
-      printNode(rootArray[i], '', i === rootArray.length - 1, nodeMap, childrenMap, visited, (line) => {
+      printNode(rootArray[i], '', i === rootArray.length - 1, nodeMap, childrenMap, visited, s, (line) => {
         output += line + '\n';
       });
     }
@@ -178,7 +195,7 @@ function formatTree(result: QueryResult): string {
     // No clear roots, just print all nodes as a flat tree
     for (const node of result.nodes) {
       const location = node.file && node.line ? (' (' + node.file + ':L' + node.line + ')') : '';
-      output += node.name + chalk.gray(location) + '\n';
+      output += node.name + s.muted(location) + '\n';
     }
   }
 
@@ -188,7 +205,7 @@ function formatTree(result: QueryResult): string {
 function printNode(
   nodeId: string, prefix: string, isLast: boolean,
   nodeMap: Map<string, any>, childrenMap: Map<string, string[]>,
-  visited: Set<string>, print: (line: string) => void
+  visited: Set<string>, s: Styles, print: (line: string) => void
 ): void {
   if (visited.has(nodeId)) return;
   visited.add(nodeId);
@@ -198,12 +215,12 @@ function printNode(
 
   const connector = isLast ? '└─→ ' : '├─→ ';
   const location = node.file && node.line ? (' (' + node.file + ':L' + node.line + ')') : '';
-  print(prefix + connector + node.name + chalk.gray(location));
+  print(prefix + connector + node.name + s.muted(location));
 
   const children = childrenMap.get(nodeId) || [];
   const newPrefix = prefix + (isLast ? '    ' : '│   ');
 
   for (let i = 0; i < children.length; i++) {
-    printNode(children[i], newPrefix, i === children.length - 1, nodeMap, childrenMap, visited, print);
+    printNode(children[i], newPrefix, i === children.length - 1, nodeMap, childrenMap, visited, s, print);
   }
 }

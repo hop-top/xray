@@ -109,15 +109,14 @@ describe('Strategy Command Execution (Integration)', () => {
   });
 
   describe('Completion Generation', () => {
+    // Scripts are static (cobra protocol): commands come from
+    // `xray __complete` at tab time, so strategy commands never go stale.
     it('should generate bash completion', async () => {
       const { stdout, exitCode } = await runXray('completion bash');
 
       expect(exitCode).toBe(0);
-      expect(stdout).toContain('_xray_completions');
-      expect(stdout).toContain('complete -F _xray_completions xray');
-      // Should include strategy commands
-      expect(stdout).toContain('express');
-      expect(stdout).toContain('react');
+      expect(stdout).toContain('__start_xray');
+      expect(stdout).toContain('__complete');
     });
 
     it('should generate zsh completion', async () => {
@@ -126,9 +125,6 @@ describe('Strategy Command Execution (Integration)', () => {
       expect(exitCode).toBe(0);
       expect(stdout).toContain('#compdef xray');
       expect(stdout).toContain('_xray');
-      // Should include strategy commands
-      expect(stdout).toContain('express');
-      expect(stdout).toContain('react');
     });
 
     it('should generate fish completion', async () => {
@@ -136,22 +132,34 @@ describe('Strategy Command Execution (Integration)', () => {
 
       expect(exitCode).toBe(0);
       expect(stdout).toContain('complete -c xray');
-      // Should include strategy commands
-      expect(stdout).toContain('express');
-      expect(stdout).toContain('react');
     });
 
-    it('should error on unsupported shell', async () => {
-      const { stdout, stderr, exitCode } = await runXray('completion powershell');
+    it('should generate powershell completion', async () => {
+      const { stdout, exitCode } = await runXray('completion powershell');
 
-      expect(exitCode).not.toBe(0);
-      expect(stdout + stderr).toContain('Unsupported shell');
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain('Register-ArgumentCompleter');
+    });
+
+    it('should complete strategy commands at tab time', async () => {
+      const { stdout, exitCode } = await runXray('__complete ""');
+
+      expect(exitCode).toBe(0);
+      expect(stdout).toMatch(/^express\t/m);
+      expect(stdout).toMatch(/^react\t/m);
+    });
+
+    it('should exit 2 on unsupported shell', async () => {
+      const { stderr, exitCode } = await runXray('completion pwsh');
+
+      expect(exitCode).toBe(2);
+      expect(stderr).toContain("unsupported shell 'pwsh'");
     });
   });
 
   describe('Verbose Output', () => {
-    it('should show debug info with -v debug', async () => {
-      const { stdout, exitCode } = await runXray('-v debug express --help');
+    it('should show debug info with --log-level debug', async () => {
+      const { stdout, exitCode } = await runXray('--log-level debug express --help');
 
       expect(exitCode).toBe(0);
       // Debug output may appear in stdout

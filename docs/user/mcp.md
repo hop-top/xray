@@ -1,0 +1,173 @@
+# MCP server
+
+`xray mcp` serves xray's read-only analysis commands as
+[Model Context Protocol](https://modelcontextprotocol.io) tools over
+stdin/stdout, so an MCP client (Claude Code, Cursor, any stdio MCP host)
+can map, search and query a codebase without shelling out.
+
+```bash
+xray mcp                       # serve the current directory
+xray -C /path/to/project mcp   # serve another directory
+xray mcp --timeout 120         # per-call timeout in seconds (default 300)
+```
+
+The server speaks MCP `2024-11-05` (newline-delimited JSON-RPC on
+stdio): `initialize`, `ping`, `tools/list`, `tools/call`. stdout carries
+protocol messages only; diagnostics go to stderr.
+
+## Client configuration
+
+### Claude Code
+
+```bash
+claude mcp add xray -- xray -C /path/to/project mcp
+```
+
+or, checked into the project as `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "xray": {
+      "command": "xray",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Without `-C` the server root is the directory the client starts the
+server in; add `-C <project>` when that is not the project.
+
+### Cursor
+
+`.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "xray": {
+      "command": "xray",
+      "args": ["-C", "${workspaceFolder}", "mcp"]
+    }
+  }
+}
+```
+
+Any other stdio client: run `xray -C <project> mcp`.
+
+## Tools
+
+| Tool | CLI equivalent | Result |
+|------|----------------|--------|
+| `map` | `xray map` | map text (or the `--format` output) |
+| `scan` | `xray scan` | scan output |
+| `graph` | `xray graph` | CFG/DFG output |
+| `explore` | `xray explore [query]` | match / search / stats rows |
+| `query` | `xray query <query>` | call-graph query result |
+| `strategy_list` | `xray strategy list` | available strategies |
+| `strategy_detect` | `xray strategy detect` | strategies detected for the project |
+| `<strategy>_<noun>` | `xray <strategy> <noun>` | strategy insight, e.g. `react_hooks`, `express_routes`, `markdown_toc` |
+
+Tool names join the command path with `_`. Input schemas are derived
+from the command tree: each option is a property named after its long
+flag (`no-chunk`, `skip-detect`, `format`), repeatable options are string
+arrays, positional arguments are properties named after the argument
+(`query`), and every tool with a project scope takes an optional `root`.
+`tools/list` shows the exact schemas, including any project strategies.
+
+Options are allowlisted per tool: a tool exposes only the options vetted
+as read-only, and a call with any other argument is a tool error.
+Built-in strategy nouns get `path`, `format` and the extension-override
+flags, plus the options vetted per noun (`config list --pattern`,
+`config keys|values --file`, `build run --target`, `markdown toc
+--depth`). Options a project strategy declares for its own nouns are not
+exposed.
+
+Not exposed: commands that change state (`cache clear`, `alias set`,
+`strategy install`, `lang add`, ...) and flags that write files, load
+code or reveal secrets: `--output`, `--share`, `--template`, `--preset`,
+`--config`, go-cli's `--exec-binary` / `--binary` /
+`--unsafe-no-sandbox` / `--allow-cgo`, and `config values
+--show-secrets`.
+
+Behaviour per tool:
+
+- `map`, `scan`, `graph` write their output to a private temp directory;
+  the tool result is that output (chunked runs return every chunk with a
+  `== <file> ==` header), and the temp directory is removed.
+- `query` without `graph` first builds one (`xray map --format json`) in
+  a temp directory, then runs the query against it.
+- Everything else returns the command's stdout.
+
+## Errors
+
+- Unknown tool: JSON-RPC error `-32602`.
+- Bad argument (unknown or unlisted name, wrong type, path outside the
+  server root, URL where a path is expected, sub-root with its own config
+  when the server root has none):
+  tool result with `isError: true` and the reason.
+- Command failure (non-zero exit): tool result with `isError: true`,
+  stdout and the command's stderr (`[stderr] ...`).
+
+The server never exits on a failed call.
+
+## Trust model
+
+Running xray in a directory trusts that directory: project strategies
+(`.xray/strategies`, strategies in `node_modules`), the strategy cache
+and a JS project config (`.xrayrc.js`) are code, and xray loads them.
+`xray mcp` keeps that rule and fixes the trusted directory at startup:
+
+- **Server root** = the directory the server starts in (working
+  directory, or `-C <dir>`). You choose it when you configure the client.
+- **Server config** = the config file `xray` run in the server root
+  would use, resolved once at startup: `xray mcp --config <file>` when
+  given (a missing file fails startup), else the first `.xrayrc`,
+  `.xrayrc.json`, `.xrayrc.js`, `xray.config.js`, `xray.config.json` or
+  `package.json` with an `xray` key found walking up from the server root.
+- Every call's child process runs with the server root as its working
+  directory, so project strategies, aliases and config load from the
+  server root only, exactly as for `xray` run there. With a server
+  config, children also get `-C <server root> --config <server config>`:
+  every config load in the call reads that file.
+- `root` selects the project directory a tool analyzes, inside the
+  server root (absolute, or relative to the server root); anything
+  outside, including through symlinks, is refused. It never becomes the
+  working directory: it reaches the command as its `--path` (map, scan,
+  graph, explore, strategy detect, `<strategy>_<noun>`), and `query`
+  builds its graph over it. `strategy_list` has no project scope and
+  takes no `root`. Relative path arguments resolve against `root`.
+- Sub-roots with their own config (`.xrayrc*`, `xray.config.*`, a
+  `package.json` `xray` key), such as monorepo packages:
+
+  | Server config | Sub-root config | map / scan / graph / query on it |
+  |---------------|-----------------|----------------------------------|
+  | yes | no  | runs with the server config |
+  | yes | yes | runs with the server config; the sub-root's never loads |
+  | no  | no  | runs with no project config |
+  | no  | yes | refused |
+
+  Without `--config`, map, scan and graph look for config by walking up
+  from their `--path`, so with no server config to pin, a sub-root's
+  own file (and `.xrayrc.js` is code) would load; that case is refused.
+  Add a config file to the server root, or start the server with
+  `--config <file>`, to scope such sub-roots.
+- Every path-valued argument is held inside the server root: `path`,
+  `anchor`, `graph`, `config keys|values --file`, and each path in
+  map's `query` (`path`, `.ext:path`, comma lists). URLs are refused
+  wherever a path is expected; the server never makes the CLI fetch a
+  remote query file.
+- So project code only ever loads from the tree you started the server
+  in, and only from its root. A client cannot point the server at
+  another checkout, or at a subtree's own strategies or config.
+- Each call runs the CLI command in a child process with
+  `--no-telemetry --offline`: no consent prompt, no `.xrayrc.json`
+  write, no upgrade check. Cache files (`.xray/`, `.xray_cache.db`) are
+  written in the server root exactly as the same CLI command run there
+  would write them.
+- No tool writes outside those caches or deletes anything.
+
+The server runs with your user's permissions; tools read whatever the
+CLI command reads under the server root. Serve only projects you would
+run `xray` in.

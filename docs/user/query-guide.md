@@ -32,8 +32,9 @@ merge into one graph, with every node id prefixed by a root label
 (`api/src/main.ts::main`, `web/src/main.ts::main`). See
 [Merged graphs](commands.md#merged-multi-root-graphs).
 
-`xray query` prints its result to stdout (`--format table|tree|json`) and
-exits 2 on a bad query or missing `--graph`, 3 if the graph file is not found.
+`xray query` prints its result to stdout (`--format table|tree|json|yaml|csv`)
+and exits 2 on a bad query, missing `--graph` or unknown `--format`/column, 3 if
+the graph file is not found.
 
 ### Basic Query Syntax
 
@@ -147,7 +148,7 @@ xray query --graph graph.json "calls(func(args))"
 
 ### Table Format (Default)
 
-Human-readable table with columns for name, file, and line number.
+One row per result node. Default columns: `name`, `kind`, `file`, `line`.
 
 ```bash
 xray query --graph graph.json "calls(main)" --format table
@@ -155,20 +156,36 @@ xray query --graph graph.json "calls(main)" --format table
 
 **Output:**
 ```
-Results (3):
-
-Name                           File                                     Line
---------------------------------------------------------------------------------
-processData                    src/api.ts                               L10
-validateInput                  src/utils.ts                             L20
-checkSchema                    src/utils.ts                             L30
-
-Query time: 15ms
+name           kind      file          line
+processData    function  src/api.ts    10
+validateInput  function  src/utils.ts  20
+checkSchema    function  src/utils.ts  30
 ```
 
-### JSON Format
+`line` is `0` when the graph has no line for the node. Empty results print
+nothing on stdout (`No results found` on stderr).
 
-Structured JSON for programmatic processing.
+### Columns, CSV and files
+
+`--cols` picks and orders columns for `table` and `csv` from `name`, `kind`,
+`file`, `line`, `depth`, `score`, `id`. Write it as `--cols=a,b` (or put the
+query before it): the space form takes every following word as a column.
+
+```bash
+xray query --graph graph.json --cols=name,file,depth "calls(main)"
+xray query --graph graph.json --format csv --cols=id,name "callers(helper)"
+xray query --graph graph.json "calls(main)" -o calls.csv   # format from extension
+```
+
+`-o <path>` writes the result to a file; without `--format`, the extension
+picks it (`.json`, `.yaml`/`.yml`, `.csv`). `--format-help` lists formats and
+their options (`--format-opt indent=4`, `--format-opt delimiter=;`, ...).
+
+### JSON / YAML Format
+
+Structured document for programmatic processing: the whole result
+(`nodes`, `edges`, `metadata`); `--cols` does not reshape it. `--format yaml`
+emits the same document as YAML.
 
 ```bash
 xray query --graph graph.json "calls(main)" --format json

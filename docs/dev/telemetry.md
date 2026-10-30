@@ -2,7 +2,7 @@
 
 ## Overview
 
-Xray includes an opt-in telemetry system built on the OpenTelemetry SDK to collect observability data about command usage, performance metrics, and error patterns. This document explains the implementation, design decisions, and usage patterns for developers working on xray.
+Xray includes an opt-in telemetry system, modelled on OpenTelemetry traces, to collect observability data about command usage, performance metrics, and error patterns. This document explains the implementation, design decisions, and usage patterns for developers working on xray.
 
 ## Why OpenTelemetry?
 
@@ -46,18 +46,13 @@ Automatic collection of contextual information:
 - `src/types/xray-config.ts` - Added telemetry configuration
 - `package.json` - Added OpenTelemetry dependencies
 
-## Dependencies Added
+## Dependencies
 
-```json
-{
-  "@opentelemetry/api": "^1.x",
-  "@opentelemetry/sdk-node": "^0.211.0",
-  "@opentelemetry/sdk-trace-node": "^2.5.0",
-  "@opentelemetry/exporter-trace-otlp-proto": "^0.211.0",
-  "@opentelemetry/resources": "^2.5.0",
-  "@opentelemetry/semantic-conventions": "^1.x"
-}
-```
+None. The original implementation used the OpenTelemetry SDK; the current
+event-based `TelemetryPlugin` (`src/lib/plugins/telemetry-plugin.ts`) keeps
+the OTel trace/span model (trace ids, span ids, resource attributes) but
+writes JSONL itself with `fs`, so no `@opentelemetry/*` packages are
+installed. Re-add them only alongside a real OTLP exporter.
 
 ## Architecture
 

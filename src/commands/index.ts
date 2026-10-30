@@ -1,32 +1,36 @@
-import { Command } from 'commander';
 import { handleMetaStrategyCommand } from './strategy';
-import { handleExploreAction } from './explore';
-import { configureRootProgram } from './root-options';
+import type { Command } from 'commander';
+import { addExploreOutputFlags, handleExploreAction } from './explore';
+import { program, theme } from './root-program';
+import { setCommandGroup } from './kit-cli';
 import { registerCoreCommands } from './registration/core';
 import { registerStrategyCommands } from './registration/strategies';
 import { registerAliases } from './registration/aliases';
+import { bindValueCompleters } from './completion';
 import { ExploreCommandOptions } from '../types/command-options';
-
-// Read version from package.json
-const { version } = require('../../package.json');
-
-const program = configureRootProgram(new Command(), version);
+import type { CodeLoadingOptions } from '../lib/strategy/loader';
 
 /**
- * Register all commands (static core + dynamic strategies + aliases)
+ * Register all commands (static core + dynamic strategies + aliases).
+ * `projectCode: false` keeps strategy and config code in the working
+ * directory from loading (shell completion). `configPath` (root
+ * `--config`) is the config aliases come from instead of discovery.
  */
-export async function registerCommands() {
+export async function registerCommands(options: CodeLoadingOptions = {}, configPath?: string) {
   // 1. Register static core commands
   registerCoreCommands(program);
 
   // 2. Register dynamic strategy commands
-  await registerStrategyCommands(program);
+  await registerStrategyCommands(program, options);
 
   // 3. Register explore command (default) with backward compatibility
   registerExploreCommand();
 
   // 4. Register user-defined aliases from config
-  await registerAliases(program);
+  await registerAliases(program, options, configPath);
+
+  // 5. Bind flag/argument value completers across the full tree.
+  bindValueCompleters(program, options);
 
   return program;
 }
@@ -35,7 +39,7 @@ export async function registerCommands() {
  * Register explore command as default
  */
 function registerExploreCommand(): void {
-  program
+  const explore = program
     .command('explore', { isDefault: true })
     .description('Quickly find files by patterns, search code for keywords, or explore codebase [default command]')
     .argument('[query]', 'Search query or pattern')
@@ -52,17 +56,19 @@ function registerExploreCommand(): void {
       return previous.concat([value]);
     }, [])
     .option('--stats', 'Show codebase statistics')
-    .option('--list-strategies', 'List all available strategies')
-    .action(async (query: string | undefined, options: ExploreCommandOptions) => {
+    .option('--list-strategies', 'List all available strategies');
+  addExploreOutputFlags(explore)
+    .action(async (query: string | undefined, options: ExploreCommandOptions, cmd: Command) => {
       if (options.listStrategies) {
         await handleMetaStrategyCommand('list', options as any);
         return;
       }
 
       // Handle regular explore options
-      await handleExploreAction(query, options);
+      await handleExploreAction(query, options, cmd);
     });
+  setCommandGroup(explore, 'analyze');
 }
 
-// Export the program for testing
-export { program };
+// Export the program for testing; theme for themed output.
+export { program, theme };

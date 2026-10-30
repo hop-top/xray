@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import chalk from 'chalk';
+import { styles } from '../lib/tui';
 import { Logger } from '../lib/logger';
 import { StrategyLoader } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
@@ -19,7 +19,7 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
 
     Logger.info('Available Strategies:\n');
     strategies.forEach(strategy => {
-      Logger.output(chalk.cyan(`  ${strategy.name}`) + ' ' + chalk.gray(`v${strategy.version}`));
+      Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
     });
 
     if (strategies.length === 0) {
@@ -49,7 +49,7 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
     } else {
       Logger.info('Detected Strategies:\n');
       detected.forEach(strategy => {
-        Logger.output(chalk.cyan(`  ${strategy.name}`) + ' ' + chalk.gray(`v${strategy.version}`));
+        Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
       });
     }
 
@@ -172,9 +172,9 @@ const displayStrategyCommandResult = (strategyName: string, commandName: string,
       Logger.info(`\n${strategyName.charAt(0).toUpperCase() + strategyName.slice(1)} Components:\n`);
       result.forEach((comp: any) => {
         Logger.output(
-          chalk.green(`  ${comp.name}`) + ' ' +
-          chalk.gray(`(${comp.type})`) + ' ' +
-          chalk.blue(`- ${comp.file}`)
+          styles().success(`  ${comp.name}`) + ' ' +
+          styles().muted(`(${comp.type})`) + ' ' +
+          styles().accent(`- ${comp.file}`)
         );
       });
       Logger.info(`\nTotal: ${result.length} component(s)`);
@@ -185,7 +185,7 @@ const displayStrategyCommandResult = (strategyName: string, commandName: string,
     } else {
       Logger.info(`\nCustom ${strategyName.charAt(0).toUpperCase() + strategyName.slice(1)} Hooks:\n`);
       result.forEach((hook: any) => {
-        Logger.output(chalk.green(`  ${hook.name}`) + ' ' + chalk.blue(`- ${hook.file}`));
+        Logger.output(styles().success(`  ${hook.name}`) + ' ' + styles().accent(`- ${hook.file}`));
       });
       Logger.info(`\nTotal: ${result.length} hook(s)`);
     }
@@ -195,7 +195,7 @@ const displayStrategyCommandResult = (strategyName: string, commandName: string,
     } else {
       Logger.info(`\n${strategyName.charAt(0).toUpperCase() + strategyName.slice(1)} Contexts:\n`);
       result.forEach((ctx: any) => {
-        Logger.output(chalk.green(`  ${ctx.name}`) + ' ' + chalk.blue(`- ${ctx.file}`));
+        Logger.output(styles().success(`  ${ctx.name}`) + ' ' + styles().accent(`- ${ctx.file}`));
       });
       Logger.info(`\nTotal: ${result.length} context(s)`);
     }
