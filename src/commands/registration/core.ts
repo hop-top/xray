@@ -10,6 +10,7 @@ import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
 import { registerPathsCommand } from '../paths';
 import { registerLangCommand } from '../lang';
+import { registerMcpCommand } from '../mcp';
 import { setCommandGroup, type HelpGroupId } from '../kit-cli';
 
 // Root help group per top-level command name; unlisted/hidden commands
@@ -25,6 +26,7 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   cache: 'management',
   paths: 'management',
   describe: 'management',
+  mcp: 'management',
   completion: 'management',
 };
 
@@ -101,6 +103,9 @@ export function registerCoreCommands(program: Command): void {
     .option('--format <fmt>', 'Output format (json)', 'json')
     .action(handleDescribeAction);
   bindFlag(describe, 'format', staticValues('json'));
+
+  // Read-only analysis commands as MCP tools over stdio.
+  registerMcpCommand(program);
 
   // `completion bash|zsh|fish|powershell` (kit, cobra protocol).
   registerCompletionCommand(program);
