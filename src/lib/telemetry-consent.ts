@@ -132,8 +132,8 @@ export async function handleFirstRunConsent(argv: string[], configPath?: string)
   // Skip prompts in non-interactive mode (CI/CD, piped output, etc.)
   if (!isInteractive()) {
     Logger.debug('Non-interactive mode detected, skipping telemetry prompt');
-    // Default to disabled in non-interactive mode
-    saveConsentDecision(false, configPath);
+    // Disabled by default; nothing was asked, so nothing is persisted
+    // (a read-only command must not create .xrayrc.json in the cwd).
     return false;
   }
 

@@ -44,8 +44,8 @@ export async function registerExtensionCommands(
   const cacheManager = new StrategyCacheManager();
 
   try {
-    // Try to use cached strategies first. The cache lives in the project
-    // (.xray/); without project code it is neither read nor written.
+    // Try to use cached strategies first. The cache lives in the user cache
+    // dir; without project code it is neither read nor written.
     const cached = projectCode ? await cacheManager.getCached() : null;
     let strategies: Strategy[];
 

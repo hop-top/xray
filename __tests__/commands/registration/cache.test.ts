@@ -2,6 +2,7 @@
 import { StrategyCacheManager } from '../../../src/commands/registration/cache';
 import { Strategy, StrategyContext } from '../../../src/lib/strategy/types';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 describe('StrategyCacheManager', () => {
@@ -9,6 +10,8 @@ describe('StrategyCacheManager', () => {
   let cacheManager: StrategyCacheManager;
 
   beforeEach(() => {
+    // Keep the XDG cache out of the real user cache
+    process.env.XDG_CACHE_HOME = testCacheDir;
     // Clean up test cache directory
     if (fs.existsSync(testCacheDir)) {
       fs.rmSync(testCacheDir, { recursive: true });
@@ -19,6 +22,7 @@ describe('StrategyCacheManager', () => {
   });
 
   afterEach(() => {
+    delete process.env.XDG_CACHE_HOME;
     // Clean up
     if (fs.existsSync(testCacheDir)) {
       fs.rmSync(testCacheDir, { recursive: true });
@@ -52,7 +56,7 @@ describe('StrategyCacheManager', () => {
 
     await cacheManager.save(strategies);
 
-    const cacheFile = path.join(testCacheDir, '.xray', '.strategy-cache.json');
+    const cacheFile = cacheManager.cacheFile;
     expect(fs.existsSync(cacheFile)).toBe(true);
 
     const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
@@ -84,7 +88,7 @@ describe('StrategyCacheManager', () => {
     await cacheManager.save(strategies);
 
     // Manually modify cache version
-    const cacheFile = path.join(testCacheDir, '.xray', '.strategy-cache.json');
+    const cacheFile = cacheManager.cacheFile;
     const cacheData = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
     cacheData.version = '0.0.0-old-version';
     fs.writeFileSync(cacheFile, JSON.stringify(cacheData));
@@ -130,7 +134,7 @@ describe('StrategyCacheManager', () => {
     const strategies = [createMockStrategy('clear-test')];
     await cacheManager.save(strategies);
 
-    const cacheFile = path.join(testCacheDir, '.xray', '.strategy-cache.json');
+    const cacheFile = cacheManager.cacheFile;
     expect(fs.existsSync(cacheFile)).toBe(true);
 
     await cacheManager.clear();
@@ -150,5 +154,48 @@ describe('StrategyCacheManager', () => {
     expect(cached).toHaveLength(2);
     expect(cached![0].commands).toBeDefined();
     expect(cached![1].commands).toBeUndefined();
+  });
+
+  describe('default location', () => {
+    let cwd: string;
+    let xdg: string;
+    let prevCwd: string;
+    let prevXdg: string | undefined;
+
+    beforeEach(() => {
+      prevCwd = process.cwd();
+      prevXdg = process.env.XDG_CACHE_HOME;
+      cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-cache-cwd-'));
+      xdg = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-cache-xdg-'));
+      process.env.XDG_CACHE_HOME = xdg;
+      process.chdir(cwd);
+    });
+
+    afterEach(() => {
+      process.chdir(prevCwd);
+      if (prevXdg === undefined) delete process.env.XDG_CACHE_HOME;
+      else process.env.XDG_CACHE_HOME = prevXdg;
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(xdg, { recursive: true, force: true });
+    });
+
+    it('persists outside the project and round-trips', async () => {
+      const mgr = new StrategyCacheManager();
+      await mgr.save([createMockStrategy('s1')]);
+
+      expect(fs.readdirSync(cwd)).toEqual([]);
+      expect(fs.readdirSync(xdg).length).toBeGreaterThan(0);
+      expect((await new StrategyCacheManager().getCached())?.map(s => s.name)).toEqual(['s1']);
+    });
+
+    it('keys the cache per project root', async () => {
+      await new StrategyCacheManager().save([createMockStrategy('s1')]);
+      const other = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-cache-other-'));
+      try {
+        expect(await new StrategyCacheManager(other).getCached()).toBeNull();
+      } finally {
+        fs.rmSync(other, { recursive: true, force: true });
+      }
+    });
   });
 });

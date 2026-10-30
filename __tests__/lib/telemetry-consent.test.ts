@@ -183,9 +183,8 @@ describe('TelemetryConsent', () => {
 
       expect(result).toBe(false);
 
-      // Should save the decision
-      const config = loadConfig();
-      expect(config?.telemetry?.enabled).toBe(false);
+      // Nothing was asked, so nothing is persisted into the project.
+      expect(fs.existsSync(path.join(tmpDir, '.xrayrc.json'))).toBe(false);
     });
 
     it('should return false in CI environment', async () => {
@@ -196,9 +195,8 @@ describe('TelemetryConsent', () => {
 
       expect(result).toBe(false);
 
-      // Should save the decision
-      const config = loadConfig();
-      expect(config?.telemetry?.enabled).toBe(false);
+      // Nothing was asked, so nothing is persisted into the project.
+      expect(fs.existsSync(path.join(tmpDir, '.xrayrc.json'))).toBe(false);
     });
 
     it('should detect various CI environment variables', async () => {

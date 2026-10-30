@@ -69,4 +69,31 @@ describe('bin/xray smoke', () => {
     expect(rootChunk).toContain('function hello()');
     expect(rootChunk).toContain('function f()');
   }, 90_000);
+
+  it('read-only commands leave the cwd untouched', () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-ro-'));
+    const xdg = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-ro-xdg-'));
+    try {
+      fs.writeFileSync(path.join(cwd, 'a.ts'), 'export const a = 1;\n');
+      for (const args of [['describe'], ['--help'], ['describe', '--help']]) {
+        const r = spawnSync(process.execPath, [BIN, ...args], {
+          cwd,
+          encoding: 'utf-8',
+          env: {
+            ...process.env,
+            XDG_CACHE_HOME: xdg,
+            XDG_CONFIG_HOME: xdg,
+            XDG_DATA_HOME: xdg,
+            HOME: xdg,
+          },
+          timeout: 90_000,
+        });
+        expect(r.status).toBe(0);
+        expect(fs.readdirSync(cwd)).toEqual(['a.ts']);
+      }
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(xdg, { recursive: true, force: true });
+    }
+  }, 120_000);
 });

@@ -5,6 +5,11 @@ import * as crypto from 'crypto';
 import { Strategy } from '../../lib/strategy/types';
 import { Logger } from '../../lib/logger';
 
+// require(): tsconfig moduleResolution 'node' ignores the kit exports map.
+const { cacheDir: xdgCacheDir } = require('@hop-top/kit/xdg') as {
+  cacheDir: (tool: string) => string;
+};
+
 const { version: XRAY_VERSION } = require('../../../package.json');
 
 export interface CachedStrategy {
@@ -22,11 +27,20 @@ export interface StrategyCache {
 
 export class StrategyCacheManager {
   private cacheDir: string;
-  private cacheFile: string;
+  readonly cacheFile: string;
 
+  /**
+   * The cache lives in the user cache dir, keyed by project root, never in
+   * the project: read-only commands must not write into the cwd.
+   */
   constructor(projectRoot: string = process.cwd()) {
-    this.cacheDir = path.join(projectRoot, '.xray');
-    this.cacheFile = path.join(this.cacheDir, '.strategy-cache.json');
+    const key = crypto
+      .createHash('sha256')
+      .update(path.resolve(projectRoot))
+      .digest('hex')
+      .slice(0, 16);
+    this.cacheDir = path.join(xdgCacheDir('xray'), 'strategies', key);
+    this.cacheFile = path.join(this.cacheDir, 'strategy-cache.json');
   }
 
   /**
