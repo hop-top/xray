@@ -3,8 +3,6 @@ import {
   aliasTargetErrors, circularAliases, kitAlias, splitAliasTarget, usableAliases,
 } from '../../lib/alias-resolver';
 import { CodeLoadingOptions, StrategyLoader } from '../../lib/strategy/loader';
-import { StrategyContextImpl } from '../../lib/strategy/context';
-import { StrategyCommand } from '../../lib/strategy/types';
 import { Logger } from '../../lib/logger';
 import { loadConfig } from '../../lib/config';
 import { AliasCommandOptions } from '../../types/command-options';
@@ -35,16 +33,15 @@ export async function registerAliases(
     return;
   }
 
-  // Keep only aliases whose target resolves (already warned above).
-  const strategyMap = new Map(strategies.map(s => [s.name, s]));
-  const handlers = new Map<string, StrategyCommand>();
+  // Keep only aliases whose target resolves to a registered command
+  // (unknown targets already warned above).
+  const targets = new Map<string, Command>();
   for (const [alias, target] of Object.entries(aliases)) {
-    const { strategyName, commandName } = splitAliasTarget(target);
-    const cmdDef = strategyMap.get(strategyName)?.commands?.[commandName];
-    if (cmdDef) handlers.set(alias, cmdDef);
+    const cmd = findTargetCommand(program, target);
+    if (cmd) targets.set(alias, cmd);
   }
   const runnable = Object.fromEntries(
-    Object.entries(aliases).filter(([alias]) => handlers.has(alias))
+    Object.entries(aliases).filter(([alias]) => targets.has(alias))
   );
 
   kitAlias.bridgeAliases(program, runnable, {
@@ -52,53 +49,37 @@ export async function registerAliases(
     describe: (_name, target) => `Alias for: ${target}`,
     helpOption: true,
     dispatch: (alias, target, cmd) =>
-      runAlias(alias, target, handlers.get(alias)!, cmd.opts<AliasCommandOptions>()),
+      runAlias(alias, target, targets.get(alias)!, cmd.opts<AliasCommandOptions>()),
   });
 
   // Bridge proxies accept any arguments; xray aliases take only --path.
-  for (const alias of handlers.keys()) {
+  for (const alias of targets.keys()) {
     program.commands.find(c => c.name() === alias)!
       .option('-p, --path <path>', 'Project path', process.cwd())
       .allowExcessArguments(false);
   }
 
-  Logger.debug(`Registered ${handlers.size} aliases`);
+  Logger.debug(`Registered ${targets.size} aliases`);
 }
 
+/** The registered `<strategy> <command>` command for an alias target. */
+function findTargetCommand(program: Command, target: string): Command | undefined {
+  const { strategyName, commandName } = splitAliasTarget(target);
+  return program.commands
+    .find(c => c.name() === strategyName)
+    ?.commands.find(c => c.name() === commandName);
+}
+
+/**
+ * Run the target through its own registered action so detect, analyze,
+ * handler and output emit match the direct invocation.
+ */
 async function runAlias(
   alias: string,
   target: string,
-  cmdDef: StrategyCommand,
+  targetCmd: Command,
   options: AliasCommandOptions
 ): Promise<void> {
   Logger.debug(`Executing alias "${alias}" → "${target}"`);
-
-  const context = new StrategyContextImpl(options.path || process.cwd());
-
-  try {
-    const result = await cmdDef.handler(context, options);
-    displayResult(target, result);
-  } catch (error: any) {
-    Logger.error(`Error executing alias "${alias}": ${error.message}`);
-    process.exit(1);
-  }
-}
-
-function displayResult(target: string, result: any): void {
-  if (Array.isArray(result)) {
-    Logger.output(`\n${target}:\n`);
-    if (result.length === 0) {
-      Logger.output('  (none found)');
-    } else {
-      result.forEach((item: any) => {
-        Logger.output(`  ${item.name || item}`);
-        if (item.file) console.log(`    → ${item.file}`);
-      });
-    }
-    Logger.output(`\nTotal: ${result.length}\n`);
-  } else if (typeof result === 'object') {
-    Logger.output(JSON.stringify(result, null, 2));
-  } else {
-    Logger.output(result);
-  }
+  await targetCmd.parseAsync(['--path', options.path || process.cwd()], { from: 'user' });
 }

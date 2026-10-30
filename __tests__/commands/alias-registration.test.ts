@@ -36,14 +36,26 @@ describe('registerAliases (dispatch)', () => {
   const build = async () => {
     const program = new Command();
     program.exitOverride();
+    // Stand-in for the registered strategy command the alias dispatches to.
+    program
+      .command('react')
+      .command('components')
+      .option('-p, --path <path>', 'Project path', process.cwd())
+      .action(async (opts: { path: string }) => {
+        const result = await handler({ root: opts.path }, opts);
+        Logger.output(`react components: ${result.map((r: any) => r.name).join(',')}`);
+      });
     await registerAliases(program);
     return program;
   };
 
+  const aliasNames = (program: Command) =>
+    program.commands.map(c => c.name()).filter(n => n !== 'react');
+
   it('registers nothing when no aliases configured', async () => {
     mockLoadConfig.mockReturnValue({ paths: ['.'] });
     const program = await build();
-    expect(program.commands).toHaveLength(0);
+    expect(aliasNames(program)).toHaveLength(0);
   });
 
   it('registers visible command described as alias target', async () => {
@@ -55,7 +67,7 @@ describe('registerAliases (dispatch)', () => {
     expect((cmd as any)._hidden).toBeFalsy();
   });
 
-  it('invokes strategy handler directly and prints list result', async () => {
+  it('dispatches through the registered target command', async () => {
     mockLoadConfig.mockReturnValue({ aliases: { comp: 'react components' } });
     const program = await build();
     await program.parseAsync(['node', 'xray', 'comp', '-p', '/tmp']);
@@ -65,9 +77,7 @@ describe('registerAliases (dispatch)', () => {
     expect(ctx.root).toBe('/tmp');
     expect(opts.path).toBe('/tmp');
     const out = outSpy.mock.calls.map(c => c[0]).join('\n');
-    expect(out).toContain('react components:');
-    expect(out).toContain('Button');
-    expect(out).toContain('Total: 1');
+    expect(out).toContain('react components: Button');
   });
 
   // Pins current behavior: allowUnknownOption alone does not pass unknown
@@ -87,7 +97,7 @@ describe('registerAliases (dispatch)', () => {
       aliases: { comp: 'react components', bad: 'vue widgets' },
     });
     const program = await build();
-    expect(program.commands.map(c => c.name())).toEqual(['comp']);
+    expect(aliasNames(program)).toEqual(['comp']);
     const warned = warnSpy.mock.calls.map(c => c[0]).join('\n');
     expect(warned).toContain('unknown strategy "vue"');
   });
@@ -97,7 +107,7 @@ describe('registerAliases (dispatch)', () => {
       aliases: { map: 'react components', one: 'single', comp: 'react components' },
     });
     const program = await build();
-    expect(program.commands.map(c => c.name())).toEqual(['comp']);
+    expect(aliasNames(program)).toEqual(['comp']);
   });
 
   it('registers no aliases when a cycle is detected', async () => {
@@ -105,7 +115,7 @@ describe('registerAliases (dispatch)', () => {
       aliases: { comp: 'react components', a: 'b components', b: 'a components' },
     });
     const program = await build();
-    expect(program.commands).toHaveLength(0);
+    expect(aliasNames(program)).toHaveLength(0);
     const warned = warnSpy.mock.calls.map(c => c[0]).join('\n');
     expect(warned).toContain('Circular alias references detected');
   });
