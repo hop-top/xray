@@ -161,13 +161,13 @@ describe('root --config in other commands', () => {
     expect(fs.readFileSync(js, 'utf-8')).toBe('module.exports = {};\n');
   });
 
-  it('telemetry consent reads and records the decision in --config', () => {
+  it('telemetry consent reads --config and persists nothing when not asked', () => {
     const cwd = path.join(tmp, 'empty');
     fs.mkdirSync(cwd);
     const r = run(['--config', explicit, 'paths'], { cwd, telemetry: true });
     expect(r.status).toBe(0);
     expect(fs.existsSync(path.join(cwd, '.xrayrc.json'))).toBe(false);
-    expect(JSON.parse(fs.readFileSync(explicit, 'utf-8')).telemetry).toEqual({ enabled: false });
+    expect(JSON.parse(fs.readFileSync(explicit, 'utf-8')).telemetry).toBeUndefined();
   });
 });
 

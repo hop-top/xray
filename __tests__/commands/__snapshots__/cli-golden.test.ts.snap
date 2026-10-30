@@ -2613,7 +2613,7 @@ exports[`cli golden: excess arguments xray paths extra 1`] = `
 "exit: 0
 --- stdout ---
 project-root:    <CWD>
-project-config:  <CWD>/.xrayrc.json
+project-config:  (none)
 global-config:   (none)
 cache-db:        <CWD>/.xray_cache.db (not yet created)
 config-dir:      <TMP>/home/.config/xray
@@ -11011,7 +11011,7 @@ exports[`cli golden: introspection paths --format json 1`] = `
 --- stdout ---
 {
   "projectRoot": "<CWD>",
-  "projectConfig": "<CWD>/.xrayrc.json",
+  "projectConfig": null,
   "globalConfig": null,
   "cacheDb": "<CWD>/.xray_cache.db",
   "cacheDbExists": false,
@@ -11029,7 +11029,7 @@ exports[`cli golden: introspection paths --format text 1`] = `
 "exit: 0
 --- stdout ---
 project-root:    <CWD>
-project-config:  <CWD>/.xrayrc.json
+project-config:  (none)
 global-config:   (none)
 cache-db:        <CWD>/.xray_cache.db (not yet created)
 config-dir:      <TMP>/home/.config/xray
