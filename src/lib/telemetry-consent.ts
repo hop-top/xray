@@ -3,22 +3,41 @@ import * as path from 'path';
 import * as readline from 'readline';
 import { styles, statusLine } from './tui';
 import { Logger } from './logger';
-import { isWritableConfigFile, loadConfig, saveConfig } from './config';
+import {
+  findGlobalConfigPath,
+  globalConfigDirs,
+  isWritableConfigFile,
+  loadConfig,
+  loadGlobalConfig,
+  saveConfig,
+} from './config';
 import type { XrayConfig } from '../types/xray-config';
+
+/**
+ * Recorded telemetry decision, or undefined when none exists.
+ * Precedence: project config / explicit `--config` file, then the global
+ * (per-user) config. With an explicit `--config` the global config is still
+ * consulted, so the per-user decision applies when that file has no
+ * `telemetry` key.
+ */
+function resolveDecision(configPath?: string): boolean | undefined {
+  const scoped = loadConfig(configPath);
+  if (scoped && scoped.telemetry !== undefined) {
+    return scoped.telemetry?.enabled ?? false;
+  }
+  const global = loadGlobalConfig();
+  if (global && global.telemetry !== undefined) {
+    return global.telemetry?.enabled ?? false;
+  }
+  return undefined;
+}
 
 /**
  * Check if telemetry consent has been given
  * Returns true if consent exists (either enabled or explicitly disabled)
  */
 export function hasConsentDecision(configPath?: string): boolean {
-  const config = loadConfig(configPath);
-
-  // If config exists and has telemetry setting, consent has been decided
-  if (config && config.telemetry !== undefined) {
-    return true;
-  }
-
-  return false;
+  return resolveDecision(configPath) !== undefined;
 }
 
 /**
@@ -56,7 +75,8 @@ export async function promptForConsent(): Promise<boolean> {
   console.log('  • Network activity (data stays local)');
   console.log('');
   console.log(paint.muted('All data is stored locally in .xray/telemetry.json'));
-  console.log(paint.muted('You can change this setting anytime in .xrayrc.json'));
+  console.log(paint.muted('You are asked once. Change it anytime in your user config (xray paths shows where),'));
+  console.log(paint.muted('or per project via "telemetry" in .xrayrc.json.'));
   console.log('');
 
   const answer = await askQuestion(
@@ -77,32 +97,25 @@ export async function promptForConsent(): Promise<boolean> {
 }
 
 /**
- * Save telemetry consent decision to config: the root `--config` file
- * when given (skipped unless it is JSON), else `./.xrayrc.json`.
+ * Save telemetry consent decision to the global (per-user) config, so it is
+ * asked once per user rather than once per project. Never writes into the
+ * cwd, project config, or the root `--config` file. Updates the existing
+ * global config when it is plain JSON, else creates `config.json` in the
+ * kit XDG config dir. A JS global config is left alone (not rewritable).
  */
-export function saveConsentDecision(enabled: boolean, configPath?: string): void {
+export function saveConsentDecision(enabled: boolean): void {
   try {
-    if (configPath !== undefined && !isWritableConfigFile(configPath)) {
-      Logger.debug(`Telemetry consent not saved: ${configPath} is not a JSON config file`);
+    const existing = findGlobalConfigPath();
+    if (existing !== null && !isWritableConfigFile(existing)) {
+      Logger.debug(`Telemetry consent not saved: ${existing} is not a JSON config file`);
       return;
     }
-    let config = loadConfig(configPath);
+    const target = existing ?? path.join(globalConfigDirs()[0], 'config.json');
+    const config = (existing !== null ? loadGlobalConfig() : null) ?? ({} as XrayConfig);
+    config.telemetry = { enabled };
 
-    if (!config) {
-      // Create minimal config if none exists. Do not seed `paths`: a seeded
-      // path is indistinguishable from a user-provided one and disables
-      // strategy auto-detection / auto-configuration.
-      config = {} as XrayConfig;
-    }
-
-    // Set telemetry preference
-    config.telemetry = {
-      enabled
-    };
-
-    // Save config
-    if (configPath === undefined) saveConfig(config);
-    else saveConfig(config, configPath);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    saveConfig(config, target);
 
     Logger.debug(`Telemetry consent saved: ${enabled}`);
   } catch (error) {
@@ -123,17 +136,17 @@ export async function handleFirstRunConsent(argv: string[], configPath?: string)
   }
 
   // Skip if consent decision already exists
-  if (hasConsentDecision(configPath)) {
+  const decided = resolveDecision(configPath);
+  if (decided !== undefined) {
     Logger.debug('Telemetry consent decision already exists');
-    const config = loadConfig(configPath);
-    return config?.telemetry?.enabled ?? false;
+    return decided;
   }
 
   // Skip prompts in non-interactive mode (CI/CD, piped output, etc.)
   if (!isInteractive()) {
     Logger.debug('Non-interactive mode detected, skipping telemetry prompt');
-    // Disabled by default; nothing was asked, so nothing is persisted
-    // (a read-only command must not create .xrayrc.json in the cwd).
+    // Disabled for this run only; nothing persisted so a later interactive
+    // run still asks.
     return false;
   }
 
@@ -141,8 +154,8 @@ export async function handleFirstRunConsent(argv: string[], configPath?: string)
   Logger.debug('Prompting user for telemetry consent');
   const consent = await promptForConsent();
 
-  // Save decision
-  saveConsentDecision(consent, configPath);
+  // Save decision (per user, global config)
+  saveConsentDecision(consent);
 
   return consent;
 }

@@ -55,6 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alias dispatch (e.g. `xray rc`) runs the target command's full pipeline (detect, analyze, handler, output); it previously printed "(none found)".
 - `--no-chunk` and other CLI options are honoured when no config file exists.
 - Pre-commit `strategy:detect` script runs `xray strategy detect` instead of falling through to `explore`.
+- Telemetry consent is asked once per user, not once per project: the
+  decision is stored in the global user config (`telemetry.enabled` in
+  `<config-dir>/config.json`, see `xray paths`) and never written to the
+  cwd, `.xrayrc.json` or `--config`. A project or `--config` `telemetry`
+  setting still wins. Non-interactive runs stay disabled and persist
+  nothing, so a later interactive run still asks. Delete the global config
+  to be asked again. Existing per-project decisions keep applying in that
+  project but are not migrated.
 - Alias names that are empty or whitespace-only are now rejected.
 - Colour honours `--no-color` > `NO_COLOR` > `FORCE_COLOR` > TTY; the
   progress bar is suppressed under `--quiet` and when stderr is not a TTY.

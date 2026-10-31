@@ -103,8 +103,7 @@ function cleanEnv(home: string): NodeJS.ProcessEnv {
 }
 
 let cwdSeq = 0;
-// Fresh cwd per spawn: first run writes .xrayrc.json (telemetry consent)
-// and .xray/ strategy cache into cwd; isolating avoids races/ordering.
+// Fresh cwd per spawn: first run writes .xray/ strategy cache into cwd; isolating avoids races/ordering.
 // Realpath padded to a fixed length: help embeds cwd as an option default,
 // and commander wraps by length, so tmpdir length must not leak into goldens.
 const CWD_LEN = 200;

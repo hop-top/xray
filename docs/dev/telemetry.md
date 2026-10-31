@@ -263,7 +263,7 @@ All tests pass ✅
 
 ### How It Works
 
-On first run (no `.xrayrc.json` exists), xray prompts the user for telemetry consent:
+On first interactive use (no decision in project or global config), xray prompts the user for telemetry consent:
 
 ```typescript
 // In src/index.ts
@@ -273,10 +273,10 @@ const telemetryEnabled = await handleFirstRunConsent(process.argv);
 The consent flow:
 
 1. **Check for --no-telemetry flag** - Skip if present
-2. **Check for existing decision** - Skip if `.xrayrc.json` has `telemetry` setting
+2. **Check for existing decision** - Skip if project/`--config` or the global user config has a `telemetry` setting (project wins)
 3. **Check for interactive mode** - Skip in CI/CD or piped I/O
 4. **Prompt user** - Show informative message and ask Y/n
-5. **Save decision** - Write to `.xrayrc.json`
+5. **Save decision** - Write to the global user config (`config.json` in the kit XDG config dir); never the cwd or project files. Non-interactive runs persist nothing
 
 ### Non-Interactive Detection
 
@@ -308,7 +308,7 @@ To enable after initial setup:
 export XRAY_TELEMETRY_ENABLED=true
 ```
 
-or edit `.xrayrc.json`:
+or edit the global `config.json` (or a project's `.xrayrc.json`):
 ```json
 {
   "telemetry": {

@@ -29,7 +29,8 @@ Xray implements a privacy-first telemetry consent system that prompts users on f
            ▼ No
 ┌─────────────────────────────┐
 │ Check if consent exists     │
-│ (.xrayrc.json has setting)  │
+│ (project/--config, then     │
+│  global user config)        │
 └──────────┬──────────────────┘
            │
            ├─ Yes ──▶ Use saved decision, continue
@@ -40,7 +41,7 @@ Xray implements a privacy-first telemetry consent system that prompts users on f
 │  (TTY + not CI/CD)          │
 └──────────┬──────────────────┘
            │
-           ├─ No ──▶ Disable telemetry, save decision, continue
+           ├─ No ──▶ Disable telemetry (nothing saved), continue
            │
            ▼ Yes
 ┌─────────────────────────────┐
@@ -60,8 +61,8 @@ Xray implements a privacy-first telemetry consent system that prompts users on f
            │
            ▼
 ┌─────────────────────────────┐
-│   Save decision to config   │
-│   (.xrayrc.json created)    │
+│   Save decision to global   │
+│   user config.json          │
 └──────────┬──────────────────┘
            │
            ▼
@@ -126,7 +127,7 @@ Displays informative prompt and gets user answer. Uses `readline` for input.
 
 **`saveConsentDecision(enabled: boolean): void`**
 
-Saves decision to `.xrayrc.json`, creating the file if needed.
+Saves decision to the global user config (`config.json` in the kit XDG config dir), creating it if needed. Never writes the cwd, a project config or `--config`. A JS global config is left untouched.
 
 ## Consent Prompt
 
@@ -338,22 +339,22 @@ All tests pass except one skipped (interactive prompt is tested manually).
 **Scenario:** User runs xray multiple times in succession
 
 **Behavior:**
-- First run: Prompt appears, decision saved
-- Subsequent runs: No prompt, saved decision used
+- First interactive run: prompt appears, decision saved globally
+- Subsequent runs, any project: no prompt, saved decision used
 
 ### Changing Decision
 
 **Scenario:** User wants to change their telemetry preference
 
 **Options:**
-1. Edit `.xrayrc.json` manually
-2. Delete `.xrayrc.json` and run again
+1. Edit the global `config.json` (or a project `.xrayrc.json` override) manually
+2. Delete the global `config.json` and run again
 3. Set `XRAY_TELEMETRY_ENABLED` environment variable
 4. Use `--no-telemetry` flag for one-off disabling
 
 ### Deleted Config
 
-**Scenario:** User deletes `.xrayrc.json` after initial setup
+**Scenario:** User deletes the global `config.json` after initial setup
 
 **Behavior:**
 - Next run: Prompt appears again (treated as first run)
@@ -366,7 +367,7 @@ All tests pass except one skipped (interactive prompt is tested manually).
 **Precedence:**
 1. `--no-telemetry` flag (highest)
 2. Environment variable `XRAY_TELEMETRY_ENABLED`
-3. Config file `.xrayrc.json`
+3. Project config / `--config` `.xrayrc.json`, then global user config
 4. Default (disabled)
 
 ## Future Enhancements

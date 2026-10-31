@@ -4,10 +4,10 @@ import {
   handleFirstRunConsent,
   saveConsentDecision
 } from '../../src/lib/telemetry-consent';
-import { loadConfig } from '../../src/lib/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as readline from 'readline';
 
 // Mock readline to avoid interactive prompts in tests
 const mockQuestion = jest.fn((q: string, cb: (answer: string) => void) => cb('n'));
@@ -20,14 +20,36 @@ jest.mock('readline', () => ({
   }))
 }));
 
+// kit tui pulls ESM-only deps jest cannot load; output styling is irrelevant here
+jest.mock('../../src/lib/tui', () => {
+  const id = (t: string) => t;
+  return {
+    styles: () => ({ bold: id, accent: id, muted: id, warn: id }),
+    statusLine: (t: string) => t,
+  };
+});
+
 describe('TelemetryConsent', () => {
   let tmpDir: string;
   let originalCwd: string;
   let originalStdin: any;
   let originalStdout: any;
+  let xdgHome: string;
+  let savedXdg: string | undefined;
+  let savedHome: string | undefined;
+  const globalFile = () => path.join(xdgHome, 'xray', 'config.json');
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-consent-test-'));
+    // Never touch the real user config: point global lookup at a temp dir.
+    xdgHome = path.join(tmpDir, 'xdg');
+    savedXdg = process.env.XDG_CONFIG_HOME;
+    savedHome = process.env.HOME;
+    process.env.XDG_CONFIG_HOME = xdgHome;
+    process.env.HOME = path.join(tmpDir, 'home');
+    fs.mkdirSync(process.env.HOME, { recursive: true });
+    tmpDir = path.join(tmpDir, 'proj');
+    fs.mkdirSync(tmpDir);
     originalCwd = process.cwd();
     process.chdir(tmpDir);
 
@@ -37,7 +59,11 @@ describe('TelemetryConsent', () => {
     process.stdin.isTTY = true;
     process.stdout.isTTY = true;
 
-    // Reset mocks
+    // Reset mocks (jest config resets implementations between tests)
+    (readline.createInterface as jest.Mock).mockImplementation(() => ({
+      question: mockQuestion,
+      close: mockClose
+    }));
     mockQuestion.mockClear();
     mockClose.mockClear();
     mockQuestion.mockImplementation((q: string, cb: (answer: string) => void) => cb('n'));
@@ -45,9 +71,11 @@ describe('TelemetryConsent', () => {
 
   afterEach(() => {
     process.chdir(originalCwd);
-    if (fs.existsSync(tmpDir)) {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
+    fs.rmSync(path.dirname(tmpDir), { recursive: true, force: true });
+    if (savedXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = savedXdg;
+    if (savedHome === undefined) delete process.env.HOME;
+    else process.env.HOME = savedHome;
 
     // Restore TTY
     process.stdin.isTTY = originalStdin;
@@ -111,48 +139,53 @@ describe('TelemetryConsent', () => {
   });
 
   describe('saveConsentDecision', () => {
-    it('should create config file if none exists', () => {
+    it('persists to the global user config, never the cwd', () => {
       saveConsentDecision(true);
 
-      const configPath = path.join(tmpDir, '.xrayrc.json');
-      expect(fs.existsSync(configPath)).toBe(true);
-
-      const config = loadConfig();
-      expect(config?.telemetry?.enabled).toBe(true);
+      expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8')))
+        .toEqual({ telemetry: { enabled: true } });
+      expect(fs.existsSync(path.join(tmpDir, '.xrayrc.json'))).toBe(false);
+      expect(fs.readdirSync(tmpDir)).toEqual([]);
     });
 
-    it('should not seed paths in the config it creates', () => {
-      saveConsentDecision(false);
-
-      const config = loadConfig();
-      expect(config?.paths).toBeUndefined();
-    });
-
-    it('should update existing config with telemetry setting', () => {
-      const configPath = path.join(tmpDir, '.xrayrc.json');
-      fs.writeFileSync(configPath, JSON.stringify({
-        paths: ['./src'],
-        limit: 4096
-      }));
+    it('preserves other keys of an existing global config', () => {
+      fs.mkdirSync(path.dirname(globalFile()), { recursive: true });
+      fs.writeFileSync(globalFile(), JSON.stringify({ limit: 4096 }));
 
       saveConsentDecision(false);
 
-      const config = loadConfig();
-      expect(config?.telemetry?.enabled).toBe(false);
-      expect(config?.paths).toEqual(['./src']);
-      expect(config?.limit).toBe(4096);
+      expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8')))
+        .toEqual({ limit: 4096, telemetry: { enabled: false } });
     });
 
-    it('should handle enabled=true', () => {
+    it('does not modify an existing project config', () => {
+      const projectFile = path.join(tmpDir, '.xrayrc.json');
+      fs.writeFileSync(projectFile, JSON.stringify({ paths: ['./src'] }));
+
       saveConsentDecision(true);
-      const config = loadConfig();
-      expect(config?.telemetry?.enabled).toBe(true);
+
+      expect(JSON.parse(fs.readFileSync(projectFile, 'utf-8'))).toEqual({ paths: ['./src'] });
     });
 
-    it('should handle enabled=false', () => {
+    it('does not seed paths', () => {
       saveConsentDecision(false);
-      const config = loadConfig();
-      expect(config?.telemetry?.enabled).toBe(false);
+      expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8')).paths).toBeUndefined();
+    });
+
+    it('is visible to hasConsentDecision from any project', () => {
+      saveConsentDecision(false);
+      expect(hasConsentDecision()).toBe(true);
+    });
+
+    it('skips a non-writable (JS) global config instead of shadowing it', () => {
+      const js = path.join(xdgHome, 'xray', 'config.js');
+      fs.mkdirSync(path.dirname(js), { recursive: true });
+      fs.writeFileSync(js, 'module.exports = {};\n');
+
+      saveConsentDecision(true);
+
+      expect(fs.existsSync(globalFile())).toBe(false);
+      expect(fs.readFileSync(js, 'utf-8')).toBe('module.exports = {};\n');
     });
   });
 
@@ -183,8 +216,9 @@ describe('TelemetryConsent', () => {
 
       expect(result).toBe(false);
 
-      // Nothing was asked, so nothing is persisted into the project.
-      expect(fs.existsSync(path.join(tmpDir, '.xrayrc.json'))).toBe(false);
+      // Nothing persisted: a later interactive run must still ask
+      expect(fs.existsSync(globalFile())).toBe(false);
+      expect(fs.readdirSync(tmpDir)).toEqual([]);
     });
 
     it('should return false in CI environment', async () => {
@@ -194,9 +228,8 @@ describe('TelemetryConsent', () => {
       const result = await handleFirstRunConsent(argv);
 
       expect(result).toBe(false);
-
-      // Nothing was asked, so nothing is persisted into the project.
-      expect(fs.existsSync(path.join(tmpDir, '.xrayrc.json'))).toBe(false);
+      expect(fs.existsSync(globalFile())).toBe(false);
+      expect(fs.readdirSync(tmpDir)).toEqual([]);
     });
 
     it('should detect various CI environment variables', async () => {
@@ -219,10 +252,78 @@ describe('TelemetryConsent', () => {
       }
     });
 
-    it.skip('should prompt and save decision in interactive mode', async () => {
-      // Skipping this test as mocking readline.createInterface is complex
-      // Interactive mode is tested manually
-      // This test would require mocking the readline interface properly
+    it('prompts once, stores globally, then never asks again (any project)', async () => {
+      const argv = ['node', 'xray', 'map'];
+      mockQuestion.mockImplementation((q: string, cb: (a: string) => void) => cb('y'));
+
+      expect(await handleFirstRunConsent(argv)).toBe(true);
+      expect(mockQuestion).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8')).telemetry).toEqual({ enabled: true });
+      expect(fs.readdirSync(tmpDir)).toEqual([]);
+
+      // Same project again, and a different project: no prompt, same answer
+      const other = fs.mkdtempSync(path.join(path.dirname(tmpDir), 'other-'));
+      process.chdir(other);
+      expect(await handleFirstRunConsent(argv)).toBe(true);
+      expect(await handleFirstRunConsent(argv, path.join(other, 'missing.json'))).toBe(true);
+      expect(mockQuestion).toHaveBeenCalledTimes(1);
+      expect(fs.readdirSync(other)).toEqual([]);
+    });
+
+    it('stores a refusal globally and does not re-ask', async () => {
+      const argv = ['node', 'xray', 'map'];
+      expect(await handleFirstRunConsent(argv)).toBe(false);
+      expect(await handleFirstRunConsent(argv)).toBe(false);
+      expect(mockQuestion).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8')).telemetry).toEqual({ enabled: false });
+    });
+
+    it('re-asks after the global config is deleted', async () => {
+      const argv = ['node', 'xray', 'map'];
+      await handleFirstRunConsent(argv);
+      fs.rmSync(globalFile());
+      await handleFirstRunConsent(argv);
+      expect(mockQuestion).toHaveBeenCalledTimes(2);
+    });
+
+    it('asks interactively after a non-interactive run stored nothing', async () => {
+      const argv = ['node', 'xray', 'map'];
+      process.stdin.isTTY = false;
+      expect(await handleFirstRunConsent(argv)).toBe(false);
+      process.stdin.isTTY = true;
+      await handleFirstRunConsent(argv);
+      expect(mockQuestion).toHaveBeenCalledTimes(1);
+    });
+
+    it('project telemetry setting wins over global and skips the prompt', async () => {
+      fs.mkdirSync(path.dirname(globalFile()), { recursive: true });
+      fs.writeFileSync(globalFile(), JSON.stringify({ telemetry: { enabled: false } }));
+      fs.writeFileSync(path.join(tmpDir, '.xrayrc.json'), JSON.stringify({ telemetry: { enabled: true } }));
+
+      expect(await handleFirstRunConsent(['node', 'xray', 'map'])).toBe(true);
+      expect(mockQuestion).not.toHaveBeenCalled();
+    });
+
+    it('explicit --config telemetry wins over global; never written when absent', async () => {
+      const explicit = path.join(tmpDir, 'explicit.json');
+      fs.mkdirSync(path.dirname(globalFile()), { recursive: true });
+      fs.writeFileSync(globalFile(), JSON.stringify({ telemetry: { enabled: false } }));
+      fs.writeFileSync(explicit, JSON.stringify({ telemetry: { enabled: true } }));
+      expect(await handleFirstRunConsent(['node', 'xray', 'map'], explicit)).toBe(true);
+
+      // explicit without telemetry key: global decision applies, file untouched
+      fs.writeFileSync(explicit, JSON.stringify({ limit: 1 }));
+      expect(await handleFirstRunConsent(['node', 'xray', 'map'], explicit)).toBe(false);
+      expect(JSON.parse(fs.readFileSync(explicit, 'utf-8'))).toEqual({ limit: 1 });
+      expect(mockQuestion).not.toHaveBeenCalled();
+    });
+
+    it('prompt with explicit --config and no decision writes global only', async () => {
+      const explicit = path.join(tmpDir, 'explicit.json');
+      fs.writeFileSync(explicit, JSON.stringify({ limit: 1 }));
+      await handleFirstRunConsent(['node', 'xray', 'map'], explicit);
+      expect(JSON.parse(fs.readFileSync(explicit, 'utf-8'))).toEqual({ limit: 1 });
+      expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8')).telemetry).toEqual({ enabled: false });
     });
   });
 

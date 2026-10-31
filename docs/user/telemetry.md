@@ -14,7 +14,7 @@ All telemetry data is written to `.xray/telemetry.json` in JSONL format.
 
 ## First Run Consent
 
-On first run (when no `.xrayrc.json` exists), xray will prompt you to enable telemetry:
+The first time you use xray interactively, it prompts you to enable telemetry. The answer is stored once, per user, in your global config (`config.json` in the config dir shown by `xray paths`); it is not asked again in other projects, and nothing is written into the project. Delete the global config to be asked again.
 
 ```
 Welcome to Xray!
@@ -34,7 +34,8 @@ What is NOT collected:
   • Network activity (data stays local)
 
 All data is stored locally in .xray/telemetry.json
-You can change this setting anytime in .xrayrc.json
+You are asked once. Change it anytime in your user config,
+or per project via "telemetry" in .xrayrc.json.
 
 Enable telemetry? [Y/n]:
 ```
@@ -47,7 +48,7 @@ To skip the interactive prompt, use the `--no-telemetry` flag:
 xray map --no-telemetry
 ```
 
-Or in non-interactive environments (CI/CD), the prompt is automatically skipped and telemetry is disabled by default.
+Or in non-interactive environments (CI/CD), the prompt is skipped and telemetry is disabled for that run. Nothing is stored, so the first interactive run still asks.
 
 ## Enabling Telemetry
 
@@ -66,7 +67,7 @@ xray map
 
 ### Option 3: Configuration File
 
-Add to your `.xrayrc.json`:
+Add to your global config (`config.json` in the config dir shown by `xray paths`) for all projects, or to a project's `.xrayrc.json` to override it for that project:
 
 ```json
 {
@@ -360,7 +361,8 @@ cat .xray/telemetry.json | splunk add oneshot -sourcetype _json
 Check if enabled:
 ```bash
 echo $XRAY_TELEMETRY_ENABLED
-cat .xrayrc.json | jq '.telemetry'
+cat .xrayrc.json | jq '.telemetry'   # project override
+xray paths   # shows the global config dir
 ```
 
 Verify file is being created:

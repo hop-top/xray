@@ -162,7 +162,7 @@ and a JS project config (`.xrayrc.js`) are code, and xray loads them.
   in, and only from its root. A client cannot point the server at
   another checkout, or at a subtree's own strategies or config.
 - Each call runs the CLI command in a child process with
-  `--no-telemetry --offline`: no consent prompt, no `.xrayrc.json`
+  `--no-telemetry --offline`: no consent prompt, no consent
   write, no upgrade check. Cache files (`.xray/`, `.xray_cache.db`) are
   written in the server root exactly as the same CLI command run there
   would write them.

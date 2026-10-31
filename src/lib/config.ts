@@ -131,6 +131,15 @@ export function findGlobalConfigPath(): string | null {
 }
 
 /**
+ * Load only the global (per-user) config, never merged with project config.
+ * Returns null when no global config exists.
+ */
+export function loadGlobalConfig(): XrayConfig | null {
+  const globalPath = findGlobalConfigPath();
+  return globalPath ? loadConfigFile(globalPath) : null;
+}
+
+/**
  * Deep merge two config objects
  * Project config takes precedence over global config
  */
