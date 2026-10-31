@@ -268,6 +268,18 @@ Resources:
     });
   });
 
+  describe('commands - resources options', () => {
+    it('declares type, tool and provider as CLI options', () => {
+      const strategy = new InfrastructureStrategy();
+      const options = strategy.commands!.resources.options as Record<string, unknown>;
+
+      expect(Object.keys(options ?? {}).sort()).toEqual(['provider', 'tool', 'type']);
+      for (const desc of Object.values(options)) {
+        expect(typeof desc).toBe('string');
+      }
+    });
+  });
+
   describe('commands - providers', () => {
     it('should list all cloud providers', async () => {
       mockContext.globFiles.mockReturnValue(['main.tf']);

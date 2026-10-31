@@ -31,19 +31,33 @@ The Infrastructure Strategy provides unified analysis and validation for infrast
 
 ### resources
 
-List all infrastructure resources.
+List all infrastructure resources with optional filtering.
 
 ```bash
 # List all resources
 xray infrastructure resources
 
-# Machine-readable output
-xray infrastructure resources --format json
+# Filter by resource type
+xray infrastructure resources --type aws_instance
+
+# Filter by tool
+xray infrastructure resources --tool terraform
+
+# Filter by provider
+xray infrastructure resources --provider aws
+
+# Filters combine (logical AND); machine-readable output
+xray infrastructure resources --tool terraform --provider aws --format json
 ```
 
-**Options:** none beyond the common flags (`-p/--path`, `--format`, extension overrides).
-There are no `--type`, `--tool` or `--provider` filters in the CLI; filter the
-output instead, e.g. `xray infrastructure resources --format json | jq '.[] | select(.tool == "terraform")'`.
+**Options:**
+- `--type`: Filter by resource type (e.g., `aws_instance`, `Deployment`)
+- `--tool`: Filter by tool (`terraform`, `kubernetes`, `helm`, `cloudformation`)
+- `--provider`: Filter by cloud provider (`aws`, `google`, `azure`)
+
+Values are matched exactly. A filter that matches nothing, or an unknown
+tool/provider value, is not an error: the result is empty (`(none found)` in
+text, `[]` in JSON) and the exit code is 0.
 
 **Output:**
 ```json
@@ -245,8 +259,8 @@ data "aws_ami" "ubuntu" {
 $ xray infrastructure resources
 Found 4 resources
 
-# List only instances (filter the JSON output)
-$ xray infrastructure resources --format json | jq '[.[] | select(.type == "aws_instance")]'
+# List only instances
+$ xray infrastructure resources --type aws_instance
 
 # Show dependency graph
 $ xray infrastructure graph --format dot
@@ -310,7 +324,7 @@ spec:
 **Commands:**
 ```bash
 # List all Kubernetes resources
-$ xray infrastructure resources --format json | jq '[.[] | select(.tool == "kubernetes")]'
+$ xray infrastructure resources --tool kubernetes
 
 # Show summary
 $ xray infrastructure summary

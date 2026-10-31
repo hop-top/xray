@@ -1242,6 +1242,12 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --type <type>                       Filter by resource type (e.g.,
+                                      aws_instance, Deployment)
+  --tool <tool>                       Filter by infrastructure tool (terraform,
+                                      kubernetes, helm, cloudformation)
+  --provider <provider>               Filter by cloud provider (aws, google,
+                                      azure)
   --format <fmt>                      Output format: text, json, yaml, table,
                                       csv; dot for graph commands (default:
                                       "text")
@@ -8400,6 +8406,30 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": [],
               "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--type",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Filter by resource type (e.g., aws_instance, Deployment)"
+            },
+            {
+              "name": "--tool",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Filter by infrastructure tool (terraform, kubernetes, helm, cloudformation)"
+            },
+            {
+              "name": "--provider",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Filter by cloud provider (aws, google, azure)"
             },
             {
               "name": "--format-opt",

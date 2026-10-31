@@ -49,13 +49,18 @@ The infrastructure strategy already had:
 ### 2. Command Enhancements
 
 #### Enhanced `resources` Command
-The strategy handler filters by `type`, `tool` and `provider` options, but the
-command declares no options, so the CLI exposes no `--type`, `--tool` or
-`--provider` flags (`xray infrastructure resources --type ...` fails with
-"unknown option"). Filter the output instead:
+Added filtering capabilities (declared as command options, so they are
+real CLI flags):
+- `--type`: Filter by resource type (e.g., `aws_instance`, `Deployment`)
+- `--tool`: Filter by infrastructure tool (e.g., `terraform`, `kubernetes`)
+- `--provider`: Filter by cloud provider (e.g., `aws`, `google`, `azure`)
 
+Filters combine with AND and match exactly; unknown values yield an empty
+result, not an error.
+
+Example:
 ```bash
-xray infrastructure resources --format json | jq '[.[] | select(.type == "aws_instance")]'
+xray infrastructure resources --provider aws --type aws_instance
 ```
 
 #### New `validate` Command

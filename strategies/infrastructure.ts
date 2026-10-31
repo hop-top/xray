@@ -75,6 +75,11 @@ export default class InfrastructureStrategy implements Strategy {
   commands = {
     resources: {
       description: 'List all infrastructure resources (options: type, tool, provider)',
+      options: {
+        'type': 'Filter by resource type (e.g., aws_instance, Deployment)',
+        'tool': 'Filter by infrastructure tool (terraform, kubernetes, helm, cloudformation)',
+        'provider': 'Filter by cloud provider (aws, google, azure)'
+      },
       handler: async (ctx: StrategyContext, opts?: any) => {
         const results: any[] = [];
         const files = ctx.globFiles('**/*');
