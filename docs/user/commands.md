@@ -154,7 +154,7 @@ See [Command Aliases Guide](aliases.md) for detailed documentation.
 
 ### `xray clear-cache`
 
-Clear the SQLite cache used for parsed AST data.
+Clear the SQLite cache used for parsed AST data. `xray cache clear` is the same command (the `cache` group is what `xray --help` lists).
 
 ```bash
 xray clear-cache

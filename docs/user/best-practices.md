@@ -160,11 +160,11 @@ xray clear-cache && xray map --anchor src/ImportantFile.ts --with incs
 
 ### Cache Location
 
-xray stores cache in: `~/.xray_cache.db` (SQLite database)
+xray stores the parse cache in `.xray_cache.db` in the project root (SQLite database; `xray paths` prints the exact path). Strategy detection results are cached separately in the user cache dir (`cache-dir` in `xray paths`).
 
 If it gets too large:
 ```bash
-rm ~/.xray_cache.db  # Safe to delete, will regenerate
+xray cache clear  # Safe, will regenerate
 ```
 
 ---

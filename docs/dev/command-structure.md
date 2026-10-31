@@ -173,12 +173,13 @@ Cache management utilities.
 
 **Command Definition:**
 ```
-xray clear-cache    # Clear the AST cache
+xray cache clear    # Clear the AST cache (`xray clear-cache` is a hidden legacy alias)
 ```
 
 **Cache Details:**
 - Location: `.xray_cache.db` (SQLite)
-- Stores: AST trees, strategy detection results
+- Stores: AST trees (project root, kit sqlstore)
+- Strategy detection results are cached separately as JSON in the user cache dir (`cache-dir` in `xray paths`), keyed by project root
 - Auto-invalidated on file changes
 - Manual clear available for troubleshooting
 
@@ -234,12 +235,11 @@ addCommonOptions(cmd: Command) {
   --no-chunk                 // Disable chunked output
 
   // Configuration
-  --config <path>            // Config file path
   --lens <name>              // Named lens (config-file overlay)
   --scope <name>             // Config scope
   --all-scopes               // Run all scopes
-  --auto-configure           // Auto-detect strategies (default: true)
-  --no-auto-configure        // Disable auto-configuration
+  --detect                   // Enable strategy detection (auto when no path given)
+  --skip-detect              // Skip strategy detection and auto-configuration
 }
 ```
 
@@ -315,7 +315,7 @@ const outputPath = resolveOutputPath('output', 'txt');
 
 **File:** `src/commands/generate.ts`
 
-When `--auto-configure` is enabled (default), xray automatically:
+Unless `--skip-detect` is given, xray automatically:
 
 1. Detects applicable strategies
 2. Extracts file type patterns
@@ -406,16 +406,19 @@ try {
 Long-running operations use progress bars:
 
 ```typescript
-const bar = new cliProgress.SingleBar({
-  format: 'Analysis Progress |{bar}| {percentage}% || {value}/{total}',
-  hideCursor: true
-});
+import { fileProgress } from '../lib/tui';
+
+const bar = fileProgress({ label: 'Parsing', quiet: options.quiet });
 
 // Progress callbacks
 config.onProgress = (current, total, file) => {
-  bar.update(current);
+  bar.update(current, total, file);
 };
 ```
+
+`fileProgress` (kit TUI) draws on stderr, is a no-op under `--quiet` and on a
+non-TTY stream, and stops itself once `current >= total`. With color on it is
+kit's bar; with color off, a plain bar with the same glyphs and no ANSI.
 
 ## Integration with Core Services
 

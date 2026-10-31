@@ -219,7 +219,7 @@ Renders analysis results in various formats with support for both single-file an
    ├─ Parse command-line options
    └─ Merge config with CLI options
 
-2. Strategy Auto-Configuration (if --auto-configure)
+2. Strategy Auto-Configuration (unless --skip-detect)
    ├─ Detect applicable strategies
    ├─ Apply strategy-specific file patterns
    └─ Configure match/catch patterns

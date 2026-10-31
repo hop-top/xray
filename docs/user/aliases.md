@@ -134,8 +134,9 @@ xray alias set map "react components"
 
 **Built-in commands:**
 - `map`, `scan`, `graph`, `find`, `detect`
-- `strategies`, `strategy`, `alias`, `config`
-- `save`, `load`, `clear-cache`, `completion`, `help`, `version`
+- `strategies`, `strategy`, `alias`, `lang`, `config`
+- `save`, `load`, `snapshot`, `plugin`
+- `clear-cache`, `completion`, `help`, `version`
 
 ### Invalid Formats
 
