@@ -54,7 +54,7 @@ describe('alias rules', () => {
     it('skips aliases with invalid target format', () => {
       const aliases = usableAliases({
         aliases: { bad: 'invalidformat', good: 'react components' },
-      });
+      }, []);
       expect(aliases).toEqual({ good: 'react components' });
       expect(warned()).toContain('Invalid alias target "invalidformat" for "bad"');
     });
