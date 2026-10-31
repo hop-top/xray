@@ -91,12 +91,12 @@ app.use(errorHandler);
 
 ## Commands
 
-### `express:routes`
+### `express routes`
 
 Lists all Express routes detected in the project.
 
 ```bash
-xray express:routes
+xray express routes
 ```
 
 **Output:**
@@ -124,12 +124,12 @@ xray express:routes
 ]
 ```
 
-### `express:routers`
+### `express routers`
 
 Lists all Express Router instances and their mount points.
 
 ```bash
-xray express:routers
+xray express routers
 ```
 
 **Output:**
@@ -154,12 +154,12 @@ xray express:routers
 ]
 ```
 
-### `express:middleware`
+### `express middleware`
 
 Lists all middleware registered in the application.
 
 ```bash
-xray express:middleware
+xray express middleware
 ```
 
 **Output:**
@@ -181,12 +181,12 @@ xray express:middleware
 ]
 ```
 
-### `express:error-handlers`
+### `express error-handlers`
 
 Lists all error handling middleware.
 
 ```bash
-xray express:error-handlers
+xray express error-handlers
 ```
 
 **Output:**
@@ -220,35 +220,35 @@ Files are automatically tagged based on detected Express patterns:
 Quickly understand all HTTP endpoints in your Express application:
 
 ```bash
-xray express:routes | jq 'group_by(.method) | map({method: .[0].method, count: length})'
+xray express routes | jq 'group_by(.method) | map({method: .[0].method, count: length})'
 ```
 
 ### Middleware Audit
 Review all middleware applied across your application:
 
 ```bash
-xray express:middleware | jq '.[] | .name'
+xray express middleware | jq '.[] | .name'
 ```
 
 ### Route Protection Analysis
 Find routes with authentication/authorization middleware:
 
 ```bash
-xray express:routes | jq '.[] | select(.middleware | contains(["authenticate"]))'
+xray express routes | jq '.[] | select(.middleware | contains(["authenticate"]))'
 ```
 
 ### Router Architecture Review
 Understand how your application is organized with routers:
 
 ```bash
-xray express:routers | jq 'group_by(.type)'
+xray express routers | jq 'group_by(.type)'
 ```
 
 ### Error Handling Coverage
 Verify error handlers are properly implemented:
 
 ```bash
-xray express:error-handlers | jq 'length'
+xray express error-handlers | jq 'length'
 ```
 
 ## Implementation Details

@@ -77,9 +77,9 @@ Pre-built analyzers that understand frameworks. Ask specific questions:
 - Go CLI: "What commands does this have?"
 
 ```bash
-xray react:components      # List all React components
-xray express:routes        # List all Express routes
-xray strategy:detect       # What frameworks are here?
+xray react components      # List all React components
+xray express routes        # List all Express routes
+xray strategy detect       # What frameworks are here?
 ```
 
 ### 3. Chunked Output
@@ -185,10 +185,10 @@ Choose your path:
 ### "I just joined this project, where do I start?"
 ```bash
 # Step 1: What frameworks are here?
-xray strategy:detect
+xray strategy detect
 
 # Step 2: List main components/routes
-xray react:components    # or xray express:routes
+xray react components    # or xray express routes
 
 # Step 3: Get detailed map of src/
 xray map --path ./src

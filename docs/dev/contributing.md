@@ -44,7 +44,7 @@ oss-xray-codes/
 │   │   ├── common.ts      # Shared utilities and options
 │   │   ├── generate.ts    # map, scan, graph commands
 │   │   ├── explore.ts     # explore command
-│   │   ├── strategy.ts    # strategy:* commands
+│   │   ├── strategy.ts    # strategy * commands
 │   │   ├── strategy-cmd.ts # Strategy command execution
 │   │   ├── clear-cache.ts # Cache commands
 │   │   └── completion.ts  # Completion commands
@@ -423,8 +423,8 @@ describe('MyFrameworkStrategy', () => {
 
 3. **Test the strategy:**
 ```bash
-xray strategy:detect                    # Should list your strategy
-xray my-framework:commands              # Run strategy commands
+xray strategy detect                    # Should list your strategy
+xray my-framework commands               # Run strategy commands
 npm test -- my-framework.test.ts        # Run strategy tests
 ```
 

@@ -22,7 +22,7 @@ xray produces output in different formats based on command:
 | `explore` | Plain text list | Plain text |
 | `scan` | Plain text list | Plain text |
 | `graph` | Mermaid | DOT, TXT |
-| `strategy:*` | Plain text | Plain text |
+| `strategy *` | Plain text | Plain text |
 
 **How to Parse:**
 - Markdown: Parse heading levels, list markers, code blocks
@@ -413,7 +413,7 @@ Available: react, express, rest-api, go-cli
 ```
 
 **What it means:** Requested strategy doesn't exist
-**Recovery:** Use correct name, use `strategy:list` to see available
+**Recovery:** Use correct name, use `strategy list` to see available
 
 **Error: No Strategies Detected**
 
@@ -569,7 +569,7 @@ def validate_output(output: str, expected_format: str):
 | `explore` | List items with `-` | Components, routes, hooks |
 | `scan` | Count and file list | Total files matched |
 | `graph` | Arrows `-->` or `->` | Relationships and flow |
-| `strategy:detect` | Strategy names | Detected frameworks |
+| `strategy detect` | Strategy names | Detected frameworks |
 
 ## Common Interpretation Mistakes
 

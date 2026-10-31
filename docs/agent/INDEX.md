@@ -305,7 +305,7 @@ After xray, validate results are useful before proceeding.
 See: [command-selection.md](command-selection.md#quick-command-reference)
 
 ```
-Discover:      strategy:detect, scan
+Discover:      strategy detect, scan
 Understand:    map --depth 1/2, explore
 Deep Dive:     graph, map --with incs
 ```

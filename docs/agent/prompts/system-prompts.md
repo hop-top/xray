@@ -18,7 +18,7 @@ and patterns. Use it when:
 - You need to understand how code flows
 
 Basic commands:
-- `xray strategy:detect` - Identify frameworks
+- `xray strategy detect` - Identify frameworks
 - `xray map --path ./src --depth 2` - See structure
 - `xray explore <framework>:<command>` - Find patterns
 - `xray scan --match "*.ts"` - Find files
@@ -57,15 +57,15 @@ Don't use xray for:
 
 **Discovery:**
 ```bash
-xray strategy:detect                    # What frameworks?
+xray strategy detect                    # What frameworks?
 xray scan --match "*.component.ts"      # Find components
 ```
 
 **Understanding:**
 ```bash
 xray map --path ./src --depth 2         # High-level structure
-xray explore react:components           # React components
-xray explore express:routes             # Express routes
+xray react components           # React components
+xray express routes             # Express routes
 ```
 
 **Deep Analysis:**
@@ -95,7 +95,7 @@ If xray fails:
 
 **Understanding new codebase:**
 ```
-1. xray strategy:detect     (know the tech stack)
+1. xray strategy detect     (know the tech stack)
 2. xray map --depth 2       (see structure)
 3. xray explore <framework> (find patterns)
 ```
@@ -117,7 +117,7 @@ If xray fails:
 ### Token Awareness
 
 Each xray command costs tokens. Estimate:
-- strategy:detect: ~50 tokens
+- strategy detect: ~50 tokens
 - scan: ~50-100 tokens
 - map --depth 2: ~300-400 tokens
 - explore command: ~100-150 tokens
@@ -126,7 +126,7 @@ Start cheap (scan + explore), only use map when needed.
 
 ### Important Notes
 
-- Always start with `xray strategy:detect` for unknown codebases
+- Always start with `xray strategy detect` for unknown codebases
 - Use `--path` to narrow scope on large codebases
 - Reference xray findings when explaining your recommendations
 - Keep xray output available for pattern reference
@@ -179,7 +179,7 @@ Question from User
 
 **Discovery (Low Token Cost: 50-100)**
 ```bash
-xray strategy:detect
+xray strategy detect
 # Detects frameworks (React, Express, Vue, etc.)
 # Always run this first for unknown codebase
 
@@ -201,9 +201,9 @@ xray map --anchor src/main.ts --with incs
 
 **Pattern Discovery (Low-Medium Token Cost: 100-200)**
 ```bash
-xray explore react:components
-xray explore express:routes
-xray explore rest-api:endpoints
+xray react components
+xray express routes
+xray rest-api endpoints
 # Framework-specific patterns
 # Good for finding where similar code exists
 ```
@@ -250,7 +250,7 @@ xray graph --with cf --with df
 
 ```
 STEP 1: Detect frameworks (50 tokens)
-→ xray strategy:detect
+→ xray strategy detect
 ← Result: "React, Express detected"
 
 STEP 2: Map high-level structure (300 tokens)
@@ -258,8 +258,8 @@ STEP 2: Map high-level structure (300 tokens)
 ← Result: Directory structure with main files
 
 STEP 3: Find patterns (150 tokens)
-→ xray explore react:components
-→ xray explore express:routes
+→ xray react components
+→ xray express routes
 ← Result: Know what components/routes exist
 
 OUTPUT TO USER:
@@ -356,7 +356,7 @@ TOTAL TOKENS: ~450
 ### Important Constraints
 
 **Do's:**
-- DO start with `xray strategy:detect` on unknown codebases
+- DO start with `xray strategy detect` on unknown codebases
 - DO use `--path` to narrow scope
 - DO reference xray findings in your recommendations
 - DO fall back gracefully if xray fails
@@ -398,7 +398,7 @@ User asks to work on code
 │  YES → Use xray (continue)
 │  NO  → Use file reads
 │
-├─ Run: xray strategy:detect
+├─ Run: xray strategy detect
 ├─ Parse: What frameworks detected?
 ├─ Run: Appropriate xray command based on question
 ├─ Parse: Extract relevant findings
@@ -410,7 +410,7 @@ User asks to work on code
 Before production deployment:
 
 - [ ] Understand when to invoke xray (discovery, structure, patterns)
-- [ ] Know command selection (strategy:detect, scan, map, explore, graph)
+- [ ] Know command selection (strategy detect, scan, map, explore, graph)
 - [ ] Can parse all output formats (markdown, lists, tables)
 - [ ] Have error recovery procedures
 - [ ] Know token costs and optimize
@@ -446,7 +446,7 @@ Use xray when:
 - User wants architectural overview
 
 Remember:
-- Always start with `xray strategy:detect` for unknown projects
+- Always start with `xray strategy detect` for unknown projects
 - Use findings throughout conversation, not just at start
 - Acknowledge limitations if xray output incomplete
 - Can ask clarifying questions based on xray structure
@@ -461,7 +461,7 @@ GPT benefits from structured, explicit instructions:
 
 Use the xray tool with these commands:
 
-1. **Detect frameworks:** xray strategy:detect
+1. **Detect frameworks:** xray strategy detect
 2. **Find structure:** xray map --path ./src --depth 2
 3. **Find patterns:** xray explore <framework>:<type>
 4. **Find files:** xray scan --match "<pattern>"
@@ -487,8 +487,8 @@ Copilot benefits from inline context and rapid iteration:
 ## xray: Quick Code Analysis
 
 When suggesting code, can use `xray` to:
-- xray strategy:detect - Know what framework
-- xray explore react:components - Find React patterns
+- xray strategy detect - Know what framework
+- xray react components - Find React patterns
 - xray scan --match "*.ts" - Find TypeScript files
 - xray map --anchor file.ts - Understand file context
 
@@ -500,13 +500,13 @@ This helps me suggest code that matches existing patterns.
 After integrating, test with:
 
 1. **Discovery test:** "What frameworks does this project use?"
-   - Should trigger `xray strategy:detect`
+   - Should trigger `xray strategy detect`
 
 2. **Structure test:** "Show me the overall structure"
    - Should trigger `xray map`
 
 3. **Pattern test:** "How are React components structured?"
-   - Should trigger `xray explore react:components`
+   - Should trigger `xray react components`
 
 4. **Implementation test:** "Help me add a feature"
    - Should proactively use xray to discover patterns

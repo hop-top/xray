@@ -40,7 +40,7 @@ AGENT RECEIVES USER REQUEST
     │   ├─ YES: Use framework-specific commands
     │   │   └─ Continue to Command Selection
     │   │
-    │   └─ NO: Run strategy:detect first
+    │   └─ NO: Run strategy detect first
     │       └─ Continue to Command Selection
     │
     └─ SELECT COMMAND
@@ -53,7 +53,7 @@ AGENT RECEIVES USER REQUEST
 WHAT DOES USER WANT TO UNDERSTAND?
     │
     ├─ "What frameworks are used?"
-    │   └─ COMMAND: xray strategy:detect
+    │   └─ COMMAND: xray strategy detect
     │       TOKENS: 50
     │       NEXT: Based on detected frameworks
     │
@@ -86,16 +86,16 @@ WHAT DOES USER WANT TO UNDERSTAND?
     │
     ├─ "Find [framework] patterns" (React components, routes, etc.)
     │   ├─ React patterns
-    │   │   ├─ COMMAND: xray explore react:components
-    │   │   ├─ COMMAND: xray explore react:hooks
+    │   │   ├─ COMMAND: xray react components
+    │   │   ├─ COMMAND: xray react hooks
     │   │   └─ TOKENS: 100-150 each
     │   │
     │   ├─ Express patterns
-    │   │   ├─ COMMAND: xray explore express:routes
+    │   │   ├─ COMMAND: xray express routes
     │   │   └─ TOKENS: 100
     │   │
     │   ├─ REST API patterns
-    │   │   ├─ COMMAND: xray explore rest-api:endpoints
+    │   │   ├─ COMMAND: xray rest-api endpoints
     │   │   └─ TOKENS: 100
     │   │
     │   └─ Other framework
@@ -141,7 +141,7 @@ WHAT DOES USER WANT TO UNDERSTAND?
     │           NEXT: Complete flow understanding
     │
     └─ "I'm not sure what I need"
-        └─ START: xray strategy:detect (discover frameworks)
+        └─ START: xray strategy detect (discover frameworks)
             THEN: xray map --depth 1 (understand structure)
             THEN: Ask user clarifying question
             TOKENS: 200-250
@@ -188,7 +188,7 @@ XRAY COMMAND EXECUTED
     │   │   ├─ Action: Show available strategies
     │   │   ├─ Fix: Use correct strategy name
     │   │   ├─ Retry: with correct strategy
-    │   │   └─ If fails: Use strategy:list
+    │   │   └─ If fails: Use strategy list
     │   │
     │   └─ Other error
     │       ├─ Action: Log error
@@ -246,17 +246,17 @@ HOW MANY TOKENS AVAILABLE?
     │
     ├─ < 100 tokens
     │   ├─ Can only afford: ONE cheap command
-    │   ├─ Recommendation: xray strategy:detect OR xray scan
+    │   ├─ Recommendation: xray strategy detect OR xray scan
     │   └─ Limitation: Very limited analysis possible
     │
     ├─ 100-200 tokens
     │   ├─ Can afford: Discovery + limited exploration
-    │   ├─ Recommendation: strategy:detect + scan
+    │   ├─ Recommendation: strategy detect + scan
     │   └─ Limitation: No deep analysis
     │
     ├─ 200-500 tokens
     │   ├─ Can afford: Discovery + basic structure
-    │   ├─ Recommendation: strategy:detect + map --depth 1
+    │   ├─ Recommendation: strategy detect + map --depth 1
     │   └─ Limitation: Limited to overview only
     │
     ├─ 500-1000 tokens
@@ -372,7 +372,7 @@ AFTER XRAY ANALYSIS COMPLETE
 
 ```
 CHEAP (50-100 tokens)        MEDIUM (200-400 tokens)     EXPENSIVE (500+ tokens)
-├─ strategy:detect           ├─ map --depth 2             ├─ graph commands
+├─ strategy detect           ├─ map --depth 2             ├─ graph commands
 ├─ scan --match pattern      ├─ map --anchor file         ├─ complete map
 ├─ explore framework         └─ map with features         └─ multiple commands
 
@@ -400,7 +400,7 @@ ERROR                          QUICK FIX
 ├─ Permission denied         → Ask user for accessible path
 ├─ Pattern matched 0         → Remove filters, try --match "*"
 ├─ Timeout                   → Add --depth 1 or --path limit
-├─ Strategy not found        → Run strategy:list for names
+├─ Strategy not found        → Run strategy list for names
 └─ No strategies detected    → Normal, continue with generic analysis
 ```
 

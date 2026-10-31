@@ -206,7 +206,7 @@ Provides a high-level summary of package managers in the project.
 
 ```bash
 # Detect all strategies (including package-manager)
-xray strategy:detect
+xray strategy detect
 
 # Show package-manager info
 xray strategy info package-manager

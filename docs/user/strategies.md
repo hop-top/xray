@@ -106,7 +106,7 @@ xray glossary scan --disable-surface glossary:export
 These flags layer on top of config file settings with runtime precedence.
 They work for:
 - analysis commands such as `map`, `scan`, `graph`, and `generate`
-- dynamic extension command groups such as `react:*`, `express:*`, and future
+- dynamic extension command groups such as `react ...`, `express ...`, and future
   glossary commands
 
 If you are authoring an extension, the resolved values are exposed through the
@@ -132,7 +132,7 @@ The React strategy activates when:
 
 #### Available Commands
 
-##### `react:components`
+##### `react components`
 
 Lists all React components in the project.
 
@@ -157,7 +157,7 @@ Total: 4 component(s)
 - Class components: `class MyComponent extends Component`, `class MyComponent extends React.PureComponent`
 - TypeScript patterns with generics and complex type annotations
 
-##### `react:hooks`
+##### `react hooks`
 
 Lists all custom React hooks.
 
@@ -181,7 +181,7 @@ Total: 4 hook(s)
 - Both function declarations and arrow function assignments
 - Example: `function useMyHook()`, `const useMyHook = () => {}`
 
-##### `react:contexts`
+##### `react contexts`
 
 Lists all React contexts.
 
@@ -242,7 +242,7 @@ The Express strategy activates when:
 
 #### Available Commands
 
-##### `express:routes`
+##### `express routes`
 
 Lists all Express routes with HTTP methods, paths, handlers, and middleware chains.
 
@@ -269,7 +269,7 @@ Total: 5 route(s)
 - Handler function names
 - Middleware chains in route definitions
 
-##### `express:routers`
+##### `express routers`
 
 Lists all Express Router instances and their mount points.
 
@@ -297,7 +297,7 @@ Total: 3 router(s)
 - Router mounting: `app.use('/path', router)`
 - Router variable names and mount paths
 
-##### `express:middleware`
+##### `express middleware`
 
 Lists all middleware (global and path-specific).
 
@@ -328,7 +328,7 @@ Total: 6 middleware
 - Third-party middleware: `cors()`, `helmet()`, `morgan()`
 - Custom middleware functions
 
-##### `express:error-handlers`
+##### `express error-handlers`
 
 Lists all error handling middleware (4-parameter functions).
 
@@ -402,7 +402,7 @@ The REST API strategy activates when:
 
 #### Available Commands
 
-##### `rest-api:endpoints`
+##### `rest-api endpoints`
 
 Lists all REST endpoints across all detected frameworks.
 
@@ -433,7 +433,7 @@ Total: 7 endpoint(s) across 3 framework(s)
 - **Gin/Go**: `router.GET()`, `router.POST()`, etc.
 - **Echo/Go**: `e.GET()`, `e.POST()`, etc.
 
-##### `rest-api:methods`
+##### `rest-api methods`
 
 Groups endpoints by HTTP method.
 
@@ -461,7 +461,7 @@ PUT:
 Total: 7 endpoint(s)
 ```
 
-##### `rest-api:middleware`
+##### `rest-api middleware`
 
 Lists middleware and interceptors (framework-specific).
 
@@ -506,7 +506,7 @@ The Go CLI strategy activates when:
 
 #### Available Commands
 
-##### `go-cli:commands`
+##### `go-cli commands`
 
 Lists all CLI commands with descriptions.
 
@@ -531,7 +531,7 @@ Total: 5 command(s)
 - **urfave/cli**: `&cli.App{}`, `&cli.Command{}`
 - Command names and descriptions
 
-##### `go-cli:flags`
+##### `go-cli flags`
 
 Lists all command-line flags.
 
@@ -556,7 +556,7 @@ Total: 4 flag(s)
 - **Standard flag**: `flag.String`, `flag.Bool`, `flag.Int`, etc.
 - Flag names, types, defaults, and descriptions
 
-##### `go-cli:tree`
+##### `go-cli tree`
 
 Shows command hierarchy (parent-child relationships).
 

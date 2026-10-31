@@ -6,7 +6,7 @@ Use this document to determine which xray command to run for any given scenario.
 
 | Command | Best For | Token Cost | Speed |
 |---------|----------|-----------|-------|
-| `strategy:detect` | Identify frameworks | Low (50t) | Fast |
+| `strategy detect` | Identify frameworks | Low (50t) | Fast |
 | `scan` | Find files by pattern | Low (50-100t) | Fast |
 | `map` | Understand structure | Medium (300-500t) | Medium |
 | `explore` | Find patterns (React components, routes, etc.) | Low-Med (100-200t) | Fast |
@@ -19,7 +19,7 @@ Use this document to determine which xray command to run for any given scenario.
 WHAT DO YOU WANT TO UNDERSTAND?
 │
 ├─ "What frameworks are in this codebase?"
-│   └─ COMMAND: xray strategy:detect
+│   └─ COMMAND: xray strategy detect
 │       TOKENS: ~50
 │       TIME: ~2s
 │
@@ -62,23 +62,23 @@ WHAT DO YOU WANT TO UNDERSTAND?
 │
 ├─ "Find specific types of code"
 │   ├─ "React components"
-│   │   ├─ Is this a React app? YES → COMMAND: xray react:components
+│   │   ├─ Is this a React app? YES → COMMAND: xray react components
 │   │   │   TOKENS: ~100
 │   │   │   TIME: ~3s
-│   │   └─ Unknown? → COMMAND: xray strategy:detect (first)
+│   │   └─ Unknown? → COMMAND: xray strategy detect (first)
 │   │
 │   ├─ "Express routes"
-│   │   └─ COMMAND: xray express:routes
+│   │   └─ COMMAND: xray express routes
 │   │       TOKENS: ~100
 │   │       TIME: ~3s
 │   │
 │   ├─ "React hooks"
-│   │   └─ COMMAND: xray react:hooks
+│   │   └─ COMMAND: xray react hooks
 │   │       TOKENS: ~100
 │   │       TIME: ~3s
 │   │
 │   ├─ "API endpoints (any framework)"
-│   │   └─ COMMAND: xray rest-api:endpoints
+│   │   └─ COMMAND: xray rest-api endpoints
 │   │       TOKENS: ~100
 │   │       TIME: ~3s
 │   │
@@ -127,7 +127,7 @@ WHAT DO YOU WANT TO UNDERSTAND?
 │       Note: Maximum information, highest token cost
 │
 └─ "I'm not sure what I'm looking for"
-    └─ START: xray strategy:detect
+    └─ START: xray strategy detect
        THEN: xray map --path ./src --depth 1
        THEN: Based on results, use specific command
 ```
@@ -142,7 +142,7 @@ WHAT DO YOU WANT TO UNDERSTAND?
 
 ```
 1. Detect frameworks
-   COMMAND: xray strategy:detect
+   COMMAND: xray strategy detect
    WHY: Know what tech stack you're dealing with
    TOKENS: ~50
    OUTPUT: List of frameworks (React, Express, etc.)
@@ -201,7 +201,7 @@ RESULT: You now know where the bug likely is and its context
 
 ```
 1. Detect frameworks (if unknown)
-   COMMAND: xray strategy:detect
+   COMMAND: xray strategy detect
    TOKENS: ~50
 
 2. Find similar features
@@ -406,7 +406,7 @@ Single File Output:
 
 | Question | Scenario | Command |
 |----------|----------|---------|
-| What frameworks? | Unknown | `strategy:detect` |
+| What frameworks? | Unknown | `strategy detect` |
 | What files exist? | Need specific files | `scan` |
 | How organized? | Understanding structure | `map --depth 2` |
 | Find components? | React/Vue project | `explore <framework>:components` |
@@ -424,28 +424,28 @@ Single File Output:
 ### Budget: 100-200 tokens
 ```
 BEST: Quick discovery
-COMMAND: strategy:detect + scan
+COMMAND: strategy detect + scan
 RESULT: Know frameworks and file list
 ```
 
 ### Budget: 300-500 tokens
 ```
 BEST: Basic understanding
-COMMAND: strategy:detect + map --depth 1
+COMMAND: strategy detect + map --depth 1
 RESULT: Understand high-level structure
 ```
 
 ### Budget: 500-800 tokens
 ```
 BEST: Good understanding
-COMMAND: strategy:detect + map --depth 2 + explore
+COMMAND: strategy detect + map --depth 2 + explore
 RESULT: Know structure, patterns, key files
 ```
 
 ### Budget: 800-1200 tokens
 ```
 BEST: Comprehensive understanding
-COMMAND: strategy:detect + map --depth 2 --with incs + explore + followup
+COMMAND: strategy detect + map --depth 2 --with incs + explore + followup
 RESULT: Know structure, patterns, dependencies, relationships
 ```
 
@@ -468,7 +468,7 @@ ERROR: "No files matched"
 RECOVERY: Broaden --match pattern, remove --catch filter, retry
 
 ERROR: "Strategy not detected"
-RECOVERY: Run strategy:detect first, then specify explicitly
+RECOVERY: Run strategy detect first, then specify explicitly
 
 ERROR: Output too large
 RECOVERY: Use --depth limit, use --match filter, use --no-chunk

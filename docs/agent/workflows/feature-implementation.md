@@ -19,7 +19,7 @@ Step-by-step protocol for implementing a new feature from discovery through inte
 #### Step 1.1: Detect Frameworks
 
 ```bash
-xray strategy:detect
+xray strategy detect
 ```
 
 **Success Criteria:**
@@ -39,7 +39,7 @@ xray strategy:detect
 xray explore <framework>:components
 
 # For Express/Node projects
-xray explore express:routes
+xray express routes
 
 # General search
 xray scan --match "*<related-keyword>*"
@@ -105,10 +105,10 @@ Learn the general patterns and structure instead.
 
 ```bash
 # For React: How does it connect to app state?
-xray explore react:hooks
+xray react hooks
 
 # For Express: How does it connect to routes?
-xray explore express:routes
+xray express routes
 
 # For all: Understand dependency relationships
 xray map --anchor <key-file> --with incs
@@ -130,10 +130,10 @@ xray map --anchor <key-file> --with incs
 
 ```bash
 # If React component-heavy feature
-xray explore react:components
+xray react components
 
 # If API-heavy feature
-xray explore rest-api:endpoints
+xray rest-api endpoints
 
 # If data-heavy feature
 xray scan --match "*model*" --match "*schema*" --match "*service*"
@@ -282,7 +282,7 @@ You've succeeded when:
 
 ```
 Priority order:
-1. strategy:detect + similar feature search (150 tokens)
+1. strategy detect + similar feature search (150 tokens)
 2. High-level map (250 tokens)
 3. Key file analysis (300 tokens)
 Skip: Deep dependency analysis

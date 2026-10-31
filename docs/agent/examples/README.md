@@ -18,7 +18,7 @@ Real-world examples of how AI agents (Claude, GPT, Copilot) integrate xray into 
 ```
 User: "Help me add a login feature"
 Agent: "I need to understand your codebase first"
-Agent: runs xray strategy:detect + xray map
+Agent: runs xray strategy detect + xray map
 Agent: "I found React + Express. Here's the structure..."
 Agent: Provides implementation guidance based on xray findings
 ```
@@ -31,7 +31,7 @@ Agent: Provides implementation guidance based on xray findings
 ```
 User: "Add a dark mode toggle"
 Agent: "Let me understand the current structure"
-Agent: runs xray explore react:components
+Agent: runs xray react components
 Agent: "Found X components, here's how styling works..."
 Agent: Writes code following discovered patterns
 ```
@@ -70,16 +70,16 @@ USER: "I need to understand this codebase before implementing features"
 
 AGENT: "Let me analyze the structure for you."
 
-[Agent runs: xray strategy:detect]
+[Agent runs: xray strategy detect]
 Output: React and Express detected
 
 [Agent runs: xray map --path ./src --depth 2]
 Output: Shows directory structure
 
-[Agent runs: xray explore react:components]
+[Agent runs: xray react components]
 Output: Lists 12 React components
 
-[Agent runs: xray explore express:routes]
+[Agent runs: xray express routes]
 Output: Lists 8 API routes
 
 AGENT SUMMARY:
@@ -154,7 +154,7 @@ AGENT REVIEW:
 
 **Common Flow:**
 1. User asks to work on codebase
-2. Claude proactively runs xray strategy:detect
+2. Claude proactively runs xray strategy detect
 3. Claude asks clarifying questions based on detected frameworks
 4. Claude runs targeted xray commands for specific question
 5. Claude references xray findings throughout conversation
@@ -190,10 +190,10 @@ AGENT REVIEW:
 ### Example 1: Quick Context (200 tokens)
 
 ```
-Command: xray strategy:detect
+Command: xray strategy detect
 Tokens: 50
 
-Command: xray explore react:components
+Command: xray react components
 Tokens: 100
 
 Command: xray scan --match "*auth*"
@@ -206,13 +206,13 @@ Result: Know frameworks, see components, find auth code
 ### Example 2: Moderate Context (700 tokens)
 
 ```
-Command: xray strategy:detect
+Command: xray strategy detect
 Tokens: 50
 
 Command: xray map --path ./src --depth 2
 Tokens: 300
 
-Command: xray explore react:components
+Command: xray react components
 Tokens: 100
 
 Command: xray map --anchor src/auth.ts --with incs
@@ -225,13 +225,13 @@ Result: Full architectural understanding
 ### Example 3: Deep Analysis (1200 tokens)
 
 ```
-Command: xray strategy:detect
+Command: xray strategy detect
 Tokens: 50
 
 Command: xray map --path ./src --depth 2
 Tokens: 300
 
-Command: xray explore react:components + hooks
+Command: xray react components + hooks
 Tokens: 200
 
 Command: xray map --anchor src/auth.ts --with incs
@@ -270,14 +270,14 @@ Result: Deep understanding of authentication system
 ```
 WRONG: "All React components do X, so new component should too"
 RIGHT: Use xray to verify pattern is consistent
-FIX: xray explore react:components to see actual patterns
+FIX: xray react components to see actual patterns
 ```
 
 **Gotcha 2: Not Using Strategy Results**
 
 ```
 WRONG: Run xray map on Express+React project without using strategy detection
-RIGHT: Run xray strategy:detect first, then use framework-specific commands
+RIGHT: Run xray strategy detect first, then use framework-specific commands
 FIX: Always check strategy results before planning
 ```
 

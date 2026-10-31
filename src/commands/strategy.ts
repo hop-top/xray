@@ -56,8 +56,8 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
   } else {
     Logger.error(`Unknown meta-strategy command: "${commandName}"`);
     Logger.info('\nAvailable meta-strategy commands:');
-    Logger.output('  - strategy:list   - List all available strategies');
-    Logger.output('  - strategy:detect - Detect applicable strategies');
+    Logger.output('  - strategy list   - List all available strategies');
+    Logger.output('  - strategy detect - Detect applicable strategies');
     process.exit(1);
   }
 };

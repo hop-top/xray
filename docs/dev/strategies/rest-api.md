@@ -66,12 +66,12 @@ This provides a consistent view of your API surface regardless of the underlying
 
 ## Commands
 
-### `rest-api:endpoints`
+### `rest-api endpoints`
 
 Lists all REST API endpoints detected in the project.
 
 ```bash
-xray rest-api:endpoints
+xray rest-api endpoints
 ```
 
 **Output:**
@@ -98,12 +98,12 @@ xray rest-api:endpoints
 ]
 ```
 
-### `rest-api:methods`
+### `rest-api methods`
 
 Groups endpoints by HTTP method.
 
 ```bash
-xray rest-api:methods
+xray rest-api methods
 ```
 
 **Output:**
@@ -122,12 +122,12 @@ xray rest-api:methods
 }
 ```
 
-### `rest-api:middleware`
+### `rest-api middleware`
 
 Lists middleware and interceptors (when detected).
 
 ```bash
-xray rest-api:middleware
+xray rest-api middleware
 ```
 
 ## Tagging
@@ -141,21 +141,21 @@ Files with REST API endpoints are tagged with:
 Quickly understand all HTTP endpoints across your entire codebase, regardless of language or framework:
 
 ```bash
-xray rest-api:endpoints | jq 'group_by(.method) | map({method: .[0].method, count: length})'
+xray rest-api endpoints | jq 'group_by(.method) | map({method: .[0].method, count: length})'
 ```
 
 ### Cross-Framework API Inventory
 When migrating between frameworks or working in polyglot codebases, get a unified view of all REST endpoints:
 
 ```bash
-xray rest-api:endpoints | jq 'group_by(.framework)'
+xray rest-api endpoints | jq 'group_by(.framework)'
 ```
 
 ### API Documentation Preparation
 Extract all endpoints as a foundation for API documentation:
 
 ```bash
-xray rest-api:methods > api-inventory.json
+xray rest-api methods > api-inventory.json
 ```
 
 ## Framework Coverage

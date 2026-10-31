@@ -189,7 +189,7 @@ These patterns appear in multiple workflows:
 When: You need to understand what exists
 
 Steps:
-1. xray strategy:detect (if framework unknown)
+1. xray strategy detect (if framework unknown)
 2. xray scan (if file list needed)
 3. xray explore <framework>:<command> (if patterns needed)
 

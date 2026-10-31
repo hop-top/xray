@@ -25,7 +25,7 @@ Real-world scenarios and step-by-step solutions for using xray in your daily wor
 
 ```bash
 cd /path/to/project
-xray strategy:detect
+xray strategy detect
 ```
 
 Expected output:
@@ -55,13 +55,13 @@ This gives you a tree view of `src/` with limited depth. You'll see:
 
 ```bash
 # See all React components
-xray react:components
+xray react components
 
 # See all API routes
-xray express:routes
+xray express routes
 
 # See all custom hooks
-xray react:hooks
+xray react hooks
 ```
 
 **What you learned**:
@@ -92,9 +92,9 @@ In 5-10 minutes, you understand:
 
 **Pro tip**: Save this output to documentation:
 ```bash
-xray strategy:detect > ONBOARDING.md
-xray react:components >> ONBOARDING.md
-xray express:routes >> ONBOARDING.md
+xray strategy detect > ONBOARDING.md
+xray react components >> ONBOARDING.md
+xray express routes >> ONBOARDING.md
 ```
 
 Share with teammates joining the project.
@@ -189,10 +189,10 @@ xray map --anchor src/buggyFunction.ts --with vars --with incs --with docs
 
 ```bash
 # Create a snapshot before changes
-xray strategy:detect > refactor-plan/detected-frameworks.txt
+xray strategy detect > refactor-plan/detected-frameworks.txt
 xray map --path ./src/services > refactor-plan/current-services-map.txt
-xray express:routes > refactor-plan/current-routes.txt
-xray react:components > refactor-plan/current-components.txt
+xray express routes > refactor-plan/current-routes.txt
+xray react components > refactor-plan/current-components.txt
 
 # If monorepo:
 for package in packages/*/; do
@@ -305,7 +305,7 @@ Perfect for "help me understand how this works"
 xray map --path ./src/services --depth 2 --with incs --limit 3000
 
 # If it's an API
-xray express:routes
+xray express routes
 
 # Copy and share
 ```
@@ -319,8 +319,8 @@ Perfect for "help me improve my component architecture"
 
 ```bash
 # For React
-xray react:components
-xray react:hooks
+xray react components
+xray react hooks
 
 # Now drill into one component
 xray map --anchor ./src/components/ComplexComponent.tsx --with incs --with vars
@@ -361,7 +361,7 @@ xray map --path ./src/ui > ui-context.txt
 
 **You**: Good idea. Let me see what my custom hooks look like:
 ```bash
-xray react:hooks
+xray react hooks
 ```
 
 **You**: (Share xray output) Here are my hooks. Can you see if my new hook would conflict with existing patterns?
@@ -434,7 +434,7 @@ xray map --with incs | grep -E "[A-Za-z0-9_]+.*→.*[A-Za-z0-9_]+"
 xray map --anchor ./src/[new-module]/index.ts --with incs
 
 # See breaking changes
-xray [react:components | express:routes]  # before and after
+xray [react components | express routes]  # before and after
 ```
 
 ---
@@ -468,15 +468,15 @@ xray map --path ./src --depth 2 >> ARCHITECTURE.md
 echo "# API Endpoints" > API-REFERENCE.md
 echo "" >> API-REFERENCE.md
 echo "## Endpoints" >> API-REFERENCE.md
-xray express:routes >> API-REFERENCE.md
+xray express routes >> API-REFERENCE.md
 
 echo "" >> API-REFERENCE.md
 echo "## Middleware" >> API-REFERENCE.md
-xray express:middleware >> API-REFERENCE.md
+xray express middleware >> API-REFERENCE.md
 
 echo "" >> API-REFERENCE.md
 echo "## Error Handlers" >> API-REFERENCE.md
-xray express:error-handlers >> API-REFERENCE.md
+xray express error-handlers >> API-REFERENCE.md
 ```
 
 ### Component Documentation
@@ -487,15 +487,15 @@ echo "# Component Library" > COMPONENTS.md
 echo "" >> COMPONENTS.md
 
 echo "## All Components" >> COMPONENTS.md
-xray react:components >> COMPONENTS.md
+xray react components >> COMPONENTS.md
 
 echo "" >> COMPONENTS.md
 echo "## Custom Hooks" >> COMPONENTS.md
-xray react:hooks >> COMPONENTS.md
+xray react hooks >> COMPONENTS.md
 
 echo "" >> COMPONENTS.md
 echo "## Context Providers" >> COMPONENTS.md
-xray react:contexts >> COMPONENTS.md
+xray react contexts >> COMPONENTS.md
 ```
 
 ### CLI Documentation
@@ -505,15 +505,15 @@ xray react:contexts >> COMPONENTS.md
 echo "# CLI Reference" > CLI-REFERENCE.md
 
 echo "## Commands" >> CLI-REFERENCE.md
-xray go-cli:commands >> CLI-REFERENCE.md
+xray go-cli commands >> CLI-REFERENCE.md
 
 echo "" >> CLI-REFERENCE.md
 echo "## Flags" >> CLI-REFERENCE.md
-xray go-cli:flags >> CLI-REFERENCE.md
+xray go-cli flags >> CLI-REFERENCE.md
 
 echo "" >> CLI-REFERENCE.md
 echo "## Command Hierarchy" >> CLI-REFERENCE.md
-xray go-cli:tree >> CLI-REFERENCE.md
+xray go-cli tree >> CLI-REFERENCE.md
 ```
 
 ### Keep Documentation Current
@@ -524,8 +524,8 @@ cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/bash
 # Auto-update xray-based documentation
 
-xray express:routes > API-REFERENCE.md 2>/dev/null || true
-xray react:components > COMPONENTS.md 2>/dev/null || true
+xray express routes > API-REFERENCE.md 2>/dev/null || true
+xray react components > COMPONENTS.md 2>/dev/null || true
 
 git add API-REFERENCE.md COMPONENTS.md 2>/dev/null || true
 EOF
@@ -555,7 +555,7 @@ done > monorepo-analysis.txt
 # Find component duplication
 echo "# Potentially Duplicated Components" >> monorepo-analysis.txt
 for package in packages/*/; do
-  xray react:components -p "$package" 2>/dev/null
+  xray react components -p "$package" 2>/dev/null
 done | sort | uniq -d >> monorepo-analysis.txt
 ```
 
@@ -568,13 +568,13 @@ echo "# Microservices API Inventory" > api-inventory.md
 for service in services/*/; do
   name=$(basename "$service")
   echo "## $name" >> api-inventory.md
-  xray rest-api:endpoints -p "$service" >> api-inventory.md
+  xray rest-api endpoints -p "$service" >> api-inventory.md
   echo "" >> api-inventory.md
 done
 
 # Find API conflicts
 echo "# Potential Route Conflicts" >> api-inventory.md
-xray rest-api:endpoints | sort | uniq -d >> api-inventory.md
+xray rest-api endpoints | sort | uniq -d >> api-inventory.md
 ```
 
 ### Cross-Project Dependencies
@@ -619,7 +619,7 @@ xray map --with incs | grep -v "→ used by"
 
 ```bash
 # For Express
-xray express:error-handlers
+xray express error-handlers
 
 # Search map for error-related functions
 xray map --catch "*Error*" --catch "*Handler*" --with incs

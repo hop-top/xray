@@ -64,7 +64,7 @@ XRay Command Returns Error
 │  │  │  └─ Fix: Reduce scope, use --depth limit, use --match filter
 │  │  │
 │  │  ├─ "Strategy not found"
-│  │  │  └─ Fix: Run strategy:list, use correct name
+│  │  │  └─ Fix: Run strategy list, use correct name
 │  │  │
 │  │  └─ Other error:
 │  │     └─ Retry once, then fallback to file reads
@@ -249,7 +249,7 @@ Available strategies: react, express, rest-api, go-cli
 2. OFFER correction
    If user asked for "ract":
    "Did you mean 'react'? Let me try that..."
-   COMMAND: xray react:components
+   COMMAND: xray react components
 
 3. PROCEED with correct strategy
    SUCCESS?: Continue
@@ -327,7 +327,7 @@ PHASE 3: CONTINUE with limited context
 ```
 Scenario: Need to understand React component patterns
 
-Attempt 1: xray explore react:components
+Attempt 1: xray react components
 Result: Timeout (codebase too large)
 
 Attempt 2: xray map --path ./src/components --depth 1
@@ -384,7 +384,7 @@ This helps identify patterns and improve future recovery.
 Error might be: Strategy not found, no matches, etc.
 
 Solution:
-1. Start with xray strategy:detect (safe)
+1. Start with xray strategy detect (safe)
 2. If fails: Use xray scan (fallback)
 3. If fails: Ask user for guidance
 4. Proceed with whatever information available
@@ -417,7 +417,7 @@ Solution:
 
 **Prevention Checklist:**
 
-- [ ] Start with simple commands (strategy:detect, scan) before complex ones
+- [ ] Start with simple commands (strategy detect, scan) before complex ones
 - [ ] Use --depth limits on large codebases
 - [ ] Use --path to narrow scope when possible
 - [ ] Check path exists before running (or handle error gracefully)

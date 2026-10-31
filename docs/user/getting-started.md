@@ -340,9 +340,9 @@ You now know enough to use xray effectively. The rest is exploring and adapting 
 xray map                              # Basic overview
 xray map --anchor src/api --with incs # Focused with dependencies
 xray map --path ./src --depth 2       # Shallow, quick overview
-xray strategy:detect                  # What frameworks here?
-xray react:components                 # List React components
-xray express:routes                   # List API routes
+xray strategy detect                  # What frameworks here?
+xray react components                 # List React components
+xray express routes                   # List API routes
 xray clear-cache                      # Fix stale results
 ```
 

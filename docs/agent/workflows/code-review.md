@@ -75,7 +75,7 @@ xray scan --match "*auth*" --match "*login*"
 
 # See what patterns are used
 xray explore <framework>:components  # for React changes
-xray explore express:routes  # for API changes
+xray express routes  # for API changes
 ```
 
 **Success Criteria:**
@@ -87,8 +87,8 @@ xray explore express:routes  # for API changes
 
 ```bash
 # Check if changes follow established patterns
-xray explore react:hooks  # if adding custom hook
-xray explore express:routes  # if adding new route
+xray react hooks  # if adding custom hook
+xray express routes  # if adding new route
 ```
 
 **Success Criteria:**

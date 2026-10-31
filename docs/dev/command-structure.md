@@ -14,7 +14,7 @@ src/commands/
 ├── common.ts            # Shared utilities and common options
 ├── generate.ts          # map, scan, graph, generate commands
 ├── explore.ts           # explore command with strategy support
-├── strategy.ts          # strategy:* commands and routing
+├── strategy.ts          # strategy * commands and routing
 ├── strategy-cmd.ts      # Strategy command execution engine
 ├── clear-cache.ts       # cache management
 └── completion.ts        # shell completion
@@ -102,13 +102,13 @@ xray [strategy:]<command> [options]  # Shorthand
 
 **Example Commands:**
 ```bash
-xray explore react:components     # List React components
-xray express:routes              # List Express routes (shorthand)
-xray rest-api:endpoints          # List REST endpoints
+xray react components     # List React components
+xray express routes              # List Express routes (shorthand)
+xray rest-api endpoints          # List REST endpoints
 ```
 
 **Command Execution Flow:**
-1. Parse strategy:command syntax
+1. Parse `<strategy> <command>` syntax
 2. Load and detect applicable strategies
 3. Analyze files matching strategy patterns
 4. Execute strategy command handler
@@ -157,9 +157,9 @@ Framework detection and exploration.
 
 **Command Definition:**
 ```
-xray strategy:detect    # Detect applicable strategies
-xray strategy:list      # List all available strategies
-xray strategy:info      # Show strategy information
+xray strategy detect    # Detect applicable strategies
+xray strategy list      # List all available strategies
+xray strategy info      # Show strategy information
 ```
 
 **Implementation:**

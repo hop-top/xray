@@ -4,7 +4,7 @@ Technical reference for creating and implementing strategy commands in xray.
 
 ## Overview
 
-Strategy commands provide framework-specific exploration capabilities through the xray explore interface. Commands are executed using the `strategy:command` syntax.
+Strategy commands provide framework-specific exploration capabilities through the xray explore interface. Commands are executed using the `<strategy> <command>` syntax.
 
 ## Usage
 
@@ -12,12 +12,12 @@ Strategy commands can be invoked in two ways:
 
 **Shorthand (explore is default):**
 ```bash
-xray strategy:command [options]
+xray <strategy> <command> [options]
 ```
 
 **Explicit:**
 ```bash
-xray explore strategy:command [options]
+xray <strategy> <command> [options]
 ```
 
 **Options:**
@@ -29,13 +29,13 @@ xray explore strategy:command [options]
 
 The React strategy provides commands for exploring React codebases.
 
-#### `react:components`
+#### `react components`
 
 Lists all React components in the project.
 
 ```bash
-xray react:components
-xray react:components -p /path/to/project
+xray react components
+xray react components -p /path/to/project
 ```
 
 **Output:**
@@ -54,13 +54,13 @@ Total: 3 component(s)
 - TypeScript patterns: generics, multi-line parameters
 - React.FC and React.FunctionComponent annotations
 
-#### `react:hooks`
+#### `react hooks`
 
 Lists all custom React hooks in the project.
 
 ```bash
-xray react:hooks
-xray react:hooks -p /path/to/project
+xray react hooks
+xray react hooks -p /path/to/project
 ```
 
 **Output:**
@@ -78,13 +78,13 @@ Total: 3 hook(s)
 - Arrow functions: `const useMyHook = () => {}`
 - Naming convention: must start with `use` followed by uppercase letter
 
-#### `react:contexts`
+#### `react contexts`
 
 Lists all React contexts in the project.
 
 ```bash
-xray react:contexts
-xray react:contexts -p /path/to/project
+xray react contexts
+xray react contexts -p /path/to/project
 ```
 
 **Output:**
@@ -147,7 +147,7 @@ The handler should return structured data (typically an array) that will be disp
 
 ### Command Execution Flow
 
-1. User runs `xray strategy:command`
+1. User runs `xray <strategy> <command>`
 2. CLI parses the query and extracts strategy name and command name
 3. Strategy is loaded and validated
 4. Project files are analyzed with the strategy
@@ -241,24 +241,24 @@ This approach gives you full control over formatting while maintaining compatibi
 
 ```bash
 # See available strategies
-xray strategy:list
+xray strategy list
 
 # Detect strategies in current project
-xray strategy:detect
+xray strategy detect
 
 # Run strategy commands
-xray react:components
-xray react:hooks
-xray react:contexts
+xray react components
+xray react hooks
+xray react contexts
 ```
 
 ### Multiple Projects
 
 ```bash
 # Analyze different projects
-xray react:components -p ~/projects/app1
-xray react:components -p ~/projects/app2
-xray react:hooks -p ~/projects/app3
+xray react components -p ~/projects/app1
+xray react components -p ~/projects/app2
+xray react hooks -p ~/projects/app3
 ```
 
 ### Integration with Other Commands
@@ -268,15 +268,15 @@ Strategy commands work seamlessly with other xray features:
 ```bash
 # Explore files, then query strategy
 xray -m "*.tsx" -s "useState"
-xray react:hooks
+xray react hooks
 ```
 
 ## Future Enhancements
 
 Potential future improvements to strategy commands:
 
-- **Filter options**: `xray react:components --type function`
-- **Output formats**: `xray react:components --json`
-- **Sorting**: `xray react:components --sort name`
+- **Filter options**: `xray react components --type function`
+- **Output formats**: `xray react components --json`
+- **Sorting**: `xray react components --sort name`
 - **Interactive mode**: TUI for browsing results
 - **Composition**: Combine multiple strategy queries

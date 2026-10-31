@@ -79,7 +79,7 @@ oss-xray-codes/
 │   │   ├── common.ts              # Shared utilities
 │   │   ├── generate.ts            # map, scan, graph commands
 │   │   ├── explore.ts             # explore command
-│   │   ├── strategy.ts            # strategy:* commands
+│   │   ├── strategy.ts            # strategy * commands
 │   │   ├── strategy-cmd.ts        # Strategy execution
 │   │   ├── clear-cache.ts         # Cache commands
 │   │   └── completion.ts          # Completion

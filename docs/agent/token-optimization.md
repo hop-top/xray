@@ -14,7 +14,7 @@ Optimize this ratio at every decision point.
 
 | Command | Base Cost | With Options | Notes |
 |---------|-----------|--------------|-------|
-| `strategy:detect` | 50t | 50-70t | Very cheap, always do first |
+| `strategy detect` | 50t | 50-70t | Very cheap, always do first |
 | `scan <pattern>` | 50-100t | 50-150t | Cheap for focused scans |
 | `map --depth 1` | 150-200t | 200-300t | Good for high-level |
 | `map --depth 2` | 250-350t | 350-500t | Good balance |
@@ -67,7 +67,7 @@ Do I NEED this information?
 
 ```
 Step 1: Cheap discovery (100-150 tokens)
-  COMMAND: xray strategy:detect + xray scan
+  COMMAND: xray strategy detect + xray scan
   RESULT: Know what exists, frameworks
 
 Step 2: If more needed (200-350 tokens)
@@ -123,7 +123,7 @@ CHEAPER (find relevant files first):
 ```
 Question: "Find all React components"
 EXPENSIVE: xray map = 300-500 tokens
-CHEAP: xray explore react:components = 100 tokens
+CHEAP: xray react components = 100 tokens
 SAVINGS: 200-400 tokens
 
 Question: "How do files depend on each other?"
@@ -137,7 +137,7 @@ SAVINGS: 50-250 tokens
 **Pattern: Accumulate Knowledge**
 
 ```
-Turn 1: xray explore react:components
+Turn 1: xray react components
   COST: 100 tokens
   RESULT: Know components exist
 
@@ -145,7 +145,7 @@ Turn 2 (WRONG): xray map --path ./src/components
   COST: 200 tokens
   TOTAL: 300 tokens
 
-Turn 2 (RIGHT): Use Turn 1 results + xray explore react:hooks
+Turn 2 (RIGHT): Use Turn 1 results + xray react hooks
   COST: 100 tokens
   TOTAL: 200 tokens
   RESULT: Know both components AND hooks without re-running
@@ -203,7 +203,7 @@ RARELY (use sparingly):
 Available: 300 tokens
 
 Allocation:
-  - strategy:detect: 50 tokens
+  - strategy detect: 50 tokens
   - scan --match pattern: 50 tokens
   - explore framework:command: 100 tokens
   - Buffer: 100 tokens
@@ -219,7 +219,7 @@ Result: Know specific thing, limited context
 Available: 700 tokens
 
 Allocation:
-  - strategy:detect: 50 tokens
+  - strategy detect: 50 tokens
   - map --depth 2: 300 tokens
   - explore framework:command: 150 tokens
   - Buffer: 200 tokens
@@ -252,7 +252,7 @@ Result: Deep architectural understanding
 Available: 100 tokens
 
 Allocation:
-  - strategy:detect: 50 tokens
+  - strategy detect: 50 tokens
   - scan or explore: 50 tokens
 
 Approach: Answer: "Does this exist?" or "What frameworks?"
@@ -279,7 +279,7 @@ Turn 2: Forget results, run again
 
 **What happens:**
 ```
-Turn 1: xray explore react:components
+Turn 1: xray react components
   (100 tokens)
 
 Turn 2: xray map to see same components
@@ -328,7 +328,7 @@ Agent needs to understand, but:
 
 **What happens:**
 ```
-Turn 1: xray strategy:detect
+Turn 1: xray strategy detect
   (50 tokens)
   RESULT: React, Express detected
 
@@ -337,7 +337,7 @@ Turn 2: Ignore result, run generic command
   (might not understand React/Express patterns)
 
 Turn 3: Later realize should have used explore
-  xray explore react:components
+  xray react components
   (100 tokens later than needed)
 ```
 
@@ -351,7 +351,7 @@ Turn 3: Later realize should have used explore
 BUDGET: 500 tokens
 
 Step 1: Detect frameworks (50t)
-  xray strategy:detect
+  xray strategy detect
 
 Step 2: High-level map (200t)
   xray map --path ./src --depth 1
@@ -387,7 +387,7 @@ RESULT: Located file and context
 BUDGET: 800 tokens
 
 Step 1: Detect frameworks (50t)
-  xray strategy:detect
+  xray strategy detect
 
 Step 2: Find similar features (100t)
   xray explore <framework>:<command>
@@ -441,7 +441,7 @@ Task: Implement authentication system
 Budget: 1200 tokens
 
 Turn 1: Understand framework
-  Command: strategy:detect + map --depth 1
+  Command: strategy detect + map --depth 1
   Cost: 250 tokens
   Remaining: 950 tokens
   Notes: React + Express confirmed
@@ -452,7 +452,7 @@ Turn 2: Find similar auth
   Remaining: 900 tokens
 
 Turn 3: Understand pattern
-  Command: explore react:hooks
+  Command: react hooks
   Cost: 100 tokens
   Remaining: 800 tokens
 

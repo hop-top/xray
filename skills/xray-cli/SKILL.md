@@ -34,7 +34,7 @@ Use xray to get structure, dependencies, control flow, data flow. Optimize for t
 - Add `--with vars` for state/structure.
 - Add `--with docs` only if unclear intent.
 - Use `graph --with cf/df` only for complex logic.
-- Start with `strategy:detect` when new repo.
+- Start with `strategy detect` when new repo.
 - Keep scope narrow: `--path`, `--depth`, `--anchor`.
 
 ## Onboard stack + structure

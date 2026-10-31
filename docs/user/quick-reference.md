@@ -21,13 +21,13 @@ xray map --anchor src/api
 xray map --depth 2
 
 # 6. React components
-xray react:components
+xray react components
 
 # 7. Express routes
-xray express:routes
+xray express routes
 
 # 8. What frameworks?
-xray strategy:detect
+xray strategy detect
 
 # 9. Clear stale cache
 xray clear-cache
@@ -63,13 +63,13 @@ Do you want to...
 │  └─> xray map
 │
 ├─ See React components?
-│  └─> xray react:components
+│  └─> xray react components
 │
 ├─ See Express routes?
-│  └─> xray express:routes
+│  └─> xray express routes
 │
 ├─ See all frameworks?
-│  └─> xray strategy:detect
+│  └─> xray strategy detect
 │
 ├─ Focus on one file?
 │  └─> xray map --anchor src/file.ts --with incs
@@ -126,31 +126,31 @@ Do you want to...
 
 ### React
 ```bash
-xray react:components    # All components
-xray react:hooks         # All custom hooks
-xray react:contexts      # All contexts
+xray react components    # All components
+xray react hooks         # All custom hooks
+xray react contexts      # All contexts
 ```
 
 ### Express
 ```bash
-xray express:routes      # All routes
-xray express:middleware  # All middleware
-xray express:routers     # All routers
-xray express:error-handlers  # Error handling
+xray express routes      # All routes
+xray express middleware  # All middleware
+xray express routers     # All routers
+xray express error-handlers  # Error handling
 ```
 
 ### REST API (Node/Python/Go)
 ```bash
-xray rest-api:endpoints  # All endpoints
-xray rest-api:methods    # Group by HTTP method
-xray rest-api:middleware # All middleware
+xray rest-api endpoints  # All endpoints
+xray rest-api methods    # Group by HTTP method
+xray rest-api middleware # All middleware
 ```
 
 ### Go CLI
 ```bash
-xray go-cli:commands     # All commands
-xray go-cli:flags        # All flags
-xray go-cli:tree         # Command hierarchy
+xray go-cli commands     # All commands
+xray go-cli flags        # All flags
+xray go-cli tree         # Command hierarchy
 ```
 
 ---
@@ -190,17 +190,17 @@ cat .xray | xclip
 
 ### "Show me just React components"
 ```bash
-xray react:components
+xray react components
 ```
 
 ### "Show me just API routes"
 ```bash
-xray express:routes
+xray express routes
 ```
 
 ### "What's in this project?"
 ```bash
-xray strategy:detect
+xray strategy detect
 ```
 
 ### "Fix stale results"
@@ -220,7 +220,7 @@ xray map | grep "function"
 xray map --with incs | grep axios
 
 # Count components
-xray react:components | wc -l
+xray react components | wc -l
 
 # Find error handlers
 xray map --catch "*Error" | head -20
@@ -297,7 +297,7 @@ xray map -o mymap  # Creates .xray_mymap_root.md, etc.
 2. **Add features as needed**: `--with incs`, then `--with vars`
 3. **Focus when needed**: `--anchor` and `--depth`
 4. **Cache helps**: Second runs are fast
-5. **Strategies show frameworks**: `xray strategy:detect`
+5. **Strategies show frameworks**: `xray strategy detect`
 
 ---
 

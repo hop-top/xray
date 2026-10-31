@@ -219,7 +219,7 @@ STEPS:
 GOAL: Reorganize React component hierarchy
 
 STEPS:
-1. xray explore react:components (see current structure)
+1. xray react components (see current structure)
 2. Identify components to move/restructure
 3. xray map on component files (understand imports)
 4. Plan new structure

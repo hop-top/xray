@@ -10,7 +10,7 @@ Start simple, add detail only if needed.
 
 ```
 LEVEL 1 (Discovery): Very cheap, high signal-to-noise
-Command: xray strategy:detect
+Command: xray strategy detect
 Tokens: 50
 Info: Frameworks, basic structure
 Next: Based on result, use more specific command
@@ -52,7 +52,7 @@ Start with hypothesis, use xray to validate.
 
 ```
 HYPOTHESIS: "This uses React hooks for state"
-VALIDATION: xray explore react:hooks
+VALIDATION: xray react hooks
 RESULT: Found 8 custom hooks, validate hypothesis
 ACTION: Can now explain React pattern to user
 
@@ -75,7 +75,7 @@ From user's question:
 ├─ User mentions "authentication"
 │  → Hypothesis: Has auth service/middleware
 └─ User is vague
-   → Run `strategy:detect` to form hypothesis
+   → Run `strategy detect` to form hypothesis
 ```
 
 ### Pattern 3: Accumulation Over Re-discovery
@@ -84,7 +84,7 @@ Build understanding across turns instead of re-analyzing.
 
 ```
 TURN 1: "Help me understand React"
-→ xray explore react:components (100 tokens)
+→ xray react components (100 tokens)
 ← Learn: 12 components, structure
 
 TURN 2: "Show me how auth works"
@@ -235,7 +235,7 @@ Order commands to maximize early learning.
 
 ```
 EFFICIENT SEQUENCE:
-1. xray strategy:detect           (learn frameworks)
+1. xray strategy detect           (learn frameworks)
 2. xray scan --match "*pattern*"  (narrow scope)
 3. xray explore <framework>       (find patterns)
 4. xray map on narrow area        (deep dive)
@@ -244,7 +244,7 @@ vs.
 
 INEFFICIENT SEQUENCE:
 1. xray map (entire codebase)     (too much data)
-2. xray strategy:detect           (could have done first)
+2. xray strategy detect           (could have done first)
 3. xray map again (focused)       (wasted first command)
 ```
 
@@ -303,7 +303,7 @@ AGENT: "What kind of feature?" (generic)
 
 WITH xray:
 USER: "Add a feature"
-AGENT runs: xray strategy:detect
+AGENT runs: xray strategy detect
 AGENT: "I found React + Express.
         Do you want a React component (UI) or Express endpoint (API)?"
 (Much smarter questions)
@@ -363,7 +363,7 @@ Verify discovered patterns before using them.
 FOUND PATTERN: All React components use custom hooks
 
 VALIDATE:
-→ xray explore react:hooks (check)
+→ xray react hooks (check)
 → Look at 2-3 components (verify)
 → Ask: Does this pattern hold?
 
@@ -415,7 +415,7 @@ SOLUTION: Present findings as information, not contradiction
 
 ```
 PHASE 1: Discovery (100-150 tokens)
-  xray strategy:detect
+  xray strategy detect
   xray scan --match "*similar-feature*"
 
 PHASE 2: Understanding (200-300 tokens)
@@ -471,7 +471,7 @@ Result: Informed code review
 ## Quick Reference: Best Practices
 
 **DO:**
-- [ ] Start with `strategy:detect`
+- [ ] Start with `strategy detect`
 - [ ] Use progressive disclosure (simple to complex)
 - [ ] Accumulate knowledge (build on previous runs)
 - [ ] Narrow scope (avoid huge analyses)

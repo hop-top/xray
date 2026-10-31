@@ -77,9 +77,9 @@ The React strategy provides the following commands via the explore interface:
 
 ### List Components
 ```bash
-xray react:components
+xray react components
 # or
-xray explore react:components
+xray react components
 ```
 
 **Example Output:**
@@ -100,9 +100,9 @@ Total: 3 component(s)
 
 ### List Custom Hooks
 ```bash
-xray react:hooks
+xray react hooks
 # or
-xray explore react:hooks
+xray react hooks
 ```
 
 **Example Output:**
@@ -123,9 +123,9 @@ Total: 4 hook(s)
 
 ### List Contexts
 ```bash
-xray react:contexts
+xray react contexts
 # or
-xray explore react:contexts
+xray react contexts
 ```
 
 **Example Output:**

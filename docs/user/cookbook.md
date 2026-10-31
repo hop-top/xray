@@ -44,17 +44,17 @@ xray map --anchor src/api --with incs
 
 ### 6. Framework Analysis (React)
 ```bash
-xray react:components
+xray react components
 ```
 
 ### 7. Framework Analysis (Express)
 ```bash
-xray express:routes
+xray express routes
 ```
 
 ### 8. Detect Frameworks
 ```bash
-xray strategy:detect
+xray strategy detect
 ```
 
 ### 9. Clear Stale Cache
@@ -81,7 +81,7 @@ cat .xray | xclip
 ### Step 1: List Components
 
 ```bash
-xray react:components
+xray react components
 ```
 
 **Output looks like**:
@@ -101,7 +101,7 @@ Total: 5 component(s)
 ### Step 2: Find Custom Hooks
 
 ```bash
-xray react:hooks
+xray react hooks
 ```
 
 **Output looks like**:
@@ -119,7 +119,7 @@ Total: 3 hook(s)
 ### Step 3: Find Context Providers
 
 ```bash
-xray react:contexts
+xray react contexts
 ```
 
 **Output looks like**:
@@ -151,21 +151,21 @@ cat > COMPONENT_ARCHITECTURE.md << 'EOF'
 ## Components
 EOF
 
-xray react:components >> COMPONENT_ARCHITECTURE.md
+xray react components >> COMPONENT_ARCHITECTURE.md
 
 cat >> COMPONENT_ARCHITECTURE.md << 'EOF'
 
 ## Custom Hooks
 EOF
 
-xray react:hooks >> COMPONENT_ARCHITECTURE.md
+xray react hooks >> COMPONENT_ARCHITECTURE.md
 
 cat >> COMPONENT_ARCHITECTURE.md << 'EOF'
 
 ## Context Providers
 EOF
 
-xray react:contexts >> COMPONENT_ARCHITECTURE.md
+xray react contexts >> COMPONENT_ARCHITECTURE.md
 
 # Commit it
 git add COMPONENT_ARCHITECTURE.md
@@ -183,7 +183,7 @@ git commit -m "docs: document component architecture"
 ### Step 1: List All Routes
 
 ```bash
-xray express:routes
+xray express routes
 ```
 
 **Output looks like**:
@@ -205,7 +205,7 @@ Total: 7 route(s)
 ### Step 2: Find Middleware
 
 ```bash
-xray express:middleware
+xray express middleware
 ```
 
 **Output looks like**:
@@ -228,7 +228,7 @@ Total: 5 middleware
 ### Step 3: Find Error Handlers
 
 ```bash
-xray express:error-handlers
+xray express error-handlers
 ```
 
 **Output looks like**:
@@ -263,7 +263,7 @@ This document is auto-generated from xray analysis.
 
 EOF
 
-xray express:routes >> API-REFERENCE.md
+xray express routes >> API-REFERENCE.md
 
 cat >> API-REFERENCE.md << 'EOF'
 
@@ -271,7 +271,7 @@ cat >> API-REFERENCE.md << 'EOF'
 
 EOF
 
-xray express:middleware >> API-REFERENCE.md
+xray express middleware >> API-REFERENCE.md
 
 cat >> API-REFERENCE.md << 'EOF'
 
@@ -279,7 +279,7 @@ cat >> API-REFERENCE.md << 'EOF'
 
 EOF
 
-xray express:error-handlers >> API-REFERENCE.md
+xray express error-handlers >> API-REFERENCE.md
 
 # Keep it updated automatically
 git add API-REFERENCE.md
@@ -290,7 +290,7 @@ git commit -m "docs: auto-generated API reference"
 
 ```bash
 # Find routes without authentication
-xray express:routes | grep -v "authenticate"
+xray express routes | grep -v "authenticate"
 # These should be intentional (login, health check, etc.)
 ```
 
@@ -305,7 +305,7 @@ xray express:routes | grep -v "authenticate"
 ### For a Single Microservice
 
 ```bash
-xray rest-api:endpoints -p ./services/user-api
+xray rest-api endpoints -p ./services/user-api
 ```
 
 ### For All Microservices
@@ -318,7 +318,7 @@ echo "" >> API-INVENTORY.md
 for service in services/*/; do
   name=$(basename "$service")
   echo "## $name" >> API-INVENTORY.md
-  xray rest-api:endpoints -p "$service" >> API-INVENTORY.md 2>/dev/null || echo "No API found"
+  xray rest-api endpoints -p "$service" >> API-INVENTORY.md 2>/dev/null || echo "No API found"
   echo "" >> API-INVENTORY.md
 done
 
@@ -334,7 +334,7 @@ git commit -m "docs: api inventory across all services"
 
 ```bash
 # Find duplicate paths across services
-xray rest-api:endpoints | cut -d' ' -f 2 | sort | uniq -d
+xray rest-api endpoints | cut -d' ' -f 2 | sort | uniq -d
 
 # These might need consolidation
 ```
@@ -343,10 +343,10 @@ xray rest-api:endpoints | cut -d' ' -f 2 | sort | uniq -d
 
 ```bash
 # Find all v1 endpoints
-xray rest-api:endpoints | grep "/v1"
+xray rest-api endpoints | grep "/v1"
 
 # Find all v2 endpoints
-xray rest-api:endpoints | grep "/v2"
+xray rest-api endpoints | grep "/v2"
 
 # Migration checklist:
 # [ ] All v1 endpoints have v2 equivalents?
@@ -422,10 +422,10 @@ xray map --with incs | grep -E "database|db|prisma|mongoose" | cut -d' ' -f1 | s
 mkdir -p refactor-audit/before
 
 # Snapshot components (if React)
-xray react:components > refactor-audit/before/components.txt
+xray react components > refactor-audit/before/components.txt
 
 # Snapshot routes (if Express)
-xray express:routes > refactor-audit/before/routes.txt
+xray express routes > refactor-audit/before/routes.txt
 
 # Snapshot full analysis
 xray map > refactor-audit/before/map.txt
@@ -448,8 +448,8 @@ mkdir -p refactor-audit/after
 
 # Same snapshots
 xray clear-cache  # Important: clear cache to see fresh analysis
-xray react:components > refactor-audit/after/components.txt
-xray express:routes > refactor-audit/after/routes.txt
+xray react components > refactor-audit/after/components.txt
+xray express routes > refactor-audit/after/routes.txt
 xray map > refactor-audit/after/map.txt
 xray map --path ./src/moduleBeingRefactored > refactor-audit/after/module.txt
 ```
@@ -498,16 +498,16 @@ git commit -m "refactor: document changes before/after"
 mkdir -p docs/onboarding
 
 # What frameworks?
-xray strategy:detect > docs/onboarding/1-frameworks.txt
+xray strategy detect > docs/onboarding/1-frameworks.txt
 
 # High-level structure
 xray map --depth 2 > docs/onboarding/2-structure.txt
 
 # Component inventory (if React)
-xray react:components > docs/onboarding/3-components.txt
+xray react components > docs/onboarding/3-components.txt
 
 # API inventory (if Express)
-xray express:routes > docs/onboarding/4-routes.txt
+xray express routes > docs/onboarding/4-routes.txt
 ```
 
 ### Step 2: Create Onboarding Guide
@@ -581,7 +581,7 @@ Takes about 15 minutes to understand the basics.
 ```bash
 # Run this monthly to keep guides fresh
 xray clear-cache
-xray strategy:detect > docs/onboarding/1-frameworks.txt
+xray strategy detect > docs/onboarding/1-frameworks.txt
 xray map --depth 2 > docs/onboarding/2-structure.txt
 # etc.
 
@@ -609,15 +609,15 @@ echo "Auto-generated at $(date)" >> API.md
 echo "" >> API.md
 
 echo "## Endpoints" >> API.md
-xray express:routes >> API.md
+xray express routes >> API.md
 
 echo "" >> API.md
 echo "## Middleware" >> API.md
-xray express:middleware >> API.md
+xray express middleware >> API.md
 
 echo "" >> API.md
 echo "## Error Handlers" >> API.md
-xray express:error-handlers >> API.md
+xray express error-handlers >> API.md
 
 echo "✓ Generated API.md"
 ```
@@ -669,10 +669,10 @@ jobs:
           echo "Auto-generated at $(date)" >> API.md
           echo "" >> API.md
           echo "## Endpoints" >> API.md
-          xray express:routes >> API.md
+          xray express routes >> API.md
           echo "" >> API.md
           echo "## Middleware" >> API.md
-          xray express:middleware >> API.md
+          xray express middleware >> API.md
       - uses: actions/upload-artifact@v4
         with:
           name: api-docs
@@ -700,7 +700,7 @@ Every time you push code changes, API documentation auto-updates. No manual main
 
 **"Command not found"** → Use `npx xray` instead of `xray`
 
-**"No results"** → Add path: `xray express:routes -p ./src`
+**"No results"** → Add path: `xray express routes -p ./src`
 
 **"Stale results"** → Clear cache: `xray clear-cache`
 

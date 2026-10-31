@@ -7,11 +7,11 @@ Complete guide to every xray command and option. Start with the decision tree to
 **What do you want to do?**
 
 - **Understand your codebase structure** → [`xray map`](#xray-map)
-- **Find something specific (components, routes, functions)** → [`xray explore` / Strategies](#xray-explore)
+- **Find something specific (components, routes, functions)** → [`xray <strategy> <command>`](#xray-strategy-command)
 - **Scan for files matching a pattern** → [`xray scan`](#xray-scan)
 - **See control flow or data flow** → [`xray graph`](#xray-graph)
-- **Detect what frameworks are used** → [`xray strategy:detect`](#xray-strategydetect)
-- **See all available strategies** → [`xray strategy:list`](#xray-strategylist)
+- **Detect what frameworks are used** → [`xray strategy detect`](#xray-strategy-detect)
+- **See all available strategies** → [`xray strategy list`](#xray-strategy-list)
 - **Create command shortcuts** → [`xray alias`](#xray-alias)
 - **Fix stale results** → [`xray clear-cache`](#xray-clear-cache)
 - **Enable shell completion** → [`xray completion`](#xray-completion)
@@ -77,43 +77,39 @@ xray graph --with cf --with df --output graphs.txt
 xray graph --path ./src/services --with cf --with df
 ```
 
-### `xray explore`
+### `xray <strategy> <command>`
 
-Run framework-specific exploration commands via strategies.
+Run framework-specific commands provided by strategies.
 
 ```bash
-xray explore <strategy>:<command> [options]
+xray <strategy> <command> [options]
 ```
 
 **Examples:**
 ```bash
 # List React components
-xray explore react:components
+xray react components
 
 # List Express routes
-xray explore express:routes
-
-# Shorthand (explore is default)
-xray react:components
-xray express:routes
+xray express routes
 ```
 
 See [Strategies Guide](strategies.md) for all available strategy commands.
 
-### `xray strategy:detect`
+### `xray strategy detect`
 
 Detect which strategies apply to your project.
 
 ```bash
-xray strategy:detect
+xray strategy detect
 ```
 
-### `xray strategy:list`
+### `xray strategy list`
 
 List all available strategies.
 
 ```bash
-xray strategy:list
+xray strategy list
 ```
 
 ### `xray alias`

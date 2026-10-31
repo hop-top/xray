@@ -70,7 +70,7 @@ Unlike humans who view xray output directly, agents:
 | `scan` | Find files matching pattern | Low | Narrow search space, verify file existence |
 | `map` | Get code structure/organization | Medium | Understand architecture, find key files |
 | `explore` | Find framework-specific patterns | Low | Discover components, routes, hooks |
-| `strategy:detect` | Identify frameworks in use | Low | First step in new codebase |
+| `strategy detect` | Identify frameworks in use | Low | First step in new codebase |
 | `graph` | Generate control/data flow | High | Analyze complex logic flow |
 | `clear-cache` | Reset analysis cache | None | Troubleshooting stale results |
 
@@ -79,7 +79,7 @@ Unlike humans who view xray output directly, agents:
 **Token budget allocation for typical tasks:**
 
 ### Understanding New Codebase (500-1000 tokens)
-- `strategy:detect`: ~50 tokens (framework detection)
+- `strategy detect`: ~50 tokens (framework detection)
 - `map --path ./src --depth 2`: ~400 tokens (structure)
 - `explore <framework>:<command>`: ~100 tokens (patterns)
 - Buffer for parsing/refinement: ~50 tokens
@@ -91,7 +91,7 @@ Unlike humans who view xray output directly, agents:
 - Buffer: ~50 tokens
 
 ### Implementing Feature (600-1200 tokens)
-- `strategy:detect`: ~50 tokens
+- `strategy detect`: ~50 tokens
 - `explore <command>`: ~150 tokens (find patterns)
 - `map --anchor <key-file>`: ~300 tokens (understand architecture)
 - `map --with incs`: ~150 tokens (dependencies)
@@ -221,14 +221,14 @@ docs/agent/
 
 ### Discovery
 ```bash
-xray strategy:detect                    # What frameworks are used?
+xray strategy detect                    # What frameworks are used?
 xray scan --path ./src                 # What files exist?
 ```
 
 ### Understanding
 ```bash
 xray map --path ./src --depth 2         # How is code organized?
-xray explore react:components           # What React components exist?
+xray react components           # What React components exist?
 xray map --anchor src/main.ts --with incs  # What depends on what?
 ```
 

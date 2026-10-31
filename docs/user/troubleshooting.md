@@ -121,7 +121,7 @@ xray map --anchor src/main.ts
 
 ### Strategy Not Detected
 
-**Problem:** `xray strategy:detect` doesn't show your framework.
+**Problem:** `xray strategy detect` doesn't show your framework.
 
 **Solutions:**
 
@@ -130,7 +130,7 @@ xray map --anchor src/main.ts
 3. **For Go CLI**: Check `go.mod` includes Cobra or urfave/cli
 4. Clear cache and retry:
 ```bash
-xray clear-cache && xray strategy:detect
+xray clear-cache && xray strategy detect
 ```
 
 ### No Results from Strategy Command
@@ -145,7 +145,7 @@ xray clear-cache && xray strategy:detect
 4. For Express: Ensure routes are actually defined (not commented out)
 5. Run with `-p` flag to specify correct project path:
 ```bash
-xray react:components -p /full/path/to/project
+xray react components -p /full/path/to/project
 ```
 
 ### Slow Strategy Performance
@@ -319,7 +319,7 @@ xray map
 
 Always use absolute paths with `-p` flag:
 ```bash
-xray react:components -p /full/path/to/project
+xray react components -p /full/path/to/project
 ```
 
 Or ensure you're in the project root when running without `-p`.

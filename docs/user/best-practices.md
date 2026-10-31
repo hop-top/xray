@@ -82,13 +82,13 @@ Don't try to understand everything at once. Explore iteratively.
 
 1. **Broad overview** (2 min): What's the structure?
    ```bash
-   xray strategy:detect
+   xray strategy detect
    xray map --depth 2
    ```
 
 2. **System-level understanding** (3 min): How does this system work?
    ```bash
-   xray [express:routes | react:components | rest-api:endpoints]
+   xray [express routes | react components | rest-api endpoints]
    ```
 
 3. **Targeted drilling** (5 min): How does feature X work?
@@ -194,12 +194,12 @@ Be descriptive in output names:
 ```bash
 # Good names
 xray map -o docs/api-core-services-map.txt
-xray react:components -o docs/react-components-audit.txt
-xray express:routes -o docs/api-endpoints-v1.txt
+xray react components -o docs/react-components-audit.txt
+xray express routes -o docs/api-endpoints-v1.txt
 
 # Ambiguous names (avoid)
 xray map -o output.txt
-xray explore express:routes -o routes.txt
+xray express routes -o routes.txt
 ```
 
 ### Including Maps in Documentation
@@ -385,10 +385,10 @@ xray map --all-scopes          # Everything
 xray map --catch "*Handler" --catch "*Controller" --with incs
 
 # Find all custom hooks
-xray react:hooks
+xray react hooks
 
 # Find all middleware
-xray express:middleware
+xray express middleware
 
 # Find async functions
 xray map --catch "*async" --with vars
@@ -401,7 +401,7 @@ xray map --catch "*async" --with vars
 xray map --with vars
 
 # Find all endpoints
-xray rest-api:endpoints
+xray rest-api endpoints
 
 # Find all models
 xray map --catch "*Model"
@@ -411,10 +411,10 @@ xray map --catch "*Model"
 
 ```bash
 # Find all commands
-xray go-cli:commands
+xray go-cli commands
 
 # Find all endpoints
-xray rest-api:endpoints
+xray rest-api endpoints
 
 # Find interfaces
 xray map --catch "*interface"
@@ -524,10 +524,10 @@ xray map --with incs | grep -v "→ used by"
 
 ```bash
 # Refresh strategy detection
-xray strategy:detect
+xray strategy detect
 
 # Update framework-specific analysis
-xray react:components  # or express:routes, etc.
+xray react components  # or express routes, etc.
 ```
 
 ---

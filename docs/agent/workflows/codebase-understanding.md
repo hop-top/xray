@@ -19,7 +19,7 @@ Step-by-step protocol for understanding an unfamiliar codebase from first xray i
 **Action:** Run framework detection to understand the tech stack
 
 ```bash
-xray strategy:detect
+xray strategy detect
 ```
 
 **Expected Output:**
@@ -38,7 +38,7 @@ Detected Strategies:
 **What You Learned:**
 - Framework ecosystem (React, Express, Vue, Angular, etc.)
 - Technology decisions made in project
-- What specialized commands are available (explore react:*, explore express:*, etc.)
+- What specialized commands are available (`xray react ...`, `xray express ...`, etc.)
 
 **Next If Unclear:** If frameworks are unclear, continue to Step 2 to understand structure
 
@@ -101,17 +101,17 @@ xray map --path ./src
 
 **For React projects:**
 ```bash
-xray react:components
+xray react components
 ```
 
 **For Express projects:**
 ```bash
-xray express:routes
+xray express routes
 ```
 
 **For REST API projects:**
 ```bash
-xray rest-api:endpoints
+xray rest-api endpoints
 ```
 
 **For Go CLI projects:**
@@ -290,7 +290,7 @@ You've successfully understood the codebase when you can:
 
 ### Problem: Frameworks unclear
 **Recovery:**
-- Run `xray strategy:detect` again
+- Run `xray strategy detect` again
 - If still empty, codebase might use custom setup
 - Look at package.json manually to see dependencies
 - Look at main entry point for imports

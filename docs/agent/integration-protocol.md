@@ -73,7 +73,7 @@ QUESTION FROM USER
 - User asks: "Is there a logger I can use?" → Use xray scan + explore
 - User asks: "Find all API routes" → Use xray explore
 - User asks: "How do requests flow through the app?" → Use xray map + graph
-- User asks: "What does the project look like?" → Use xray strategy:detect + map
+- User asks: "What does the project look like?" → Use xray strategy detect + map
 - User needs context before implementing changes → Use xray to understand area
 
 ## Proactive Invocation
@@ -99,7 +99,7 @@ Agent recognizes a user request that would benefit from xray before user explici
    ```
 
 2. **Gather Context**
-   - If framework unknown: `xray strategy:detect`
+   - If framework unknown: `xray strategy detect`
    - If structure unknown: `xray map --path ./src --depth 2`
    - If looking for patterns: `xray explore <framework>:<command>`
 
@@ -194,7 +194,7 @@ Complex tasks use xray multiple times across conversation turns.
 
 ```
 Turn 1: User says "I need to add authentication"
-  → Action: xray strategy:detect + xray explore <framework>:components
+  → Action: xray strategy detect + xray explore <framework>:components
   → Result: User understands architecture, knows pattern
 
 Turn 2: User asks "Where would the login form go?"
@@ -239,7 +239,7 @@ Turn 1: xray map --path ./src
   → Too many files, output overwhelming
 
 Turn 2: User clarifies "I only care about API routes"
-  → Action: xray explore express:routes
+  → Action: xray express routes
   → Better: Focused on user's actual need
 
 Turn 3: User sees routes, asks "How do these call services?"

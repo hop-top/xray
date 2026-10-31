@@ -372,7 +372,7 @@ xray User Manual
 │   ├── xray explore / strategies
 │   ├── xray scan
 │   ├── xray graph
-│   ├── xray strategy:detect/list
+│   ├── xray strategy detect/list
 │   ├── xray alias (manage shortcuts)
 │   ├── xray clear-cache
 │   └── xray completion
