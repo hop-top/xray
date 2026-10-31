@@ -275,8 +275,8 @@ xray react hooks
 
 Potential future improvements to strategy commands:
 
-- **Filter options**: `xray react components --type function`
-- **Output formats**: `xray react components --json`
-- **Sorting**: `xray react components --sort name`
+- **Filter options**: e.g. a `--type function` filter (not implemented)
+- **Output formats**: already available via `--format json|yaml|table|csv`
+- **Sorting**: e.g. a `--sort name` option (not implemented)
 - **Interactive mode**: TUI for browsing results
 - **Composition**: Combine multiple strategy queries

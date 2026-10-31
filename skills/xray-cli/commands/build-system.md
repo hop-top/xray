@@ -33,7 +33,7 @@ xray build graph --format=dot | dot -Tpng > build.png
 
 ### Run a build target
 ```bash
-xray build run <target>
+xray build run --target <target>
 ```
 Executes the specified build target.
 

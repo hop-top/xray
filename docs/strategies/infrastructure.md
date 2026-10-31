@@ -31,26 +31,19 @@ The Infrastructure Strategy provides unified analysis and validation for infrast
 
 ### resources
 
-List all infrastructure resources with optional filtering.
+List all infrastructure resources.
 
 ```bash
 # List all resources
 xray infrastructure resources
 
-# Filter by resource type
-xray infrastructure resources --type aws_instance
-
-# Filter by tool
-xray infrastructure resources --tool terraform
-
-# Filter by provider
-xray infrastructure resources --provider aws
+# Machine-readable output
+xray infrastructure resources --format json
 ```
 
-**Options:**
-- `--type`: Filter by resource type (e.g., `aws_instance`, `Deployment`)
-- `--tool`: Filter by infrastructure tool (e.g., `terraform`, `kubernetes`, `helm`, `cloudformation`)
-- `--provider`: Filter by cloud provider (e.g., `aws`, `google`, `azure`)
+**Options:** none beyond the common flags (`-p/--path`, `--format`, extension overrides).
+There are no `--type`, `--tool` or `--provider` filters in the CLI; filter the
+output instead, e.g. `xray infrastructure resources --format json | jq '.[] | select(.tool == "terraform")'`.
 
 **Output:**
 ```json
@@ -252,9 +245,8 @@ data "aws_ami" "ubuntu" {
 $ xray infrastructure resources
 Found 4 resources
 
-# List only instances
-$ xray infrastructure resources --type aws_instance
-Found 1 resource
+# List only instances (filter the JSON output)
+$ xray infrastructure resources --format json | jq '[.[] | select(.type == "aws_instance")]'
 
 # Show dependency graph
 $ xray infrastructure graph --format dot
@@ -318,8 +310,7 @@ spec:
 **Commands:**
 ```bash
 # List all Kubernetes resources
-$ xray infrastructure resources --tool kubernetes
-Found 3 resources
+$ xray infrastructure resources --format json | jq '[.[] | select(.tool == "kubernetes")]'
 
 # Show summary
 $ xray infrastructure summary
