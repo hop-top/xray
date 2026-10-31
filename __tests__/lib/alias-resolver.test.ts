@@ -62,7 +62,7 @@ describe('alias rules', () => {
     it('skips empty names and names containing whitespace', () => {
       const aliases = usableAliases({
         aliases: { '': 'react components', 'a b': 'react components', 'a b': 'react components' },
-      });
+      }, []);
       expect(aliases).toEqual({});
       expect(warned()).toContain('Invalid alias name "a b"');
     });
