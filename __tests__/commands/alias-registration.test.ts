@@ -36,6 +36,7 @@ describe('registerAliases (dispatch)', () => {
   const build = async () => {
     const program = new Command();
     program.exitOverride();
+    program.command('map'); // real command: reserved name
     // Stand-in for the registered strategy command the alias dispatches to.
     program
       .command('react')
@@ -50,7 +51,22 @@ describe('registerAliases (dispatch)', () => {
   };
 
   const aliasNames = (program: Command) =>
-    program.commands.map(c => c.name()).filter(n => n !== 'react');
+    program.commands.map(c => c.name()).filter(n => n !== 'react' && n !== 'map');
+
+  it('skips alias named like an existing command (config already holds it) with a warning', async () => {
+    mockLoadConfig.mockReturnValue({
+      paths: ['.'],
+      aliases: { cache: 'react components', comp: 'react components' },
+    });
+    const program = new Command();
+    program.exitOverride();
+    program.command('cache');
+    program.command('react').command('components').action(() => undefined);
+    await expect(registerAliases(program)).resolves.toBeUndefined();
+    expect(program.commands.filter(c => c.name() === 'cache')).toHaveLength(1);
+    expect(program.commands.map(c => c.name())).toContain('comp');
+    expect(warnSpy.mock.calls.map(c => String(c[0])).join('\n')).toContain('Alias "cache" conflicts');
+  });
 
   it('registers nothing when no aliases configured', async () => {
     mockLoadConfig.mockReturnValue({ paths: ['.'] });

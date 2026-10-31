@@ -34,19 +34,19 @@ describe('alias rules', () => {
       const config: XrayConfig = {
         aliases: { comp: 'react components', routes: 'express routes' },
       };
-      expect(usableAliases(config)).toEqual({
+      expect(usableAliases(config, [])).toEqual({
         comp: 'react components', routes: 'express routes',
       });
     });
 
     it('returns empty map when no aliases configured', () => {
-      expect(usableAliases({})).toEqual({});
+      expect(usableAliases({}, [])).toEqual({});
     });
 
     it('skips aliases that conflict with built-in commands', () => {
       const aliases = usableAliases({
         aliases: { map: 'react components', comp: 'react components' },
-      });
+      }, ['map']);
       expect(aliases).toEqual({ comp: 'react components' });
       expect(warned()).toContain('Alias "map" conflicts with built-in command, skipping');
     });

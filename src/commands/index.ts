@@ -6,6 +6,7 @@ import { setCommandGroup } from './kit-cli';
 import { registerCoreCommands } from './registration/core';
 import { registerStrategyCommands } from './registration/strategies';
 import { registerAliases } from './registration/aliases';
+import { captureReservedNames } from '../lib/alias-resolver';
 import { bindValueCompleters } from './completion';
 import { ExploreCommandOptions } from '../types/command-options';
 import type { CodeLoadingOptions } from '../lib/strategy/loader';
@@ -26,7 +27,8 @@ export async function registerCommands(options: CodeLoadingOptions = {}, configP
   // 3. Register explore command (default) with backward compatibility
   registerExploreCommand();
 
-  // 4. Register user-defined aliases from config
+  // 4. Register user-defined aliases from config (reserved names = every command above)
+  captureReservedNames(program);
   await registerAliases(program, options, configPath);
 
   // 5. Bind flag/argument value completers across the full tree.

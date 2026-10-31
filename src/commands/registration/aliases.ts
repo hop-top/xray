@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import {
-  aliasTargetErrors, circularAliases, kitAlias, splitAliasTarget, usableAliases,
+  aliasTargetErrors, circularAliases, kitAlias, reservedAliasNames, splitAliasTarget, usableAliases,
 } from '../../lib/alias-resolver';
 import { CodeLoadingOptions, StrategyLoader } from '../../lib/strategy/loader';
 import { Logger } from '../../lib/logger';
@@ -18,7 +18,7 @@ export async function registerAliases(
     return;
   }
 
-  const aliases = usableAliases(config);
+  const aliases = usableAliases(config, reservedAliasNames(program));
   const strategies = await new StrategyLoader(options).discoverStrategies();
 
   const errors = aliasTargetErrors(aliases, strategies);

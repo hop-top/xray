@@ -129,14 +129,15 @@ Aliases cannot override built-in commands:
 
 ```bash
 xray alias set map "react components"
-# Error: Cannot create alias "map" - conflicts with built-in command
+# ✖ Cannot create alias "map" - conflicts with an existing command; choose another name
 ```
 
-**Built-in commands:**
-- `map`, `scan`, `graph`, `find`, `detect`
-- `strategies`, `strategy`, `alias`, `lang`, `config`
-- `save`, `load`, `snapshot`, `plugin`
-- `clear-cache`, `completion`, `help`, `version`
+Reserved names are derived from the commands xray registers (core
+commands such as `map`, `cache`, `paths`, `describe`, `mcp`, `alias`,
+`completion`, hidden ones such as `clear-cache`, strategy commands, and
+`help`). Run `xray --help` to see them. `alias set` rejects a reserved
+name with a usage error (exit 2). A reserved name already in a config is
+skipped with a warning at startup.
 
 ### Invalid Formats
 
@@ -168,19 +169,19 @@ This will be detected on startup and the aliases will be skipped with a warning.
 2. **Avoid conflicts** - Check built-in commands before creating aliases
 3. **Document team aliases** - Add examples to your project's README
 4. **Commit config** - Share `.xrayrc.json` with your team
-5. **Restart after changes** - Aliases are loaded at startup
+5. **Run again after changes** - Aliases are loaded at startup, so a new alias works from the next xray run
 
 ## Troubleshooting
 
 ### Alias not working
 
-Restart xray after creating or modifying aliases:
+Aliases are loaded when xray starts; a new or changed alias works from the next run, not the current one:
 
 ```bash
 # After running alias set/remove
 xray alias set comp "react components"
 
-# Restart is needed - aliases loaded at startup
+# Works on the next run
 xray comp
 ```
 

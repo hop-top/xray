@@ -1,6 +1,8 @@
+import { Command } from 'commander';
 import { registerAliasCommand } from '../../src/commands/alias';
+import { registerCoreCommands } from '../../src/commands/registration/core';
 import { loadConfig, saveConfig } from '../../src/lib/config';
-import { ConflictError, NotFoundError, UsageError } from '../../src/lib/error/types';
+import { NotFoundError, UsageError } from '../../src/lib/error/types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -132,16 +134,33 @@ describe('Alias Commands', () => {
       expect(mockSaveConfig).not.toHaveBeenCalled();
     });
 
-    it('should reject alias that conflicts with built-in command (ConflictError, exit 5)', async () => {
+    // Full root tree: reserved names derive from registered commands.
+    const rootWithCore = () => {
+      const root = new Command('xray');
+      root.exitOverride();
+      registerCoreCommands(root);
+      return root;
+    };
+
+    it.each(['map', 'cache', 'paths', 'describe', 'mcp', 'completion', 'clear-cache', 'help'])(
+      'rejects alias named after existing command "%s" (UsageError, exit 2)',
+      async (name) => {
+        mockLoadConfig.mockReturnValue({ paths: ['./src'] });
+        await expect(
+          rootWithCore().parseAsync(['node', 'test', 'alias', 'set', name, 'react components'])
+        ).rejects.toMatchObject({ exitCode: 2, code: 'USAGE' });
+        expect(mockSaveConfig).not.toHaveBeenCalled();
+      }
+    );
+
+    it('hints accurately after set', async () => {
       mockLoadConfig.mockReturnValue({ paths: ['./src'] });
-
-      const program = registerAliasCommand();
-      program.exitOverride();
-      await expect(
-        program.parseAsync(['node', 'test', 'set', 'map', 'react components'])
-      ).rejects.toBeInstanceOf(ConflictError);
-
-      expect(mockSaveConfig).not.toHaveBeenCalled();
+      const err = jest.spyOn(console, 'error').mockImplementation();
+      await rootWithCore().parseAsync(['node', 'test', 'alias', 'set', 'comp', 'react components']);
+      const out = err.mock.calls.map(c => String(c[0])).join('\n');
+      expect(out).not.toContain('Restart');
+      expect(out).toContain('next xray run');
+      err.mockRestore();
     });
 
     it('should reject alias name containing whitespace (UsageError, exit 2)', async () => {

@@ -1,18 +1,13 @@
 import { Command } from 'commander';
 import { isWritableConfigFile, loadConfig, saveConfig } from '../lib/config';
-import { isAliasTarget, kitAlias, usableAliases } from '../lib/alias-resolver';
+import { isAliasTarget, kitAlias, reservedAliasNames, rootCommand, usableAliases } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
-import { ConflictError, NotFoundError, UsageError } from '../lib/error/types';
+import { NotFoundError, UsageError } from '../lib/error/types';
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
 
 interface AliasRow { alias: string; target: string }
-
-/** Names `alias set` refuses. */
-const SET_BUILTINS = [
-  'map', 'scan', 'graph', 'find', 'detect', 'strategies', 'strategy', 'save', 'load', 'alias', 'config', 'lang',
-];
 
 const aliasListRegistry = outputRegistry(
   textFormatter<AliasRow[]>('text', (rows, put, s) => {
@@ -59,7 +54,7 @@ export function registerAliasCommand(): Command {
   }).action(async (_opts: unknown, cmd: Command) => {
     assertFormat(cmd, aliasListRegistry);
     const config = loadConfig(rootConfig(cmd));
-    const aliases = config ? usableAliases(config) : {};
+    const aliases = config ? usableAliases(config, reservedAliasNames(rootCommand(cmd))) : {};
 
     if (!config) {
       Logger.info('No configuration file found.');
@@ -102,11 +97,13 @@ export function registerAliasCommand(): Command {
 
       // Check name: empty, whitespace, built-in conflicts
       try {
-        kitAlias.validateAliasName(name, { builtins: SET_BUILTINS });
+        kitAlias.validateAliasName(name, { builtins: reservedAliasNames(rootCommand(cmd)) });
       } catch (err) {
         if (!(err instanceof kitAlias.AliasNameError)) throw err;
         if (err.kind === 'builtin') {
-          throw new ConflictError(`Cannot create alias "${name}" - conflicts with built-in command`);
+          throw new UsageError(
+            `Cannot create alias "${name}" - conflicts with an existing command; choose another name`
+          );
         }
         throw new UsageError(`Invalid alias name "${name}": ${err.message}`);
       }
@@ -124,7 +121,7 @@ export function registerAliasCommand(): Command {
         Logger.success(`Created alias "${name}" → "${target}"`);
       }
 
-      Logger.info('\nRestart xray to use the new alias.');
+      Logger.info('\nThe alias is available on the next xray run.');
     });
 
   // Remove alias
