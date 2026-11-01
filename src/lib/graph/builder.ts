@@ -2,7 +2,7 @@ import * as path from 'path';
 import Graph from 'graphology';
 import { Tag, Import } from '../parser/types';
 import { AsyncEventEmitter } from '../events/async-emitter';
-import { GoModule, goDefaultName, goLocalImports, goImportedFiles, goVisibleFrom } from './go-resolver';
+import { GoModules, goDefaultName, goLocalImports, goImportedFiles, goVisibleFrom } from './go-resolver';
 import { XrayGraph, NodeAttributes, EdgeAttributes, Confidence } from '../../types/graph';
 
 interface GraphBuilderEvents {
@@ -46,7 +46,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
   private pendingImports: Map<string, string[]> = new Map();
 
   // Module context enabling `pkg.Func()` resolution in Go files (optional).
-  private goModule: GoModule | null = null;
+  private goModule: GoModules | null = null;
   // Go file -> imports (needed to map a call's package qualifier to a directory)
   private goImports: Map<string, Import[]> = new Map();
 
@@ -55,8 +55,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     this.graph = new Graph<NodeAttributes, EdgeAttributes>({ multi: true, type: 'directed' });
   }
 
-  /** Enable resolution of Go package-qualified calls inside this module. */
-  setGoModule(mod: GoModule | null) {
+  /** Enable resolution of Go package-qualified calls inside these modules. */
+  setGoModule(mod: GoModules | null) {
     this.goModule = mod;
   }
 

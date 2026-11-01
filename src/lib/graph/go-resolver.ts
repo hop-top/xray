@@ -2,14 +2,14 @@
  * Go package resolution for the graph builder.
  *
  * Maps a Go import path to a directory inside the scanned tree using the
- * module path declared in `go.mod`. Only the single-module layout is
- * supported: `go.work` workspaces and nested `go.mod` files disable
- * resolution (see {@link detectGoModule}). Packages outside the module
- * (stdlib, third-party) never resolve.
+ * module paths declared in `go.mod` files. Multi-module layouts are
+ * supported: each file belongs to its nearest enclosing go.mod, an import
+ * maps to the module with the longest matching module path, and a `go.work`
+ * at or above the root narrows the module set to its `use` entries.
+ * Packages outside every module (stdlib, third-party) never resolve.
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { Logger } from '../logger';
 import { Import } from '../parser/types';
 
 export interface GoModule {
@@ -17,8 +17,16 @@ export interface GoModule {
   modulePath: string;
   /** Absolute directory containing go.mod. */
   moduleDir: string;
+}
+
+/** Go modules of one scan. */
+export interface GoModules {
   /** Absolute scan root. */
   root: string;
+  /** Modules imports may resolve into, longest module path first. */
+  modules: GoModule[];
+  /** Every discovered go.mod directory (file ownership, incl. modules go.work leaves out). */
+  moduleDirs: string[];
 }
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build', '.hg']);
@@ -28,66 +36,125 @@ function parseModulePath(goMod: string): string | null {
   return m ? (m[1] ?? m[2] ?? m[3]) : null;
 }
 
-function hasNestedGoMod(dir: string, moduleDir: string): boolean {
+/** Absolute directories named by the `use` directives of a go.work file. */
+function parseGoWorkUses(goWork: string, workDir: string): Set<string> {
+  const out = new Set<string>();
+  const text = goWork.replace(/\/\/.*$/gm, '');
+  const add = (raw: string) => {
+    const dir = raw.trim().replace(/^["`]|["`]$/g, '');
+    if (dir) out.add(path.resolve(workDir, dir));
+  };
+  for (const m of text.matchAll(/^\s*use\s*\(([^)]*)\)/gm)) m[1].split('\n').forEach(add);
+  for (const m of text.matchAll(/^\s*use\s+([^(\s][^\n]*)$/gm)) add(m[1]);
+  return out;
+}
+
+function readModule(dir: string): GoModule | null {
+  try {
+    const modulePath = parseModulePath(fs.readFileSync(path.join(dir, 'go.mod'), 'utf-8'));
+    return modulePath ? { modulePath, moduleDir: dir } : null;
+  } catch {
+    return null; // unreadable go.mod: treat as absent
+  }
+}
+
+function findUp(start: string, name: string): string | null {
+  for (let dir = start; ; dir = path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, name))) return dir;
+    if (path.dirname(dir) === dir) return null;
+  }
+}
+
+function walkGoModDirs(dir: string, out: Set<string>) {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
   } catch {
-    return false;
+    return;
   }
   for (const e of entries) {
     if (e.isDirectory()) {
-      if (SKIP_DIRS.has(e.name)) continue;
-      if (hasNestedGoMod(path.join(dir, e.name), moduleDir)) return true;
-    } else if (e.name === 'go.mod' && dir !== moduleDir) {
-      return true;
+      if (!SKIP_DIRS.has(e.name)) walkGoModDirs(path.join(dir, e.name), out);
+    } else if (e.name === 'go.mod') {
+      out.add(dir);
     }
   }
-  return false;
 }
 
 /**
- * Find the module governing `root` (nearest go.mod at or above it).
- * Returns null when there is none or when the layout is unsupported
- * (go.work, or another go.mod below the module root).
+ * Go modules governing the scan of `root`. With `files` (root-relative scan
+ * results) the module of each scanned Go file's directory is its nearest
+ * go.mod at or above it, so ignored trees never contribute modules; without
+ * it the tree is walked. Returns null when no module is found.
  */
-export function detectGoModule(root: string): GoModule | null {
+export function detectGoModules(root: string, files?: string[]): GoModules | null {
   const absRoot = path.resolve(root);
-  let dir = absRoot;
-  for (;;) {
-    const goMod = path.join(dir, 'go.mod');
-    if (fs.existsSync(goMod)) {
-      let modulePath: string | null = null;
-      try {
-        modulePath = parseModulePath(fs.readFileSync(goMod, 'utf-8'));
-      } catch {
-        /* unreadable go.mod: treat as absent */
-      }
-      if (!modulePath) return null;
-      if (fs.existsSync(path.join(dir, 'go.work')) || fs.existsSync(path.join(path.dirname(dir), 'go.work'))) {
-        Logger.warn('go.work workspace detected: Go package-qualified call resolution is disabled');
-        return null;
-      }
-      if (hasNestedGoMod(dir, dir)) {
-        Logger.warn('Nested go.mod detected: Go package-qualified call resolution is disabled');
-        return null;
-      }
-      return { modulePath, moduleDir: dir, root: absRoot };
+  const dirs = new Set<string>();
+  if (files) {
+    const seen = new Set<string>();
+    for (const f of files) {
+      if (!f.endsWith('.go')) continue;
+      const start = path.dirname(path.resolve(absRoot, f));
+      if (seen.has(start)) continue;
+      seen.add(start);
+      const found = findUp(start, 'go.mod');
+      if (found) dirs.add(found);
     }
-    const parent = path.dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
+  } else {
+    const enclosing = findUp(absRoot, 'go.mod');
+    if (enclosing) dirs.add(enclosing);
+    walkGoModDirs(absRoot, dirs);
   }
+
+  const all: GoModule[] = [];
+  for (const d of dirs) {
+    const mod = readModule(d);
+    if (mod) all.push(mod);
+  }
+  let modules = all;
+  const workDir = findUp(absRoot, 'go.work');
+  if (workDir) {
+    try {
+      const uses = parseGoWorkUses(fs.readFileSync(path.join(workDir, 'go.work'), 'utf-8'), workDir);
+      modules = all.filter(m => uses.has(m.moduleDir));
+    } catch {
+      /* unreadable go.work: fall back to every discovered module */
+    }
+  }
+  if (modules.length === 0) return null;
+  modules.sort((a, b) => b.modulePath.length - a.modulePath.length);
+  return { root: absRoot, modules, moduleDirs: all.map(m => m.moduleDir) };
+}
+
+/** Module set holding a single module (tests, single-module callers). */
+export function goSingleModule(modulePath: string, moduleDir: string, root: string = moduleDir): GoModules {
+  const dir = path.resolve(moduleDir);
+  return { root: path.resolve(root), modules: [{ modulePath, moduleDir: dir }], moduleDirs: [dir] };
+}
+
+function ownerModuleDir(mods: GoModules, abs: string): string | null {
+  let best: string | null = null;
+  for (const d of mods.moduleDirs) {
+    if ((abs === d || abs.startsWith(d + path.sep)) && (best === null || d.length > best.length)) best = d;
+  }
+  return best;
 }
 
 /**
  * Directory (posix, relative to the scan root) holding the package for
- * `importPath`, or null for packages outside the module / the scan root.
+ * `importPath`, or null for packages outside every module / the scan root.
+ * The module with the longest matching module path provides the package; a
+ * directory owned by another (nested) go.mod is not part of it.
  */
-export function goPackageDir(mod: GoModule, importPath: string): string | null {
-  if (importPath !== mod.modulePath && !importPath.startsWith(mod.modulePath + '/')) return null;
+export function goPackageDir(mods: GoModules, importPath: string): string | null {
+  const mod = mods.modules.find(
+    m => importPath === m.modulePath || importPath.startsWith(m.modulePath + '/')
+  );
+  if (!mod) return null;
   const rest = importPath.slice(mod.modulePath.length).replace(/^\//, '');
-  const rel = path.relative(mod.root, path.join(mod.moduleDir, rest));
+  const abs = path.join(mod.moduleDir, rest);
+  if (ownerModuleDir(mods, abs) !== mod.moduleDir) return null;
+  const rel = path.relative(mods.root, abs);
   if (rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel)) return null;
   return rel.split(path.sep).join('/') || '.';
 }
@@ -104,7 +171,7 @@ export function goDefaultName(importPath: string): string {
  * Imports that map (through the go.mod module path) to a package directory
  * under the scan root. Blank imports (`_`) bind nothing and are dropped.
  */
-export function goLocalImports(mod: GoModule, imports: Import[]): Array<{ imp: Import; dir: string }> {
+export function goLocalImports(mod: GoModules, imports: Import[]): Array<{ imp: Import; dir: string }> {
   const out: Array<{ imp: Import; dir: string }> = [];
   for (const imp of imports) {
     if (imp.alias === '_') continue;
@@ -119,7 +186,7 @@ export function goLocalImports(mod: GoModule, imports: Import[]): Array<{ imp: I
  * no module-local package are absent. `dotOnly` keeps `import . "pkg"` only.
  */
 export function goImportedFiles(
-  mod: GoModule | null,
+  mod: GoModules | null,
   importsByFile: Map<string, Import[]>,
   goFiles: string[],
   dotOnly: boolean

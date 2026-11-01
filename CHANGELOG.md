@@ -59,6 +59,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   suffixed ` (inferred)`, capped at 3 per symbol, remainder shown as
   `+N inferred`. Surprise scoring (insights preset) skips INFERRED edges,
   so name-match noise no longer produces ambiguous-edge questions.
+- Go `calls` edges follow imports: a member call (`r.Run()`) into a
+  module-local package the file imports resolves `EXTRACTED`. A bare name
+  only reaches another package through a dot import (`import . "pkg"`).
+  Cross-package method candidates must be exported and not declared in a
+  `_test.go` file. An unscoped Go member call links nowhere when the file
+  imports no module-local package (e.g. `t.Errorf` in a test importing only
+  `testing`) or when same-named methods exist in more than one package
+  (`AMBIGUOUS`, recorded on `reference:resolve`, no edge).
+- Go repos with `go.work` or nested `go.mod` files resolve package
+  imports instead of disabling resolution: each file belongs to its nearest
+  go.mod, an import maps to the module with the longest matching module
+  path, and `go.work` (when present) limits modules to its `use` entries.
 
 - Read-only commands no longer write `.xrayrc.json` or `.xray/.strategy-cache.json` into the working directory; the strategy cache now lives in the user cache dir and non-interactive runs no longer persist a telemetry decision.
 - Argument-parser usage errors (unknown flag, missing argument or value, unknown help topic) print as `✖ <message>`, matching every other usage error; exit code stays 2.

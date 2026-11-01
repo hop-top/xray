@@ -1,5 +1,6 @@
 import { GraphBuilder } from '../../src/lib/graph/builder';
 import { Tag } from '../../src/lib/parser/types';
+import { goSingleModule } from '../../src/lib/graph/go-resolver';
 
 describe('GraphBuilder', () => {
     let builder: GraphBuilder;
@@ -334,7 +335,7 @@ describe('GraphBuilder', () => {
             const MOD = 'example.com/m';
             const imp = (file: string, source: string, alias?: string) => ({ source, file, alias });
             beforeEach(() => {
-                builder.setGoModule({ modulePath: MOD, moduleDir: '/repo', root: '/repo' });
+                builder.setGoModule(goSingleModule(MOD, '/repo'));
             });
 
             it('member call into an imported module-local package resolves EXTRACTED', async () => {

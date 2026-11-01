@@ -128,11 +128,16 @@ describe('Go package-qualified call edges', () => {
     fs.rmSync(path.join(repo, 'cmd/sub.go'));
   });
 
-  test('nested go.mod disables qualified resolution (unsupported layout)', () => {
+  test('a nested go.mod is its own module and leaves root-module resolution intact', () => {
     write('tools/go.mod', 'module example.com/demo/tools\n\ngo 1.21\n');
+    write('tools/tools.go', 'package tools\n\nfunc Execute() {}\n');
     try {
-      // member-call (method) resolution does not depend on go.mod
-      expect(graph().from('main.go::main')).toEqual(['util/runner.go::Execute']);
+      expect(graph().from('main.go::main')).toEqual([
+        'cmd/root.go::Execute',
+        'util/runner.go::Execute',
+        'util/util.go::NewRunner',
+        'util/util.go::Run',
+      ]);
     } finally {
       fs.rmSync(path.join(repo, 'tools'), { recursive: true, force: true });
     }
