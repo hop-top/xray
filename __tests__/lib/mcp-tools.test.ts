@@ -52,6 +52,17 @@ function tree(): Command {
   setCommandGroup(config, 'strategy');
   config.command('keys').option('-p, --path <path>', 'Project path').option('--file <file>', 'Config file');
   config.command('values').option('-p, --path <path>', 'Project path').option('--show-secrets', 'Secrets');
+  root.command('impact')
+    .description('Show transitive callers of a symbol, by area')
+    .argument('<symbol>', 'Symbol name or glob')
+    .option('--depth <n>', 'Caller levels')
+    .option('--strict', 'EXTRACTED only')
+    .option('--graph <file>', 'Saved graph')
+    .option('-p, --path <path>', 'Root directory (repeatable)', repeat, [])
+    .option('--lens <name>', 'Lens')
+    .option('--scope <name>', 'Scope')
+    .option('--lang <list>', 'Languages', repeat, [])
+    .option('--format <fmt>', 'Format');
   root.command('alias').command('set');
   return root;
 }
@@ -69,7 +80,7 @@ function kitLeaf(root: Command, p: string[]) {
 
 describe('isExposedPath', () => {
   const root = tree();
-  it.each([['explore'], ['map'], ['strategy list'], ['react hooks']])('exposes %s', (p) => {
+  it.each([['explore'], ['map'], ['impact'], ['strategy list'], ['react hooks']])('exposes %s', (p) => {
     expect(isExposedPath(root, p.split(' '))).toBe(true);
   });
   it.each([['cache clear'], ['alias set'], ['strategy remove']])('hides %s', (p) => {
@@ -106,6 +117,18 @@ describe('shapeLeaf', () => {
     expect(map.leaf.properties.query.type).toBe('array');
     expect(map.leaf.properties.output).toBeUndefined();
     expect(map.leaf.properties.share).toBeUndefined();
+  });
+
+  it('exposes impact: symbol positional, depth/strict/format/lens/scope, root; no graph or path', () => {
+    const { leaf, def } = shaped(root, ['impact']);
+    expect(Object.keys(leaf.properties).sort()).toEqual(['depth', 'format', 'lens', 'root', 'scope', 'strict', 'symbol']);
+    expect(leaf.properties.symbol.type).toBe('string');
+    expect(leaf.required).toEqual(['symbol']);
+    expect(leaf.properties.strict.type).toBe('boolean');
+    expect(leaf.properties.depth.type).toBe('string');
+    expect(leaf.description).toMatch(/what breaks/i);
+    expect(def).toMatchObject({ name: 'impact', path: ['impact'], positionals: ['symbol'], fileOutput: false });
+    expect(def.policy).toMatchObject({ root: 'path', configFromPath: true, detectOnRoot: false });
   });
 
   it('offers root only on tools with a project scope', () => {
@@ -177,6 +200,21 @@ describe('buildArgv', () => {
     expect(argv(def, cmd, { stats: true }, scope)).toEqual(['explore', '--path=/srv/sub', '--stats']);
     const h = findCommand(root, ['react', 'hooks'])!;
     expect(argv(shaped(root, ['react', 'hooks']).def, h, {}, scope)).toEqual(['react', 'hooks', '--path=/srv/sub']);
+  });
+
+  it('builds impact argv; root becomes --path (no --detect); graph and path are rejected', () => {
+    const c = findCommand(root, ['impact'])!;
+    const d = shaped(root, ['impact']).def;
+    expect(argv(d, c, { symbol: 'Run*', depth: '2', strict: true, format: 'json' })).toEqual([
+      'impact', '--depth=2', '--strict', '--format=json', '--', 'Run*',
+    ]);
+    const scope: PathScope = { dir: '/srv/sub', explicit: true, contain: (v, base) => path.resolve(base, v) };
+    expect(buildArgv(d, c, { symbol: 'alpha', root: 'sub' }, scope)).toEqual({
+      argv: ['impact', '--path=/srv/sub', '--', 'alpha'], projectDirs: ['/srv/sub'],
+    });
+    expect(() => argv(d, c, { symbol: 'x', graph: 'g.json' })).toThrow(/unknown argument "graph"/);
+    expect(() => argv(d, c, { symbol: 'x', path: ['a'] })).toThrow(/unknown argument "path"/);
+    expect(() => argv(d, c, { symbol: 'x', lang: ['go'] })).toThrow(/unknown argument "lang"/);
   });
 
   it('rejects root on tools without a project scope', () => {

@@ -65,6 +65,7 @@ Any other stdio client: run `xray -C <project> mcp`.
 | `graph` | `xray graph` | CFG/DFG output |
 | `explore` | `xray explore [query]` | match / search / stats rows |
 | `query` | `xray query <query>` | call-graph query result |
+| `impact` | `xray impact <symbol>` | transitive callers by area ("what breaks if I change X") |
 | `strategy_list` | `xray strategy list` | available strategies |
 | `strategy_detect` | `xray strategy detect` | strategies detected for the project |
 | `<strategy>_<noun>` | `xray <strategy> <noun>` | strategy insight, e.g. `react_hooks`, `express_routes`, `markdown_toc` |
@@ -84,6 +85,10 @@ flags, plus the options vetted per noun (`config list --pattern`,
 --depth`). Options a project strategy declares for its own nouns are not
 exposed.
 
+`impact` takes `symbol`, `depth`, `strict`, `format`, `lens`, `scope`
+and `root`; its graph is always built over the call root, so `--graph`
+(and `--path`, `--lang`) are not exposed.
+
 Not exposed: commands that change state (`cache clear`, `alias set`,
 `strategy install`, `lang add`, ...) and flags that write files, load
 code or reveal secrets: `--output`, `--share`, `--template`, `--preset`,
@@ -98,6 +103,8 @@ Behaviour per tool:
   `== <file> ==` header), and the temp directory is removed.
 - `query` without `graph` first builds one (`xray map --format json`) in
   a temp directory, then runs the query against it.
+- `impact` builds its graph in memory over the call root (same config,
+  `lens` and `scope` resolution as `map`) and writes no file.
 - Everything else returns the command's stdout.
 
 ## Errors
@@ -135,20 +142,20 @@ and a JS project config (`.xrayrc.js`) are code, and xray loads them.
   server root (absolute, or relative to the server root); anything
   outside, including through symlinks, is refused. It never becomes the
   working directory: it reaches the command as its `--path` (map, scan,
-  graph, explore, strategy detect, `<strategy>_<noun>`), and `query`
+  graph, explore, impact, strategy detect, `<strategy>_<noun>`), and `query`
   builds its graph over it. `strategy_list` has no project scope and
   takes no `root`. Relative path arguments resolve against `root`.
 - Sub-roots with their own config (`.xrayrc*`, `xray.config.*`, a
   `package.json` `xray` key), such as monorepo packages:
 
-  | Server config | Sub-root config | map / scan / graph / query on it |
+  | Server config | Sub-root config | map / scan / graph / query / impact on it |
   |---------------|-----------------|----------------------------------|
   | yes | no  | runs with the server config |
   | yes | yes | runs with the server config; the sub-root's never loads |
   | no  | no  | runs with no project config |
   | no  | yes | refused |
 
-  Without `--config`, map, scan and graph look for config by walking up
+  Without `--config`, map, scan, graph and impact look for config by walking up
   from their `--path`, so with no server config to pin, a sub-root's
   own file (and `.xrayrc.js` is code) would load; that case is refused.
   Add a config file to the server root, or start the server with

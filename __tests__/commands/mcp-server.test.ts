@@ -148,7 +148,7 @@ describe('xray mcp over stdio', () => {
     const r = await client.request('tools/list');
     const tools = r.result.tools as Array<{ name: string; inputSchema: any }>;
     const names = tools.map((t) => t.name);
-    for (const n of ['map', 'scan', 'graph', 'explore', 'query', 'strategy_list', 'strategy_detect', 'react_hooks', 'markdown_toc']) {
+    for (const n of ['map', 'scan', 'graph', 'explore', 'query', 'impact', 'strategy_list', 'strategy_detect', 'react_hooks', 'markdown_toc']) {
       expect(names).toContain(n);
     }
     for (const n of ['cache_clear', 'alias_set', 'alias_remove', 'strategy_create', 'strategy_install', 'strategy_remove', 'lang_add', 'mcp', 'describe', 'completion']) {
@@ -171,6 +171,11 @@ describe('xray mcp over stdio', () => {
     expect(tools.find((t) => t.name === 'config_values')!.inputSchema.properties['show-secrets']).toBeUndefined();
     expect(tools.find((t) => t.name === 'config_keys')!.inputSchema.properties.file.type).toBe('string');
     expect(tools.find((t) => t.name === 'strategy_list')!.inputSchema.properties.root).toBeUndefined();
+    const impact = tools.find((t) => t.name === 'impact') as { description: string; inputSchema: any };
+    expect(Object.keys(impact.inputSchema.properties).sort()).toEqual(['depth', 'format', 'lens', 'root', 'scope', 'strict', 'symbol']);
+    expect(impact.inputSchema.required).toEqual(['symbol']);
+    expect(impact.inputSchema.properties.strict.type).toBe('boolean');
+    expect(impact.description).toMatch(/what breaks/i);
   });
 
   it('calls explore', async () => {
@@ -193,6 +198,25 @@ describe('xray mcp over stdio', () => {
     const res = JSON.parse(r.result.content[0].text);
     expect(res.nodes.map((n: any) => n.name)).toContain('beta');
   }, 120_000);
+
+  it('calls impact in the server root, text and json', async () => {
+    const j = await client.call('impact', { symbol: 'alpha', format: 'json' });
+    expect(j.result.isError).toBe(false);
+    const res = JSON.parse(j.result.content[0].text);
+    expect(res.symbol.query).toBe('alpha');
+    expect(res.nodes.map((n: any) => n.name).sort()).toEqual(['beta', 'gamma']);
+    const t = await client.call('impact', { symbol: 'alpha', depth: '1' });
+    expect(t.result.isError).toBe(false);
+    expect(text(t)).toContain('beta');
+    expect(text(t)).not.toContain('gamma');
+  }, 120_000);
+
+  it('rejects impact graph (server root only)', async () => {
+    const r = await client.call('impact', { symbol: 'alpha', graph: 'g.json' });
+    expect(r.error).toBeUndefined();
+    expect(r.result.isError).toBe(true);
+    expect(text(r)).toMatch(/unknown argument "graph"/);
+  });
 
   it('returns map output as content without writing it into the project', async () => {
     const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, txt: true });

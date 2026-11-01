@@ -19,6 +19,7 @@ import * as path from 'path';
 import type { Argument, Command, Option } from 'commander';
 import type { FlagSchema, Leaf } from '@hop-top/kit/dist/mcp';
 import { getCommandGroup } from '../../commands/kit-cli';
+import { DEFAULT_IMPACT_DEPTH } from '../query/impact';
 
 /** Per-call project scope parameter (a directory inside the server root). */
 export const ROOT_PARAM = 'root';
@@ -58,6 +59,8 @@ export interface ToolPolicy {
   configFromPath: boolean;
   /** Keep auto-detection when `root` becomes `--path` (map/scan/graph). */
   detectOnRoot: boolean;
+  /** Tool description for agents; default: the command's own description. */
+  description?: string;
 }
 
 const EXTENSION_OVERRIDES: Record<string, ParamKind> = {
@@ -116,6 +119,18 @@ const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
     stats: 'value', 'list-strategies': 'value', format: 'value',
   }),
   query: scoped({ graph: 'path', 'list-adapters': 'value', format: 'value' }, 'graph'),
+  // Builds its graph in process like map (config walks up from --path);
+  // --graph not offered: the graph always comes from the call root.
+  impact: {
+    options: { depth: 'value', strict: 'value', format: 'value', lens: 'value', scope: 'value' },
+    root: 'path',
+    configFromPath: true,
+    detectOnRoot: false,
+    description:
+      'What breaks if I change <symbol>: every transitive caller of a function/method (exact name or glob), ' +
+      'grouped by area, with EXTRACTED/INFERRED confidence. Use before renaming, changing a signature or ' +
+      `removing a symbol. strict: EXTRACTED edges only; depth: caller levels (default ${DEFAULT_IMPACT_DEPTH}).`,
+  },
   strategy_list: scoped({ format: 'value' }, 'none'),
   strategy_detect: scoped({ path: 'path' }),
 };
@@ -259,7 +274,7 @@ export function shapeLeaf(leaf: Leaf, cmd: Command, policy: ToolPolicy): { leaf:
   const name = toolNameFor(leaf.path);
   const shaped: Leaf = {
     path: [name],
-    description: leaf.description,
+    description: policy.description ?? leaf.description,
     properties,
     ...(required.length > 0 ? { required } : {}),
     ...(leaf.class ? { class: leaf.class } : {}),
