@@ -154,14 +154,14 @@ xray impact RunHooks --depth 2
 
 ```
 coverage: 318 files parsed · skipped grammars: none
-RunHooks (method, internal/dispatch/run.go:108) — 35 callers across 2 groups
+RunHooks (method, internal/dispatch/run.go:L108) — 35 callers across 2 groups
   internal: 10 callers — Dispatch (internal/dispatch/dispatch.go:L85), TestRunHooks_EmptyList (internal/dispatch/run_test.go:L48), …
     …and 5 more
   cmd: 2 callers — runReplay (cmd/nerv/cmd_replay.go:L52), testSingleEvent (cmd/nerv/cmd_testhook.go:L140)
 depth 2:
     internal: 14 callers — TestDispatch_PublishesCrtxEmission (internal/dispatch/crtx_publish_test.go:L17), …
     cmd: 9 callers — TestReplayCmd_FlagsReachRunE (cmd/nerv/cmd_replay_test.go:L18), runTest (cmd/nerv/cmd_testhook.go:L53), …
-EXTRACTED 35 · INFERRED 0
+edges: EXTRACTED 35 · INFERRED 0
 ```
 
 `EXTRACTED` edges are backed by file, package or import evidence; `INFERRED`
