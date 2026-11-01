@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Harness hooks (`hooks/harness/`) only trust a graph the user's own
+  `lib/save-graph.sh` wrote. A cloned repo could ship a crafted
+  `.xray/graph.json` whose symbol names or paths land in the model's
+  context (prompt injection). The impact core now stays silent unless
+  the graph is untracked by git (and nothing in `.xray/` is tracked), is
+  not a symlink and resolves inside the git work tree, and its sha256
+  matches a per-user sidecar written after the save
+  (`${XDG_STATE_HOME:-~/.local/state}/xray/hooks/`, mode 700/600);
+  same for `$XRAY_GRAPH`. Control characters and ANSI escapes are
+  stripped from the impact text.
+- `lib/save-graph.sh` no longer writes through symlinks: it refuses when
+  `.xray/`, the graph or its lock is a symlink or the target resolves
+  outside the work tree, and writes via a `mktemp` file plus atomic
+  rename. Shared checks in `lib/graph-trust.sh`. A graph written by plain
+  `xray map` is no longer read by the hooks.
+
 ### Added
 
 - Docs: `docs/user/harness-integration.md` (instructions / MCP / hooks;

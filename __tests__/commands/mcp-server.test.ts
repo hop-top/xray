@@ -146,7 +146,7 @@ describe('xray mcp over stdio', () => {
 
   it('lists only read-only tools with schemas derived from the command tree', async () => {
     const r = await client.request('tools/list');
-    const tools = r.result.tools as Array<{ name: string; inputSchema: any }>;
+    const tools = r.result.tools as Array<{ name: string; description?: string; inputSchema: any }>;
     const names = tools.map((t) => t.name);
     for (const n of ['map', 'scan', 'graph', 'explore', 'query', 'impact', 'strategy_list', 'strategy_detect', 'react_hooks', 'markdown_toc']) {
       expect(names).toContain(n);
@@ -171,7 +171,7 @@ describe('xray mcp over stdio', () => {
     expect(tools.find((t) => t.name === 'config_values')!.inputSchema.properties['show-secrets']).toBeUndefined();
     expect(tools.find((t) => t.name === 'config_keys')!.inputSchema.properties.file.type).toBe('string');
     expect(tools.find((t) => t.name === 'strategy_list')!.inputSchema.properties.root).toBeUndefined();
-    const impact = tools.find((t) => t.name === 'impact') as { description: string; inputSchema: any };
+    const impact = tools.find((t) => t.name === 'impact')!;
     expect(Object.keys(impact.inputSchema.properties).sort()).toEqual(['depth', 'format', 'lens', 'root', 'scope', 'strict', 'symbol']);
     expect(impact.inputSchema.required).toEqual(['symbol']);
     expect(impact.inputSchema.properties.strict.type).toBe('boolean');
