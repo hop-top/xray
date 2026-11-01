@@ -74,7 +74,7 @@ export class ParserManager {
     }
 
     const calls = langConfig.callShape
-      ? { shape: langConfig.callShape, importNames: importBoundNames(imports, langConfig.callShape) }
+      ? callContext(imports, langConfig.callShape)
       : undefined;
     const tags = await this.extractTags(tree, langConfig.grammar, langConfig.tagsQuery, relPath, content, includeVariables, docConfig, enableCfg, enableDfg, calls);
 
@@ -469,27 +469,61 @@ interface CallContext {
   shape: CallShape;
   /** Names the file's imports bind (receivers that are packages/modules, not values). */
   importNames: Set<string>;
+  /** Receiver-chain roots that are builtins in this file (static set + stdlib imports). */
+  builtinNames: Set<string>;
 }
 
-function importBoundNames(imports: Import[], shape: CallShape): Set<string> {
-  const names = new Set<string>();
+function callContext(imports: Import[], shape: CallShape): CallContext {
+  const importNames = new Set<string>();
+  const builtinNames = new Set(shape.builtins?.names ?? []);
+  const userImports = new Set<string>();
   for (const imp of imports) {
     if (imp.alias === '_' || imp.alias === '.') continue;
     const name = imp.alias || shape.importName?.(imp.source);
-    if (name) names.add(name);
+    if (!name) continue;
+    importNames.add(name);
+    if (shape.builtins?.imports?.(imp.source)) builtinNames.add(name);
+    else userImports.add(name);
   }
-  return names;
+  // A name a user import binds is never a builtin, even if a stdlib import shares it.
+  for (const name of userImports) builtinNames.delete(name);
+  return { shape, importNames, builtinNames };
+}
+
+/** Start of a receiver / scope chain: `JSON` in `JSON.x`, `std` in `::std::fs`. */
+function chainRoot(node: Parser.SyntaxNode, shape: CallShape): Parser.SyntaxNode {
+  let cur = node;
+  for (let depth = 0; depth < 16; depth++) {
+    const path = shape.receivers[cur.type] ?? shape.scopes?.[cur.type];
+    if (!path) break;
+    // Global-scope forms (`::std`, `::Kernel`) have no qualifier, only the name.
+    const next = step(cur, path) ?? (cur.namedChildCount === 1 ? cur.firstNamedChild : null);
+    if (!next) break;
+    cur = next;
+  }
+  return cur;
+}
+
+function isBuiltin(qualifier: Parser.SyntaxNode, { shape, builtinNames }: CallContext): boolean {
+  if (shape.builtins?.qualifier?.test(qualifier.text)) return true;
+  const root = chainRoot(qualifier, shape);
+  return root.namedChildCount === 0 && builtinNames.has(root.text);
 }
 
 /** Reference recorded for `node` when it is a call in this grammar (forms: see CallShape). */
-function calledName(node: Parser.SyntaxNode, { shape, importNames }: CallContext): string | undefined {
+function calledName(node: Parser.SyntaxNode, calls: CallContext): string | undefined {
+  const { shape, importNames } = calls;
   const calleePath = shape.calls[node.type];
   if (!calleePath) return undefined;
   // Receiver of the member access closest to the call, if the callee is one.
   let receiver: Parser.SyntaxNode | null | undefined;
+  // Qualifier of the scoped name closest to the call (`std::fs` in `std::fs::read`).
+  let qualifier: Parser.SyntaxNode | undefined;
   const noteReceiver = (n: Parser.SyntaxNode) => {
     const path = shape.receivers[n.type];
     if (path && receiver === undefined) receiver = step(n, path);
+    const scope = shape.scopes?.[n.type];
+    if (scope && !qualifier) qualifier = step(n, scope) ?? undefined;
   };
   noteReceiver(node);
   let cur = step(node, calleePath);
@@ -497,6 +531,7 @@ function calledName(node: Parser.SyntaxNode, { shape, importNames }: CallContext
   for (let depth = 0; cur && depth < 16; depth++) {
     if (shape.leaves.includes(cur.type)) {
       const name = cur.text;
+      if ((receiver && isBuiltin(receiver, calls)) || (qualifier && isBuiltin(qualifier, calls))) return undefined;
       if (!receiver) return name;
       if (receiver.type === 'identifier' && importNames.has(receiver.text)) {
         return shape.qualifyImports ? `${receiver.text}.${name}` : name;

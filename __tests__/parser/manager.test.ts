@@ -371,7 +371,7 @@ def my_func():
         const cases: Array<[string, string, string, string[], string[]]> = [
             ['m.ts', 'function f(r: any) { r.runHooks(1); g(); r?.nul(); this.m(); }', 'f', ['.runHooks', 'g', '.nul', '.m'], ['runHooks', 'r.runHooks']],
             ['m.js', 'function f(r) { r.runHooks(1); g(); }', 'f', ['.runHooks', 'g'], ['runHooks', 'r.runHooks']],
-            ['m.py', 'import os\n\ndef f(r):\n    r.run_hooks(1)\n    os.getcwd()\n    g()\n', 'f', ['.run_hooks', 'getcwd', 'g'], ['run_hooks', '.getcwd', 'r.run_hooks']],
+            ['m.py', 'import mylib\n\ndef f(r):\n    r.run_hooks(1)\n    mylib.getcwd()\n    g()\n', 'f', ['.run_hooks', 'getcwd', 'g'], ['run_hooks', '.getcwd', 'r.run_hooks']],
             ['m.go', 'package p\n\nimport (\n\t"example.com/m/pkg"\n\tu "example.com/m/util"\n)\n\nfunc f(r *R) {\n\tpkg.Fn()\n\tu.Run()\n\tr.RunHooks()\n\ta.b.Deep()\n\tg()\n}\n', 'f', ['pkg.Fn', 'u.Run', '.RunHooks', '.Deep', 'g'], ['r.RunHooks', 'RunHooks', 'a.b.Deep']],
             ['m.rs', 'fn f(r: &R) { r.run_hooks(1); Foo::bar(); g(); r.gen::<T>(); }', 'f', ['.run_hooks', 'bar', 'g', '.gen'], ['Foo::bar', 'run_hooks']],
             ['impl.rs', 'struct A;\nimpl A {\n    fn a(&self) { self.x(); }\n    fn b(&self) { self.y(); }\n}\n', 'a', ['.x'], ['.y', 'y']],
@@ -393,6 +393,58 @@ def my_func():
             const refs = tag!.references ?? [];
             for (const name of expected) expect(refs).toContain(name);
             for (const name of forbidden) expect(refs).not.toContain(name);
+        });
+    });
+
+    describe('member calls on builtin receivers', () => {
+        // [file, source, def calling builtins -> exact refs, def calling user receivers -> exact refs]
+        // A builtin receiver (JSON, fmt, std::, System...) can never reach a user
+        // definition, so its call records nothing; same method names on user
+        // receivers keep their usual form.
+        const cases: Array<[string, string, [string, string[]], [string, string[]]]> = [
+            ['b.ts', 'function a() { JSON.parse(s); Math.max(1); console.log(1); Promise.all([]); process.env.X.trim(); window.foo.bar(); g(); }\nfunction b(cfg: any) { cfg.parse(s); cfg.max(1); cfg.log(1); }\n',
+                ['a', ['g']], ['b', ['.parse', '.max', '.log']]],
+            ['b.js', 'function a() { JSON.parse(s); Object.keys(o); Array.isArray(o); g(); }\nfunction b(cfg) { cfg.parse(s); cfg.keys(o); }\n',
+                ['a', ['g']], ['b', ['.parse', '.keys']]],
+            ['b.py', 'import json\nimport os.path\nimport mylib\n\ndef a(s):\n    json.loads(s)\n    os.path.join(s)\n    str.join(s)\n    g()\n\ndef b(cfg):\n    cfg.loads(s)\n    mylib.join(s)\n',
+                ['a', ['g']], ['b', ['.loads', 'join']]],
+            ['b.go', 'package p\n\nimport (\n\t"fmt"\n\t"net/http"\n\tstr "strings"\n\t"example.com/m/pkg"\n\t"outside/util"\n)\n\nfunc a() {\n\tfmt.Println(1)\n\thttp.Get("x")\n\tstr.TrimSpace("x")\n\tg()\n}\n\nfunc b(r *R) {\n\tpkg.Fn()\n\tutil.Run()\n\tr.Println()\n}\n',
+                ['a', ['g']], ['b', ['pkg.Fn', 'util.Run', '.Println']]],
+            ['B.java', 'class A { void a() { System.out.println(1); Math.max(1, 2); Objects.equals(x, y); g(); } void b(R r) { r.println(1); r.max(1, 2); Foo.equals(x, y); } }',
+                ['a', ['g']], ['b', ['.println', '.max', '.equals']]],
+            ['b.cs', 'class A { void A1() { Console.WriteLine(1); System.Console.Out.Write(2); Math.Max(1, 2); G(); } void B(R r) { r.WriteLine(1); r.Max(1, 2); } }',
+                ['A1', ['G']], ['B', ['.WriteLine', '.Max']]],
+            ['b.php', '<?php function a() { \\DateTime::createFromFormat(1); g(); } function b($r) { $r->createFromFormat(1); self::createFromFormat(1); \\App\\Foo::y(); Bar::z(); }',
+                ['a', ['g']], ['b', ['.createFromFormat', 'createFromFormat', 'y', 'z']]],
+            ['b.rs', 'fn a() { std::fs::read(1); ::std::mem::swap(); core::mem::take(); alloc::vec::from_elem(); Vec::new(); String::from("x"); g(); }\nfn b(r: &R) { r.read(1); Foo::swap(); Foo::new(); }\n',
+                ['a', ['g']], ['b', ['.read', 'swap', 'new']]],
+            ['b.cpp', 'void a() { std::sort(x); ::std::move(y); g(); }\nvoid b(R* r) { r->sort(x); Foo::move(y); }\n',
+                ['a', ['g']], ['b', ['.sort', 'move']]],
+            ['b.rb', 'def a\n  File.read(1)\n  JSON.parse(x)\n  ::Kernel.puts(1)\n  Math.sqrt(2)\n  g()\nend\n\ndef b(r)\n  r.read(1)\n  r.parse(x)\n  Foo::Bar.puts(1)\nend\n',
+                ['a', ['g']], ['b', ['.read', '.parse', '.puts']]],
+            ['b.kt', 'fun a() { System.out.println(1); Math.max(1, 2); g() }\nfun b(r: R) { r.println(1); r.max(1, 2) }\n',
+                ['a', ['g']], ['b', ['.println', '.max']]],
+            ['b.swift', 'func a() { DispatchQueue.main.async(x); FileManager.default.fileExists(1); g() }\nfunc b(r: R) { r.async(x); r.fileExists(1) }\n',
+                ['a', ['g']], ['b', ['.async', '.fileExists']]],
+            ['b.scala', 'object A { def a() = { Console.println(1); scala.math.max(1, 2); math.abs(1); g() }\n def b(r: R) = { r.println(1); r.max(1, 2) } }',
+                ['a', ['g']], ['b', ['.println', '.max']]],
+        ];
+
+        it.each(cases)('%s: builtin receiver calls record nothing, user receivers keep .name', async (file, src, [bDef, bRefs], [uDef, uRefs]) => {
+            const result = await manager.parse(file, src);
+            const refsOf = (def: string) => {
+                const tag = result.tags.find(t => t.name === def && (t.kind === 'function' || t.kind === 'method'));
+                expect(tag).toBeDefined();
+                return [...(tag!.references ?? [])].sort();
+            };
+            expect(refsOf(bDef)).toEqual([...bRefs].sort());
+            expect(refsOf(uDef)).toEqual([...uRefs].sort());
+        });
+
+        it('python: a stdlib module name not bound by an import is a value receiver', async () => {
+            const result = await manager.parse('v.py', 'def f(json):\n    json.loads(s)\n');
+            const tag = result.tags.find(t => t.name === 'f');
+            expect(tag?.references).toEqual(['.loads']);
         });
     });
 });

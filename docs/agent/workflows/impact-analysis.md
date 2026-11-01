@@ -172,8 +172,8 @@ EXTRACTED 47 · INFERRED 0
 - Cross-root calls are `EXTRACTED` only through an import of that root's
   Go module path or npm package name. Anything else across roots is
   `INFERRED`, and often noise: merged with xray's sources, a TypeScript
-  `JSON.parse(...)` shows up as an `INFERRED` caller of xray's `parse`
-  methods. Use `--strict` (or `--format table` and filter) before acting
+  `program.parse()` shows up as an `INFERRED` caller of xray's `parse`
+  methods (calls on builtins such as `JSON.parse` record no edge). Use `--strict` (or `--format table` and filter) before acting
   on cross-root `INFERRED` callers.
 
 **Success Criteria:**

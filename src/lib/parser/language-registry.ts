@@ -3,6 +3,7 @@ import * as path from 'path';
 import { Logger } from '../logger';
 import { getGrammar, isLanguageEnabled, packForExtension, recordSkipped } from './grammars';
 import { goDefaultName } from '../graph/go-resolver';
+import { BUILTIN_RECEIVERS, BuiltinReceivers } from './builtin-receivers';
 
 /**
  * How a grammar spells a call, so references can record the called name.
@@ -10,9 +11,10 @@ import { goDefaultName } from '../graph/go-resolver';
  *
  * Reference forms recorded:
  * - `name`      plain or scoped call (`f()`, `Foo::bar()`), or a member call
- *               whose receiver is an import-bound name (`os.getcwd()`)
+ *               whose receiver is an import-bound name (`np.array()`)
  * - `.name`     member call on a value receiver (`r.run()`, `this.m()`)
  * - `pkg.name`  `qualifyImports` grammars only (Go): receiver is an import
+ * - nothing     the receiver / scope chain starts at a builtin (`builtins`)
  * Only the called name is kept; the receiver itself never is.
  */
 export interface CallShape {
@@ -24,6 +26,10 @@ export interface CallShape {
   leaves: string[];
   /** Member-access node type (callee wrapper or the call itself) -> path to its receiver. */
   receivers: Record<string, string>;
+  /** Scoped-name node type (`a::b`, `Foo::bar()`) -> path to its qualifier. */
+  scopes?: Record<string, string>;
+  /** Receivers / qualifiers that are language builtins (see builtin-receivers.ts). */
+  builtins?: BuiltinReceivers;
   /** Name an import binds when it has no explicit alias. */
   importName?: (source: string) => string | undefined;
   /** Record import-receiver calls as `pkg.name` (graph builder resolves them via imports). */
@@ -70,7 +76,7 @@ export function languageOf(ext: string): string | undefined {
   return name === undefined ? undefined : (LANGUAGE_FAMILY[name] ?? name);
 }
 
-export const CALL_SHAPES: Record<string, CallShape> = {
+const SHAPES: Record<string, CallShape> = {
   typescript: JS_CALLS,
   javascript: JS_CALLS,
   python: {
@@ -80,7 +86,12 @@ export const CALL_SHAPES: Record<string, CallShape> = {
     receivers: { attribute: 'object' },
     importName: source => (source.startsWith('.') ? undefined : source.split('.')[0]),
   },
-  java: { calls: { method_invocation: 'name' }, steps: {}, leaves: ['identifier'], receivers: { method_invocation: 'object' } },
+  java: {
+    calls: { method_invocation: 'name' },
+    steps: {},
+    leaves: ['identifier'],
+    receivers: { method_invocation: 'object', field_access: 'object' },
+  },
   csharp: {
     calls: { invocation_expression: 'function' },
     steps: {
@@ -97,6 +108,7 @@ export const CALL_SHAPES: Record<string, CallShape> = {
     steps: { field_expression: 'field', qualified_identifier: 'name', template_method: 'name', template_function: 'name' },
     leaves: ['identifier', 'field_identifier'],
     receivers: { field_expression: 'argument' },
+    scopes: { qualified_identifier: 'scope' },
   },
   c: {
     calls: { call_expression: 'function' },
@@ -117,6 +129,7 @@ export const CALL_SHAPES: Record<string, CallShape> = {
     steps: { field_expression: 'field', scoped_identifier: 'name', generic_function: 'function' },
     leaves: ['identifier', 'field_identifier'],
     receivers: { field_expression: 'value' },
+    scopes: { scoped_identifier: 'path' },
   },
   php: {
     calls: {
@@ -128,8 +141,15 @@ export const CALL_SHAPES: Record<string, CallShape> = {
     steps: { qualified_name: '#last' },
     leaves: ['name'],
     receivers: { member_call_expression: 'object', nullsafe_member_call_expression: 'object' },
+    scopes: { scoped_call_expression: 'scope' },
   },
-  ruby: { calls: { call: 'method' }, steps: {}, leaves: ['identifier', 'constant'], receivers: { call: 'receiver' } },
+  ruby: {
+    calls: { call: 'method' },
+    steps: {},
+    leaves: ['identifier', 'constant'],
+    receivers: { call: 'receiver' },
+    scopes: { scope_resolution: 'scope' },
+  },
   swift: {
     calls: { call_expression: '#first' },
     steps: { navigation_expression: 'suffix', navigation_suffix: 'suffix' },
@@ -144,6 +164,10 @@ export const CALL_SHAPES: Record<string, CallShape> = {
     receivers: { field_expression: 'value' },
   },
 };
+
+export const CALL_SHAPES: Record<string, CallShape> = Object.fromEntries(
+  Object.entries(SHAPES).map(([lang, shape]) => [lang, { ...shape, builtins: BUILTIN_RECEIVERS[lang] }]),
+);
 
 interface LanguageConfig {
   grammar: any;

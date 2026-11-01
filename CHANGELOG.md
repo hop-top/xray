@@ -69,6 +69,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+- Member and scoped calls on builtin receivers (`JSON.parse`, `Math.max`,
+  `console.log`, Python stdlib modules such as `json.loads`, Go standard
+  library packages such as `fmt.Println`, `System.out.println`,
+  `std::fs::read`, PHP `\DateTime::...`) record no call reference; they
+  no longer link `INFERRED` to every user method of the same name. Same
+  method names on user receivers still resolve. Per-language sets in
+  `src/lib/parser/builtin-receivers.ts`. Cache layout version 4 -> 5
+  (cached references are rebuilt).
 - Go `pkg.Func` calls resolved inside one root via go.mod/go.work module
   path are now `EXTRACTED`, matching the same resolution across roots
   (were `INFERRED`); `INFERRED` is left for name-only matches.

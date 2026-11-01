@@ -438,8 +438,9 @@ union of every root's nodes and edges.
   `rank` values are per-root.
   Same-named definitions in an unrelated root are a common source of
   `INFERRED` noise: merge a TypeScript project with xray's own sources and
-  its `JSON.parse(...)` links `INFERRED` to each `parse` method in xray.
-  `xray impact --strict` ignores such edges.
+  its `program.parse()` links `INFERRED` to each `parse` method in xray.
+  `xray impact --strict` ignores such edges. Calls on builtin receivers
+  (`JSON.parse`, `fmt.Println`, `std::fs::read`) record no edge at all.
 - `xray query` works unchanged: a bare name (`calls(main)`) matches that
   function in every root; a full id (`calls(web/src/main.ts::main)`) picks one.
 - `xray impact` on several roots (several `-p`, or `--lens <name>` with

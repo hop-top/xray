@@ -33,9 +33,11 @@ const { open } = require('@hop-top/kit/sqlstore') as {
  *  3: kit sqlstore `kv` table; one JSON record per file.
  *  4: same layout; tag references gain member-call forms (`.name`).
  *     `graph:*` records (merged multi-root graphs) share the kv table.
+ *  5: same layout; calls on builtin receivers (`JSON.parse`, `fmt.Println`)
+ *     no longer recorded as references.
  * Any other value is invalidated (wiped) on open.
  */
-export const CACHE_SCHEMA_VERSION = 4;
+export const CACHE_SCHEMA_VERSION = 5;
 
 const LEGACY_TABLES = ['tags', 'files_v2', 'file_analysis'];
 const TAGS_PREFIX = 'tags:';
