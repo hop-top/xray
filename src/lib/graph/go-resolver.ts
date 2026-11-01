@@ -10,6 +10,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Logger } from '../logger';
+import { Import } from '../parser/types';
 
 export interface GoModule {
   /** `module` directive of go.mod. */
@@ -97,4 +98,58 @@ export function goDefaultName(importPath: string): string {
   let last = parts[parts.length - 1];
   if (/^v\d+$/.test(last) && parts.length > 1) last = parts[parts.length - 2];
   return last;
+}
+
+/**
+ * Imports that map (through the go.mod module path) to a package directory
+ * under the scan root. Blank imports (`_`) bind nothing and are dropped.
+ */
+export function goLocalImports(mod: GoModule, imports: Import[]): Array<{ imp: Import; dir: string }> {
+  const out: Array<{ imp: Import; dir: string }> = [];
+  for (const imp of imports) {
+    if (imp.alias === '_') continue;
+    const dir = goPackageDir(mod, imp.source);
+    if (dir !== null) out.push({ imp, dir });
+  }
+  return out;
+}
+
+/**
+ * Go file -> files of the module-local packages it imports. Files importing
+ * no module-local package are absent. `dotOnly` keeps `import . "pkg"` only.
+ */
+export function goImportedFiles(
+  mod: GoModule | null,
+  importsByFile: Map<string, Import[]>,
+  goFiles: string[],
+  dotOnly: boolean
+): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  if (!mod || importsByFile.size === 0) return out;
+  const filesByDir = new Map<string, string[]>();
+  for (const f of goFiles) {
+    const dir = path.posix.dirname(f.split(path.sep).join('/'));
+    const list = filesByDir.get(dir);
+    if (list) list.push(f); else filesByDir.set(dir, [f]);
+  }
+  for (const [file, imports] of importsByFile) {
+    const set = new Set<string>();
+    for (const { imp, dir } of goLocalImports(mod, imports)) {
+      if (dotOnly && imp.alias !== '.') continue;
+      for (const f of filesByDir.get(dir) ?? []) if (f !== file) set.add(f);
+    }
+    if (set.size > 0) out.set(file, set);
+  }
+  return out;
+}
+
+/**
+ * Go visibility: a declaration in another package is reachable only when
+ * exported (upper-case initial) and not declared in a `_test.go` file (test
+ * files are never part of an importable package). Same directory: always.
+ */
+export function goVisibleFrom(callerFile: string, declFile: string, name: string): boolean {
+  const dir = (f: string) => path.posix.dirname(f.split(path.sep).join('/'));
+  if (dir(callerFile) === dir(declFile)) return true;
+  return /^\p{Lu}/u.test(name) && !declFile.endsWith('_test.go');
 }

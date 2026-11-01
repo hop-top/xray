@@ -2,7 +2,7 @@ import * as path from 'path';
 import Graph from 'graphology';
 import { Tag, Import } from '../parser/types';
 import { AsyncEventEmitter } from '../events/async-emitter';
-import { GoModule, goPackageDir, goDefaultName } from './go-resolver';
+import { GoModule, goDefaultName, goLocalImports, goImportedFiles, goVisibleFrom } from './go-resolver';
 import { XrayGraph, NodeAttributes, EdgeAttributes, Confidence } from '../../types/graph';
 
 interface GraphBuilderEvents {
@@ -24,6 +24,12 @@ interface GraphBuilderEvents {
     sourceTag: string;
     targetName: string;
     resolved: string[];
+    /**
+     * Set only when the builder declined to pick targets (`resolved` empty)
+     * because the name matched in several unrelated packages. Targets a
+     * listener adds anyway are stamped with this confidence.
+     */
+    confidence?: Confidence;
   };
 
   'error': {
@@ -326,11 +332,22 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     });
 
     // Collect all reference resolution events first
-    const resolveEvents: Array<{ sourceTag: string, targetName: string, resolved: string[] }> = [];
+    const resolveEvents: Array<{ sourceTag: string, targetName: string, resolved: string[], confidence?: Confidence }> = [];
     // Events resolved through go.mod + import paths, or by a bare name
     // with no file/package/import scope backing it.
     const inferred = new WeakSet<object>();
     const importedFiles = this.importTargetsByFile();
+    // Go: files of module-local packages each file imports. Member calls
+    // (`.Name`) may hit any imported package; bare names only dot imports
+    // (a plain import never puts another package's names in scope).
+    const goFiles: string[] = [];
+    this.graph.forEachNode((id: string, attrs: NodeAttributes) => {
+      if (attrs.type === 'file' && id.endsWith('.go')) goFiles.push(id);
+    });
+    const goImported = goImportedFiles(this.goModule, this.goImports, goFiles, false);
+    const goDotImported = goImportedFiles(this.goModule, this.goImports, goFiles, true);
+    const isGo = (id: string) => this.goModule !== null &&
+      ((this.graph.getNodeAttributes(id) as any).file as string | undefined)?.endsWith('.go') === true;
 
     for (const { tagId, references } of this.pendingReferences.values()) {
       for (const refName of references) {
@@ -338,11 +355,34 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
         // receiver type info, so only method tags are candidates.
         if (refName.startsWith('.')) {
           const name = refName.slice(1);
-          const methods = (tagNameMap.get(name) ?? []).filter(
-            id => (this.graph.getNodeAttributes(id) as NodeAttributes).kind === 'method'
-          );
+          const callerFile = (this.graph.getNodeAttributes(tagId) as any).file as string | undefined;
+          const methods = (tagNameMap.get(name) ?? []).filter(id => {
+            const attrs = this.graph.getNodeAttributes(id) as NodeAttributes & { file?: string };
+            if (attrs.kind !== 'method') return false;
+            // Go caller -> Go method: apply package visibility rules.
+            return !(callerFile?.endsWith('.go') && attrs.file?.endsWith('.go')) ||
+              goVisibleFrom(callerFile, attrs.file, name);
+          });
           if (methods.length > 0) {
-            const { resolved, scoped } = this.rankCandidates(tagId, methods, importedFiles);
+            const goCaller = isGo(tagId);
+            const { resolved, scoped } = this.rankCandidates(tagId, methods, goCaller ? goImported : importedFiles);
+            if (!scoped && goCaller) {
+              // Go member call with no file/package/import scope: the
+              // receiver type is unknown, so a global name match is a guess.
+              //  - caller imports no module-local package (stdlib/external
+              //    only, e.g. `t.Errorf` in a test): the receiver cannot be a
+              //    repo type -> no edge.
+              //  - candidates span >1 package: AMBIGUOUS -> no edge (recorded
+              //    on the event only).
+              //  - one candidate package: keep the INFERRED guess.
+              if ((goImported.get(callerFile!)?.size ?? 0) === 0) continue;
+              const pkgs = new Set(resolved.map(id => path.posix.dirname(
+                ((this.graph.getNodeAttributes(id) as any).file as string).split(path.sep).join('/'))));
+              if (pkgs.size > 1) {
+                resolveEvents.push({ sourceTag: tagId, targetName: name, resolved: [], confidence: Confidence.AMBIGUOUS });
+                continue;
+              }
+            }
             const ev = { sourceTag: tagId, targetName: name, resolved };
             if (!scoped) inferred.add(ev);
             resolveEvents.push(ev);
@@ -360,7 +400,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
         }
         const targetTags = tagNameMap.get(refName);
         if (targetTags) {
-          const { resolved, scoped } = this.rankCandidates(tagId, targetTags, importedFiles);
+          const { resolved, scoped } = this.rankCandidates(tagId, targetTags, isGo(tagId) ? goDotImported : importedFiles);
           // Event: Reference resolution (listeners can modify targets)
           const ev = { sourceTag: tagId, targetName: refName, resolved };
           if (!scoped) inferred.add(ev);
@@ -396,7 +436,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
                 type: 'calls',
                 // go.mod import-path resolution and unscoped global name
                 // matches are heuristics, not read from the source text.
-                confidence: inferred.has(resolveEvent) ? Confidence.INFERRED : Confidence.EXTRACTED
+                confidence: resolveEvent.confidence ??
+                  (inferred.has(resolveEvent) ? Confidence.INFERRED : Confidence.EXTRACTED)
               },
               skip: false
             });
@@ -489,11 +530,9 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     if (!qualifier || !name || name.includes('.')) return [];
 
     const out: string[] = [];
-    for (const imp of this.goImports.get(file) ?? []) {
-      if (imp.alias === '_' || imp.alias === '.') continue;
+    for (const { imp, dir } of goLocalImports(mod, this.goImports.get(file) ?? [])) {
+      if (imp.alias === '.') continue;
       if ((imp.alias || goDefaultName(imp.source)) !== qualifier) continue;
-      const dir = goPackageDir(mod, imp.source);
-      if (dir === null) continue;
       for (const t of goFuncs.get(dir)?.get(name) ?? []) out.push(t);
     }
     return out;

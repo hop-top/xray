@@ -329,6 +329,98 @@ describe('GraphBuilder', () => {
 
             expect(callsFrom(graph, 'x/main.go::run')).toEqual([]);
         });
+
+        describe('Go import-path tier (go.mod)', () => {
+            const MOD = 'example.com/m';
+            const imp = (file: string, source: string, alias?: string) => ({ source, file, alias });
+            beforeEach(() => {
+                builder.setGoModule({ modulePath: MOD, moduleDir: '/repo', root: '/repo' });
+            });
+
+            it('member call into an imported module-local package resolves EXTRACTED', async () => {
+                await builder.addFile('cmd/x.go', [fn('cmd/x.go', 'main', ['.Run'])],
+                    [imp('cmd/x.go', `${MOD}/internal/pkg`)]);
+                await builder.addFile('internal/pkg/runner.go', [method('internal/pkg/runner.go', 'Run')], []);
+                await builder.addFile('internal/other/runner.go', [method('internal/other/runner.go', 'Run')], []);
+                const graph = await builder.getGraph();
+
+                expect(callsFrom(graph, 'cmd/x.go::main')).toEqual([
+                    { target: 'internal/pkg/runner.go::Run', confidence: 'EXTRACTED' }
+                ]);
+            });
+
+            it('member call from a stdlib-only file yields no edge', async () => {
+                await builder.addFile('pkg/a/a_test.go', [fn('pkg/a/a_test.go', 'TestA', ['.Errorf'])],
+                    [imp('pkg/a/a_test.go', 'testing')]);
+                await builder.addFile('internal/log/log.go', [method('internal/log/log.go', 'Errorf')], []);
+                const graph = await builder.getGraph();
+
+                expect(callsFrom(graph, 'pkg/a/a_test.go::TestA')).toEqual([]);
+            });
+
+            it('member call matching methods in >1 unrelated packages is AMBIGUOUS: no edge', async () => {
+                const seen: any[] = [];
+                builder.on('reference:resolve', (event) => { seen.push({ ...event }); });
+                await builder.addFile('cmd/x.go', [fn('cmd/x.go', 'main', ['.Close'])],
+                    [imp('cmd/x.go', 'os'), imp('cmd/x.go', `${MOD}/internal/third`)]);
+                await builder.addFile('internal/third/t.go', [fn('internal/third/t.go', 'New')], []);
+                await builder.addFile('internal/a/a.go', [method('internal/a/a.go', 'Close')], []);
+                await builder.addFile('internal/b/b.go', [method('internal/b/b.go', 'Close')], []);
+                const graph = await builder.getGraph();
+
+                expect(callsFrom(graph, 'cmd/x.go::main')).toEqual([]);
+                expect(seen).toEqual([
+                    expect.objectContaining({ targetName: 'Close', resolved: [], confidence: 'AMBIGUOUS' })
+                ]);
+            });
+
+            it('bare name resolves through a dot import only', async () => {
+                await builder.addFile('cmd/x.go', [fn('cmd/x.go', 'main', ['Helper'])],
+                    [imp('cmd/x.go', `${MOD}/internal/dot`, '.')]);
+                await builder.addFile('cmd/y.go', [fn('cmd/y.go', 'other', ['Helper'])],
+                    [imp('cmd/y.go', `${MOD}/internal/plain`)]);
+                await builder.addFile('internal/dot/d.go', [fn('internal/dot/d.go', 'Helper')], []);
+                await builder.addFile('internal/plain/p.go', [fn('internal/plain/p.go', 'Helper')], []);
+                const graph = await builder.getGraph();
+
+                expect(callsFrom(graph, 'cmd/x.go::main')).toEqual([
+                    { target: 'internal/dot/d.go::Helper', confidence: 'EXTRACTED' }
+                ]);
+                // plain import does not put Helper in scope: global INFERRED fallback
+                expect(callsFrom(graph, 'cmd/y.go::other').every((e: any) => e.confidence === 'INFERRED')).toBe(true);
+            });
+
+            it('cross-package Go candidates must be exported and outside _test.go files', async () => {
+                await builder.addFile('cmd/x.go', [fn('cmd/x.go', 'main', ['.Errorf', '.close', '.Errorf'])],
+                    [imp('cmd/x.go', `${MOD}/internal/third`)]);
+                await builder.addFile('internal/third/t.go', [fn('internal/third/t.go', 'New')], []);
+                await builder.addFile('internal/fake/fake_test.go', [method('internal/fake/fake_test.go', 'Errorf')], []);
+                await builder.addFile('internal/conn/conn.go', [method('internal/conn/conn.go', 'close')], []);
+                // same package: unexported and _test.go methods stay reachable
+                await builder.addFile('internal/conn/conn_test.go',
+                    [fn('internal/conn/conn_test.go', 'TestConn', ['.close', '.Errorf'])], []);
+                await builder.addFile('internal/conn/helper_test.go', [method('internal/conn/helper_test.go', 'Errorf')], []);
+                const graph = await builder.getGraph();
+
+                expect(callsFrom(graph, 'cmd/x.go::main')).toEqual([]);
+                expect(callsFrom(graph, 'internal/conn/conn_test.go::TestConn')).toEqual([
+                    { target: 'internal/conn/conn.go::close', confidence: 'EXTRACTED' },
+                    { target: 'internal/conn/helper_test.go::Errorf', confidence: 'EXTRACTED' }
+                ]);
+            });
+
+            it('single global method candidate stays INFERRED when the file imports a local package', async () => {
+                await builder.addFile('cmd/x.go', [fn('cmd/x.go', 'main', ['.Close'])],
+                    [imp('cmd/x.go', `${MOD}/internal/third`)]);
+                await builder.addFile('internal/third/t.go', [fn('internal/third/t.go', 'New')], []);
+                await builder.addFile('internal/a/a.go', [method('internal/a/a.go', 'Close')], []);
+                const graph = await builder.getGraph();
+
+                expect(callsFrom(graph, 'cmd/x.go::main')).toEqual([
+                    { target: 'internal/a/a.go::Close', confidence: 'INFERRED' }
+                ]);
+            });
+        });
     });
 
     it('should handle large number of references efficiently', async () => {
