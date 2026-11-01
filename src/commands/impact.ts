@@ -16,7 +16,7 @@ import {
   outputRegistry, textFormatter,
 } from '../lib/output';
 import { formatTree, readSerializedGraph } from './query';
-import { buildGraphForRoots, cacheLine, resolveRunOptions, validateRunRoots } from './generate';
+import { buildGraphForRoots, cacheLine, resolveRunOptions, validateRunRoots, type BuiltGraph } from './generate';
 
 export interface ImpactCommandOptions {
   depth?: string;
@@ -60,12 +60,17 @@ export function parseImpactDepth(raw: string | undefined): number {
   return Number(s);
 }
 
-/** One stderr line: files parsed / skipped grammars. */
-export function coverageLine(c: ParseCoverage): string {
+/**
+ * One stderr line: files parsed (or served from the cache, when every root
+ * hit) / skipped grammars. `cache` is the per-root outcome of a cached build.
+ */
+export function coverageLine(c: ParseCoverage, cache?: BuiltGraph['cache']): string {
   const skipped = c.skipped.length === 0
     ? 'none'
     : c.skipped.map(s => `${s.language} (${s.count} ${s.extensions.join('/')})`).join(', ');
-  return `coverage: ${c.parsed} files parsed · skipped grammars: ${skipped}`;
+  const cached = cache !== undefined && cache.length > 0 && cache.every(r => r.hit);
+  const files = cached ? `served from cache (${c.parsed} files)` : `${c.parsed} files parsed`;
+  return `coverage: ${files} · skipped grammars: ${skipped}`;
 }
 
 async function obtainGraph(options: ImpactCommandOptions): Promise<SerializedGraph> {
@@ -81,7 +86,7 @@ async function obtainGraph(options: ImpactCommandOptions): Promise<SerializedGra
   validateRunRoots(mergedOptions, options.config);
   const built = await buildGraphForRoots(mergedOptions, options.config, { format: 'json', quiet: true, cache: true });
   if (built.cache) Logger.info(cacheLine(built.cache));
-  Logger.info(coverageLine(built.coverage));
+  Logger.info(coverageLine(built.coverage, built.cache));
   return built.graph;
 }
 
@@ -152,6 +157,7 @@ export function registerImpactCommand(program: Command): Command {
   addOutputFlags(cmd, impactRegistry, {
     defaultFormat: 'text',
     description: 'Output format: text, tree, json, yaml, table, csv',
+    showInHelp: ['cols', 'output'],
   });
   return cmd.addHelpText('after', HELP_AFTER).action(runImpactCommand);
 }

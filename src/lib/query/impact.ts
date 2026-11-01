@@ -219,17 +219,29 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
  */
 const editorLine = (line: number | undefined) => (line == null ? undefined : line + 1);
 
+/** `file:Lline` (editor line), the form callers and the tree use. */
+function locationOf(file: string, line: number | undefined): string {
+  const l = editorLine(line);
+  return l != null ? `${file}:L${l}` : file;
+}
+
 function definedAt(s: ImpactSymbol): string {
-  const line = editorLine(s.line);
-  const loc = s.file ? (line != null ? `${s.file}:${line}` : s.file) : '';
+  const loc = s.file ? locationOf(s.file, s.line) : '';
   return [s.kind, loc].filter(Boolean).join(', ');
 }
 
+/**
+ * Note for a caller not reached by an all-EXTRACTED shortest path: its
+ * lowercased confidence, shown as ` (inferred)` like map "used by" lines.
+ */
+const confidenceNote = (c: Confidence): string | undefined =>
+  c === 'EXTRACTED' ? undefined : c.toLowerCase();
+
 /** `fn (file:Ldef)`: callers are reported with their definition line. */
 function callerRef(n: ImpactNode): string {
-  if (!n.file) return n.name;
-  const line = editorLine(n.line);
-  return `${n.name} (${n.file}${line != null ? ':L' + line : ''})`;
+  const ref = n.file ? `${n.name} (${locationOf(n.file, n.line)})` : n.name;
+  const note = confidenceNote(n.confidence);
+  return note ? `${ref} (${note})` : ref;
 }
 
 /** Render the grouped summary (default `text` format). */
@@ -270,9 +282,10 @@ export function renderImpactText(r: ImpactResult, put: (line?: string) => void, 
     }
   }
 
+  // counts.EXTRACTED/INFERRED/AMBIGUOUS count kept edges, not callers.
   const footer = [`EXTRACTED ${r.counts.EXTRACTED}`, `INFERRED ${r.counts.INFERRED}`];
   if (r.counts.AMBIGUOUS > 0) footer.push(`AMBIGUOUS ${r.counts.AMBIGUOUS}`);
-  put(s.muted(footer.join(' · ')));
+  put(s.muted(`edges: ${footer.join(' · ')}`));
 }
 
 /**
@@ -283,7 +296,9 @@ export function renderImpactText(r: ImpactResult, put: (line?: string) => void, 
 export function impactToQueryResult(r: ImpactResult): QueryResult {
   const nodes: QueryResult['nodes'] = [
     ...r.symbol.matches.map(({ id, name, kind, file, line }) => ({ id, name, kind, file, line: editorLine(line), depth: 0 })),
-    ...r.nodes.map(({ id, name, kind, file, line, depth }) => ({ id, name, kind, file, line: editorLine(line), depth })),
+    ...r.nodes.map(({ id, name, kind, file, line, depth, confidence }) => ({
+      id, name, kind, file, line: editorLine(line), depth, note: confidenceNote(confidence),
+    })),
   ];
   return {
     nodes,

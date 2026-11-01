@@ -84,7 +84,7 @@ List the transitive callers of a function or method ("what breaks if I
 change X?"), grouped by area.
 
 ```bash
-xray impact <symbol> [--depth N] [--strict] [--format <fmt>]
+xray impact <symbol> [--depth N] [--strict] [--format <fmt>] [--cols <list>] [-o <file>]
                      [-p <path>... | --lens <name> | --scope <name> | --graph <file>]
 ```
 
@@ -103,16 +103,20 @@ distance from the symbol.
 | `--lens <name>` / `--scope <name>` | Pick roots and options from the config file | none |
 | `--lang <list>` | Languages to parse | all detected |
 | `--format <fmt>` | `text` (default), `tree`, `json`, `yaml`, `table`, `csv` | `text` |
+| `--cols <list>` | `table`/`csv` columns: `name`, `kind`, `file`, `line`, `depth`, `group`, `confidence`, `id` | `name,file,line,depth,group,confidence` |
+| `-o, --output <path>` | Write the result to a file; the format follows its extension unless `--format` is given | stdout |
 
 Without `--graph`, the graph is built in memory for the resolved roots
 (same config, lens and scope resolution as `map --format json`). No map
 file is written, and stderr gets one coverage line:
-`ℹ coverage: 318 files parsed · skipped grammars: none`.
+`ℹ coverage: 318 files parsed · skipped grammars: none`, or
+`ℹ coverage: served from cache (715 files) · …` when every root of a
+multi-root run was served from the cache.
 
 **Text output** (`xray impact RunHooks --depth 2 -p ../poly-nerv`):
 
 ```
-RunHooks (method, internal/dispatch/run.go:108) — 35 callers across 2 groups
+RunHooks (method, internal/dispatch/run.go:L108) — 35 callers across 2 groups
   internal: 10 callers — Dispatch (internal/dispatch/dispatch.go:L85), TestRunHooks_EmptyList (internal/dispatch/run_test.go:L48), …
     …and 5 more
   cmd: 2 callers — runReplay (cmd/nerv/cmd_replay.go:L52), testSingleEvent (cmd/nerv/cmd_testhook.go:L140)
@@ -121,24 +125,26 @@ depth 2:
       …and 9 more
     cmd: 9 callers — TestReplayCmd_FlagsReachRunE (cmd/nerv/cmd_replay_test.go:L18), …
       …and 4 more
-EXTRACTED 35 · INFERRED 0
+edges: EXTRACTED 35 · INFERRED 0
 ```
 
-- **Header**: the symbol with kind and location, then total callers and
-  groups. When several definitions match, the header reads
+- **Header**: the symbol with kind and location (`file:L108`, the same
+  form as callers), then total callers and groups. When several definitions match, the header reads
   `New (5 definitions)` and a `defined:` line lists them (first 5).
 - **Depth 1** lines come first, unlabeled; deeper levels follow under
   `depth N:`. Each group line lists up to 5 callers, then `…and N more`.
 - **Callers** are the calling *functions*, shown with their definition
-  line (`file:L52`). The graph stores no call-site positions; use
+  line (`file:L52`). A caller that is not `EXTRACTED` is suffixed
+  ` (inferred)`, as in `map` "used by" lines (text and tree). The graph stores no call-site positions; use
   `xray explore --search <name>` for the exact call lines.
 - **Groups**: on a merged multi-root graph, the root label; otherwise the
   first path segment under the root (`internal/dispatch/run.go` →
   `internal`; `.` for files at the root).
-- **Footer**: the number of `calls` edges walked (shortest-path edges
-  only), by confidence. It counts edges, not callers.
+- **Footer** (`edges: EXTRACTED 35 · INFERRED 0`): the number of `calls`
+  edges walked (shortest-path edges only), by confidence. It counts
+  edges, not callers.
 - Text and tree show 1-based editor lines. `json`, `yaml`, `table` and
-  `csv` carry the raw 0-based graph value (`line: 107` for `run.go:108`),
+  `csv` carry the raw 0-based graph value (`line: 107` for `run.go:L108`),
   as `xray query` does.
 
 **Record formats.** `table` and `csv` have one row per caller with the
@@ -150,8 +156,7 @@ to a file, picking the format from its extension
 matched definitions, every node has `depth`, `group` and `confidence`,
 every edge has `from` (caller), `to` (callee) and `confidence`, and
 `counts` holds `callers`, `groups`, `byDepth` and the edge counts
-`EXTRACTED`, `INFERRED`, `AMBIGUOUS`. The text view does not mark which
-caller is `INFERRED`; use `--format table` (or `json`) to see it.
+`EXTRACTED`, `INFERRED`, `AMBIGUOUS`.
 
 **Confidence.** Every `calls` edge carries one:
 
@@ -165,7 +170,7 @@ as `EXTRACTED` when some shortest path from it to the symbol is
 `EXTRACTED` end to end. `--strict` drops `INFERRED` edges before the walk,
 so name-only matches never pull in further callers. Example: `New` in
 poly-nerv has 5 definitions; `--depth 1` finds 54 callers
-(`EXTRACTED 44 · INFERRED 10`), `--depth 1 --strict` finds 44.
+(`edges: EXTRACTED 44 · INFERRED 10`), `--depth 1 --strict` finds 44.
 
 **Several roots.** Pass several `-p` roots, or a lens whose config sets
 `paths`, to analyze them as one
@@ -177,7 +182,9 @@ stderr:
 
 ```
 ℹ cache: main miss · symbol-impact miss     # first run
+ℹ coverage: 715 files parsed · skipped grammars: none
 ℹ cache: main hit · symbol-impact hit       # nothing changed since
+ℹ coverage: served from cache (715 files) · skipped grammars: none
 ```
 
 A root is re-analyzed only when its scanned files (path, mtime, size),

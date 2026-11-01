@@ -33,7 +33,7 @@ nothing is written to disk. Real output on a Go repo
 
 ```
 ℹ coverage: 318 files parsed · skipped grammars: none
-RunHooks (method, internal/dispatch/run.go:108) — 35 callers across 2 groups
+RunHooks (method, internal/dispatch/run.go:L108) — 35 callers across 2 groups
   internal: 10 callers — Dispatch (internal/dispatch/dispatch.go:L85), TestRunHooks_EmptyList (internal/dispatch/run_test.go:L48), …
     …and 5 more
   cmd: 2 callers — runReplay (cmd/nerv/cmd_replay.go:L52), testSingleEvent (cmd/nerv/cmd_testhook.go:L140)
@@ -42,20 +42,20 @@ depth 2:
       …and 9 more
     cmd: 9 callers — TestReplayCmd_FlagsReachRunE (cmd/nerv/cmd_replay_test.go:L18), …
       …and 4 more
-EXTRACTED 35 · INFERRED 0
+edges: EXTRACTED 35 · INFERRED 0
 ```
 
 How to read it:
 
 | Part | Meaning |
 |------|---------|
-| `RunHooks (method, internal/dispatch/run.go:108)` | The definition that matched. `X (N definitions)` + a `defined:` line means the name matched several; all are included |
+| `RunHooks (method, internal/dispatch/run.go:L108)` | The definition that matched. `X (N definitions)` + a `defined:` line means the name matched several; all are included |
 | `35 callers across 2 groups` | Distinct calling functions, all depths |
 | `internal: 10 callers — …` | Depth 1 (direct callers), by top-level directory |
 | `depth 2:` | Callers of those callers |
-| `Dispatch (internal/dispatch/dispatch.go:L85)` | The calling function and its *definition* line, not the call line |
-| `EXTRACTED 35 · INFERRED 0` | Call edges walked, by confidence |
-| `ℹ coverage:` (stderr) | Files parsed; a skipped grammar means callers in that language are missing |
+| `Dispatch (internal/dispatch/dispatch.go:L85)` | The calling function and its *definition* line, not the call line; ` (inferred)` after it marks a name-only caller |
+| `edges: EXTRACTED 35 · INFERRED 0` | Call edges walked (not callers), by confidence |
+| `ℹ coverage:` (stderr) | Files parsed (`served from cache (N files)` when every root hit the cache); a skipped grammar means callers in that language are missing |
 
 **Success Criteria:**
 - [ ] Header names the definition you meant (if not, use a full id:
@@ -65,7 +65,8 @@ How to read it:
 
 #### Step 1.2: Read Confidence
 
-Get the per-caller confidence (the text view only gives totals):
+The text view suffixes name-only callers with ` (inferred)`. For one row
+per caller with its confidence:
 
 ```bash
 xray impact <symbol> --depth 1 --format table
@@ -106,8 +107,8 @@ Keep the non-strict run when you need the worst case (public API,
 renames). Real example, `New` with 5 definitions:
 
 ```
-xray impact New --depth 1            → 54 callers across 4 groups · EXTRACTED 44 · INFERRED 10
-xray impact New --depth 1 --strict   → 44 callers across 2 groups · EXTRACTED 44 · INFERRED 0
+xray impact New --depth 1            → 54 callers across 4 groups · edges: EXTRACTED 44 · INFERRED 10
+xray impact New --depth 1 --strict   → 44 callers across 2 groups · edges: EXTRACTED 44 · INFERRED 0
 ```
 
 If you are changing only one of several same-named definitions, pass its
@@ -149,8 +150,8 @@ Real output (two roots, labels `main` and `symbol-impact`):
 
 ```
 ℹ cache: main hit · symbol-impact hit
-ℹ coverage: 715 files parsed · skipped grammars: none
-RunHooks (method, main/internal/dispatch/run.go:108) — 47 callers across 1 group
+ℹ coverage: served from cache (715 files) · skipped grammars: none
+RunHooks (method, main/internal/dispatch/run.go:L108) — 47 callers across 1 group
   main: 12 callers — runReplay (main/cmd/nerv/cmd_replay.go:L52), testSingleEvent (main/cmd/nerv/cmd_testhook.go:L140), …
     …and 7 more
 depth 2:
@@ -159,7 +160,7 @@ depth 2:
 depth 3:
     main: 12 callers — TestTestCmd_FlagsReachRunE (main/cmd/nerv/cmd_testhook_test.go:L25), …
       …and 7 more
-EXTRACTED 47 · INFERRED 0
+edges: EXTRACTED 47 · INFERRED 0
 ```
 
 - Files and groups are prefixed with the root label (the path relative to
@@ -286,8 +287,8 @@ Rules:
 - Fix: `xray explore --search <name>`
 
 **Pitfall 2: Treating every caller as confirmed**
-- The text view shows only totals by confidence
-- Fix: `--format table` to see per-caller confidence, or `--strict`
+- Name-only callers carry only a ` (inferred)` suffix in the text view
+- Fix: check each ` (inferred)` caller (or `--format table`), or `--strict`
 
 **Pitfall 3: Common names**
 - `New`, `parse`, `run` match many definitions; the header says `(N definitions)`

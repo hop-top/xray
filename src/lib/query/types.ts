@@ -89,6 +89,8 @@ export interface QueryResult {
     kind?: string;
     depth?: number;
     score?: number;
+    /** Tree-view suffix after the location, e.g. `inferred` -> ` (inferred)`. */
+    note?: string;
   }>;
   edges: Array<{
     from: string;

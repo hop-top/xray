@@ -224,7 +224,7 @@ function printNode(
 
   const connector = isLast ? '└─→ ' : '├─→ ';
   const location = nodeLocation(node);
-  print(prefix + connector + node.name + s.muted(location));
+  print(prefix + connector + node.name + s.muted(location) + (node.note ? ` (${node.note})` : ''));
 
   const children = childrenMap.get(nodeId) || [];
   const newPrefix = prefix + (isLast ? '    ' : '│   ');

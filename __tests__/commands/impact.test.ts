@@ -15,6 +15,8 @@ import { GraphSerializer } from '../../src/lib/graph/serializer';
 import { FunctionAdapter } from '../../src/lib/query/adapters/function';
 import { computeImpact, groupKey, renderImpactText, impactToQueryResult } from '../../src/lib/query/impact';
 import type { SerializedGraph, SerializedNode, SerializedEdge } from '../../src/lib/query/types';
+import { formatTree } from '../../src/commands/query';
+import { coverageLine } from '../../src/commands/impact';
 
 const BIN = path.resolve(__dirname, '../..', 'bin', 'xray');
 
@@ -156,10 +158,10 @@ describe('impact text output', () => {
     const lines: string[] = [];
     renderImpactText(r, l => lines.push(l ?? ''), PLAIN);
     const text = lines.join('\n');
-    expect(lines[0]).toBe('T (function, pkg/t.go:11) — 3 callers across 2 groups');
+    expect(lines[0]).toBe('T (function, pkg/t.go:L11) — 3 callers across 2 groups');
     expect(text).toContain('  pkg: 2 callers — A (pkg/a.go:L21), B (pkg/b.go:L31)');
     expect(text).toMatch(/depth 2:\n {4}cmd: 1 caller — C \(cmd\/c\.go:L41\)/);
-    expect(lines[lines.length - 1]).toBe('EXTRACTED 3 · INFERRED 0');
+    expect(lines[lines.length - 1]).toBe('edges: EXTRACTED 3 · INFERRED 0');
   });
 
   test('long groups are capped with "…and X more"', () => {
@@ -179,8 +181,47 @@ describe('impact text output', () => {
   test('text shows editor (1-based) lines; graph lines are 0-based', () => {
     const lines: string[] = [];
     renderImpactText(computeImpact(load(graphOf([tag('a.ts', 'z', 0), tag('a.ts', 'y', 3)], [calls(tag('a.ts', 'y', 3), tag('a.ts', 'z', 0))])), 'z'), l => lines.push(l ?? ''), PLAIN);
-    expect(lines[0]).toBe('z (function, a.ts:1) — 1 caller across 1 group');
+    expect(lines[0]).toBe('z (function, a.ts:L1) — 1 caller across 1 group');
     expect(lines[1]).toBe('  .: 1 caller — y (a.ts:L4)');
+  });
+
+  test('header and "defined:" line use the callers\' 1-based :L form', () => {
+    const T2 = tag('other/t.go', 'T', 4);
+    const lines: string[] = [];
+    renderImpactText(computeImpact(load(graphOf([T, T2, A], [calls(A, T)])), 'T'), l => lines.push(l ?? ''), PLAIN);
+    expect(lines[1]).toBe('  defined: function, pkg/t.go:L11; function, other/t.go:L5');
+    const one: string[] = [];
+    renderImpactText(computeImpact(load(diamond()), 'T'), l => one.push(l ?? ''), PLAIN);
+    expect(one[0]).toMatch(/^T \(function, pkg\/t\.go:L11\) — /);
+  });
+
+  test('INFERRED callers are marked "(inferred)"; footer counts are labelled edges', () => {
+    // A <- T is INFERRED; C reaches T only through A, so C is INFERRED too.
+    const g = graphOf([T, A, B, C], [calls(A, T, 'INFERRED'), calls(B, T), calls(C, A)]);
+    const lines: string[] = [];
+    renderImpactText(computeImpact(load(g), 'T'), l => lines.push(l ?? ''), PLAIN);
+    const text = lines.join('\n');
+    expect(text).toContain('  pkg: 2 callers — A (pkg/a.go:L21) (inferred), B (pkg/b.go:L31)');
+    expect(text).toMatch(/cmd: 1 caller — C \(cmd\/c\.go:L41\) \(inferred\)$/m);
+    expect(text).not.toMatch(/B \(pkg\/b\.go:L31\) \(inferred\)/);
+    expect(lines[lines.length - 1]).toBe('edges: EXTRACTED 2 · INFERRED 1');
+  });
+
+  test('tree view marks INFERRED callers "(inferred)" after the location', () => {
+    const g = graphOf([T, A, B], [calls(A, T, 'INFERRED'), calls(B, T)]);
+    const tree = formatTree(impactToQueryResult(computeImpact(load(g), 'T')), PLAIN);
+    expect(tree).toContain('A (pkg/a.go:L21) (inferred)');
+    expect(tree).toMatch(/B \(pkg\/b\.go:L31\)$/m);
+    expect(tree).toMatch(/T \(pkg\/t\.go:L11\)$/m);
+  });
+
+  test('coverage line: "served from cache" when every root hit, else files parsed', () => {
+    const c = { files: 4, parsed: 3, skipped: [] };
+    expect(coverageLine(c, [{ label: 'a', hit: true }, { label: 'b', hit: true }]))
+      .toBe('coverage: served from cache (3 files) · skipped grammars: none');
+    expect(coverageLine(c, [{ label: 'a', hit: true }, { label: 'b', hit: false }]))
+      .toBe('coverage: 3 files parsed · skipped grammars: none');
+    expect(coverageLine(c)).toBe('coverage: 3 files parsed · skipped grammars: none');
   });
 
   test('tree view roots at the symbol (callee -> caller edges)', () => {
@@ -224,9 +265,9 @@ describe('xray impact (built CLI)', () => {
   test('default text summary on stdout', () => {
     const r = run(['impact', 'T', '--graph', graphFile]);
     expect(r.status).toBe(0);
-    expect(r.stdout).toContain('T (function, pkg/t.go:11) — 3 callers across 2 groups');
+    expect(r.stdout).toContain('T (function, pkg/t.go:L11) — 3 callers across 2 groups');
     expect(r.stdout).toContain('depth 2:');
-    expect(r.stdout).toContain('EXTRACTED 3 · INFERRED 0');
+    expect(r.stdout).toContain('edges: EXTRACTED 3 · INFERRED 0');
   });
 
   test('--format json is one document {symbol, nodes, edges, groups, counts}', () => {
@@ -278,7 +319,7 @@ describe('xray impact (built CLI)', () => {
     const before = fs.readdirSync(repo).sort();
     const r = run(['impact', 'target', '-p', repo], repo);
     expect(r.status).toBe(0);
-    expect(r.stdout).toContain('target (function, lib/core.ts:1) — 1 caller across 1 group');
+    expect(r.stdout).toContain('target (function, lib/core.ts:L1) — 1 caller across 1 group');
     expect(r.stdout).toContain('useIt (lib/use.ts:L2)');
     expect(r.stderr).toMatch(/coverage: 2 files parsed/);
     expect(r.stderr).not.toContain('Analyzing repo at');
@@ -299,6 +340,17 @@ describe('xray impact (built CLI)', () => {
     expect(cmd.sideEffect).toBe('read');
     expect(cmd.idempotent).toBe('yes');
     expect(cmd.exitCodes).toContain(3);
+  });
+
+  test('--help lists --cols and -o/--output (the format registry accepts them)', () => {
+    const r = run(['impact', '--help']);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/^\s+--cols <cols\.\.\.>/m);
+    expect(r.stdout).toMatch(/^\s+-o, --output <path>/m);
+    // and they work
+    const out = path.join(dir, 'impact.csv');
+    expect(run(['impact', 'T', '--graph', graphFile, '--cols', 'name,depth', '-o', out]).status).toBe(0);
+    expect(fs.readFileSync(out, 'utf-8').split('\n')[0]).toBe('name,depth');
   });
 
   test('impact sits in the ANALYZE help group', () => {

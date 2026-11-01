@@ -66,7 +66,8 @@ describe('merged-graph cache (impact, multi-root)', () => {
     const r = impact(...P);
     expect(r.cache).toEqual(['cache: alpha hit · beta hit']);
     expect(r.callers).toEqual(['Run beta EXTRACTED']);
-    expect(r.stderr).toMatch(/coverage: \d+ files parsed/);
+    expect(r.stderr).toMatch(/coverage: served from cache \(\d+ files\)/);
+    expect(r.stderr).not.toMatch(/files parsed/);
   });
 
   test('--lens over the same roots (other order) shares the cache entry', () => {

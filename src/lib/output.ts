@@ -9,7 +9,7 @@
  * `--format` is declared here rather than by kit so each command keeps
  * its historical default (`text` / `table`) and help text.
  */
-import type { Command } from 'commander';
+import type { Command, Option } from 'commander';
 import type * as KitOutput from '@hop-top/kit/dist/output';
 import type * as KitCompletion from '@hop-top/kit/dist/completion';
 import type * as KitValues from '@hop-top/kit/dist/completion-values';
@@ -114,11 +114,18 @@ export interface OutputFlagOptions {
   defaultFormat: string;
   /** `--format` help text; defaults to the registry's keys. */
   description?: string;
+  /** Kit flags (hidden by default) to list in `--help`, by long name. */
+  showInHelp?: readonly string[];
 }
 
 /** Attach the kit output flag suite + a per-command `--format`. */
 export function addOutputFlags(cmd: Command, registry: Registry, o: OutputFlagOptions): Command {
   kit().registerOutputFlags(cmd, { registry, disable: { format: true } });
+  for (const name of o.showInHelp ?? []) {
+    const opt = (cmd.options as Option[]).find((x) => x.long === `--${name}`);
+    if (!opt) throw new Error(`addOutputFlags: no kit flag --${name}`);
+    opt.hidden = false;
+  }
   cmd.option(
     '--format <fmt>',
     o.description ?? `Output format: ${registry.keys().join(', ')}`,

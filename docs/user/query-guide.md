@@ -301,7 +301,7 @@ xray impact RunHooks --depth 2
 
 ```
 ℹ coverage: 318 files parsed · skipped grammars: none        (stderr)
-RunHooks (method, internal/dispatch/run.go:108) — 35 callers across 2 groups
+RunHooks (method, internal/dispatch/run.go:L108) — 35 callers across 2 groups
   internal: 10 callers — Dispatch (internal/dispatch/dispatch.go:L85), TestRunHooks_EmptyList (internal/dispatch/run_test.go:L48), …
     …and 5 more
   cmd: 2 callers — runReplay (cmd/nerv/cmd_replay.go:L52), testSingleEvent (cmd/nerv/cmd_testhook.go:L140)
@@ -310,7 +310,7 @@ depth 2:
       …and 9 more
     cmd: 9 callers — TestReplayCmd_FlagsReachRunE (cmd/nerv/cmd_replay_test.go:L18), …
       …and 4 more
-EXTRACTED 35 · INFERRED 0
+edges: EXTRACTED 35 · INFERRED 0
 ```
 
 The same answer as a call tree, rooted at the symbol:
@@ -355,9 +355,9 @@ several places:
 
 ```bash
 xray impact New --depth 1            # New (5 definitions) — 54 callers across 4 groups
-                                     # EXTRACTED 44 · INFERRED 10
+                                     # edges: EXTRACTED 44 · INFERRED 10
 xray impact New --depth 1 --strict   # New (5 definitions) — 44 callers across 2 groups
-                                     # EXTRACTED 44 · INFERRED 0
+                                     # edges: EXTRACTED 44 · INFERRED 0
 ```
 
 `--strict` drops `INFERRED` edges before walking, so they pull in no
