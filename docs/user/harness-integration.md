@@ -275,8 +275,12 @@ The hooks read a graph file from the project and print text into the
 model's context, so the core only trusts a graph that `save-graph.sh`
 wrote for this user:
 
-- The graph must not be tracked by git, must not be a symlink, and must
-  resolve inside the project's work tree.
+- The graph must not be tracked by git, and no other file in its
+  directory may be tracked either (unless that directory is the work-tree
+  root). Neither the graph nor its directory may be a symlink, and the
+  graph must resolve inside the project's work tree. This applies to an
+  `XRAY_GRAPH` override too, so point it at an untracked directory such as
+  `.xray/`.
 - Its sha256 must match a per-user sidecar that `save-graph.sh` records
   under `${XDG_STATE_HOME:-~/.local/state}/xray/hooks/`. A graph that was
   committed, checked out, or edited by hand is ignored (the hook stays
