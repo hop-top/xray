@@ -4,7 +4,7 @@ import * as path from 'path';
 import { styles, fileProgress } from '../lib/tui';
 import { QueryResolver } from '../lib/query-resolver';
 import { Logger, LogLevel } from '../lib/logger';
-import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase } from '../lib/config';
+import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase, validateScanRoots } from '../lib/config';
 import { CodedError, FileWriteError, NotFoundError } from '../lib/error/types';
 import { resolveFormatFlags } from '../lib/output-format';
 import { GraphSerializer } from '../lib/graph/serializer';
@@ -162,6 +162,16 @@ export const runSingleXray = async (
   scopeName?: string,
   configPath: string | undefined = mergedOptions.config
 ) => {
+  // Validate roots before detection/scan: a missing root must never
+  // produce an empty map with exit 0.
+  if (mergedOptions.path && mergedOptions.path.length > 0) {
+    mergedOptions.path = validateScanRoots(
+      mergedOptions.path.map(resolvePath).filter(Boolean) as string[],
+      mergedOptions.pathSource ?? 'cli',
+      configPath
+    );
+  }
+
   // Auto-configure from detected strategies if enabled
   // Only auto-detect when no path is explicitly provided (unless --detect is used)
   const hasExplicitPath = mergedOptions.path && mergedOptions.path.length > 0;

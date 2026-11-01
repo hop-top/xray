@@ -7,7 +7,7 @@ import {
   XrayConfig,
   XrayExtensionConfig,
 } from '../types/xray-config';
-import { FileReadError, FileWriteError } from './error/types';
+import { FileReadError, FileWriteError, NotFoundError } from './error/types';
 
 // require(): tsconfig moduleResolution 'node' ignores the kit exports map.
 const { configDir: xdgConfigDir } = require('@hop-top/kit/xdg') as {
@@ -383,6 +383,69 @@ export function saveConfig(config: XrayConfig, configPath?: string): void {
   }
 }
 
+/** Where the scan roots in merged options came from. */
+export type ScanRootSource = 'cli' | 'config';
+
+function isDirectory(p: string): boolean {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Config file that supplied the scan roots: root `--config`, else the
+ * discovered project config when it sets `paths`/`scopes` (project
+ * overrides global), else the global config. JS/unreadable project
+ * config is assumed to be the source.
+ */
+function findPathsConfigFile(configPath?: string): string | null {
+  if (configPath) return path.resolve(configPath);
+  const project = findConfigPath();
+  const global = findGlobalConfigPath();
+  if (!project || !global || path.extname(project) === '.js') return project ?? global;
+  try {
+    // Same parse as loadConfigFile.
+    const cfg = JSON.parse(fs.readFileSync(project, 'utf-8'));
+    return cfg && (cfg.paths || cfg.scopes) ? project : global;
+  } catch {
+    return project;
+  }
+}
+
+/**
+ * Drop scan roots that are missing or not directories, before any scan.
+ * Config roots: warn (root + config file it came from), skip; none left ->
+ * NotFoundError. CLI roots: any missing -> NotFoundError (a typo must not
+ * yield an empty map). `configPath` is root `--config`, else discovery
+ * (same lookup as `xray paths`) names the file.
+ */
+export function validateScanRoots(
+  roots: string[],
+  source: ScanRootSource,
+  configPath?: string
+): string[] {
+  const missing = roots.filter(r => !isDirectory(r));
+  if (missing.length === 0) return roots;
+
+  if (source === 'cli') {
+    throw new NotFoundError(`Path does not exist or is not a directory: ${missing.join(', ')}`);
+  }
+
+  const configFile = findPathsConfigFile(configPath) ?? 'config file';
+  for (const r of missing) {
+    Logger.warn(`Skipping scan path from ${configFile}: ${r} does not exist or is not a directory`);
+  }
+  const kept = roots.filter(r => !missing.includes(r));
+  if (kept.length === 0) {
+    throw new NotFoundError(
+      `No configured scan path exists (paths in ${configFile}: ${missing.join(', ')}); fix "paths" or pass --path`
+    );
+  }
+  return kept;
+}
+
 /**
  * Merge CLI options with config file, with CLI taking precedence
  */
@@ -435,6 +498,7 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
   // Build final options with CLI taking precedence
   return {
     path: cliOptions.path && cliOptions.path.length > 0 ? cliOptions.path : (baseConfig.paths || []),
+    pathSource: (cliOptions.path && cliOptions.path.length > 0 ? 'cli' : 'config') as ScanRootSource,
     output: cliOptions.output || baseConfig.output,
     limit: cliOptions.limit || baseConfig.limit?.toString() || '4096',
     anchor: cliOptions.anchor || baseConfig.anchor,
