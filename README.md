@@ -38,6 +38,7 @@ cat .xray
 - 🔍 **Framework-Aware** - Built-in strategies for React, Express, Go CLI, and more
 - ⚡ **Smart Caching** - SQLite cache for fast subsequent runs
 - 🔗 **Dependency Tracking** - Shows imports, exports, and cross-file relationships
+- 💥 **Impact Analysis** - `xray impact <symbol>` answers "what breaks if I change this?" with AST-resolved callers, grouped by package, across one repo or your whole workspace
 - ⚙️  **Automation Ready** - GitHub Actions and pre-commit hooks included
 - 🔌 **Plugin System** - Extensible event-driven architecture for custom workflows (NEW!)
 - 🧭 **Logical Clustering** - Group chunks by graph community with `--group community` (NEW!)
@@ -140,6 +141,37 @@ xray scan --path ./src --match "*.ts" --match "!*.test.ts"
 ```bash
 xray graph --with cf --with df --output graphs.txt
 ```
+
+### `xray impact` - What breaks if I change this?
+
+Before touching a signature, ask xray who calls it. Callers come from the
+resolved call graph (same file, same package, imported packages), not from a
+text search, so a method named `Run` in another package doesn't count.
+
+```bash
+xray impact RunHooks --depth 2
+```
+
+```
+coverage: 318 files parsed · skipped grammars: none
+RunHooks (method, internal/dispatch/run.go:108) — 35 callers across 2 groups
+  internal: 10 callers — Dispatch (internal/dispatch/dispatch.go:L85), TestRunHooks_EmptyList (internal/dispatch/run_test.go:L48), …
+    …and 5 more
+  cmd: 2 callers — runReplay (cmd/nerv/cmd_replay.go:L52), testSingleEvent (cmd/nerv/cmd_testhook.go:L140)
+depth 2:
+    internal: 14 callers — TestDispatch_PublishesCrtxEmission (internal/dispatch/crtx_publish_test.go:L17), …
+    cmd: 9 callers — TestReplayCmd_FlagsReachRunE (cmd/nerv/cmd_replay_test.go:L18), runTest (cmd/nerv/cmd_testhook.go:L53), …
+EXTRACTED 35 · INFERRED 0
+```
+
+`EXTRACTED` edges are backed by file, package or import evidence; `INFERRED`
+ones are name-only matches — drop them with `--strict`. Point it at several
+repos (`-p a -p b`, or a `--lens` from `.xrayrc.json`) and callers are grouped
+per repo, with a merged-graph cache so repeat runs are instant. `--format
+json|tree|table` for machines; also available as the `impact` tool of
+`xray mcp`.
+
+[Agent workflow: impact analysis →](docs/agent/workflows/impact-analysis.md)
 
 ## Common Use Cases
 
