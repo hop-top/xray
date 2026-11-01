@@ -12,6 +12,7 @@ Use this document to determine which xray command to run for any given scenario.
 | `explore` | Find patterns (React components, routes, etc.) | Low-Med (100-200t) | Fast |
 | `graph` | Analyze code flow | High (500-800t) | Slow |
 | `map --with incs` | Understand dependencies | Medium-High (400-600t) | Medium |
+| `impact <symbol>` | What breaks if a function changes (transitive callers) | Low-Med (150-750t) | Medium |
 
 ## Master Decision Tree
 
@@ -98,11 +99,17 @@ WHAT DO YOU WANT TO UNDERSTAND?
 │   │       TOKENS: ~400-600
 │   │       TIME: ~10s
 │   │
-│   └─ "What depends on this file?"
-│       └─ COMMAND: xray map --anchor src/file.ts --with incs
-│           (Look at "used by" references)
-│           TOKENS: ~400-600
-│           TIME: ~8s
+│   ├─ "What depends on this file?"
+│   │   └─ COMMAND: xray map --anchor src/file.ts --with incs
+│   │       (Look at "used by" references)
+│   │       TOKENS: ~400-600
+│   │       TIME: ~8s
+│   │
+│   └─ "What calls this function? What breaks if I change it?"
+│       └─ COMMAND: xray impact <symbol> --depth 3
+│           (--lens <name> for every repo in the workspace)
+│           TOKENS: ~150-750
+│           TIME: ~3s for ~300 files (graph built in memory)
 │
 ├─ "How does data/control flow through code?"
 │   ├─ "Control flow (if/else, loops, function calls)"
@@ -242,15 +249,57 @@ RESULT: You know where to add feature and what pattern to follow
    TOKENS: ~400
    OUTPUT: Dependencies and related files
 
-3. Find patterns
+3. Find callers of changed functions
+   COMMAND: xray impact <changed-function> --depth 2
+   WHY: See what breaks if the function's behavior or signature changed
+   TOKENS: ~150-400 (at most 5 callers listed per group line)
+   OUTPUT: Transitive callers by area, EXTRACTED/INFERRED edge counts
+
+4. Find patterns
    COMMAND: xray explore <framework>:<command>
    WHY: If framework patterns changed
    TOKENS: ~100
    OUTPUT: How this pattern is used elsewhere
 
-TOTAL TOKENS: ~500
+TOTAL TOKENS: ~650-900
 RESULT: You understand change impact and can review effectively
 ```
+
+### Use Case: "What Breaks If I Change X?"
+
+**Scenario:** About to change a function or method's signature, behavior
+or name
+
+**Recommended Command Sequence:**
+
+```
+1. Callers by area
+   COMMAND: xray impact <symbol> --depth 3
+   WHY: Every transitive caller once, at its shortest depth
+   TOKENS: ~150-750 (at most 5 callers listed per group line)
+   OUTPUT: Header, per-group caller lines, EXTRACTED/INFERRED footer
+
+2. Per-caller confidence (if INFERRED > 0)
+   COMMAND: xray impact <symbol> --depth 1 --format table
+   WHY: Separate confirmed from name-only callers
+   TOKENS: ~25 per caller (one row each)
+
+3. Other repos (if the symbol is exported)
+   COMMAND: xray impact <symbol> --lens <workspace-lens>
+   WHY: Callers in every root of the lens, grouped by root
+   TOKENS: ~150-750
+
+4. Call lines / anything impact cannot see
+   COMMAND: xray explore --search <symbol>
+   WHY: impact shows the caller's definition line; types,
+        constructors and constants have no call edges
+   TOKENS: ~100-300
+
+TOTAL TOKENS: ~400-1500
+RESULT: Change plan listing call sites per package
+```
+
+Full protocol: [Impact Analysis workflow](workflows/impact-analysis.md).
 
 ### Use Case: "Refactor Code Safely"
 
@@ -415,6 +464,7 @@ Single File Output:
 | How does data flow? | Analyzing logic | `graph --with df` |
 | How does control flow? | Analyzing logic | `graph --with cf` |
 | Understand one file? | Focused analysis | `map --anchor file.ts` |
+| What breaks if I change X? | Before editing a function | `impact X --depth 3` |
 | Everything | Complete analysis | `map --with vars --with incs` |
 
 ## Token Budget Planning

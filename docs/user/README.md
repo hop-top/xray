@@ -209,6 +209,12 @@ xray map --with incs --with vars
 xray map --path ./src/services --with incs
 ```
 
+### "What breaks if I change this function?"
+```bash
+# Transitive callers, grouped by area (see Command Reference: xray impact)
+xray impact createSession
+```
+
 ### "I need to document this for AI"
 ```bash
 # Generate map focused on public API

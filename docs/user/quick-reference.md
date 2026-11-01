@@ -74,8 +74,8 @@ Do you want to...
 ├─ Focus on one file?
 │  └─> xray map --anchor src/file.ts --with incs
 │
-├─ Find where something is called?
-│  └─> xray map --with incs | grep functionName
+├─ Find where something is called? / What breaks if I change it?
+│  └─> xray impact functionName
 │
 ├─ Share with AI?
 │  └─> xray map --anchor src/main --with incs --limit 4000
@@ -203,6 +203,12 @@ xray express routes
 xray strategy detect
 ```
 
+### "What breaks if I change this function?"
+```bash
+xray impact createSession               # transitive callers, 3 levels, by area
+xray impact createSession --strict      # scope-resolved (EXTRACTED) callers only
+```
+
 ### "Fix stale results"
 ```bash
 xray clear-cache && xray map
@@ -226,7 +232,7 @@ xray react components | wc -l
 xray map --catch "*Error" | head -20
 
 # Find who calls a function
-xray map --with incs | grep -A 1 "myFunction"
+xray impact myFunction --depth 1
 
 # Save output and share
 xray map > my-map.txt

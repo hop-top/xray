@@ -10,6 +10,7 @@ Complete guide to every xray command and option. Start with the decision tree to
 - **Find something specific (components, routes, functions)** → [`xray <strategy> <command>`](#xray-strategy-command)
 - **Scan for files matching a pattern** → [`xray scan`](#xray-scan)
 - **See control flow or data flow** → [`xray graph`](#xray-graph)
+- **See what breaks if you change a function** → [`xray impact`](#xray-impact)
 - **Detect what frameworks are used** → [`xray strategy detect`](#xray-strategy-detect)
 - **See all available strategies** → [`xray strategy list`](#xray-strategy-list)
 - **Create command shortcuts** → [`xray alias`](#xray-alias)
@@ -76,6 +77,129 @@ xray graph --with cf --with df --output graphs.txt
 # Focus on specific directory
 xray graph --path ./src/services --with cf --with df
 ```
+
+### `xray impact`
+
+List the transitive callers of a function or method ("what breaks if I
+change X?"), grouped by area.
+
+```bash
+xray impact <symbol> [--depth N] [--strict] [--format <fmt>]
+                     [-p <path>... | --lens <name> | --scope <name> | --graph <file>]
+```
+
+`<symbol>` is a name or glob, matched like `xray query` (`RunHooks`,
+`'New*'`, or a full id such as `internal/dispatch/run.go::RunHooks`).
+Every definition that matches is a starting point. xray walks inbound
+`calls` edges breadth-first and reports each caller once, at its shortest
+distance from the symbol.
+
+| Flag | Effect | Default |
+|------|--------|---------|
+| `--depth <n>` | Caller levels to follow (positive integer) | `3` |
+| `--strict` | Follow `EXTRACTED` call edges only (drop `INFERRED`) | off |
+| `--graph <file>` | Read a saved graph (`map --format json`) instead of building one; cannot be combined with `-p`, `--lens` or `--scope` | build in memory |
+| `-p, --path <path>` | Root to analyze (repeatable; two or more roots are merged) | config `paths` or cwd |
+| `--lens <name>` / `--scope <name>` | Pick roots and options from the config file | none |
+| `--lang <list>` | Languages to parse | all detected |
+| `--format <fmt>` | `text` (default), `tree`, `json`, `yaml`, `table`, `csv` | `text` |
+
+Without `--graph`, the graph is built in memory for the resolved roots
+(same config, lens and scope resolution as `map --format json`). No map
+file is written, and stderr gets one coverage line:
+`ℹ coverage: 318 files parsed · skipped grammars: none`.
+
+**Text output** (`xray impact RunHooks --depth 2 -p ../poly-nerv`):
+
+```
+RunHooks (method, internal/dispatch/run.go:108) — 35 callers across 2 groups
+  internal: 10 callers — Dispatch (internal/dispatch/dispatch.go:L85), TestRunHooks_EmptyList (internal/dispatch/run_test.go:L48), …
+    …and 5 more
+  cmd: 2 callers — runReplay (cmd/nerv/cmd_replay.go:L52), testSingleEvent (cmd/nerv/cmd_testhook.go:L140)
+depth 2:
+    internal: 14 callers — TestDispatch_PublishesCrtxEmission (internal/dispatch/crtx_publish_test.go:L17), …
+      …and 9 more
+    cmd: 9 callers — TestReplayCmd_FlagsReachRunE (cmd/nerv/cmd_replay_test.go:L18), …
+      …and 4 more
+EXTRACTED 35 · INFERRED 0
+```
+
+- **Header**: the symbol with kind and location, then total callers and
+  groups. When several definitions match, the header reads
+  `New (5 definitions)` and a `defined:` line lists them (first 5).
+- **Depth 1** lines come first, unlabeled; deeper levels follow under
+  `depth N:`. Each group line lists up to 5 callers, then `…and N more`.
+- **Callers** are the calling *functions*, shown with their definition
+  line (`file:L52`). The graph stores no call-site positions; use
+  `xray explore --search <name>` for the exact call lines.
+- **Groups**: on a merged multi-root graph, the root label; otherwise the
+  first path segment under the root (`internal/dispatch/run.go` →
+  `internal`; `.` for files at the root).
+- **Footer**: the number of `calls` edges walked (shortest-path edges
+  only), by confidence. It counts edges, not callers.
+- Text and tree show 1-based editor lines. `json`, `yaml`, `table` and
+  `csv` carry the raw 0-based graph value (`line: 107` for `run.go:108`),
+  as `xray query` does.
+
+**Record formats.** `table` and `csv` have one row per caller with the
+columns `name`, `file`, `line`, `depth`, `group`, `confidence` (`kind`
+and `id` are available through `--cols=`); `-o <file>` writes the result
+to a file, picking the format from its extension
+([structured output](#structured-output-record-commands)). `json`/`yaml` emit
+`{symbol, nodes, edges, groups, counts}`: `symbol.matches` lists the
+matched definitions, every node has `depth`, `group` and `confidence`,
+every edge has `from` (caller), `to` (callee) and `confidence`, and
+`counts` holds `callers`, `groups`, `byDepth` and the edge counts
+`EXTRACTED`, `INFERRED`, `AMBIGUOUS`. The text view does not mark which
+caller is `INFERRED`; use `--format table` (or `json`) to see it.
+
+**Confidence.** Every `calls` edge carries one:
+
+| Value | Meaning |
+|-------|---------|
+| `EXTRACTED` | Resolved by scope: the callee is in the caller's file, its directory, a file it imports, a Go package it imports, or (merged graphs) a root it imports by Go module path or npm package name |
+| `INFERRED` | Matched by name only: no scoped candidate, so every same-named definition in the language is a candidate |
+
+Member calls (`recv.Name()`) resolve against methods only. A caller counts
+as `EXTRACTED` when some shortest path from it to the symbol is
+`EXTRACTED` end to end. `--strict` drops `INFERRED` edges before the walk,
+so name-only matches never pull in further callers. Example: `New` in
+poly-nerv has 5 definitions; `--depth 1` finds 54 callers
+(`EXTRACTED 44 · INFERRED 10`), `--depth 1 --strict` finds 44.
+
+**Several roots.** Pass several `-p` roots, or a lens whose config sets
+`paths`, to analyze them as one
+[merged graph](#merged-multi-root-graphs): ids and files are prefixed with
+the root label, callers are grouped by root, and calls across roots are
+linked. Multi-root runs cache per-root and merged graphs in
+`.xray_cache.db` in the current directory and print one line per root on
+stderr:
+
+```
+ℹ cache: main miss · symbol-impact miss     # first run
+ℹ cache: main hit · symbol-impact hit       # nothing changed since
+```
+
+A root is re-analyzed only when its scanned files (path, mtime, size),
+`package.json` or `go.mod`/`go.work` changed.
+
+**Exit codes.** `0` on success, including `<symbol>: no matching symbol in
+the graph` (stdout). `2` on bad arguments: missing `<symbol>`, a
+`--depth` that is not a positive integer, an unknown `--format`, or
+`--graph` with `-p`/`--lens`/`--scope`. `3` when the `--graph` file or a
+`--path` root does not exist.
+
+**Examples:**
+```bash
+xray impact createSession                    # 3 levels, current project
+xray impact 'New*' --depth 1 --strict        # direct, scope-resolved callers only
+xray impact RunHooks --format table          # one row per caller, with confidence
+xray impact RunHooks -p ./svc-a -p ./svc-b   # across two roots
+xray map --format json -o graph && xray impact Run --graph graph.json --format json
+```
+
+See the [query guide](query-guide.md#impact-analysis-with-xray-impact) for
+how `impact` relates to `callers()`.
 
 ### `xray <strategy> <command>`
 
@@ -312,8 +436,18 @@ union of every root's nodes and edges.
   (`x.run()`) only reach methods; Go qualified calls (`pkg.Run()`) only reach
   the imported package. These `calls` edges carry `crossRoot: true` (JSON).
   `rank` values are per-root.
+  Same-named definitions in an unrelated root are a common source of
+  `INFERRED` noise: merge a TypeScript project with xray's own sources and
+  its `JSON.parse(...)` links `INFERRED` to each `parse` method in xray.
+  `xray impact --strict` ignores such edges.
 - `xray query` works unchanged: a bare name (`calls(main)`) matches that
   function in every root; a full id (`calls(web/src/main.ts::main)`) picks one.
+- `xray impact` on several roots (several `-p`, or `--lens <name>` with
+  `lenses.<name>.paths`) builds the same merged graph in memory and groups
+  callers by root label. It caches each root's graph and the merged graph
+  in `.xray_cache.db` (current directory) and reports
+  `cache: <label> hit|miss` per root on stderr; see
+  [`xray impact`](#xray-impact).
 
 **Diagrams** (`--format mermaid|dot`, one at a time; combine with a format):
 - `mermaid` - Mermaid diagram (default)
@@ -341,7 +475,7 @@ column; exit 3: graph file not found. See the [query guide](query-guide.md).
 
 ### Structured output (record commands)
 
-`query`, `explore`, `paths`, `alias list`, `strategy list` and the strategy
+`query`, `impact`, `explore`, `paths`, `alias list`, `strategy list` and the strategy
 commands (`express routes`, `react components`, `rest-api endpoints`, ...)
 render their results through one output layer:
 
@@ -357,6 +491,7 @@ Records per command:
 
 | Command | Columns |
 |---------|---------|
+| `impact` | `name`, `file`, `line`, `depth`, `group`, `confidence` (also `kind`, `id`) |
 | `explore` | `type`, `path` |
 | `explore -m` | `path` |
 | `explore -s` | `file`, `line`, `keyword`, `content` (every match; the text view caps 5 per file) |
@@ -395,6 +530,7 @@ space form takes every following word as a column. Graph strategy commands
 | 0 | Success |
 | 1 | General error |
 | 2 | Invalid arguments |
+| 3 | Not found: a `--path` root or a `--graph` file does not exist |
 
 ## Output Format
 

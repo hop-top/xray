@@ -104,6 +104,26 @@ This section contains step-by-step protocols for common development tasks. Each 
 - Are there similar patterns elsewhere?
 - What could break?
 
+### 6. [Impact Analysis](impact-analysis.md)
+
+**When:** You are about to change a function or method and need to know what breaks
+
+**Time:** 2-5 minutes of analysis
+**Tokens:** 400-1500 tokens
+**Outcome:** Callers grouped by package, marked confirmed (`EXTRACTED`) or name-only (`INFERRED`), and a change plan
+
+**Sample use cases:**
+- Changing a function signature or return type
+- Renaming or removing a method
+- Checking whether other repositories in the workspace call a symbol
+- Listing call sites to update in one commit
+
+**Key questions answered:**
+- Who calls this, directly and transitively?
+- Which callers are confirmed and which are name matches?
+- Does any other repo call it?
+- Which call sites must change together?
+
 ## Protocol Structure
 
 Each workflow follows this structure:
@@ -175,6 +195,9 @@ WHAT ARE YOU DOING?
 ├─ Reviewing code changes
 │  └─ USE: Code Review
 │
+├─ Changing a function/method ("what breaks if I change X?")
+│  └─ USE: Impact Analysis
+│
 └─ Something else
    ├─ Could it fit one of above? → Use that workflow
    └─ Otherwise → Read general docs and adapt workflow
@@ -214,6 +237,22 @@ Use in:
 - Feature Implementation (planning phase)
 ```
 
+### Pattern: Blast Radius
+```
+When: You need to know what calls a function before changing it
+
+Steps:
+1. xray impact <symbol> --depth 3 (callers by area)
+2. xray impact <symbol> --format table (per-caller confidence)
+3. xray impact <symbol> --lens <name> (every repo in the workspace)
+4. xray explore --search <symbol> (call lines; what the graph misses)
+
+Use in:
+- Impact Analysis (all steps)
+- Refactoring (impact analysis phase)
+- Code Review (what could break)
+```
+
 ### Pattern: Deep Analysis
 ```
 When: You need to understand specific code deeply
@@ -239,6 +278,7 @@ Use in:
 | Feature Implementation | 800 | 1200 | 1500 |
 | Refactoring | 700 | 1100 | 1500 |
 | Code Review | 600 | 900 | 1200 |
+| Impact Analysis | 400 | 900 | 1500 |
 
 ## Success Indicators by Workflow
 
@@ -274,6 +314,12 @@ Use in:
 - Understand why it changed
 - Know what areas are affected
 - Can assess impact and risks
+
+### Impact Analysis Success
+- Know every direct caller and which are confirmed
+- Know whether other repos call the symbol
+- Have call sites to update, per package
+- Know which tests cover the deeper callers
 
 ## Troubleshooting Workflows
 

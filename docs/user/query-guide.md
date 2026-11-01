@@ -9,6 +9,7 @@ The xray query system allows you to interactively explore your codebase's call g
 - [Pattern Matching](#pattern-matching)
 - [Output Formats](#output-formats)
 - [Advanced Queries](#advanced-queries)
+- [Impact analysis with `xray impact`](#impact-analysis-with-xray-impact)
 - [Examples](#examples)
 - [Tips & Tricks](#tips--tricks)
 
@@ -286,6 +287,96 @@ xray query --graph graph.json "calls(src/moduleA/**::*)" --format json | \
   jq '.edges[] | select(.to | startswith("src/moduleB"))'
 ```
 
+## Impact analysis with `xray impact`
+
+`callers(X, recursive=true)` answers "who calls X?" one path at a time.
+`xray impact X` answers "what breaks if I change X?": every transitive
+caller once, at its shortest depth, grouped by area, with the confidence
+of each call edge. It needs no saved graph: without `--graph` it builds
+one in memory for the current project (or `-p`, `--lens`, `--scope`).
+
+```bash
+xray impact RunHooks --depth 2
+```
+
+```
+ℹ coverage: 318 files parsed · skipped grammars: none        (stderr)
+RunHooks (method, internal/dispatch/run.go:108) — 35 callers across 2 groups
+  internal: 10 callers — Dispatch (internal/dispatch/dispatch.go:L85), TestRunHooks_EmptyList (internal/dispatch/run_test.go:L48), …
+    …and 5 more
+  cmd: 2 callers — runReplay (cmd/nerv/cmd_replay.go:L52), testSingleEvent (cmd/nerv/cmd_testhook.go:L140)
+depth 2:
+    internal: 14 callers — TestDispatch_PublishesCrtxEmission (internal/dispatch/crtx_publish_test.go:L17), …
+      …and 9 more
+    cmd: 9 callers — TestReplayCmd_FlagsReachRunE (cmd/nerv/cmd_replay_test.go:L18), …
+      …and 4 more
+EXTRACTED 35 · INFERRED 0
+```
+
+The same answer as a call tree, rooted at the symbol:
+
+```bash
+xray impact RunHooks --depth 1 --format tree
+```
+
+```
+Call Tree:
+
+└─→ RunHooks (internal/dispatch/run.go:L108)
+    ├─→ runReplay (cmd/nerv/cmd_replay.go:L52)
+    ├─→ testSingleEvent (cmd/nerv/cmd_testhook.go:L140)
+    ├─→ Dispatch (internal/dispatch/dispatch.go:L85)
+    ├─→ TestRunHooks_EmptyList (internal/dispatch/run_test.go:L48)
+    …
+    └─→ TestRunHooks_Timeout (internal/dispatch/run_test.go:L221)
+```
+
+Or one row per caller, with confidence (raw 0-based graph lines):
+
+```bash
+xray impact RunHooks --depth 1 --format table
+```
+
+```
+name                       file                           line  depth  group     confidence
+runReplay                  cmd/nerv/cmd_replay.go         51    1      cmd       EXTRACTED
+testSingleEvent            cmd/nerv/cmd_testhook.go       139   1      cmd       EXTRACTED
+Dispatch                   internal/dispatch/dispatch.go  84    1      internal  EXTRACTED
+…
+```
+
+### Confidence and `--strict`
+
+`calls` edges are `EXTRACTED` when xray resolved the callee by scope (same
+file, same directory, an imported file or Go package, or another root
+imported by module/package name) and `INFERRED` when it only matched the
+name. Name-only matches overstate impact when a common name is defined in
+several places:
+
+```bash
+xray impact New --depth 1            # New (5 definitions) — 54 callers across 4 groups
+                                     # EXTRACTED 44 · INFERRED 10
+xray impact New --depth 1 --strict   # New (5 definitions) — 44 callers across 2 groups
+                                     # EXTRACTED 44 · INFERRED 0
+```
+
+`--strict` drops `INFERRED` edges before walking, so they pull in no
+further callers. Start without it to see the full possible blast radius;
+add it when the result is dominated by `INFERRED` edges.
+
+### `impact` versus `callers()`
+
+| | `query "callers(X, recursive=true)"` | `impact X` |
+|---|---|---|
+| Graph | saved file (`--graph`) | built in memory, or `--graph` |
+| Depth per caller | depth-first: first path found, not always the shortest | shortest path |
+| Grouping | none | by root label or top-level directory |
+| Confidence | not shown | per edge and per caller; `--strict` |
+| Several definitions of X | all, merged | all, listed in `defined:` |
+
+Flags, output anatomy, multi-root caching and exit codes:
+[Commands: `xray impact`](commands.md#xray-impact).
+
 ## Examples
 
 ### Example 1: Understanding a Bug
@@ -305,7 +396,9 @@ xray query --graph graph.json "callers(validateEmail, recursive=true)" --format 
 
 ### Example 2: Refactoring Impact Analysis
 
-Before refactoring `processData`, check what depends on it:
+Before refactoring `processData`, check what depends on it
+(`xray impact processData` gives the same, grouped and transitive; see
+[Impact analysis](#impact-analysis-with-xray-impact)):
 
 ```bash
 # Find all callers

@@ -22,7 +22,8 @@ docs/agent/
 │   ├── bug-investigation.md         Debugging issues
 │   ├── feature-implementation.md    Implementing features
 │   ├── refactoring.md               Safe refactoring
-│   └── code-review.md               Code review preparation
+│   ├── code-review.md               Code review preparation
+│   └── impact-analysis.md           What breaks if I change X?
 │
 ├── Examples
 │   ├── examples/README.md           Integration examples
@@ -78,6 +79,7 @@ docs/agent/
 | **Implementing a feature** | [feature-implementation](workflows/feature-implementation.md) | 20-30 min | 1000-1500 |
 | **Refactoring code** | [refactoring](workflows/refactoring.md) | 20-25 min | 1000-1500 |
 | **Reviewing code changes** | [code-review](workflows/code-review.md) | 10-15 min | 700-1200 |
+| **Changing a function (what breaks?)** | [impact-analysis](workflows/impact-analysis.md) | 2-5 min | 400-1500 |
 
 ## Reading Guide by Role/Agent Type
 
@@ -228,6 +230,13 @@ docs/agent/
 - Review point checklist
 - Questions to ask
 
+**[workflows/impact-analysis.md](workflows/impact-analysis.md)**
+- Phase 1: Blast radius in one root (`xray impact X --depth 3`)
+- Phase 2: Whole workspace (`--lens <name>`, cache lines)
+- Phase 3: Fallback to `xray explore --search`
+- Phase 4: Change plan (call sites per package)
+- Reading EXTRACTED vs INFERRED, when to use `--strict`
+
 ### Examples
 
 **[examples/README.md](examples/README.md)**
@@ -308,6 +317,7 @@ See: [command-selection.md](command-selection.md#quick-command-reference)
 Discover:      strategy detect, scan
 Understand:    map --depth 1/2, explore
 Deep Dive:     graph, map --with incs
+Impact:        impact <symbol> [--strict] [--lens <name>]
 ```
 
 ### Token Cost Quick Reference
@@ -338,6 +348,7 @@ Debugging → bug-investigation.md
 Feature → feature-implementation.md
 Refactor → refactoring.md
 Review → code-review.md
+What breaks if I change X? → impact-analysis.md
 ```
 
 ## Document Statistics
@@ -345,10 +356,10 @@ Review → code-review.md
 | Category | Count | Total Words |
 |----------|-------|-------------|
 | Core Documentation | 8 | ~15,000 |
-| Workflows | 6 | ~12,000 |
+| Workflows | 7 | ~12,000 |
 | Examples | 4 | ~3,000 |
 | Prompts | 2 | ~3,000 |
-| **Total** | **20** | **~33,000** |
+| **Total** | **21** | **~33,000** |
 
 ## Using These Docs Effectively
 
@@ -430,7 +441,7 @@ For complementary information:
 
 ---
 
-**Total Documentation:** 20 documents, ~33,000 words
+**Total Documentation:** 21 documents, ~33,000 words
 **Target Audience:** AI coding agents (Claude, GPT, Copilot, etc.)
 **Status:** Comprehensive, production-ready
 **Last Updated:** January 2024

@@ -10,6 +10,7 @@ Agent guidance for xray. Full guide at [`docs/agent/`](docs/agent/).
 | Scan / discover files | `xray scan` |
 | Control + data flow graphs | `xray graph` |
 | Call-graph queries | `xray query "calls(<fn>)"` |
+| What breaks if I change X? | `xray impact <symbol>` ([workflow](docs/agent/workflows/impact-analysis.md)) |
 | Framework-aware insights | `xray <strategy> <noun>` |
 | List available strategies | `xray strategy list` |
 | Detect applicable strategies | `xray strategy detect` |
@@ -19,7 +20,7 @@ Agent guidance for xray. Full guide at [`docs/agent/`](docs/agent/).
 
 `xray --help` — top-level commands. Functional groups:
 
-- Analysis: `map`, `scan`, `graph`, `query`, `explore`, `generate`
+- Analysis: `map`, `scan`, `graph`, `query`, `impact`, `explore`, `generate`
 - Strategy: `strategy` + dynamic noun commands
 - Management: `alias`, `clear-cache`, `completion`, `upgrade`
 - Integration: `mcp` — stdio MCP server ([`docs/user/mcp.md`](docs/user/mcp.md))

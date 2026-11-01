@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `xray impact <symbol>`: transitive callers of a function or method
+  ("what breaks if I change X?"), each at its shortest depth, grouped by
+  root label (merged graphs) or top-level directory. `--depth N`
+  (default 3), `--strict` (EXTRACTED edges only), `--graph <file>`
+  (exclusive with `-p`/`--lens`/`--scope`), `--format
+  text|tree|json|yaml|table|csv`. Without `--graph` the graph is built in
+  memory (stderr `coverage:` line); no map file is written. Exit 2 on bad
+  arguments, 3 when the graph file or a root is missing; no match prints
+  `no matching symbol in the graph` and exits 0. Also an `xray mcp` tool.
+  See `docs/user/commands.md` and `docs/agent/workflows/impact-analysis.md`.
 - Merged multi-root graphs (`map --format json` with several `-p`,
   `impact --lens`) link calls across roots: a call that found no definition
   in its own root resolves against the other roots, `EXTRACTED` through an
@@ -32,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (text) / `configDir`, `dataDir`, `cacheDir`, `stateDir` (JSON).
 - `xray completion powershell` and `--no-descriptions`.
 - `xray mcp`: stdio MCP server exposing read-only analysis (`map`,
-  `scan`, `graph`, `explore`, `query`, `strategy_list`,
+  `scan`, `graph`, `explore`, `query`, `impact`, `strategy_list`,
   `strategy_detect`, `<strategy>_<noun>`) as tools. Calls are confined
   to the server root (start dir or `-C`); see `docs/user/mcp.md`.
 - Help shows an ARGUMENTS section for described arguments; `help <cmd>`

@@ -166,6 +166,9 @@ Start here, then pick your next path based on what you want to do.
 - See what changed
 - Understand impact
 
+**[Commands: xray impact](commands.md#xray-impact)**
+- What breaks if I change a function (transitive callers by area)
+
 ---
 
 ### I Need Real-World Examples
@@ -266,6 +269,7 @@ Start here, then pick your next path based on what you want to do.
 | Help AI understand code | [Workflows: AI Analysis](workflows.md#workflow-preparing-code-for-ai-analysis) | [Best Practices](best-practices.md) |
 | Debug an issue | [Workflows: Debugging](workflows.md#workflow-debugging-a-complex-issue) | [Cookbook: Debugging](cookbook.md) |
 | Plan a refactor | [Workflows: Refactor](workflows.md#workflow-planning-a-refactor) | [Cookbook: Refactor](cookbook.md) |
+| What breaks if I change X? | [Commands: xray impact](commands.md#xray-impact) | [Query guide: impact](query-guide.md#impact-analysis-with-xray-impact) |
 | Document project | [Workflows: Documentation](workflows.md#workflow-documenting-your-project) | [Cookbook: Docs](cookbook.md) |
 | Set up team | [Configuration](configuration.md) | [Automation](automation.md) |
 | Optimize performance | [Best Practices: Performance](best-practices.md#performance-tips) | [Best Practices: Caching](best-practices.md#caching--performance) |
@@ -372,6 +376,7 @@ xray User Manual
 │   ├── xray explore / strategies
 │   ├── xray scan
 │   ├── xray graph
+│   ├── xray impact (what breaks if I change X)
 │   ├── xray strategy detect/list
 │   ├── xray alias (manage shortcuts)
 │   ├── xray clear-cache
