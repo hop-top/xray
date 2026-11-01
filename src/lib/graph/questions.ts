@@ -125,9 +125,10 @@ export function generateQuestions(
  *
  * Consumes `xray.getSurprises()` and filters results whose reasons
  * contain `code === 'confidence-gradient'`. These are edges where the
- * upstream confidence enricher flagged the relationship as either
- * `AMBIGUOUS` or `INFERRED` — i.e. the tool isn't sure the call/import
- * is real, and a human review is the highest-value next action.
+ * upstream confidence enricher flagged the relationship as `AMBIGUOUS`
+ * — i.e. the tool isn't sure the call/import is real, and a human review
+ * is the highest-value next action. INFERRED edges never reach here:
+ * `scoreEdges` skips them.
  *
  * Emits up to 2 questions referencing the endpoint node IDs and their
  * parent files (best-effort anchor extraction). Reason matching is by
@@ -153,7 +154,7 @@ export function ambiguousEdgeTemplate(
     out.push({
       type: 'ambiguous-edge',
       question: `What is the actual relationship between ${srcLabel} and ${tgtLabel}?`,
-      why: `The edge confidence is ambiguous or inferred — not extracted from source. Human review can confirm or remove it.`,
+      why: `The edge confidence is ambiguous — not extracted from source. Human review can confirm or remove it.`,
       howToInvestigate: `Open ${srcLabel} and ${tgtLabel}; check whether the reference is a real call/import or a pattern-match artefact.`,
       anchors: anchorsFor(graph, [edge.source, edge.target]),
     });

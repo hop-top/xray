@@ -595,3 +595,65 @@ describe('ChunkedRenderer', () => {
     });
   });
 });
+
+describe('ChunkedRenderer "used by" calls-edge confidence', () => {
+  let outputDir: string;
+  afterEach(() => fs.rmSync(outputDir, { recursive: true, force: true }));
+  beforeEach(() => {
+    outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-chunked-conf-'));
+  });
+
+  async function render(callers: { file: string; confidence?: 'EXTRACTED' | 'INFERRED' }[]): Promise<string[]> {
+    const g = new Graph({ multi: true });
+    g.addNode('lib.ts', { type: 'file', imports: [] });
+    g.addNode('lib.ts::target', { type: 'tag', file: 'lib.ts', label: 'target', kind: 'function', line: 0, endLine: 2 });
+    callers.forEach((c, i) => {
+      const id = `${c.file}::caller${i}`;
+      g.addNode(id, { type: 'tag', file: c.file, label: `caller${i}`, kind: 'function', line: i, endLine: i });
+      const attrs: Record<string, unknown> = { type: 'calls' };
+      if (c.confidence) attrs.confidence = c.confidence;
+      g.addEdge(id, 'lib.ts::target', attrs);
+    });
+    const ranked: RankedNode[] = [
+      { id: 'lib.ts', rank: 1, attributes: { type: 'file', label: 'lib.ts' } },
+      { id: 'lib.ts::target', rank: 0.9, attributes: { type: 'tag', file: 'lib.ts', label: 'target', kind: 'function', line: 0, endLine: 2 } },
+    ];
+    const renderer = new ChunkedRenderer({ root: '/project', ranked, graph: g as any, tokenLimit: 4096 });
+    const result = await renderer.renderChunked(path.join(outputDir, '.xray'));
+    const lines: string[] = [];
+    for (const content of result.chunks.values()) {
+      lines.push(...content.split('\n').filter((l) => l.includes('→')));
+    }
+    return lines;
+  }
+
+  it('prints EXTRACTED callers before INFERRED ones and suffixes INFERRED with (inferred)', async () => {
+    expect(await render([
+      { file: 'far/x.ts', confidence: 'INFERRED' },
+      { file: 'near/y.ts', confidence: 'EXTRACTED' },
+    ])).toEqual([
+      '│       → used by: [near/y.ts:L2]',
+      '│       → used by: [far/x.ts:L1] (inferred)',
+    ]);
+  });
+
+  it('caps INFERRED callers at 3 per symbol and summarises the rest as +N inferred', async () => {
+    expect(await render([
+      { file: 'a.ts', confidence: 'INFERRED' },
+      { file: 'b.ts', confidence: 'INFERRED' },
+      { file: 'c.ts', confidence: 'INFERRED' },
+      { file: 'd.ts', confidence: 'INFERRED' },
+      { file: 'e.ts', confidence: 'EXTRACTED' },
+    ])).toEqual([
+      '│       → used by: [e.ts:L5]',
+      '│       → used by: [a.ts:L1] (inferred)',
+      '│       → used by: [b.ts:L2] (inferred)',
+      '│       → used by: [c.ts:L3] (inferred)',
+      '│       → +1 inferred',
+    ]);
+  });
+
+  it('treats edges without confidence as EXTRACTED (pre-confidence graphs)', async () => {
+    expect(await render([{ file: 'a.ts' }])).toEqual(['│       → used by: [a.ts:L1]']);
+  });
+});

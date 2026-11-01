@@ -1,5 +1,6 @@
 import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../types/graph';
 import type { Insight } from './insight';
+import { collectCrossFileCallers, formatCallerLines } from './callers';
 export type { Insight } from './insight';
 
 export type TokenEstimator = (text: string) => number | Promise<number>;
@@ -216,30 +217,11 @@ export class MapRenderer {
         const tagId = `${tag.attributes.file}::${tag.attributes.label}`;
         if (this.graph.hasNode(tagId)) {
           try {
-            // Use inEdges for O(e) performance instead of O(n) forEachNode
-            const inEdges = this.graph.inEdges(tagId);
-            const crossFileCallers: { file: string, line: number, endLine: number, label: string }[] = [];
-
-            for (const edge of inEdges) {
-              const sourceId = this.graph.source(edge);
-              const attrs = this.safeGetNodeAttributes(sourceId);
-
-              if (attrs && attrs.type === 'tag' && attrs.file !== tag.attributes.file) {
-                crossFileCallers.push({
-                  file: attrs.file,
-                  line: attrs.line + 1,  // Convert to 1-indexed
-                  endLine: attrs.endLine ? attrs.endLine + 1 : attrs.line + 1,
-                  label: attrs.label
-                });
-
-                // Only collect top 3
-                if (crossFileCallers.length >= 3) break;
-              }
-            }
-
-            // Display cross-file callers
-            for (const caller of crossFileCallers) {
-              const refLine = `│       → used by: [${caller.file}:L${caller.line}](L${caller.line}-L${caller.endLine})`;
+            const refLines = formatCallerLines(
+              collectCrossFileCallers(this.graph, tagId, tag.attributes.file, (id) => this.safeGetNodeAttributes(id)),
+              (c) => `[${c.file}:L${c.line}](L${c.line}-L${c.endLine})`
+            );
+            for (const refLine of refLines) {
               outputLines.push(refLine);
               currentTokens += await this.estimateTokens(refLine);
             }

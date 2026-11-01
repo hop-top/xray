@@ -172,12 +172,15 @@ export const crossCommunityHeuristic: Heuristic = defineHeuristic(
  * `confidence-level-init`) into a surprise score:
  *
  *   AMBIGUOUS → 1.0  (unresolved — almost certainly worth surfacing)
- *   INFERRED  → 0.5  (plugin heuristic, not ground truth)
+ *   INFERRED  → null (global name-match fallback — noise, not signal)
  *   EXTRACTED → null (ground truth, not a surprise — do not contribute)
  *
- * Returning `null` for EXTRACTED keeps `heuristicsActive` honest: the
- * heuristic is only "active" for edges whose confidence is actually
- * suspect. Missing the field entirely is a degradation, reported as
+ * INFERRED edges are the builder's unscoped name-match fallback; on real
+ * repos they are numerous and mostly false positives, so scoring them
+ * floods surprises/questions. `scoreEdges` skips them entirely; this
+ * branch keeps direct callers consistent. Returning `null` keeps
+ * `heuristicsActive` honest: the heuristic is only "active" for edges
+ * whose confidence is actually suspect. Missing the field entirely is a degradation, reported as
  * `{ code: 'missing-input', detail: 'confidence' }` with score 0 so
  * the scorer composition logic stays uniform with cross-community.
  */
@@ -201,10 +204,6 @@ export const confidenceGradientHeuristic: Heuristic = defineHeuristic(
           reason: { code: 'confidence-gradient', detail: String(c) },
         };
       case Confidence.INFERRED:
-        return {
-          score: 0.5,
-          reason: { code: 'confidence-gradient', detail: String(c) },
-        };
       case Confidence.EXTRACTED:
         return null;
       default:
@@ -399,6 +398,8 @@ export interface ScoreEdgesResult {
  * result across the whole run (`heuristicsActive`).
  *
  * Contract:
+ * - INFERRED edges are skipped before any heuristic runs: they never
+ *   appear in `scored` and never mark a heuristic active.
  * - Does NOT mutate the graph. Tests assert deep-equality pre/post.
  * - Every returned edge has `reasons.length >= 1`. Edges where every
  *   heuristic returned `null` are dropped from the output.
@@ -427,6 +428,8 @@ export function scoreEdges(
   const raw: RawEntry[] = [];
 
   graph.forEachEdge((edgeId: string, attrs: EdgeAttributes, source: string, target: string) => {
+    if (attrs.confidence === Confidence.INFERRED) return;
+
     const ctx: HeuristicContext = {
       graph,
       edgeId,

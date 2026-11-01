@@ -55,6 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same-named symbol; `callers(New)` no longer lists one package's callers
   under every `New`. Unscoped matches still link globally, stamped
   `confidence: INFERRED`.
+- Map "used by" lines list EXTRACTED callers first; INFERRED callers are
+  suffixed ` (inferred)`, capped at 3 per symbol, remainder shown as
+  `+N inferred`. Surprise scoring (insights preset) skips INFERRED edges,
+  so name-match noise no longer produces ambiguous-edge questions.
 
 - Read-only commands no longer write `.xrayrc.json` or `.xray/.strategy-cache.json` into the working directory; the strategy cache now lives in the user cache dir and non-interactive runs no longer persist a telemetry decision.
 - Argument-parser usage errors (unknown flag, missing argument or value, unknown help topic) print as `✖ <message>`, matching every other usage error; exit code stays 2.

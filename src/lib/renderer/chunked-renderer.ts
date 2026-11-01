@@ -2,6 +2,7 @@ import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../typ
 import { CLUSTER_SENTINEL } from '../graph/cluster';
 import { Logger } from '../logger';
 import type { Insight } from './insight';
+import { collectCrossFileCallers, formatCallerLines } from './callers';
 export type { Insight } from './insight';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -375,28 +376,11 @@ export class ChunkedRenderer {
         const tagId = `${tag.attributes.file}::${tag.attributes.label}`;
         if (this.graph.hasNode(tagId)) {
           try {
-            // Use inEdges for O(e) performance instead of O(n) forEachNode
-            const inEdges = this.graph.inEdges(tagId);
-            const crossFileCallers: { file: string; line: number }[] = [];
-
-            for (const edge of inEdges) {
-              const sourceId = this.graph.source(edge);
-              const attrs = this.safeGetNodeAttributes(sourceId);
-
-              if (attrs && attrs.type === 'tag' && attrs.file !== tag.attributes.file) {
-                crossFileCallers.push({
-                  file: attrs.file,
-                  line: attrs.line + 1,
-                });
-
-                // Only collect top 3
-                if (crossFileCallers.length >= 3) break;
-              }
-            }
-
-            // Display cross-file callers
-            for (const caller of crossFileCallers) {
-              const refLine = `│       → used by: [${caller.file}:L${caller.line}]`;
+            const refLines = formatCallerLines(
+              collectCrossFileCallers(this.graph, tagId, tag.attributes.file, (id) => this.safeGetNodeAttributes(id)),
+              (c) => `[${c.file}:L${c.line}]`
+            );
+            for (const refLine of refLines) {
               outputLines.push(refLine);
               currentTokens += await this.estimateTokens(refLine);
             }

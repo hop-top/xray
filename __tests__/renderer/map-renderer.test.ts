@@ -322,3 +322,74 @@ describe('MapRenderer', () => {
         expect(output).not.toContain('| ./utils |');
     });
 });
+
+describe('MapRenderer "used by" calls-edge confidence', () => {
+    function fixture(callers: { file: string; confidence?: 'EXTRACTED' | 'INFERRED' }[]): { graph: XrayGraph; ranked: RankedNode[] } {
+        const graph = new Graph({ multi: true }) as XrayGraph;
+        (graph as any).addNode('lib.ts::target', { type: 'tag', file: 'lib.ts', label: 'target', line: 0, endLine: 2 });
+        callers.forEach((c, i) => {
+            const id = `${c.file}::caller${i}`;
+            (graph as any).addNode(id, { type: 'tag', file: c.file, label: `caller${i}`, line: i, endLine: i });
+            const attrs: Record<string, unknown> = { type: 'calls' };
+            if (c.confidence) attrs.confidence = c.confidence;
+            (graph as any).addEdge(id, 'lib.ts::target', attrs);
+        });
+        const ranked: RankedNode[] = [
+            { id: 'lib.ts', rank: 10, attributes: { type: 'file', label: 'lib.ts' } },
+            { id: 'lib.ts::target', rank: 5, attributes: { type: 'tag', file: 'lib.ts', kind: 'function', label: 'target', line: 0, endLine: 2 } },
+        ];
+        return { graph, ranked };
+    }
+
+    const usedBy = (out: string) => out.split('\n').filter((l) => l.includes('→'));
+
+    it('prints EXTRACTED callers before INFERRED ones and suffixes INFERRED with (inferred)', async () => {
+        const { graph, ranked } = fixture([
+            { file: 'far/x.ts', confidence: 'INFERRED' },
+            { file: 'near/y.ts', confidence: 'EXTRACTED' },
+        ]);
+        const out = await new MapRenderer('/root', ranked, graph).render(1000);
+        expect(usedBy(out)).toEqual([
+            '│       → used by: [near/y.ts:L2](L2-L2)',
+            '│       → used by: [far/x.ts:L1](L1-L1) (inferred)',
+        ]);
+    });
+
+    it('caps INFERRED callers at 3 per symbol and summarises the rest as +N inferred', async () => {
+        const { graph, ranked } = fixture([
+            { file: 'a.ts', confidence: 'INFERRED' },
+            { file: 'b.ts', confidence: 'INFERRED' },
+            { file: 'c.ts', confidence: 'INFERRED' },
+            { file: 'd.ts', confidence: 'INFERRED' },
+            { file: 'e.ts', confidence: 'INFERRED' },
+            { file: 'f.ts', confidence: 'EXTRACTED' },
+        ]);
+        const out = await new MapRenderer('/root', ranked, graph).render(1000);
+        expect(usedBy(out)).toEqual([
+            '│       → used by: [f.ts:L6](L6-L6)',
+            '│       → used by: [a.ts:L1](L1-L1) (inferred)',
+            '│       → used by: [b.ts:L2](L2-L2) (inferred)',
+            '│       → used by: [c.ts:L3](L3-L3) (inferred)',
+            '│       → +2 inferred',
+        ]);
+    });
+
+    it('INFERRED callers do not crowd out EXTRACTED callers', async () => {
+        const { graph, ranked } = fixture([
+            { file: 'a.ts', confidence: 'INFERRED' },
+            { file: 'b.ts', confidence: 'INFERRED' },
+            { file: 'c.ts', confidence: 'INFERRED' },
+            { file: 'd.ts', confidence: 'EXTRACTED' },
+        ]);
+        const out = await new MapRenderer('/root', ranked, graph).render(1000);
+        expect(usedBy(out)[0]).toBe('│       → used by: [d.ts:L4](L4-L4)');
+        expect(usedBy(out)).toHaveLength(4);
+        expect(out).not.toContain('+0 inferred');
+    });
+
+    it('treats edges without confidence as EXTRACTED (pre-confidence graphs)', async () => {
+        const { graph, ranked } = fixture([{ file: 'a.ts' }]);
+        const out = await new MapRenderer('/root', ranked, graph).render(1000);
+        expect(usedBy(out)).toEqual(['│       → used by: [a.ts:L1](L1-L1)']);
+    });
+});

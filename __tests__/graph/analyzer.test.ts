@@ -147,10 +147,9 @@ describe('confidenceGradientHeuristic', () => {
     expect(r!.reason.code).toBe('confidence-gradient');
   });
 
-  it('scores INFERRED at 0.5', () => {
+  it('returns null for INFERRED (global name-match fallback, not a surprise signal)', () => {
     const { graph, edgeId } = twoTagGraph({ confidence: Confidence.INFERRED });
-    const r = confidenceGradientHeuristic(ctx(graph, edgeId));
-    expect(r!.score).toBe(0.5);
+    expect(confidenceGradientHeuristic(ctx(graph, edgeId))).toBeNull();
   });
 
   it('returns null for EXTRACTED (ground truth, not surprising)', () => {
@@ -339,6 +338,47 @@ describe('scoreEdges integration', () => {
       expect(s.score).toBeLessThanOrEqual(1);
       expect(Number.isFinite(s.score)).toBe(true);
     }
+  });
+});
+
+describe('scoreEdges ignores INFERRED edges', () => {
+  it('drops an INFERRED cross-community edge that would otherwise top the list', () => {
+    const g = twoClusterBridgeGraph();
+    g.addNode('C0', { type: 'tag', label: 'C0', kind: 'function', file: 'c.ts', line: 1, community: 2 });
+    const inferredId = g.addEdge('A1', 'C0', { type: 'calls', confidence: Confidence.INFERRED });
+    const { scored } = scoreEdges(g, rankingsFor(g));
+    expect(scored.map((s) => s.edgeId)).not.toContain(inferredId);
+    // EXTRACTED bridge still scored.
+    expect(scored[0]!.source).toBe('A0');
+    expect(scored[0]!.target).toBe('B0');
+  });
+
+  it('INFERRED-only graph yields no surprises and no active heuristics', () => {
+    const { graph } = twoTagGraph({ sCommunity: 0, tCommunity: 1, confidence: Confidence.INFERRED });
+    const { scored, heuristicsActive } = scoreEdges(graph, rankingsFor(graph));
+    expect(scored).toEqual([]);
+    expect(heuristicsActive).toEqual([]);
+  });
+
+  it('custom heuristic sets never see INFERRED edges', () => {
+    const { graph } = twoTagGraph({ confidence: Confidence.INFERRED });
+    const seen: string[] = [];
+    const spy = Object.assign(
+      (c: HeuristicContext) => {
+        seen.push(c.edgeId);
+        return { score: 1, reason: { code: 'cross-community' as const, detail: 'spy' } };
+      },
+      {}
+    );
+    Object.defineProperty(spy, 'name', { value: 'spy', configurable: true });
+    scoreEdges(graph, rankingsFor(graph), {}, [spy as any]);
+    expect(seen).toEqual([]);
+  });
+
+  it('AMBIGUOUS edges are still scored', () => {
+    const { graph, edgeId } = twoTagGraph({ confidence: Confidence.AMBIGUOUS });
+    const { scored } = scoreEdges(graph, rankingsFor(graph));
+    expect(scored.map((s) => s.edgeId)).toContain(edgeId);
   });
 });
 
