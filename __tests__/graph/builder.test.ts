@@ -297,6 +297,38 @@ describe('GraphBuilder', () => {
 
             expect(seen).toEqual([['pkg/a/util.go::New']]);
         });
+
+        const method = (file: string, name: string): Tag => ({ name, kind: 'method', line: 1, col: 0, file });
+
+        it('member-call reference resolves only against method tags', async () => {
+            await builder.addFile('x/main.go', [fn('x/main.go', 'run', ['.RunHooks'])], []);
+            await builder.addFile('y/hooks.go', [fn('y/hooks.go', 'RunHooks')], []);
+            await builder.addFile('z/runner.go', [method('z/runner.go', 'RunHooks')], []);
+            const graph = await builder.getGraph();
+
+            expect(callsFrom(graph, 'x/main.go::run')).toEqual([
+                { target: 'z/runner.go::RunHooks', confidence: 'INFERRED' }
+            ]);
+        });
+
+        it('member-call reference prefers the same-directory method', async () => {
+            await builder.addFile('pkg/a/main.go', [fn('pkg/a/main.go', 'run', ['.Execute'])], []);
+            await builder.addFile('pkg/a/runner.go', [method('pkg/a/runner.go', 'Execute')], []);
+            await builder.addFile('pkg/b/runner.go', [method('pkg/b/runner.go', 'Execute')], []);
+            const graph = await builder.getGraph();
+
+            expect(callsFrom(graph, 'pkg/a/main.go::run')).toEqual([
+                { target: 'pkg/a/runner.go::Execute', confidence: 'EXTRACTED' }
+            ]);
+        });
+
+        it('member-call reference with no method target stays unresolved', async () => {
+            await builder.addFile('x/main.go', [fn('x/main.go', 'run', ['.Only'])], []);
+            await builder.addFile('x/only.go', [fn('x/only.go', 'Only')], []);
+            const graph = await builder.getGraph();
+
+            expect(callsFrom(graph, 'x/main.go::run')).toEqual([]);
+        });
     });
 
     it('should handle large number of references efficiently', async () => {

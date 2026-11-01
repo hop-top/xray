@@ -334,6 +334,21 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
 
     for (const { tagId, references } of this.pendingReferences.values()) {
       for (const refName of references) {
+        // `.name`: member call on a value receiver (parser marker); no
+        // receiver type info, so only method tags are candidates.
+        if (refName.startsWith('.')) {
+          const name = refName.slice(1);
+          const methods = (tagNameMap.get(name) ?? []).filter(
+            id => (this.graph.getNodeAttributes(id) as NodeAttributes).kind === 'method'
+          );
+          if (methods.length > 0) {
+            const { resolved, scoped } = this.rankCandidates(tagId, methods, importedFiles);
+            const ev = { sourceTag: tagId, targetName: name, resolved };
+            if (!scoped) inferred.add(ev);
+            resolveEvents.push(ev);
+          }
+          continue;
+        }
         if (this.goModule && refName.includes('.')) {
           const targets = this.resolveGoQualified(tagId, refName, goFuncs);
           if (targets.length > 0) {

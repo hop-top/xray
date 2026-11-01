@@ -1,6 +1,7 @@
 /**
  * Go package-qualified calls (`pkg.Func()`) resolve to calls edges when the
- * package is module-local (go.mod), honouring aliases; nothing else links.
+ * package is module-local (go.mod), honouring aliases. Value-receiver calls
+ * (`r.Execute()`) link to method tags only.
  */
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
@@ -64,7 +65,9 @@ describe('Go package-qualified call edges', () => {
       ].join('\n')
     );
     write('cmd/root.go', 'package cmd\n\nfunc Execute() {}\n\nfunc hidden() {}\n');
-    write('util/util.go', 'package util\n\ntype Runner struct{}\n\nfunc NewRunner() *Runner { return &Runner{} }\n\nfunc (r *Runner) Execute() {}\n\nfunc Run() {}\n\nfunc Execute() {}\n');
+    write('util/util.go', 'package util\n\ntype Runner struct{}\n\nfunc NewRunner() *Runner { return &Runner{} }\n\nfunc Run() {}\n\nfunc Execute() {}\n');
+    // Own file: a method and a function sharing a name in one file collapse into one tag.
+    write('util/runner.go', 'package util\n\nfunc (r *Runner) Execute() {}\n');
     write('other/other.go', 'package other\n\nfunc Execute() {}\n\nfunc Run() {}\n');
     // "util" here is a third-party package, not example.com/demo/util
     write(
@@ -91,14 +94,16 @@ describe('Go package-qualified call edges', () => {
     expect(t).not.toContain('util/util.go::Execute');
     expect(t).not.toContain('other/other.go::Execute');
     expect(t).not.toContain('other/other.go::Run');
-    expect(t.filter((x: string) => x.endsWith('::Execute'))).toEqual(['cmd/root.go::Execute']);
+    // util/runner.go::Execute is the Runner method, reached via r.Execute()
+    expect(t.filter((x: string) => x.endsWith('::Execute'))).toEqual(['cmd/root.go::Execute', 'util/runner.go::Execute']);
   });
 
-  test('external, blank-imported and value-method calls stay unresolved', () => {
+  test('external and blank-imported calls stay unresolved; value-method call links to the method', () => {
     const { from, calls } = graph();
-    // cobra.Execute() / fmt.Println() / r.Execute(): no module-local target
+    // cobra.Execute() / fmt.Println(): no module-local target; r.Execute(): Runner method
     expect(from('main.go::main')).toEqual([
       'cmd/root.go::Execute',
+      'util/runner.go::Execute',
       'util/util.go::NewRunner',
       'util/util.go::Run',
     ]);
@@ -115,7 +120,7 @@ describe('Go package-qualified call edges', () => {
 
   test('scanning a sub-directory of the module still resolves inside it', () => {
     const { from } = graph(repo);
-    expect(from('main.go::main').length).toBe(3);
+    expect(from('main.go::main').length).toBe(4);
     write('cmd/sub.go', 'package cmd\n\nimport "example.com/demo/util"\n\nfunc Sub() { util.Run() }\n');
     const sub = graph(path.join(repo, 'cmd'));
     // util is outside the scanned root: nothing to link to
@@ -126,7 +131,8 @@ describe('Go package-qualified call edges', () => {
   test('nested go.mod disables qualified resolution (unsupported layout)', () => {
     write('tools/go.mod', 'module example.com/demo/tools\n\ngo 1.21\n');
     try {
-      expect(graph().from('main.go::main')).toEqual([]);
+      // member-call (method) resolution does not depend on go.mod
+      expect(graph().from('main.go::main')).toEqual(['util/runner.go::Execute']);
     } finally {
       fs.rmSync(path.join(repo, 'tools'), { recursive: true, force: true });
     }
