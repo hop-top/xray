@@ -71,6 +71,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   imports instead of disabling resolution: each file belongs to its nearest
   go.mod, an import maps to the module with the longest matching module
   path, and `go.work` (when present) limits modules to its `use` entries.
+- Member calls (`r.run()`, `$r->run()`) only link to methods in the caller's
+  language (TS/JS count as one, C/C++ as one); polyglot repos no longer get
+  cross-language `calls` edges from same-named methods.
 
 - Read-only commands no longer write `.xrayrc.json` or `.xray/.strategy-cache.json` into the working directory; the strategy cache now lives in the user cache dir and non-interactive runs no longer persist a telemetry decision.
 - Argument-parser usage errors (unknown flag, missing argument or value, unknown help topic) print as `✖ <message>`, matching every other usage error; exit code stays 2.

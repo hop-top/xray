@@ -3,6 +3,7 @@ import Graph from 'graphology';
 import { Tag, Import } from '../parser/types';
 import { AsyncEventEmitter } from '../events/async-emitter';
 import { GoModules, goDefaultName, goLocalImports, goImportedFiles, goVisibleFrom } from './go-resolver';
+import { languageOf } from '../parser/language-registry';
 import { XrayGraph, NodeAttributes, EdgeAttributes, Confidence } from '../../types/graph';
 
 interface GraphBuilderEvents {
@@ -356,9 +357,13 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
         if (refName.startsWith('.')) {
           const name = refName.slice(1);
           const callerFile = (this.graph.getNodeAttributes(tagId) as any).file as string | undefined;
+          const callerLang = callerFile === undefined ? undefined : languageOf(path.extname(callerFile));
           const methods = (tagNameMap.get(name) ?? []).filter(id => {
             const attrs = this.graph.getNodeAttributes(id) as NodeAttributes & { file?: string };
             if (attrs.kind !== 'method') return false;
+            // A member call only reaches methods of the caller's language.
+            if (callerLang !== undefined && attrs.file !== undefined &&
+                languageOf(path.extname(attrs.file)) !== callerLang) return false;
             // Go caller -> Go method: apply package visibility rules.
             return !(callerFile?.endsWith('.go') && attrs.file?.endsWith('.go')) ||
               goVisibleFrom(callerFile, attrs.file, name);

@@ -57,6 +57,19 @@ const KOTLIN_CALLS: CallShape = {
  * (explicit alias, Go package name, Python top-level module); elsewhere
  * every member call is recorded as `.name`.
  */
+/** Language packs sharing one call namespace (a call in one can reach the other). */
+const LANGUAGE_FAMILY: Record<string, string> = { javascript: 'typescript', c: 'cpp' };
+
+/**
+ * Language a file extension (`.ts`, `.go`, ...) belongs to, for deciding
+ * whether a call can reach a definition: TS/JS count as one language, C/C++
+ * as one. Undefined for unknown extensions.
+ */
+export function languageOf(ext: string): string | undefined {
+  const name = packForExtension(ext)?.name;
+  return name === undefined ? undefined : (LANGUAGE_FAMILY[name] ?? name);
+}
+
 export const CALL_SHAPES: Record<string, CallShape> = {
   typescript: JS_CALLS,
   javascript: JS_CALLS,

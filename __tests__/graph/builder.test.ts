@@ -331,6 +331,22 @@ describe('GraphBuilder', () => {
             expect(callsFrom(graph, 'x/main.go::run')).toEqual([]);
         });
 
+        it('member-call candidates are limited to the caller language (TS/JS one language)', async () => {
+            await builder.addFile('x/a.php', [fn('x/a.php', 'handle', ['.run'])], []);
+            await builder.addFile('x/b.js', [fn('x/b.js', 'main', ['.run'])], []);
+            await builder.addFile('y/r.go', [method('y/r.go', 'run')], []);
+            await builder.addFile('z/r.php', [method('z/r.php', 'run')], []);
+            await builder.addFile('w/r.ts', [method('w/r.ts', 'run')], []);
+            const graph = await builder.getGraph();
+
+            expect(callsFrom(graph, 'x/a.php::handle')).toEqual([
+                { target: 'z/r.php::run', confidence: 'INFERRED' }
+            ]);
+            expect(callsFrom(graph, 'x/b.js::main')).toEqual([
+                { target: 'w/r.ts::run', confidence: 'INFERRED' }
+            ]);
+        });
+
         describe('Go import-path tier (go.mod)', () => {
             const MOD = 'example.com/m';
             const imp = (file: string, source: string, alias?: string) => ({ source, file, alias });
