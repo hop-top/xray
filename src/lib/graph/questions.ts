@@ -23,6 +23,7 @@ import { XrayLike } from '../events/plugin';
 import { Logger } from '../logger';
 import { getSurprises } from '../plugins/surprise-analyzer';
 import { ScoredEdge, Reason } from './analyzer';
+import { isClusteringEdge } from './cluster';
 import { escapeMarkdown } from './questions-format';
 
 /** Discriminated kind of question. */
@@ -302,7 +303,8 @@ export function isolatedFileTemplate(graph: XrayGraph): Question[] {
  *
  * Groups nodes by `attrs.community`, filters to communities with size
  * ≥ `lowCohesionMinSize` (default 5), computes the median count of
- * intra-community edges per node, and flags communities whose median
+ * intra-community edges per node (non-INFERRED `calls` edges, the same
+ * subset `cluster()` partitions on), and flags communities whose median
  * is below `lowCohesionMedian` (default 2).
  *
  * Guard: if `clusteringModularity` is below 0.1, the clustering signal
@@ -350,8 +352,8 @@ export function lowCohesionTemplate(
     if (members.length < minSize) continue;
     const memberSet = new Set(members);
 
-    // Intra-community edge count per node (filtered to `calls` edges,
-    // the default cohesion signal per logical-clustering-init).
+    // Intra-community edge count per node, over the same edge subset
+    // clustering uses (non-INFERRED `calls` edges).
     const intraCounts: number[] = [];
     for (const nodeId of members) {
       let count = 0;
@@ -363,7 +365,7 @@ export function lowCohesionTemplate(
           source: string,
           target: string
         ) => {
-          if (attrs.type !== 'calls') return;
+          if (!isClusteringEdge(attrs)) return;
           const other = source === nodeId ? target : source;
           if (memberSet.has(other)) count += 1;
         }

@@ -306,6 +306,39 @@ describe('lowCohesionTemplate', () => {
     expect(lowCohesionTemplate(g, { root: '/repo' })).toEqual([]);
   });
 
+  it('does not count INFERRED calls edges toward intra-community cohesion', () => {
+    const g = emptyGraph();
+    for (let i = 0; i < 5; i += 1) {
+      addTag(g, `n${i}`, `f${i}.ts`, 1, 7);
+    }
+    // Every member name-match-calls every other: counted, median would be 8.
+    for (let i = 0; i < 5; i += 1) {
+      for (let j = 0; j < 5; j += 1) {
+        if (i !== j) g.addEdge(`n${i}`, `n${j}`, { type: 'calls', confidence: 'INFERRED' });
+      }
+    }
+    g.setAttribute('clusteringModularity', 0.4);
+
+    const qs = lowCohesionTemplate(g, { root: '/repo' });
+    expect(qs).toHaveLength(1);
+    expect(qs[0].type).toBe('low-cohesion');
+    expect(qs[0].why).toContain('is 0 (< 2)');
+  });
+
+  it('counts EXTRACTED and confidence-less calls edges toward cohesion', () => {
+    const g = emptyGraph();
+    for (let i = 0; i < 5; i += 1) {
+      addTag(g, `n${i}`, `f${i}.ts`, 1, 7);
+    }
+    // Ring n0->n1->...->n4->n0: every member has 2 intra calls edges.
+    for (let i = 0; i < 5; i += 1) {
+      const attrs = i % 2 === 0 ? { type: 'calls', confidence: 'EXTRACTED' } : { type: 'calls' };
+      g.addEdge(`n${i}`, `n${(i + 1) % 5}`, attrs as never);
+    }
+    g.setAttribute('clusteringModularity', 0.4);
+    expect(lowCohesionTemplate(g, { root: '/repo' })).toEqual([]);
+  });
+
   it('skips communities below minSize', () => {
     const g = emptyGraph();
     for (let i = 0; i < 3; i += 1) {

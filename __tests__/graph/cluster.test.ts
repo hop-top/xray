@@ -139,3 +139,76 @@ describe('cluster()', () => {
     expect(result.count).toBeGreaterThanOrEqual(1);
   });
 });
+
+/**
+ * Two sparse groups A0..A3 and B0..B3, each a chain of EXTRACTED `calls`
+ * edges. Callers add noise edges on top to check what the default filter
+ * keeps out of the clustering subgraph.
+ */
+function makeTwoChainGraph(): XrayGraph {
+  const g = new Graph({ type: 'directed', multi: true }) as unknown as XrayGraph;
+  for (const group of [['A0', 'A1', 'A2', 'A3'], ['B0', 'B1', 'B2', 'B3']]) {
+    for (const m of group) {
+      g.addNode(m, { type: 'tag', label: m, kind: 'function', file: `${m[0]}.ts`, line: 0 });
+    }
+    for (let i = 0; i < group.length - 1; i++) {
+      g.addEdgeWithKey(`call-${group[i]}-${group[i + 1]}`, group[i], group[i + 1], {
+        type: 'calls', confidence: 'EXTRACTED',
+      });
+    }
+  }
+  return g;
+}
+
+function expectSeparateGroups(graph: XrayGraph): void {
+  const cid = (n: string) => graph.getNodeAttribute(n, 'community') as number;
+  for (const group of [['A0', 'A1', 'A2', 'A3'], ['B0', 'B1', 'B2', 'B3']]) {
+    expect(cid(group[0])).not.toBe(CLUSTER_SENTINEL);
+    for (const m of group.slice(1)) expect(cid(m)).toBe(cid(group[0]));
+  }
+  expect(cid('A0')).not.toBe(cid('B0'));
+}
+
+describe('cluster() default filter — INFERRED calls edges', () => {
+  it('ignores a bundle of INFERRED cross-group edges that would reshape communities', () => {
+    const graph = makeTwoChainGraph();
+    // Name-match noise: every A calls every B. Counted, these pull A2/A3
+    // and B0/B1 into a shared community.
+    for (const a of ['A0', 'A1', 'A2', 'A3']) {
+      for (const b of ['B0', 'B1', 'B2', 'B3']) {
+        graph.addEdgeWithKey(`inf-${a}-${b}`, a, b, { type: 'calls', confidence: 'INFERRED' });
+      }
+    }
+    const result = cluster(graph, { rng: mulberry32(42) });
+    expectSeparateGroups(graph);
+    expect(result.count).toBe(2);
+  });
+
+  it('a node reached only by a single INFERRED edge is not merged into a community', () => {
+    const graph = makeTwoChainGraph();
+    graph.addNode('X', { type: 'tag', label: 'X', kind: 'function', file: 'x.ts', line: 0 });
+    graph.addEdgeWithKey('inf-X-A0', 'X', 'A0', { type: 'calls', confidence: 'INFERRED' });
+    const result = cluster(graph, { rng: mulberry32(42) });
+    expect(graph.getNodeAttribute('X', 'community')).toBe(CLUSTER_SENTINEL);
+    expect(result.communities).not.toHaveProperty('X');
+    expectSeparateGroups(graph);
+  });
+
+  it('excludes INFERRED cross-root edges too', () => {
+    const graph = makeTwoChainGraph();
+    graph.addNode('r2::Y', { type: 'tag', label: 'Y', kind: 'function', file: 'r2/y.ts', line: 0 });
+    graph.addEdgeWithKey('xr-Y-B3', 'r2::Y', 'B3', {
+      type: 'calls', confidence: 'INFERRED', crossRoot: true,
+    });
+    cluster(graph, { rng: mulberry32(42) });
+    expect(graph.getNodeAttribute('r2::Y', 'community')).toBe(CLUSTER_SENTINEL);
+  });
+
+  it('keeps confidence-less calls edges (treated as EXTRACTED)', () => {
+    const graph = makeTwoChainGraph();
+    graph.addNode('Z', { type: 'tag', label: 'Z', kind: 'function', file: 'z.ts', line: 0 });
+    graph.addEdgeWithKey('legacy-Z-A3', 'Z', 'A3', { type: 'calls' } as never);
+    cluster(graph, { rng: mulberry32(42) });
+    expect(graph.getNodeAttribute('Z', 'community')).not.toBe(CLUSTER_SENTINEL);
+  });
+});

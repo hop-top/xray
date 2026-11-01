@@ -2,7 +2,7 @@
  * Community detection over the xray graph.
  *
  * Thin wrapper around `graphology-communities-louvain`. Defaults to filtering
- * the graph to `calls`-only edges before running Louvain — see spec R3 in
+ * the graph to non-INFERRED `calls` edges before running Louvain — see spec R3 in
  * `.tlc/tracks/logical-clustering-init/spec.md` for why mixing `defines`,
  * `calls`, and `imports` edges produces a structural tautology instead of
  * a functional signal.
@@ -12,13 +12,27 @@
  */
 import Graph from 'graphology';
 import louvain from 'graphology-communities-louvain';
-import { XrayGraph, EdgeAttributes, NodeAttributes } from '../../types/graph';
+import { XrayGraph, EdgeAttributes, NodeAttributes, Confidence } from '../../types/graph';
 
 /**
  * Sentinel community id assigned to nodes that are outside the clustering
  * subgraph (e.g. no `calls` edges when the default edge filter runs).
  */
 export const CLUSTER_SENTINEL = -1;
+
+/**
+ * Edges that carry clustering signal: `calls` edges that are not
+ * INFERRED. INFERRED edges are the builder's unscoped name-match
+ * fallback (including cross-root name matches); counted, they merge
+ * unrelated communities. Edges without a `confidence` are treated as
+ * EXTRACTED, matching the serializer's backfill for older graphs.
+ *
+ * Shared by the default `cluster()` filter and the low-cohesion question
+ * so both measure cohesion over the same edge subset.
+ */
+export function isClusteringEdge(attrs: Pick<EdgeAttributes, 'type'> & { confidence?: unknown }): boolean {
+  return attrs.type === 'calls' && attrs.confidence !== Confidence.INFERRED;
+}
 
 export interface ClusterOptions {
   /** Louvain resolution parameter. Higher = more, smaller communities. */
@@ -27,7 +41,7 @@ export interface ClusterOptions {
   rng?: () => number;
   /**
    * Predicate deciding which edges enter the clustering subgraph.
-   * Default: `attrs.type === 'calls'`.
+   * Default: {@link isClusteringEdge} (non-INFERRED `calls` edges).
    */
   edgeFilter?: (edgeKey: string, attrs: EdgeAttributes) => boolean;
 }
@@ -56,7 +70,7 @@ export function cluster(
   opts: ClusterOptions = {}
 ): ClusterResult {
   const edgeFilter =
-    opts.edgeFilter ?? ((_edge: string, attrs: EdgeAttributes) => attrs.type === 'calls');
+    opts.edgeFilter ?? ((_edge: string, attrs: EdgeAttributes) => isClusteringEdge(attrs));
 
   // Build a filtered copy: keep all nodes, keep only edges that pass the
   // filter. We copy the graph so clustering is non-destructive on edges.

@@ -72,6 +72,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Go `pkg.Func` calls resolved inside one root via go.mod/go.work module
   path are now `EXTRACTED`, matching the same resolution across roots
   (were `INFERRED`); `INFERRED` is left for name-only matches.
+- Community detection (`insights` / `onboarding` presets) and the
+  low-cohesion question ignore INFERRED `calls` edges (global name-match
+  fallback, incl. cross-root name matches); communities no longer merge on
+  name-match noise and symbols reached only by such edges stay unclustered.
+  Edges without a confidence still count.
 - `alias set` and startup alias registration reserve every registered command name (incl. `cache`, hidden `clear-cache`, `help`); a conflicting alias already in config is skipped with a warning instead of breaking every run
 - `infrastructure resources` accepts `--type`, `--tool` and `--provider`
   filters (declared as options; were rejected as unknown flags).
