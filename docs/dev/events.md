@@ -928,6 +928,6 @@ render:complete
 
 ## See Also
 
-- [Plugin Development Guide](plugins.md) - Creating plugins
-- [AsyncEmitter Implementation](async-emitter.md) - Event emitter details
-- [Testing Events](testing-guide.md#testing-events) - Testing event handling
+- [Extension System](extensions.md) - Creating plugins
+- [AsyncEmitter Implementation](../../src/lib/events/async-emitter.ts) - Event emitter details
+- [Testing](testing.md) - Testing event handling

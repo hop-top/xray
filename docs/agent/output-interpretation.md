@@ -608,7 +608,7 @@ RIGHT: "xray analyzed 15 files in api/ directory (might be more in subdirs)"
 ## Related Documentation
 
 - [Output Interpretation](output-interpretation.md) - This guide
-- [Chunked Output Navigation](chunked-output-navigation.md) - Working with multiple files
+- [Chunked Output Navigation](#chunked-output-markers) - Working with multiple files
 - [Integration Protocol](integration-protocol.md) - When/how to use xray
 
 ---

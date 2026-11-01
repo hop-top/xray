@@ -178,3 +178,10 @@ and a JS project config (`.xrayrc.js`) are code, and xray loads them.
 The server runs with your user's permissions; tools read whatever the
 CLI command reads under the server root. Serve only projects you would
 run `xray` in.
+
+## See also
+
+- [Harness Integration Guide](harness-integration.md): MCP next to
+  instructions and push hooks, per harness (Claude Code, nerv, Gemini
+  CLI, Codex, Cursor)
+- [Use Cases](use-cases.md): what the `impact` tool answers, with real output

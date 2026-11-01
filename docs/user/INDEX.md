@@ -55,6 +55,11 @@ Start here, then pick your next path based on what you want to do.
 - AI-friendly output
 - Iterating with AI
 
+**[Harness Integration](harness-integration.md)** (10 min)
+- Instructions, MCP or hooks: three ways into an agent session
+- Claude Code, nerv, Gemini CLI, Codex, Cursor setup
+- [Use cases](use-cases.md) with real output
+
 ---
 
 ### I'm Debugging Something
@@ -200,9 +205,14 @@ Start here, then pick your next path based on what you want to do.
 ### Using Features
 - [Configuration Guide](configuration.md) - Setup .xrayrc.json
 - [Command Aliases](aliases.md) - Create shortcuts for frequently-used commands
-- [Chunked Output Guide](chunked-output.md) - Multi-file output
+- [Chunked Output Guide](README.md#3-chunked-output) - Multi-file output
 - [Automation Guide](automation.md) - GitHub Actions & hooks
 - [MCP Server](mcp.md) - Expose xray analysis to MCP clients over stdio
+
+### Integrations
+- [Harness Integration](harness-integration.md) - Skill, MCP and hooks for coding agents
+- [MCP Server](mcp.md) - MCP client configuration and tools
+- [Use Cases](use-cases.md) - What xray does inside an agent session
 
 ### Problem-Solving
 - [Troubleshooting Guide](troubleshooting.md) - Common issues
@@ -231,7 +241,7 @@ Start here, then pick your next path based on what you want to do.
 
 ### Advanced (Power User)
 1. [Best Practices](best-practices.md)
-2. [Chunked Output](chunked-output.md)
+2. [Chunked Output](README.md#3-chunked-output)
 3. [Automation](automation.md)
 4. [All Workflows](workflows.md)
 
@@ -270,6 +280,7 @@ Start here, then pick your next path based on what you want to do.
 | Debug an issue | [Workflows: Debugging](workflows.md#workflow-debugging-a-complex-issue) | [Cookbook: Debugging](cookbook.md) |
 | Plan a refactor | [Workflows: Refactor](workflows.md#workflow-planning-a-refactor) | [Cookbook: Refactor](cookbook.md) |
 | What breaks if I change X? | [Commands: xray impact](commands.md#xray-impact) | [Query guide: impact](query-guide.md#impact-analysis-with-xray-impact) |
+| Give my coding agent xray | [Harness Integration](harness-integration.md) | [Use Cases](use-cases.md), [MCP Server](mcp.md) |
 | Document project | [Workflows: Documentation](workflows.md#workflow-documenting-your-project) | [Cookbook: Docs](cookbook.md) |
 | Set up team | [Configuration](configuration.md) | [Automation](automation.md) |
 | Optimize performance | [Best Practices: Performance](best-practices.md#performance-tips) | [Best Practices: Caching](best-practices.md#caching--performance) |
@@ -403,6 +414,18 @@ xray User Manual
 │   ├── GitHub Actions
 │   ├── Pre-commit hooks
 │   └── Examples
+│
+├── MCP Server (pull: xray as MCP tools)
+│   ├── Client configuration (Claude Code, Cursor)
+│   └── Tools, errors, trust model
+│
+├── Harness Integration (skill, MCP, hooks)
+│   ├── Three ways in
+│   ├── Hook rules, saved graph
+│   └── Claude Code, nerv, Gemini CLI, Codex, Cursor, any harness
+│
+├── Use Cases (jobs inside an agent session)
+│   └── Impact analysis
 │
 ├── Workflows (Real-world scenarios)
 │   ├── Onboarding to new codebase

@@ -248,4 +248,4 @@ All telemetry functionality is covered by comprehensive tests:
 
 - [User Guide](../user/telemetry.md) - How to enable and use telemetry
 - [Developer Guide](telemetry.md) - Implementation details
-- [Test Coverage](__tests__/lib/telemetry.test.ts) - Test suite
+- [Test Coverage](../../__tests__/lib/telemetry.test.ts) - Test suite

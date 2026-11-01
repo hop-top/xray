@@ -504,6 +504,7 @@ xray map --all-scopes
 - [Configuration Guide](configuration.md) - Config file options
 - [Getting Started](getting-started.md) - Installation and setup
 - [Commands Reference](commands.md) - All available commands
+- [Harness Integration](harness-integration.md) - Agent-session hooks; a pre-commit hook can refresh their `.xray/graph.json` with `hooks/harness/lib/save-graph.sh`
 
 ---
 

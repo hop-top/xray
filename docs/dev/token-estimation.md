@@ -249,5 +249,5 @@ const renderer = new ChunkedRenderer(
 ## See Also
 
 - [Chunked Output Architecture](./chunked-output-architecture.md)
-- [Performance Review](./performance-review.md)
-- [Renderer API](./renderer-api.md)
+- [Performance Optimizations](./architecture.md#performance-optimizations)
+- [Output Formatters and Rendering](./architecture.md#8-output-formatters-and-rendering)

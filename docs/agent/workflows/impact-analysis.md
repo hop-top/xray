@@ -16,6 +16,13 @@ name-only, and a list of call sites to update together
 - You can run xray commands in the project (or have a `.xrayrc.json`
   lens covering several repos)
 
+> **May arrive via hook.** With the harness hooks installed, an
+> `[xray impact] <symbol> (graph saved <N>m ago)` block appears when you
+> grep for the symbol: that is Step 1.1 already run, in `--format brief`
+> against the session-start graph. Read it as described in
+> [Pushed Context](../integration-protocol.md#pushed-context-harness-hooks),
+> then continue from Phase 1 with the full report if you need every caller.
+
 ## Protocol Steps
 
 ### Phase 1: Blast Radius, One Root (Token Budget: 300)

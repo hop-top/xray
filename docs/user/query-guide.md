@@ -553,9 +553,9 @@ xray query --graph graph.json "calls(src/api/**::*)"
 
 ## Next Steps
 
-- Learn about [creating custom query adapters](../dev/query-architecture.md)
-- Explore the [graph architecture](../dev/graph-api.md)
-- Read about [performance optimization](../dev/performance.md)
+- Learn about [creating custom query adapters](../dev/architecture.md)
+- Explore the [graph architecture](../dev/architecture.md#4-graph-builder)
+- Read about [performance optimization](../dev/architecture.md#performance-optimizations)
 
 ## Feedback
 

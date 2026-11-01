@@ -72,7 +72,7 @@ By default, xray generates multiple files organized by directory structure:
 
 Each chunk includes parent ↔ child navigation links. Use `--no-chunk` for single-file output.
 
-[Learn more about chunked output →](docs/chunked-output.md)
+[Learn more about chunked output →](docs/user/README.md#3-chunked-output)
 
 **NEW: Community grouping (`--group community`)**
 
@@ -171,7 +171,8 @@ per repo, with a merged-graph cache so repeat runs are instant. `--format
 json|tree|table` for machines; also available as the `impact` tool of
 `xray mcp`.
 
-[Agent workflow: impact analysis →](docs/agent/workflows/impact-analysis.md)
+[Agent workflow: impact analysis →](docs/agent/workflows/impact-analysis.md) ·
+[Use case: impact analysis in agent sessions →](docs/user/use-cases.md#use-case-impact-analysis)
 
 ## Common Use Cases
 
@@ -187,6 +188,13 @@ xray map --anchor src/api/routes.ts --with incs --output context.txt
 
 **Before xray:** Paste 10 files, 50k tokens 😰
 **After xray:** Share 2k token map showing entire structure ✨
+
+Coding agents can also get xray without you pasting anything: as
+instructions (skill, `AGENTS.md`), pulled over MCP (`xray mcp`), or pushed
+by harness hooks that answer "who calls this?" the moment the agent greps
+for a function (Claude Code, nerv, Gemini CLI).
+
+[Harness integration guide →](docs/user/harness-integration.md)
 
 ### Claude Code Skill
 
@@ -208,6 +216,13 @@ Once installed, Claude Code can use xray to:
 - Understand build systems (`xray build targets`, `xray package-manager list-dependencies`)
 
 The skill includes 17 use-case-driven workflows. See [`skills/xray-cli/SKILL.md`](skills/xray-cli/SKILL.md) for the full command reference.
+
+The skill only helps when Claude decides to use it. For tool access, add
+the MCP server (`claude mcp add xray -- xray -C /path/to/project mcp`,
+see [MCP server](docs/user/mcp.md)); to have `xray impact` arrive by itself
+when Claude greps for a function, install the hooks in
+[`hooks/harness/claude/`](hooks/harness/claude/README.md)
+([guide](docs/user/harness-integration.md#claude-code)).
 
 ### Automation
 
@@ -309,8 +324,8 @@ export class MyPlugin implements XrayPlugin {
 ```
 
 **Learn more:**
-- [Plugin Development Guide](docs/plugin-development-guide.md) - Complete guide to creating plugins
-- [Event Reference](docs/event-reference.md) - All lifecycle events and their payloads
+- [Plugin Development Guide](docs/dev/extensions.md) - Complete guide to creating plugins
+- [Event Reference](docs/dev/events.md) - All lifecycle events and their payloads
 - [Plugin Examples](examples/README.md) - Working examples and patterns
 
 ## Options & Flags
@@ -444,17 +459,19 @@ Bash needs bash-completion v2. Scripts call back into `xray __complete` on each 
 
 ### User Documentation
 - [Getting Started](docs/user/getting-started.md) - Installation and first steps
-- [Chunked Output Guide](docs/chunked-output.md) - **NEW:** Multi-file output system
+- [Chunked Output Guide](docs/user/README.md#3-chunked-output) - **NEW:** Multi-file output system
 - [Commands Reference](docs/user/commands.md) - All commands and options
 - [Configuration](docs/user/configuration.md) - Config files and lenses
 - [Strategies](docs/user/strategies.md) - Framework-specific analysis
 - [Automation](docs/user/automation.md) - GitHub Actions and hooks
+- [Harness Integration](docs/user/harness-integration.md) - Skill, MCP and hooks for coding agents
+- [Use Cases](docs/user/use-cases.md) - What xray does inside an agent session
 - [Troubleshooting](docs/user/troubleshooting.md) - Common issues
 
 ### Developer Documentation
 - [Architecture](docs/dev/architecture.md) - System design and internals
-- [Plugin Development Guide](docs/plugin-development-guide.md) - **NEW:** Creating custom plugins
-- [Event Reference](docs/event-reference.md) - **NEW:** Complete lifecycle event documentation
+- [Plugin Development Guide](docs/dev/extensions.md) - **NEW:** Creating custom plugins
+- [Event Reference](docs/dev/events.md) - **NEW:** Complete lifecycle event documentation
 - [Strategy Development](docs/dev/strategy-development.md) - Creating custom strategies
 - [Strategy API](docs/dev/strategy-api.md) - Strategy command reference
 - [Contributing](docs/dev/contributing.md) - Development setup and workflow

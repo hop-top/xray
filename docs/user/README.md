@@ -49,6 +49,12 @@ Check: **[Common Workflows](workflows.md)**
 - Planning refactors
 - Prepping for AI assistance
 
+### Using a coding agent?
+See: **[Harness Integration Guide](harness-integration.md)**
+- Skill / `AGENTS.md`, MCP server, or hooks that push `xray impact`
+- Claude Code, nerv, Gemini CLI, Codex, Cursor
+- [Use cases](use-cases.md) with real output
+
 ### Need specific help?
 Try: **[Strategies Guide](strategies.md)** (framework-specific analysis)
 or **[Troubleshooting](troubleshooting.md)** (solving problems)
@@ -127,6 +133,9 @@ See **[Configuration Guide](configuration.md)** for all options.
 3. Get AI help with full codebase context
 4. Run `xray map` again after changes
 5. Share updated context with AI
+
+With a coding agent (Claude Code, Gemini CLI, …), let hooks do steps 1–2:
+see [Harness Integration](harness-integration.md).
 
 ## Key Features at a Glance
 
@@ -214,6 +223,7 @@ xray map --path ./src/services --with incs
 # Transitive callers, grouped by area (see Command Reference: xray impact)
 xray impact createSession
 ```
+In an agent session the same answer can arrive by hook: [Use cases](use-cases.md#use-case-impact-analysis).
 
 ### "I need to document this for AI"
 ```bash
@@ -239,6 +249,7 @@ cat .xray | xclip  # or copy to clipboard
 - **Framework Analysis**: [Strategies Guide](strategies.md)
 - **Configuration**: [Config File Guide](configuration.md)
 - **Automation**: [GitHub Actions & Hooks](automation.md)
+- **Coding agents**: [Harness Integration](harness-integration.md) · [MCP Server](mcp.md) · [Use Cases](use-cases.md)
 - **Workflows**: [Common Tasks](workflows.md)
 - **Help**: [Troubleshooting](troubleshooting.md)
 

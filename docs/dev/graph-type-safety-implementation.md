@@ -291,6 +291,6 @@ See `type-safety-review.md` for complete action plan.
 ## References
 
 - [Type Safety Review](./type-safety-review.md) - Full analysis
-- [Type Safety Tests](./graph-type-safety-tests.md) - Test documentation
+- [Type Safety Tests](../../__tests__/graph/) - Test documentation
 - [graphology Documentation](https://graphology.github.io/)
 - [TypeScript Handbook - Type Narrowing](https://www.typescriptlang.org/docs/handbook/2/narrowing.html)

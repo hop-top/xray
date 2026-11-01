@@ -88,21 +88,21 @@ docs/agent/
 2. Read: [integration-protocol.md](integration-protocol.md) - How to integrate
 3. Skim: [command-selection.md](command-selection.md) - Reference
 4. Reference: [output-interpretation.md](output-interpretation.md) - When needed
-5. Use: [examples/claude-integration.md](examples/claude-integration.md) - Patterns
+5. Use: [examples/README.md#claude-integration](examples/README.md#claude-integration) - Patterns
 
 ### For GPT
 1. Read: [README.md](README.md) - Overview
 2. Skim: [integration-protocol.md](integration-protocol.md) - How to integrate
 3. Reference: [command-selection.md](command-selection.md) - Which commands
 4. Reference: [output-interpretation.md](output-interpretation.md) - Parsing
-5. Use: [examples/gpt-integration.md](examples/gpt-integration.md) - Patterns
+5. Use: [examples/README.md#gpt-integration](examples/README.md#gpt-integration) - Patterns
 
 ### For Copilot
 1. Skim: [README.md](README.md) - Quick overview
 2. Reference: [decision-trees.md](decision-trees.md) - Quick decisions
 3. Reference: [command-selection.md](command-selection.md) - Which commands
 4. Use: [prompts/system-prompts.md](prompts/system-prompts.md) - Integration
-5. Use: [examples/copilot-integration.md](examples/copilot-integration.md) - Patterns
+5. Use: [examples/README.md#copilot-integration](examples/README.md#copilot-integration) - Patterns
 
 ## Document Descriptions
 
@@ -247,13 +247,13 @@ docs/agent/
 - Common gotchas
 - Integration checklist
 
-**[examples/claude-integration.md](examples/claude-integration.md)**
+**[examples/README.md#claude-integration](examples/README.md#claude-integration)**
 - Claude-specific patterns and examples
 
-**[examples/gpt-integration.md](examples/gpt-integration.md)**
+**[examples/README.md#gpt-integration](examples/README.md#gpt-integration)**
 - GPT-specific patterns and examples
 
-**[examples/copilot-integration.md](examples/copilot-integration.md)**
+**[examples/README.md#copilot-integration](examples/README.md#copilot-integration)**
 - Copilot-specific patterns and examples
 
 ### Prompts

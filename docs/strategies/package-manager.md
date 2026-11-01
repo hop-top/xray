@@ -309,7 +309,7 @@ The strategy is optimized for performance:
 
 ## Related Documentation
 
-- [Strategy System](../dev/strategies.md)
-- [React Strategy](./react.md)
-- [Express Strategy](./express.md)
+- [Strategy System](../dev/strategies/README.md)
+- [React Strategy](../dev/strategies/react.md)
+- [Express Strategy](../dev/strategies/express.md)
 - [Configuration Guide](../user/configuration.md)

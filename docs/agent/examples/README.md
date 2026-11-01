@@ -4,9 +4,9 @@ Real-world examples of how AI agents (Claude, GPT, Copilot) integrate xray into 
 
 ## Quick Navigation
 
-- [Claude-Specific Patterns](claude-integration.md) - How Claude uses xray
-- [GPT-Specific Patterns](gpt-integration.md) - How GPT uses xray
-- [Copilot-Specific Patterns](copilot-integration.md) - How Copilot uses xray
+- [Claude-Specific Patterns](#claude-integration) - How Claude uses xray
+- [GPT-Specific Patterns](#gpt-integration) - How GPT uses xray
+- [Copilot-Specific Patterns](#copilot-integration) - How Copilot uses xray
 
 ## Common Integration Patterns
 
@@ -334,7 +334,7 @@ Don't include:
 - [Integration Protocol](../integration-protocol.md) - Theory
 - [Command Selection](../command-selection.md) - How to choose commands
 - [System Prompt Templates](../prompts/system-prompts.md) - Ready-to-use prompts
-- [Claude Integration](claude-integration.md) - Claude-specific examples
+- [Claude Integration](#claude-integration) - Claude-specific examples
 
 ---
 

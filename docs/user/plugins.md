@@ -416,7 +416,7 @@ Check `examples/plugins/` directory for:
 
 ## Next Steps
 
-- **Want to create your own plugin?** See [Plugin Development (Developer)](../dev/plugins.md)
+- **Want to create your own plugin?** See [Plugin Development (Developer)](../dev/extensions.md)
 - **Want to understand events?** See [Event Reference (Developer)](../dev/events.md)
 - **Want example code?** Check `examples/` directory
 

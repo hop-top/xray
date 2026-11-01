@@ -11,6 +11,7 @@ This document defines how to integrate xray into agent workflows, including when
 5. [Context Accumulation](#context-accumulation)
 6. [Error Handling](#error-handling)
 7. [Success Validation](#success-validation)
+8. [Pushed Context (Harness Hooks)](#pushed-context-harness-hooks)
 
 ## Decision: Should I Use xray?
 
@@ -417,6 +418,43 @@ xray invocation failed when:
 
 **Recovery:** See Error Handling section above
 
+## Pushed Context (Harness Hooks)
+
+With harness hooks installed ([Harness Integration Guide](../user/harness-integration.md)),
+xray output can arrive without you calling it: when you search for a
+plain identifier, a block like this lands next to the tool call (as a
+system reminder, additional context, or appended to the tool result):
+
+```
+[xray impact] loadConfig (graph saved 0m ago)
+loadConfig (function, src/lib/config.ts:L244) — 32 callers across 3 groups
+  src: 23 callers — registerAliasCommand (src/commands/alias.ts:L43), resolveRunOptions (src/commands/generate.ts:L667), handleGenerateAction (src/commands/generate.ts:L686), …and 20 more
+  __tests__: 8 callers — layered (__tests__/lib/config-precedence.test.ts:L140), build (__tests__/commands/alias-registration.test.ts:L36), names (__tests__/cache/cross-root-key.test.ts:L31), …and 5 more
+  scripts: 1 caller — main (scripts/benchmark-clustering.ts:L47)
+edges: EXTRACTED 31 · INFERRED 3
+```
+
+How to read it:
+
+- **Your search still ran.** The block is extra context; the hook never
+  blocks or rewrites a tool call.
+- **Trust `EXTRACTED`.** Those edges were resolved in the caller's file,
+  directory or imports.
+- **Check `INFERRED`.** Callers marked `(inferred)` matched by name only;
+  confirm them in the file, or re-run with `--strict` to drop them.
+- **It is a summary.** At most 3 callers per group, 1200 chars. For the
+  full list and depths run `xray impact <symbol> --graph .xray/graph.json`
+  (add `--depth <n>`, or `--format json` to parse).
+- **The graph may be stale.** `graph saved <N>m ago` is the age of the
+  session-start graph; edits made since are not in it. Re-run against the
+  live tree (`xray impact <symbol>`, no `--graph`) after you change call
+  sites.
+- **No block is not "no callers".** The hook is silent on regexes, paths,
+  a symbol already reported this session, a missing or untrusted graph,
+  and no match. Run `xray impact` yourself when it matters.
+
+Workflow: [Impact Analysis](workflows/impact-analysis.md).
+
 ## Integration Checklist
 
 Before integrating xray into agent workflow:
@@ -437,6 +475,7 @@ Before integrating xray into agent workflow:
 - [Error Handling Protocols](error-handling.md) - Specific error scenarios
 - [Workflow Examples](workflows/README.md) - Real task workflows
 - [Token Optimization](token-optimization.md) - Manage token budget
+- [Harness Integration Guide](../user/harness-integration.md) - Skill, MCP and hooks per harness
 
 ---
 

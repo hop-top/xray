@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Docs: `docs/user/harness-integration.md` (instructions / MCP / hooks;
+  event table, hook rules, saved graph, trust model, setup for Claude
+  Code, nerv, Gemini CLI, Codex, Cursor and any harness, troubleshooting)
+  and `docs/user/use-cases.md` (template + impact analysis with real
+  output); cross-linked from README, user and agent indexes, `AGENTS.md`,
+  integration protocol ("Pushed Context"), MCP, automation and cookbook.
+- `__tests__/docs-links.test.ts`: every relative link in README, AGENTS,
+  `docs/`, `skills/` and `hooks/**/README.md` resolves, and `#anchors`
+  match GitHub heading slugs. Broken links it found are fixed.
 - Harness hook scripts under `hooks/harness/` (in the repo, not the npm
   package): when an agent greps for a function or method name, `xray
   impact` (who calls it) lands in the model's context, from a graph saved

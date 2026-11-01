@@ -61,7 +61,7 @@ Technical documentation for xray developers, maintainers, and contributors.
   - [Go CLI Strategy](strategies/go-cli.md) - Go CLI application analysis
 
 ### Documentation
-- **[Documentation Updates](DOCUMENTATION_UPDATES.md)** - Summary of recent documentation changes
+- **[Documentation Updates](../../CHANGELOG.md)** - Summary of recent documentation changes
   - Overview of updates reflecting codebase changes
   - Files updated and new files created
   - Feature coverage documentation
@@ -307,7 +307,7 @@ npm publish
 - Contributing guide updated with new workflows
 - Documentation updates index created
 
-**Read more:** [Documentation Updates](DOCUMENTATION_UPDATES.md)
+**Read more:** [Documentation Updates](../../CHANGELOG.md)
 
 ## Getting Help
 

@@ -575,7 +575,7 @@ xray map                  # Check what's included
 
 ## See Also
 
-- [Chunked Output User Guide](../user/chunked-output.md) - Usage documentation
+- [Chunked Output User Guide](../user/README.md#3-chunked-output) - Usage documentation
 - [Command Structure](command-structure.md) - How commands work
 - [Architecture Overview](architecture.md) - System design
 - [Contributing Guide](contributing.md) - Development workflow

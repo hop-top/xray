@@ -31,27 +31,24 @@ Documentation for contributing and extending xray:
 
 ## Additional Resources
 
-- **[GitHub Action Guide](github-action.md)** - Using the xray GitHub Action
+- **[GitHub Action Guide](user/automation.md#github-action-details)** - Using the xray GitHub Action
 - **[Code of Conduct](../CODE_OF_CONDUCT.md)** - Community guidelines
 
 ## Project Documentation (Internal)
 
 Historical and planning documents:
 
-- [Release Summary](RELEASE-SUMMARY.md) - Recent release notes
-- [Cleanup Report](CLEANUP-REPORT.md) - Recent cleanup activities
-- [Learnings](LEARNINGS.md) - Development insights
-- [Plans](plans/) - Implementation plans and designs
+- [Changelog](../CHANGELOG.md) - Release notes
 
 ## Quick Links
 
 ### User Guides
-- [Installation](user/getting-started.md#installation)
-- [Quick Start](user/getting-started.md#your-first-xray-map)
-- [Shell Completion](user/getting-started.md#shell-completion)
+- [Installation](user/getting-started.md#installation-30-seconds)
+- [Quick Start](user/getting-started.md#your-first-map-30-seconds)
+- [Shell Completion](user/getting-started.md#enable-shell-completion)
 - [React Strategy](user/strategies.md#react-strategy)
 - [Express Strategy](user/strategies.md#express-strategy)
-- [GitHub Action Setup](user/automation.md#github-action)
+- [GitHub Action Setup](user/automation.md#github-action-details)
 - [Pre-commit Hook](user/automation.md#pre-commit-hook-details)
 
 ### Developer Guides

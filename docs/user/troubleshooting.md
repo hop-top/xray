@@ -44,7 +44,7 @@ rm -rf node_modules package-lock.json
 npm install --legacy-peer-deps
 ```
 
-2. Check [supported languages](../README.md#supported-languages) - Dart and Lua are currently unsupported due to version incompatibility.
+2. Check [supported languages](../../README.md#supported-languages) - Dart and Lua are currently unsupported due to version incompatibility.
 
 ## Runtime Issues
 

@@ -12,6 +12,7 @@ Copy, paste, adapt these practical solutions for common tasks.
 6. [Refactoring: Before/After Comparison](#recipe-refactoring---beforeafter-comparison)
 7. [Onboarding: Teaching Someone Your Project](#recipe-onboarding---teaching-someone-your-project)
 8. [Documentation: Auto-Generating API Specs](#recipe-documentation---auto-generating-api-specs)
+9. [Agent Sessions: Callers on Every Grep](#recipe-agent-sessions---callers-on-every-grep)
 
 ---
 
@@ -682,6 +683,24 @@ jobs:
 ### Result
 
 Every time you push code changes, API documentation auto-updates. No manual maintenance!
+
+---
+
+## Recipe: Agent Sessions - Callers on Every Grep
+
+**Scenario:** your coding agent greps for a function before changing it,
+and you want it to see who calls it without asking.
+
+Save the graph once per session, and let a hook run `xray impact` on each
+identifier the agent searches for:
+
+```bash
+xray impact <symbol> --graph .xray/graph.json --format brief --quiet
+```
+
+Setup per harness (Claude Code, nerv, Gemini CLI, Codex, Cursor):
+[Harness Integration Guide](harness-integration.md). Real output and
+limits: [Use case: impact analysis](use-cases.md#use-case-impact-analysis).
 
 ---
 
