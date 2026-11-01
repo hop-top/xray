@@ -74,6 +74,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+- `hooks/pre-commit` and `action.yaml` installed the unrelated npm package
+  `xray`; both now install `@xray-codes/xray`, as do the user docs.
+- `hooks/pre-commit` used the bash-only `&>` under `#!/bin/sh`: with dash
+  as `/bin/sh` an installed xray was reported missing and maps were never
+  regenerated. Now POSIX `> /dev/null 2>&1`; shellcheck clean.
+- `action.yaml` never committed regenerated maps with the default
+  `skip-if-no-changes: 'true'`. Changed maps are now always committed;
+  `skip-if-no-changes` only decides, when nothing changed, between a no-op
+  (`true`, default) and a failed step (`false`). `docs/user/automation.md`
+  inputs table now lists `scope` and `all-scopes`.
 - Member and scoped calls on builtin receivers (`JSON.parse`, `Math.max`,
   `console.log`, Python stdlib modules such as `json.loads`, Go standard
   library packages such as `fmt.Println`, `System.out.println`,

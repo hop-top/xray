@@ -23,7 +23,7 @@ inputs:
     required: false
     default: ${{ github.token }}
   skip-if-no-changes:
-    description: 'Skip commit and push if no changes detected (default: true)'
+    description: 'When regeneration changes nothing: true = succeed without committing; false = fail the step (default: true). Changed maps are always committed.'
     required: false
     default: 'true'
   scope:
@@ -47,9 +47,9 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.xray-version }}" = "latest" ]; then
-          npm install -g xray@latest
+          npm install -g @xray-codes/xray@latest
         else
-          npm install -g xray@${{ inputs.xray-version }}
+          npm install -g "@xray-codes/xray@${{ inputs.xray-version }}"
         fi
         echo "✓ Installed xray $(xray --version)"
 
@@ -112,7 +112,7 @@ runs:
         fi
 
     - name: Commit and push changes
-      if: steps.regenerate.outputs.changes_detected == 'true' && inputs.skip-if-no-changes != 'true'
+      if: steps.regenerate.outputs.changes_detected == 'true'
       shell: bash
       env:
         COMMIT_MSG: ${{ inputs.commit-message }}
@@ -122,6 +122,13 @@ runs:
         git add .
         git commit -m "$COMMIT_MSG" || echo "No changes to commit"
         git push || echo "Failed to push changes"
+
+    - name: Fail when nothing changed
+      if: steps.regenerate.outputs.changes_detected == 'false' && inputs.skip-if-no-changes != 'true'
+      shell: bash
+      run: |
+        echo "::error::xray maps unchanged and skip-if-no-changes is false"
+        exit 1
 
     - name: Summary
       shell: bash

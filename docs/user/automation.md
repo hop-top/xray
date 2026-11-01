@@ -189,7 +189,9 @@ xray map -l 4000
 | `config-path` | Custom config file path | Auto-detect |
 | `xray-version` | xray version to install | `latest` |
 | `commit-message` | Custom commit message | `chore: regenerate xray maps` |
-| `skip-if-no-changes` | Skip commit if no changes | `true` |
+| `skip-if-no-changes` | When regeneration changes nothing: `true` succeeds without committing, `false` fails the step. Changed maps are always committed. | `true` |
+| `scope` | Run one scope from the config file (`xray map --scope <name>`); takes precedence over `all-scopes` | (none) |
+| `all-scopes` | Run every scope defined in the config file (`xray map --all-scopes`) | `true` |
 
 ### Advanced Examples
 
@@ -231,7 +233,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install -g xray
+      - run: npm install -g @xray-codes/xray
       - run: xray map --lens ${{ matrix.lens }}
       - run: |
           git config --local user.email "actions@github.com"
@@ -276,8 +278,8 @@ if [ ! -f ".xrayrc" ] && [ ! -f ".xrayrc.json" ]; then
 fi
 
 # Check if xray is installed
-if ! command -v xray &> /dev/null; then
-  echo "⚠️  Xray not installed. Run: npm install -g xray"
+if ! command -v xray > /dev/null 2>&1; then
+  echo "⚠️  Xray not installed. Run: npm install -g @xray-codes/xray"
   exit 0
 fi
 
@@ -473,7 +475,7 @@ xray map --all-scopes
 ### Pre-commit Hook Issues
 
 **"Xray not installed"**
-- Install globally: `npm install -g xray`
+- Install globally: `npm install -g @xray-codes/xray`
 - Or use npx: modify hook to use `npx xray map`
 
 **"Hook not running"**

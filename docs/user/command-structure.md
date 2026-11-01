@@ -257,7 +257,7 @@ fi
 
 **Solution:**
 ```bash
-npm install -g xray
+npm install -g @xray-codes/xray
 # or
 npm link  # if installed from source
 ```

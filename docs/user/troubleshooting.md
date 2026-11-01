@@ -224,7 +224,7 @@ permissions:
 
 ```bash
 # Install globally
-npm install -g xray
+npm install -g @xray-codes/xray
 
 # Or modify hook to use npx
 # Edit .git/hooks/pre-commit and change:

@@ -226,7 +226,7 @@ cat .xray | xclip  # or copy to clipboard
 
 ## Next Steps
 
-1. **Install**: `npm install -g xray`
+1. **Install**: `npm install -g @xray-codes/xray`
 2. **Run**: `xray map` in your project
 3. **View**: `cat .xray` or open in editor
 4. **Learn**: Pick a guide from above based on your need
