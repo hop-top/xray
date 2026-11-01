@@ -29,14 +29,15 @@ jobs:
       - run: npm run typecheck:tests
 
   shellcheck:
-    name: shellcheck (harness hooks)
+    name: shellcheck (hooks)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       # shellcheck is preinstalled on ubuntu runners.
-      - name: shellcheck hooks/harness
+      - name: shellcheck hooks
         run: |
           shellcheck --version
+          shellcheck hooks/pre-commit
           find hooks/harness -type f \( -name '*.sh' -o -name xray-impact-context \) -print0 \
             | xargs -0 shellcheck
 
