@@ -213,6 +213,92 @@ describe('GraphBuilder', () => {
         expect(graph.order).toBe(101); // 1 file + 100 tags
     });
 
+    describe('scoped reference resolution', () => {
+        const fn = (file: string, name: string, references?: string[]): Tag => ({
+            name, kind: 'function', line: 1, col: 0, file, references
+        });
+        const callsFrom = (graph: any, source: string) =>
+            graph.outEdges(source)
+                .filter((e: string) => graph.getEdgeAttribute(e, 'type') === 'calls')
+                .map((e: string) => ({
+                    target: graph.target(e),
+                    confidence: graph.getEdgeAttribute(e, 'confidence')
+                }))
+                .sort((a: any, b: any) => a.target.localeCompare(b.target));
+
+        it('prefers a same-file definition over same-named tags elsewhere', async () => {
+            await builder.addFile('pkg/a/x.go', [fn('pkg/a/x.go', 'run', ['New']), fn('pkg/a/x.go', 'New')], []);
+            await builder.addFile('pkg/a/y.go', [fn('pkg/a/y.go', 'New')], []);
+            await builder.addFile('pkg/b/z.go', [fn('pkg/b/z.go', 'New')], []);
+            const graph = await builder.getGraph();
+
+            expect(callsFrom(graph, 'pkg/a/x.go::run')).toEqual([
+                { target: 'pkg/a/x.go::New', confidence: 'EXTRACTED' }
+            ]);
+        });
+
+        it('links a caller only to the same-directory definition', async () => {
+            await builder.addFile('pkg/a/main.go', [fn('pkg/a/main.go', 'run', ['New'])], []);
+            await builder.addFile('pkg/a/util.go', [fn('pkg/a/util.go', 'New')], []);
+            await builder.addFile('pkg/b/util.go', [fn('pkg/b/util.go', 'New')], []);
+            const graph = await builder.getGraph();
+
+            expect(callsFrom(graph, 'pkg/a/main.go::run')).toEqual([
+                { target: 'pkg/a/util.go::New', confidence: 'EXTRACTED' }
+            ]);
+        });
+
+        it('links a caller to the definition in a file it imports', async () => {
+            await builder.addFile(
+                'src/app/main.ts',
+                [fn('src/app/main.ts', 'run', ['helper'])],
+                [{ source: '../lib/b', file: 'src/app/main.ts' }]
+            );
+            await builder.addFile('src/lib/b.ts', [fn('src/lib/b.ts', 'helper')], []);
+            await builder.addFile('src/other/c.ts', [fn('src/other/c.ts', 'helper')], []);
+            const graph = await builder.getGraph();
+
+            expect(callsFrom(graph, 'src/app/main.ts::run')).toEqual([
+                { target: 'src/lib/b.ts::helper', confidence: 'EXTRACTED' }
+            ]);
+        });
+
+        it('falls back to every global match stamped INFERRED when no scope matches', async () => {
+            await builder.addFile('x/main.ts', [fn('x/main.ts', 'run', ['helper'])], []);
+            await builder.addFile('y/a.ts', [fn('y/a.ts', 'helper')], []);
+            await builder.addFile('z/b.ts', [fn('z/b.ts', 'helper')], []);
+            const graph = await builder.getGraph();
+
+            expect(callsFrom(graph, 'x/main.ts::run')).toEqual([
+                { target: 'y/a.ts::helper', confidence: 'INFERRED' },
+                { target: 'z/b.ts::helper', confidence: 'INFERRED' }
+            ]);
+        });
+
+        it('gives same-named definitions in different packages distinct callers', async () => {
+            await builder.addFile('pkg/a/main.go', [fn('pkg/a/main.go', 'runA', ['New'])], []);
+            await builder.addFile('pkg/a/new.go', [fn('pkg/a/new.go', 'New')], []);
+            await builder.addFile('pkg/b/main.go', [fn('pkg/b/main.go', 'runB', ['New'])], []);
+            await builder.addFile('pkg/b/new.go', [fn('pkg/b/new.go', 'New')], []);
+            const graph = await builder.getGraph();
+
+            expect(graph.inNeighbors('pkg/a/new.go::New')).toEqual(expect.arrayContaining(['pkg/a/main.go::runA']));
+            expect(graph.inNeighbors('pkg/a/new.go::New')).not.toContain('pkg/b/main.go::runB');
+            expect(graph.inNeighbors('pkg/b/new.go::New')).not.toContain('pkg/a/main.go::runA');
+        });
+
+        it('emits reference:resolve with only the best-ranked candidates', async () => {
+            const seen: string[][] = [];
+            builder.on('reference:resolve', (event) => { seen.push([...event.resolved]); });
+            await builder.addFile('pkg/a/main.go', [fn('pkg/a/main.go', 'run', ['New'])], []);
+            await builder.addFile('pkg/a/util.go', [fn('pkg/a/util.go', 'New')], []);
+            await builder.addFile('pkg/b/util.go', [fn('pkg/b/util.go', 'New')], []);
+            await builder.getGraph();
+
+            expect(seen).toEqual([['pkg/a/util.go::New']]);
+        });
+    });
+
     it('should handle large number of references efficiently', async () => {
         // Create a tag that references many other tags
         const tags: Tag[] = [

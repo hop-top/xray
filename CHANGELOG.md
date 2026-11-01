@@ -50,6 +50,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `alias set` and startup alias registration reserve every registered command name (incl. `cache`, hidden `clear-cache`, `help`); a conflicting alias already in config is skipped with a warning instead of breaking every run
 - `infrastructure resources` accepts `--type`, `--tool` and `--provider`
   filters (declared as options; were rejected as unknown flags).
+- `calls` edges resolve a bare name to the closest definition (same file,
+  then same directory/package, then an imported file) instead of every
+  same-named symbol; `callers(New)` no longer lists one package's callers
+  under every `New`. Unscoped matches still link globally, stamped
+  `confidence: INFERRED`.
 
 - Read-only commands no longer write `.xrayrc.json` or `.xray/.strategy-cache.json` into the working directory; the strategy cache now lives in the user cache dir and non-interactive runs no longer persist a telemetry decision.
 - Argument-parser usage errors (unknown flag, missing argument or value, unknown help topic) print as `✖ <message>`, matching every other usage error; exit code stays 2.

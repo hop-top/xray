@@ -11168,11 +11168,11 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 1`]
 ℹ Analyzing repo at: <TMP>/repo
 ℹ Found 6 files.
 ℹ Top 5 ranked nodes:
-  imports/b.ts::beta: 0.1380
-  b.ts::beta: 0.1380
-  a.ts::alpha: 0.1326
-  imports/c.ts::gamma: 0.1326
-  c.ts::gamma: 0.1032
+  a.ts::alpha: 0.1826
+  imports/c.ts::gamma: 0.1826
+  b.ts::beta: 0.1081
+  imports/b.ts::beta: 0.1081
+  a.ts: 0.0739
 ✔ Graph written to <TMP>/out/graph.json
 "
 `;
@@ -11184,7 +11184,7 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
     "timestamp": "<TIMESTAMP>",
     "projectPath": "<TMP>/repo",
     "nodeCount": 12,
-    "edgeCount": 18
+    "edgeCount": 14
   },
   "nodes": [
     {
@@ -11344,54 +11344,6 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
       "confidence": "EXTRACTED"
     },
     {
-      "source": "b.ts::beta",
-      "target": "a.ts::alpha",
-      "type": "calls",
-      "confidence": "EXTRACTED"
-    },
-    {
-      "source": "b.ts::beta",
-      "target": "imports/a.ts::alpha",
-      "type": "calls",
-      "confidence": "EXTRACTED"
-    },
-    {
-      "source": "c.ts::gamma",
-      "target": "b.ts::beta",
-      "type": "calls",
-      "confidence": "EXTRACTED"
-    },
-    {
-      "source": "c.ts::gamma",
-      "target": "imports/b.ts::beta",
-      "type": "calls",
-      "confidence": "EXTRACTED"
-    },
-    {
-      "source": "imports/a.ts::alpha",
-      "target": "b.ts::beta",
-      "type": "calls",
-      "confidence": "EXTRACTED"
-    },
-    {
-      "source": "imports/a.ts::alpha",
-      "target": "imports/b.ts::beta",
-      "type": "calls",
-      "confidence": "EXTRACTED"
-    },
-    {
-      "source": "imports/b.ts::beta",
-      "target": "c.ts::gamma",
-      "type": "calls",
-      "confidence": "EXTRACTED"
-    },
-    {
-      "source": "imports/b.ts::beta",
-      "target": "imports/c.ts::gamma",
-      "type": "calls",
-      "confidence": "EXTRACTED"
-    },
-    {
       "source": "b.ts",
       "target": "a.ts",
       "type": "imports",
@@ -11414,6 +11366,30 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
       "target": "imports/c.ts",
       "type": "imports",
       "confidence": "EXTRACTED"
+    },
+    {
+      "source": "b.ts::beta",
+      "target": "a.ts::alpha",
+      "type": "calls",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "source": "c.ts::gamma",
+      "target": "b.ts::beta",
+      "type": "calls",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "source": "imports/a.ts::alpha",
+      "target": "imports/b.ts::beta",
+      "type": "calls",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "source": "imports/b.ts::beta",
+      "target": "imports/c.ts::gamma",
+      "type": "calls",
+      "confidence": "EXTRACTED"
     }
   ]
 }
@@ -11428,11 +11404,11 @@ exports[`cli golden: map / query / explore on fixture repo map --no-chunk --txt 
 ℹ Analyzing repo at: <TMP>/repo
 ℹ Found 6 files.
 ℹ Top 5 ranked nodes:
-  imports/b.ts::beta: 0.1380
-  b.ts::beta: 0.1380
-  a.ts::alpha: 0.1326
-  imports/c.ts::gamma: 0.1326
-  c.ts::gamma: 0.1032
+  a.ts::alpha: 0.1826
+  imports/c.ts::gamma: 0.1826
+  b.ts::beta: 0.1081
+  imports/b.ts::beta: 0.1081
+  a.ts: 0.0739
 ✔ Analysis written to <TMP>/out/single.txt
 "
 `;
@@ -11446,23 +11422,19 @@ imports/c.ts (L1-L3):
 │ [L1-L3] function gamma() : number
 │       → used by: [imports/b.ts:L3](L3-L5)
 
-imports/b.ts (L3-L5):
-│ [L3-L5] function beta() : number
-│       → used by: [c.ts:L3](L3-L5)
-│       → used by: [imports/a.ts:L3](L3-L5)
-
 b.ts (L3-L5):
 │ [L3-L5] function beta() : number
 │       → used by: [c.ts:L3](L3-L5)
+
+imports/b.ts (L3-L5):
+│ [L3-L5] function beta() : number
 │       → used by: [imports/a.ts:L3](L3-L5)
 
 c.ts (L3-L5):
 │ [L3-L5] function gamma() : number
-│       → used by: [imports/b.ts:L3](L3-L5)
 
 imports/a.ts (L3-L5):
 │ [L3-L5] function alpha() : number
-│       → used by: [b.ts:L3](L3-L5)
 "
 `;
 
@@ -11474,18 +11446,18 @@ exports[`cli golden: map / query / explore on fixture repo map --txt (chunked) 1
 ℹ Analyzing repo at: <TMP>/repo
 ℹ Found 6 files.
 ℹ Top 5 ranked nodes:
-  imports/b.ts::beta: 0.1380
-  b.ts::beta: 0.1380
-  a.ts::alpha: 0.1326
-  imports/c.ts::gamma: 0.1326
-  c.ts::gamma: 0.1032
+  a.ts::alpha: 0.1826
+  imports/c.ts::gamma: 0.1826
+  b.ts::beta: 0.1081
+  imports/b.ts::beta: 0.1081
+  a.ts: 0.0739
 ✔ Analysis written to 2 chunk files
 ℹ Root chunk: <TMP>/out/chunks_root.txt
 ℹ Total chunks: 2
 ℹ 
 Chunk Summary:
-ℹ . (3 files, 75 tokens)
-ℹ   imports (3 files, 82 tokens)
+ℹ . (3 files, 57 tokens)
+ℹ   imports (3 files, 68 tokens)
 "
 `;
 
@@ -11504,12 +11476,10 @@ imports/c.ts (L1-L3):
 
 imports/b.ts (L3-L5):
 │ [L3-L5] function beta() : number
-│       → used by: [c.ts:L3]
 │       → used by: [imports/a.ts:L3]
 
 imports/a.ts (L3-L5):
 │ [L3-L5] function alpha() : number
-│       → used by: [b.ts:L3]
 
 == chunks_root.txt ==
 ---
@@ -11530,11 +11500,9 @@ a.ts (L1-L3):
 b.ts (L3-L5):
 │ [L3-L5] function beta() : number
 │       → used by: [c.ts:L3]
-│       → used by: [imports/a.ts:L3]
 
 c.ts (L3-L5):
 │ [L3-L5] function gamma() : number
-│       → used by: [imports/b.ts:L3]
 "
 `;
 
@@ -11576,8 +11544,6 @@ exports[`cli golden: map / query / explore on fixture repo query --format table 
 --- stdout ---
 name   kind      file          line
 alpha  function  a.ts          0   
-alpha  function  imports/a.ts  2   
-gamma  function  c.ts          2   
 gamma  function  imports/c.ts  0   
 
 --- stderr ---
@@ -11591,8 +11557,7 @@ exports[`cli golden: map / query / explore on fixture repo query --format tree c
 Call Tree:
 
 └─→ gamma
-    ├─→ beta (b.ts:L2)
-    └─→ beta (imports/b.ts:L2)
+    └─→ beta (b.ts:L2)
 
 --- stderr ---
 "

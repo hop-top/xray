@@ -174,11 +174,11 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
   }
 
   async getGraph(): Promise<XrayGraph> {
-    // Build reference edges before returning graph
-    await this.buildReferenceEdges();
     // Resolve pending imports into real `imports` edges now that all file
-    // nodes have been added.
+    // nodes have been added. Runs first: reference resolution ranks
+    // candidates in imported files above the global name match.
     await this.buildImportEdges();
+    await this.buildReferenceEdges();
     return this.graph;
   }
 
@@ -327,8 +327,10 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
 
     // Collect all reference resolution events first
     const resolveEvents: Array<{ sourceTag: string, targetName: string, resolved: string[] }> = [];
-    // Events resolved through go.mod + import paths rather than a bare name.
-    const goResolved = new WeakSet<object>();
+    // Events resolved through go.mod + import paths, or by a bare name
+    // with no file/package/import scope backing it.
+    const inferred = new WeakSet<object>();
+    const importedFiles = this.importTargetsByFile();
 
     for (const { tagId, references } of this.pendingReferences.values()) {
       for (const refName of references) {
@@ -336,19 +338,18 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
           const targets = this.resolveGoQualified(tagId, refName, goFuncs);
           if (targets.length > 0) {
             const ev = { sourceTag: tagId, targetName: refName, resolved: targets };
-            goResolved.add(ev);
+            inferred.add(ev);
             resolveEvents.push(ev);
           }
           continue;
         }
         const targetTags = tagNameMap.get(refName);
         if (targetTags) {
+          const { resolved, scoped } = this.rankCandidates(tagId, targetTags, importedFiles);
           // Event: Reference resolution (listeners can modify targets)
-          resolveEvents.push({
-            sourceTag: tagId,
-            targetName: refName,
-            resolved: [...targetTags]
-          });
+          const ev = { sourceTag: tagId, targetName: refName, resolved };
+          if (!scoped) inferred.add(ev);
+          resolveEvents.push(ev);
         }
       }
     }
@@ -378,8 +379,9 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
               type: 'calls',
               attrs: {
                 type: 'calls',
-                // Import-path resolution goes through go.mod, not the source text alone.
-                confidence: goResolved.has(resolveEvent) ? Confidence.INFERRED : Confidence.EXTRACTED
+                // go.mod import-path resolution and unscoped global name
+                // matches are heuristics, not read from the source text.
+                confidence: inferred.has(resolveEvent) ? Confidence.INFERRED : Confidence.EXTRACTED
               },
               skip: false
             });
@@ -402,6 +404,53 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
         }
       }
     }
+  }
+
+  /** File node -> files it has an `imports` edge to. */
+  private importTargetsByFile(): Map<string, Set<string>> {
+    const out = new Map<string, Set<string>>();
+    this.graph.forEachEdge((_e: string, attrs: EdgeAttributes, source: string, target: string) => {
+      if (attrs.type !== 'imports') return;
+      let set = out.get(source);
+      if (!set) out.set(source, (set = new Set()));
+      set.add(target);
+    });
+    return out;
+  }
+
+  /**
+   * Narrow same-named candidate tags to the best scope tier relative to the
+   * referencing tag: same file, then same directory (a Go package), then a
+   * file the caller's file imports. With no tier matching, every candidate is
+   * returned and `scoped` is false (global name match).
+   */
+  private rankCandidates(
+    sourceTag: string,
+    candidates: string[],
+    importedFiles: Map<string, Set<string>>
+  ): { resolved: string[]; scoped: boolean } {
+    const fileOf = (id: string): string | undefined =>
+      (this.graph.getNodeAttributes(id) as NodeAttributes & { file?: string }).file;
+    const dirOf = (file: string) => path.posix.dirname(file.split(path.sep).join('/'));
+
+    const callerFile = fileOf(sourceTag);
+    if (callerFile === undefined) return { resolved: [...candidates], scoped: false };
+    const callerDir = dirOf(callerFile);
+    const imported = importedFiles.get(callerFile);
+
+    const tiers: Array<(file: string) => boolean> = [
+      (f) => f === callerFile,
+      (f) => dirOf(f) === callerDir,
+      (f) => imported !== undefined && imported.has(f),
+    ];
+    for (const inTier of tiers) {
+      const hits = candidates.filter((id) => {
+        const f = fileOf(id);
+        return f !== undefined && inTier(f);
+      });
+      if (hits.length > 0) return { resolved: hits, scoped: true };
+    }
+    return { resolved: [...candidates], scoped: false };
   }
 
   /**

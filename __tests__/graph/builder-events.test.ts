@@ -276,7 +276,7 @@ describe('GraphBuilder Events', () => {
             ];
 
             await builder.addFile('test.ts', tags, []);
-            builder.getGraph();
+            await builder.getGraph();
 
             expect(listener).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -288,7 +288,9 @@ describe('GraphBuilder Events', () => {
         });
 
         it('should allow listeners to modify resolved targets', async () => {
+            const offered: string[][] = [];
             builder.on('reference:resolve', (event) => {
+                offered.push([...event.resolved]);
                 // Filter out certain resolved targets
                 event.resolved = event.resolved.filter(id => !id.includes('filtered'));
             });
@@ -303,7 +305,7 @@ describe('GraphBuilder Events', () => {
                     references: ['target']
                 },
                 {
-                    file: 'test.ts',
+                    file: 'target.ts',
                     name: 'target',
                     kind: 'function',
                     line: 10,
@@ -321,12 +323,17 @@ describe('GraphBuilder Events', () => {
             // Each file receives only its own tags: node ids are
             // `<file>::<name>`, so passing all tags to test.ts duplicated
             // `test.ts::target`.
-            await builder.addFile('test.ts', tags.slice(0, 2), []);
+            // Both targets share the caller's directory, so both reach the
+            // listener and only the listener's filter separates them.
+            await builder.addFile('test.ts', tags.slice(0, 1), []);
+            await builder.addFile('target.ts', tags.slice(1, 2), []);
             await builder.addFile('filtered.ts', tags.slice(2), []);
             const graph = await builder.getGraph();
 
-            // Should only have edge to test.ts::target, not filtered.ts::target
-            expect(graph.hasEdge('test.ts::caller', 'test.ts::target')).toBe(true);
+            // Listener saw both candidates, so the filter is what drops one.
+            expect(offered).toEqual([['target.ts::target', 'filtered.ts::target']]);
+            // Should only have edge to target.ts::target, not filtered.ts::target
+            expect(graph.hasEdge('test.ts::caller', 'target.ts::target')).toBe(true);
             expect(graph.hasEdge('test.ts::caller', 'filtered.ts::target')).toBe(false);
         });
 
