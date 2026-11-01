@@ -97,18 +97,18 @@ describe('Go multi-module resolution', () => {
     fs.rmSync(outDir, { recursive: true, force: true });
   });
 
-  test('root-module file: import resolves, member call EXTRACTED; module outside go.work does not', () => {
+  test('root-module file: import and member call resolve EXTRACTED; module outside go.work does not', () => {
     expect(graph().from('cmd/x.go::main')).toEqual([
-      'internal/pkg/pkg.go::New INFERRED',
+      'internal/pkg/pkg.go::New EXTRACTED',
       'internal/pkg/pkg.go::Run EXTRACTED',
     ]);
   });
 
   test('nested-module file resolves inside its module and across to the root module', () => {
     expect(graph().from('sdk/go/use.go::Use')).toEqual([
-      'internal/pkg/pkg.go::New INFERRED',
+      'internal/pkg/pkg.go::New EXTRACTED',
       'sdk/go/client/client.go::Do EXTRACTED',
-      'sdk/go/client/client.go::New INFERRED',
+      'sdk/go/client/client.go::New EXTRACTED',
     ]);
   });
 
@@ -116,9 +116,9 @@ describe('Go multi-module resolution', () => {
     fs.renameSync(path.join(repo, 'go.work'), path.join(repo, 'go.work.off'));
     try {
       expect(graph().from('cmd/x.go::main')).toEqual([
-        'internal/pkg/pkg.go::New INFERRED',
+        'internal/pkg/pkg.go::New EXTRACTED',
         'internal/pkg/pkg.go::Run EXTRACTED',
-        'tools/tools.go::Tool INFERRED',
+        'tools/tools.go::Tool EXTRACTED',
       ]);
     } finally {
       fs.renameSync(path.join(repo, 'go.work.off'), path.join(repo, 'go.work'));

@@ -112,10 +112,10 @@ describe('Go package-qualified call edges', () => {
     expect(calls.every((e: any) => e.target !== 'cmd/root.go::hidden')).toBe(true);
   });
 
-  test('edges carry INFERRED confidence', () => {
+  test('edges carry EXTRACTED confidence (import + module path + exported name)', () => {
     const { calls } = graph();
     const e = calls.find((c: any) => c.source === 'main.go::main' && c.target === 'cmd/root.go::Execute');
-    expect(e.confidence).toBe('INFERRED');
+    expect(e.confidence).toBe('EXTRACTED');
   });
 
   test('scanning a sub-directory of the module still resolves inside it', () => {

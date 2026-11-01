@@ -334,8 +334,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
 
     // Collect all reference resolution events first
     const resolveEvents: Array<{ sourceTag: string, targetName: string, resolved: string[], confidence?: Confidence }> = [];
-    // Events resolved through go.mod + import paths, or by a bare name
-    // with no file/package/import scope backing it.
+    // Events resolved by a bare name with no file/package/import scope
+    // backing it (global name match).
     const inferred = new WeakSet<object>();
     const importedFiles = this.importTargetsByFile();
     // Go: files of module-local packages each file imports. Member calls
@@ -407,9 +407,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
         if (this.goModule && refName.includes('.')) {
           const targets = this.resolveGoQualified(tagId, refName, goFuncs);
           if (targets.length > 0) {
-            const ev = { sourceTag: tagId, targetName: refName, resolved: targets };
-            inferred.add(ev);
-            resolveEvents.push(ev);
+            // Explicit import + module path + exported name: EXTRACTED.
+            resolveEvents.push({ sourceTag: tagId, targetName: refName, resolved: targets });
           } else {
             miss(tagId, refName);
           }
@@ -456,8 +455,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
               type: 'calls',
               attrs: {
                 type: 'calls',
-                // go.mod import-path resolution and unscoped global name
-                // matches are heuristics, not read from the source text.
+                // EXTRACTED = resolved through file/dir/import/module
+                // evidence; INFERRED = name match only.
                 confidence: resolveEvent.confidence ??
                   (inferred.has(resolveEvent) ? Confidence.INFERRED : Confidence.EXTRACTED)
               },

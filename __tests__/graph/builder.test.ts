@@ -366,6 +366,18 @@ describe('GraphBuilder', () => {
                 ]);
             });
 
+            it('Go pkg.Func inside one root resolves EXTRACTED', async () => {
+                await builder.addFile('cmd/x.go', [fn('cmd/x.go', 'main', ['pkg.Run'])],
+                    [imp('cmd/x.go', `${MOD}/internal/pkg`)]);
+                await builder.addFile('internal/pkg/pkg.go', [fn('internal/pkg/pkg.go', 'Run')], []);
+                await builder.addFile('internal/other/other.go', [fn('internal/other/other.go', 'Run')], []);
+                const graph = await builder.getGraph();
+
+                expect(callsFrom(graph, 'cmd/x.go::main')).toEqual([
+                    { target: 'internal/pkg/pkg.go::Run', confidence: 'EXTRACTED' }
+                ]);
+            });
+
             it('member call from a stdlib-only file yields no edge', async () => {
                 await builder.addFile('pkg/a/a_test.go', [fn('pkg/a/a_test.go', 'TestA', ['.Errorf'])],
                     [imp('pkg/a/a_test.go', 'testing')]);
