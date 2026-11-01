@@ -13,7 +13,10 @@ module.exports = {
             { tsconfig: { allowJs: true, isolatedModules: true, module: 'commonjs' } },
         ],
     },
-    transformIgnorePatterns: ['/node_modules/(?!commander/)'],
+    // Jest matches realpaths: npm puts commander at node_modules/commander/,
+    // pnpm at node_modules/.pnpm/commander@<ver>/node_modules/commander/.
+    // Exempt both; `[@/]` keeps e.g. commander-extra ignored.
+    transformIgnorePatterns: ['/node_modules/(?!(\\.pnpm/)?commander[@/])'],
     testEnvironment: 'node',
     // Off by default: instrumenting every file inflates memory for bare `jest`.
     // Use `npm run test:coverage` for coverage.
