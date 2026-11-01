@@ -1,0 +1,71 @@
+#!/bin/sh
+#
+# xray-impact-context: harness-agnostic core of the xray hook scripts.
+#
+#   xray-impact-context <symbol>
+#
+# Prints, for a function/method <symbol>, a marker line plus the brief
+# `xray impact` report from a saved graph:
+#
+#   [xray impact] <symbol> (graph saved <N>m ago)
+#   <symbol> (<kind>, <file>:L<line>) — <n> callers across <g> groups
+#     <group>: <n> callers — <caller> (<file>:L<line>), …
+#   edges: EXTRACTED <n> · INFERRED <n>
+#
+# Prints nothing when there is no graph, no xray on PATH, no match, zero
+# callers, a failure, or the 5 s budget runs out. Always exits 0: a hook
+# must never fail the agent's tool call.
+#
+# Environment:
+#   XRAY_GRAPH         saved graph (default .xray/graph.json, relative to
+#                      the current directory). Write it with
+#                      `xray --quiet map --format json -o .xray/graph.json`
+#                      (the session-start adapters do this in the
+#                      background). Add `.xray/` to your .gitignore.
+#   XRAY_HOOK_SESSION  session id; when set, each symbol is reported once
+#                      per session (state: ${TMPDIR:-/tmp}/xray-hook-<id>).
+#                      Unset = no dedupe.
+#
+# Adapters (claude/, nerv/, gemini/) wrap this script for their harness.
+
+sym=${1-}
+[ -n "$sym" ] || exit 0
+
+graph=${XRAY_GRAPH:-.xray/graph.json}
+[ -f "$graph" ] || exit 0
+command -v xray >/dev/null 2>&1 || exit 0
+
+state=
+sid=$(printf '%s' "${XRAY_HOOK_SESSION-}" | tr -cd 'A-Za-z0-9_-')
+if [ -n "$sid" ]; then
+  state="${TMPDIR:-/tmp}"
+  state="${state%/}/xray-hook-$sid"
+  if [ -f "$state" ] && grep -Fqx -- "$sym" "$state" 2>/dev/null; then
+    exit 0
+  fi
+fi
+
+limit=
+if command -v timeout >/dev/null 2>&1; then
+  limit="timeout 5"
+elif command -v gtimeout >/dev/null 2>&1; then
+  limit="gtimeout 5"
+fi
+
+# $limit is intentionally unquoted: empty, or "timeout 5".
+# shellcheck disable=SC2086
+brief=$($limit xray impact "$sym" --graph "$graph" --format brief --quiet 2>/dev/null) || exit 0
+[ -n "$brief" ] || exit 0
+
+# `date -r <file>` (mtime) works on GNU, BSD/macOS and BusyBox date.
+age="graph saved"
+if saved=$(date -r "$graph" +%s 2>/dev/null) && now=$(date +%s); then
+  age="graph saved $(( (now - saved) / 60 ))m ago"
+fi
+
+printf '[xray impact] %s (%s)\n%s\n' "$sym" "$age" "$brief"
+
+if [ -n "$state" ]; then
+  printf '%s\n' "$sym" >>"$state" 2>/dev/null || :
+fi
+exit 0

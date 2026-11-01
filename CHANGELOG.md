@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Harness hook scripts under `hooks/harness/` (in the repo, not the npm
+  package): when an agent greps for a function or method name, `xray
+  impact` (who calls it) lands in the model's context, from a graph saved
+  at session start to `.xray/graph.json` (gitignore it). Core
+  `xray-impact-context <symbol>` (POSIX sh, 5 s budget, always exit 0,
+  silent on no graph / no match / zero callers, once per symbol per
+  session); `lib/extract-symbol.sh` (plain identifiers only; regexes,
+  paths and `xray …` commands ignored); `lib/save-graph.sh` (background
+  save, git work trees only). Adapters: Claude Code (`SessionStart`,
+  `PreToolUse` `additionalContext`), nerv (`SessionStart` +
+  `PreToolUse` handlers using the decision `context` field, with
+  `test-xray-impact.sh`), Gemini CLI (`SessionStart`, `AfterTool`
+  `additionalContext`). Config snippets in each `hooks/harness/<harness>/README.md`;
+  CI runs shellcheck on them.
 - `xray impact --format brief`: header, one line per group (top 3
   callers, ` (inferred)` kept), `edges:` footer; at most 1200 chars, cut
   at a line end with `…`; prints nothing (exit 0) on no match or zero
