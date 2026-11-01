@@ -303,8 +303,15 @@ union of every root's nodes and edges.
   argument order. Labels never contain `/`.
 - `metadata.roots` lists `{label, path}` (absolute path) per root;
   `metadata.projectPath` is the roots' common ancestor.
-- No links between roots are invented: edges are only those each root's own
-  analysis produced. `rank` values are per-root.
+- Each root is analyzed on its own; afterwards one cross-root pass resolves
+  the calls that found no definition in their own root against the other
+  roots. A call through an import that maps to another root (a Go import
+  path under that root's `go.mod` module path; an npm specifier equal to, or
+  under, that root's `package.json` `name`) links `EXTRACTED`; otherwise a
+  same-named definition in the same language is `INFERRED`. Member calls
+  (`x.run()`) only reach methods; Go qualified calls (`pkg.Run()`) only reach
+  the imported package. These `calls` edges carry `crossRoot: true` (JSON).
+  `rank` values are per-root.
 - `xray query` works unchanged: a bare name (`calls(main)`) matches that
   function in every root; a full id (`calls(web/src/main.ts::main)`) picks one.
 

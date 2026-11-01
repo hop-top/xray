@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Merged multi-root graphs (`map --format json` with several `-p`,
+  `impact --lens`) link calls across roots: a call that found no definition
+  in its own root resolves against the other roots, `EXTRACTED` through an
+  import mapping to that root (Go module path from its `go.mod`, npm
+  package name from its `package.json`), else `INFERRED` by same-language
+  name. Edges carry `crossRoot: true`; `impact` groups such callers under
+  the caller's root.
 - `--log-level <level>` (`silent|error|warn|info|debug`, case-insensitive)
   sets an explicit log level; beats `-V`, loses to `--quiet`. Bad value
   exits 2.

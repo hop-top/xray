@@ -9,6 +9,7 @@ import { CodedError, FileWriteError, NotFoundError } from '../lib/error/types';
 import { resolveFormatFlags } from '../lib/output-format';
 import { GraphSerializer } from '../lib/graph/serializer';
 import { mergeSerializedGraphs } from '../lib/graph/merge';
+import { resolveCrossRootReferences } from '../lib/graph/cross-root';
 import { graphToEdgesCsv, graphToNodesCsv, graphToXml } from '../lib/graph/export';
 import type { SerializedGraph } from '../lib/query/types';
 import { FileScanner } from '../lib/scanner';
@@ -243,7 +244,11 @@ export const buildGraphForRoots = async (
       });
       await applyPresetFlags(xray, mergedOptions.preset, currentPath);
       const { rankedNodes, graph } = await xray.buildGraph();
-      parts.push({ root: currentPath, graph: new GraphSerializer().serialize(graph, currentPath) });
+      // Multi-root: keep unresolved references for the cross-root pass.
+      parts.push({
+        root: currentPath,
+        graph: new GraphSerializer().serialize(graph, currentPath, { references: uniquePaths.length > 1 }),
+      });
       shareInputs.push({ currentPath, rankedNodes, graph });
       const c = xray.getLastCoverage();
       if (c) {
@@ -255,7 +260,7 @@ export const buildGraphForRoots = async (
   } finally {
     if (Logger.getLevel() !== prevLevel) Logger.setLevel(prevLevel);
   }
-  return { graph: mergeSerializedGraphs(parts), shareInputs, coverage };
+  return { graph: resolveCrossRootReferences(mergeSerializedGraphs(parts)), shareInputs, coverage };
 };
 
 // Helper function to run a single xray generation

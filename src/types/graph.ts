@@ -55,6 +55,11 @@ export interface BaseTagNodeAttributes {
   doc?: string;
   /** Logical community id assigned by the clustering plugin. Sentinel: -1. */
   community?: number;
+  /**
+   * References (raw parser form: `name`, `.name`, `pkg.name`) that resolved
+   * to nothing in this graph. Input of the cross-root pass of merged graphs.
+   */
+  references?: string[];
 }
 
 /**

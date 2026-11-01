@@ -350,6 +350,14 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     const isGo = (id: string) => this.goModule !== null &&
       ((this.graph.getNodeAttributes(id) as any).file as string | undefined)?.endsWith('.go') === true;
 
+    // Tag -> references that resolved nothing in this graph (raw form).
+    // Kept on the tag node as `references` for a later cross-root pass.
+    const unresolved = new Map<string, string[]>();
+    const miss = (tagId: string, refName: string) => {
+      const list = unresolved.get(tagId);
+      if (list) { if (!list.includes(refName)) list.push(refName); } else unresolved.set(tagId, [refName]);
+    };
+
     for (const { tagId, references } of this.pendingReferences.values()) {
       for (const refName of references) {
         // `.name`: member call on a value receiver (parser marker); no
@@ -380,7 +388,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
               //  - candidates span >1 package: AMBIGUOUS -> no edge (recorded
               //    on the event only).
               //  - one candidate package: keep the INFERRED guess.
-              if ((goImported.get(callerFile!)?.size ?? 0) === 0) continue;
+              if ((goImported.get(callerFile!)?.size ?? 0) === 0) { miss(tagId, refName); continue; }
               const pkgs = new Set(resolved.map(id => path.posix.dirname(
                 ((this.graph.getNodeAttributes(id) as any).file as string).split(path.sep).join('/'))));
               if (pkgs.size > 1) {
@@ -391,6 +399,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
             const ev = { sourceTag: tagId, targetName: name, resolved };
             if (!scoped) inferred.add(ev);
             resolveEvents.push(ev);
+          } else {
+            miss(tagId, refName);
           }
           continue;
         }
@@ -400,6 +410,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
             const ev = { sourceTag: tagId, targetName: refName, resolved: targets };
             inferred.add(ev);
             resolveEvents.push(ev);
+          } else {
+            miss(tagId, refName);
           }
           continue;
         }
@@ -410,8 +422,13 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
           const ev = { sourceTag: tagId, targetName: refName, resolved };
           if (!scoped) inferred.add(ev);
           resolveEvents.push(ev);
+        } else {
+          miss(tagId, refName);
         }
       }
+    }
+    for (const [tagId, refs] of unresolved) {
+      if (this.graph.hasNode(tagId)) this.graph.mergeNodeAttributes(tagId, { references: refs });
     }
 
     // Emit all reference resolution events in parallel

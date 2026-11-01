@@ -7,7 +7,7 @@ import type { SerializedGraph, SerializedNode, SerializedEdge } from '../query/t
  * attributes on SerializedEdge so the serializer stays in sync with
  * the type system rather than relying on ad-hoc memory.
  */
-const WELL_KNOWN_EDGE_KEYS = ['type', 'confidence', 'community'] as const;
+const WELL_KNOWN_EDGE_KEYS = ['type', 'confidence', 'community', 'crossRoot'] as const;
 
 /**
  * GraphSerializer handles serialization and deserialization of graphology graphs
@@ -19,9 +19,11 @@ const WELL_KNOWN_EDGE_KEYS = ['type', 'confidence', 'community'] as const;
  */
 export class GraphSerializer {
   /**
-   * Serialize a graphology graph to the canonical format
+   * Serialize a graphology graph to the canonical format. `references`
+   * keeps each tag's unresolved references (input of the cross-root pass of
+   * a multi-root merge); off by default, so map output never carries them.
    */
-  serialize(graph: any, projectPath: string): SerializedGraph {
+  serialize(graph: any, projectPath: string, opts: { references?: boolean } = {}): SerializedGraph {
     const nodes: SerializedNode[] = [];
     const edges: SerializedEdge[] = [];
 
@@ -42,6 +44,9 @@ export class GraphSerializer {
       if (attrs.doc !== undefined) node.doc = attrs.doc;
       if (attrs.rank !== undefined) node.rank = attrs.rank;
       if (attrs.imports !== undefined) node.imports = attrs.imports;
+      if (opts.references && Array.isArray(attrs.references) && attrs.references.length > 0) {
+        node.references = [...attrs.references];
+      }
 
       nodes.push(node);
     });

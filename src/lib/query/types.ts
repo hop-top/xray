@@ -24,6 +24,11 @@ export interface SerializedNode {
   doc?: string;
   rank?: number;
   imports?: Import[];
+  /**
+   * Unresolved references of a tag (raw parser form). Only on per-root
+   * graphs serialized for a multi-root merge; stripped from merged output.
+   */
+  references?: string[];
 }
 
 /**
@@ -40,6 +45,8 @@ export interface SerializedEdge {
    */
   confidence?: Confidence;
   community?: string;
+  /** Calls edge created by the cross-root pass of a merged multi-root graph. */
+  crossRoot?: boolean;
   // Index signature is `any` (not `unknown`) because plugins extend edges
   // with arbitrary attributes; tightening to `unknown` would force every
   // existing consumer to type-narrow. Declared keys above stay typed.
