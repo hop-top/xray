@@ -3,7 +3,7 @@ import * as path from 'path';
 import { FileScanner } from './scanner';
 import { ParserManager } from './parser/manager';
 import { updateLanguageQuery } from './parser/language-registry';
-import { beginLanguageRun, reportSkippedLanguages } from './parser/grammars';
+import { beginLanguageRun, reportSkippedLanguages, type SkippedSummary } from './parser/grammars';
 import { GraphBuilder } from './graph/builder';
 import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
@@ -21,6 +21,13 @@ import { XrayGraph, RankedNode } from '../types/graph';
 
 // Export strategy module
 export * as strategy from './strategy';
+
+/** Files seen by the pipeline, files parsed (or served from cache), grammars skipped. */
+export interface ParseCoverage {
+  files: number;
+  parsed: number;
+  skipped: SkippedSummary[];
+}
 
 export interface XrayConfig {
   // Core options
@@ -68,6 +75,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
   private pluginManager: PluginManager;
   private lastGraph?: XrayGraph;
   private lastRankedNodes?: RankedNode[];
+  private lastCoverage?: ParseCoverage;
   private stashes = new Map<string, unknown[]>();
 
   constructor(config: XrayConfig) {
@@ -118,6 +126,11 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
 
   plugins(): XrayPlugin[] {
     return this.pluginManager.list();
+  }
+
+  /** Parse coverage of the last pipeline run (files parsed, grammars skipped). */
+  getLastCoverage(): ParseCoverage | undefined {
+    return this.lastCoverage;
   }
 
   getLastGraph(): { graph?: XrayGraph; rankedNodes?: RankedNode[] } {
@@ -334,6 +347,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     const enableDfg = this.config.features?.df || false;
 
     let processed = 0;
+    let parsed = 0;
     for (const file of files) {
       // Event: Check if file should be skipped
       const scanEvent = { file, skip: false };
@@ -359,6 +373,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         const cacheHitEvent = { file, tags: cached.tags, imports: cached.imports };
         await this.emitAsync('cache:hit', cacheHitEvent);
         await graphBuilder.loadFromCache(file, cacheHitEvent.tags, cacheHitEvent.imports);
+        parsed++;
       } else {
         // Event: Cache miss - use parallel for observers
         await this.emitAsyncParallel('cache:miss', { file });
@@ -408,6 +423,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           // Never cache a file we could not parse for lack of a grammar:
           // installing it later must take effect without touching the file.
           if (!skipped) {
+            parsed++;
             this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars);
           }
         } catch (error) {
@@ -424,7 +440,8 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     }
 
     await this.emitProgress('parsing', files.length, files.length, 'Parsing complete');
-    reportSkippedLanguages({ format: this.config.format });
+    const skippedGrammars = reportSkippedLanguages({ format: this.config.format });
+    this.lastCoverage = { files: files.length, parsed, skipped: skippedGrammars };
 
     const graph = await graphBuilder.getGraph();
 

@@ -4,7 +4,7 @@ import { styles, type Styles } from '../lib/tui';
 import { GraphSerializer } from '../lib/graph/serializer';
 import { QueryAdapterRegistry } from '../lib/query/registry';
 import { FunctionAdapter } from '../lib/query/adapters/function';
-import type { QueryResult } from '../lib/query/types';
+import type { QueryResult, SerializedGraph } from '../lib/query/types';
 import { QueryCommandOptions } from '../types/command-options';
 import { Logger } from '../lib/logger';
 import { NotFoundError, UsageError } from '../lib/error/types';
@@ -104,22 +104,26 @@ export async function runQueryCommand(
   });
 }
 
-async function loadGraph(graphPath: string): Promise<any> {
+/**
+ * Read a saved graph (`map --format json`). Missing file: NotFoundError
+ * (exit 3); invalid JSON: UsageError (exit 2).
+ */
+export function readSerializedGraph(graphPath: string): SerializedGraph {
   if (!fs.existsSync(graphPath)) {
     throw new NotFoundError('Graph file not found: ' + graphPath);
   }
-
   try {
-    const content = fs.readFileSync(graphPath, 'utf-8');
-    const serialized = JSON.parse(content);
-    const serializer = new GraphSerializer();
-    return serializer.deserialize(serialized);
+    return JSON.parse(fs.readFileSync(graphPath, 'utf-8'));
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new UsageError('Invalid JSON in graph file: ' + graphPath);
     }
     throw error;
   }
+}
+
+async function loadGraph(graphPath: string): Promise<any> {
+  return new GraphSerializer().deserialize(readSerializedGraph(graphPath));
 }
 
 function listAdapters(): string {

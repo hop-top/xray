@@ -28,6 +28,7 @@ const SIDE_EFFECTS: Record<string, SideEffect> = {
   scan: 'read',
   graph: 'write-local',
   query: 'read',
+  impact: 'read',
   explore: 'read',
   describe: 'read',
   paths: 'read',
@@ -46,6 +47,7 @@ const IDEMPOTENT: Record<string, Idempotent> = {
   scan: 'yes',
   graph: 'conditional',
   query: 'yes',
+  impact: 'yes',
   explore: 'yes',
   describe: 'yes',
   paths: 'yes',
@@ -63,6 +65,7 @@ const IDEMPOTENT: Record<string, Idempotent> = {
 // 2 (usage). Specific commands add 3/4/5 where applicable.
 const EXTRA_EXIT_CODES: Record<string, number[]> = {
   'alias.remove': [3],
+  impact: [3],
   paths: [3],
   'alias.set': [5],
 };

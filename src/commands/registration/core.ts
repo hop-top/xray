@@ -5,6 +5,7 @@ import { handleGenerateAction } from '../generate';
 import { handleClearCacheAction } from '../clear-cache';
 import { bindFlag, registerCompletionCommand, staticValues } from '../completion';
 import { addQueryOutputFlags, runQueryCommand } from '../query';
+import { registerImpactCommand } from '../impact';
 import { handleDescribeAction } from '../describe';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
@@ -20,6 +21,7 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   scan: 'analyze',
   graph: 'analyze',
   query: 'analyze',
+  impact: 'analyze',
   strategy: 'strategy',
   alias: 'management',
   lang: 'management',
@@ -63,6 +65,9 @@ export function registerCoreCommands(program: Command): void {
   )
     .option('--list-adapters', 'List available query adapters')
     .action(runQueryCommand);
+
+  // Impact command - transitive callers of a symbol, grouped by area
+  registerImpactCommand(program);
 
   // Strategy management command
   program.addCommand(registerStrategyCommand());

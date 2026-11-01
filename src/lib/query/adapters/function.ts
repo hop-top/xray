@@ -1,4 +1,5 @@
 import type { QueryAdapter, QueryResult } from '../types';
+import { findNodes } from '../match';
 
 /**
  * FunctionAdapter implements the function-based query syntax.
@@ -388,85 +389,7 @@ export class FunctionAdapter implements QueryAdapter {
   }
 
   private findNodes(pattern: string, graph: any): string[] {
-    const results: string[] = [];
-    const isPattern = pattern.includes('*') || pattern.includes('?');
-
-    // Validate pattern first if it's a pattern
-    if (isPattern) {
-      // This will throw if pattern is malicious
-      this.validatePattern(pattern);
-    }
-
-    graph.forEachNode((nodeId: string, attrs: any) => {
-      if (attrs.type !== 'tag') return;
-
-      if (isPattern) {
-        if (this.matchPattern(nodeId, pattern) || this.matchPattern(attrs.label, pattern)) {
-          results.push(nodeId);
-        }
-      } else {
-        if (attrs.label === pattern || nodeId === pattern) {
-          results.push(nodeId);
-        }
-      }
-    });
-
-    return results;
-  }
-
-  private validatePattern(pattern: string): void {
-    // Security: Reject patterns > 100 chars to prevent ReDoS
-    if (pattern.length > 100) {
-      throw new Error(`Pattern too complex: ${pattern}`);
-    }
-
-    // Security: Detect potentially malicious patterns (many repeated wildcards)
-    const wildcardCount = (pattern.match(/\*/g) || []).length;
-    if (wildcardCount > 10) {
-      throw new Error(`Pattern too complex: ${pattern}`);
-    }
-  }
-
-  private matchPattern(str: string, pattern: string): boolean {
-    // Transform glob to regex, escaping everything except glob wildcards
-    let regexPattern = '';
-    let i = 0;
-
-    while (i < pattern.length) {
-      const char = pattern[i];
-      const nextChar = pattern[i + 1];
-
-      if (char === '*' && nextChar === '*') {
-        // ** matches anything including /
-        regexPattern += '.*';
-        i += 2;
-      } else if (char === '*') {
-        // * matches anything except /
-        regexPattern += '[^/]*';
-        i += 1;
-      } else if (char === '?') {
-        // ? matches single character
-        regexPattern += '.';
-        i += 1;
-      } else if (/[.+^${}()|[\]\\]/.test(char)) {
-        // Escape regex special chars
-        regexPattern += '\\' + char;
-        i += 1;
-      } else {
-        // Regular character
-        regexPattern += char;
-        i += 1;
-      }
-    }
-
-    const regex = new RegExp('^' + regexPattern + '$');
-
-    try {
-      return regex.test(str);
-    } catch (e) {
-      // Catch catastrophic backtracking
-      throw new Error(`Pattern too complex: ${pattern}`);
-    }
+    return findNodes(pattern, graph);
   }
 
   private nodeToResult(nodeId: string, attrs: any, depth: number): any {

@@ -27,7 +27,7 @@ import { applyStashedInsights } from '../lib/renderer/insight';
 import { buildShareSummary, resolveShareOutputPath } from '../lib/share-summary';
 import { CommonAnalysisOptions } from '../types/command-options';
 import { applyPreset, resolvePreset } from '../lib/plugins/presets';
-import type { Xray as XrayType } from '../lib/xray';
+import type { Xray as XrayType, ParseCoverage } from '../lib/xray';
 
 /**
  * Resolve every `--preset <spec>` flag in order and apply the
@@ -156,14 +156,13 @@ const writeGraphOutput = (
   return files.map(([f]) => f);
 };
 
-// Helper function to run a single xray generation
-export const runSingleXray = async (
-  mergedOptions: any,
-  scopeName?: string,
-  configPath: string | undefined = mergedOptions.config
-) => {
-  // Validate roots before detection/scan: a missing root must never
-  // produce an empty map with exit 0.
+/**
+ * Validate (and absolutize) `mergedOptions.path` in place: a missing CLI
+ * root is NotFoundError; missing config roots warn and are skipped; no
+ * root left is NotFoundError. A missing root must never produce an empty
+ * map with exit 0.
+ */
+export const validateRunRoots = (mergedOptions: any, configPath?: string): void => {
   if (mergedOptions.path && mergedOptions.path.length > 0) {
     mergedOptions.path = validateScanRoots(
       mergedOptions.path.map(resolvePath).filter(Boolean) as string[],
@@ -171,6 +170,101 @@ export const runSingleXray = async (
       configPath
     );
   }
+};
+
+/** Scan roots to analyze: resolved `path` entries, or the cwd. */
+const runRoots = (mergedOptions: any): string[] =>
+  (mergedOptions.path && mergedOptions.path.length > 0 ? mergedOptions.path : [process.cwd()])
+    .map(resolvePath).filter(Boolean) as string[];
+
+/** `--with` features as Xray feature flags. */
+const featuresOf = (mergedOptions: any) => {
+  const withFeatures = new Set(mergedOptions.with || []);
+  return {
+    vars: withFeatures.has('vars'),
+    incs: withFeatures.has('incs'),
+    docs: withFeatures.has('docs'),
+    cost: withFeatures.has('cost'),
+    cf: withFeatures.has('cf'),
+    df: withFeatures.has('df'),
+  };
+};
+
+export interface BuiltGraph {
+  /** One graph merged across every root (single root: unprefixed). */
+  graph: SerializedGraph;
+  /** Per-root inputs for `--share` summaries. */
+  shareInputs: Array<{ currentPath: string; rankedNodes: any; graph: any }>;
+  /** Parse coverage summed across roots. */
+  coverage: ParseCoverage;
+}
+
+/**
+ * Build the graph `map --format json` writes, without writing it: one
+ * Xray pipeline per distinct root (presets applied), serialized and
+ * merged. Roots must already be validated (`validateRunRoots`).
+ * `quiet` drops per-root progress and info logs (warnings still show).
+ */
+export const buildGraphForRoots = async (
+  mergedOptions: any,
+  configPath: string | undefined,
+  opts: { format?: 'json' | 'csv' | 'xml'; quiet?: boolean } = {}
+): Promise<BuiltGraph> => {
+  const uniquePaths = Array.from(new Set(runRoots(mergedOptions)));
+  const quiet = Boolean(opts.quiet) && Logger.getLevel() < LogLevel.DEBUG;
+  const progressQuiet = quiet || Boolean(mergedOptions.quiet) || Logger.getLevel() < LogLevel.INFO;
+  const parts: Array<{ root: string; graph: SerializedGraph }> = [];
+  const shareInputs: BuiltGraph['shareInputs'] = [];
+  const coverage: ParseCoverage = { files: 0, parsed: 0, skipped: [] };
+  const prevLevel = Logger.getLevel();
+  if (quiet && prevLevel > LogLevel.WARN) Logger.setLevel(LogLevel.WARN);
+  try {
+    for (let i = 0; i < uniquePaths.length; i++) {
+      const currentPath = uniquePaths[i];
+      if (uniquePaths.length > 1) {
+        Logger.info(`\nProcessing path ${i + 1}/${uniquePaths.length}: ${currentPath}`);
+      }
+      const progress = fileProgress({ label: 'Parsing', quiet: progressQuiet });
+      const xray = new Xray({
+        path: currentPath,
+        limit: parseInt(mergedOptions.limit),
+        anchor: resolvePath(mergedOptions.anchor),
+        depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
+        features: featuresOf(mergedOptions),
+        queries: QueryResolver.resolve(mergedOptions.query || []),
+        match: mergedOptions.match || [],
+        catch: mergedOptions.catch || [],
+        languages: mergedOptions.languages,
+        configPath,
+        format: opts.format ?? 'json',
+        diagram: mergedOptions.outputDiagram ?? (mergedOptions.dot ? 'dot' : 'mermaid'),
+        chunked: false,
+        onProgress: (current, total, file) => progress.update(current, total, file)
+      });
+      await applyPresetFlags(xray, mergedOptions.preset, currentPath);
+      const { rankedNodes, graph } = await xray.buildGraph();
+      parts.push({ root: currentPath, graph: new GraphSerializer().serialize(graph, currentPath) });
+      shareInputs.push({ currentPath, rankedNodes, graph });
+      const c = xray.getLastCoverage();
+      if (c) {
+        coverage.files += c.files;
+        coverage.parsed += c.parsed;
+        coverage.skipped.push(...c.skipped);
+      }
+    }
+  } finally {
+    if (Logger.getLevel() !== prevLevel) Logger.setLevel(prevLevel);
+  }
+  return { graph: mergeSerializedGraphs(parts), shareInputs, coverage };
+};
+
+// Helper function to run a single xray generation
+export const runSingleXray = async (
+  mergedOptions: any,
+  scopeName?: string,
+  configPath: string | undefined = mergedOptions.config
+) => {
+  validateRunRoots(mergedOptions, configPath);
 
   // Auto-configure from detected strategies if enabled
   // Only auto-detect when no path is explicitly provided (unless --detect is used)
@@ -216,7 +310,7 @@ export const runSingleXray = async (
   }
 
   // Resolve paths relative to PWD
-  const paths = (mergedOptions.path && mergedOptions.path.length > 0 ? mergedOptions.path : [process.cwd()]).map(resolvePath).filter(Boolean) as string[];
+  const paths = runRoots(mergedOptions);
   const anchor = resolvePath(mergedOptions.anchor);
 
   // Determine format first (needed for output path resolution)
@@ -239,15 +333,7 @@ export const runSingleXray = async (
   Logger.info(`Analyzing repo at: ${paths.join(', ')}`);
 
   // Parse features from --with flags
-  const withFeatures = new Set(mergedOptions.with || []);
-  const features = {
-    vars: withFeatures.has('vars'),
-    incs: withFeatures.has('incs'),
-    docs: withFeatures.has('docs'),
-    cost: withFeatures.has('cost'),
-    cf: withFeatures.has('cf'),
-    df: withFeatures.has('df'),
-  };
+  const features = featuresOf(mergedOptions);
 
   // Resolve queries
   const queries = QueryResolver.resolve(mergedOptions.query || []);
@@ -270,38 +356,7 @@ export const runSingleXray = async (
     // graph (merged across all --path roots) is written with or without
     // --no-chunk.
     if (chunkedEnabled) Logger.debug(`--format ${format}: chunking does not apply; writing the graph once`);
-    const uniquePaths = Array.from(new Set(paths));
-    const parts: Array<{ root: string; graph: SerializedGraph }> = [];
-    const shareInputs: Array<{ currentPath: string; rankedNodes: any; graph: any }> = [];
-    for (let i = 0; i < uniquePaths.length; i++) {
-      const currentPath = uniquePaths[i];
-      if (uniquePaths.length > 1) {
-        Logger.info(`\nProcessing path ${i + 1}/${uniquePaths.length}: ${currentPath}`);
-      }
-      const progress = newProgress();
-      const xray = new Xray({
-        path: currentPath,
-        limit: parseInt(mergedOptions.limit),
-        anchor,
-        depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
-        features,
-        queries,
-        match: mergedOptions.match || [],
-        catch: mergedOptions.catch || [],
-        languages: mergedOptions.languages,
-        configPath,
-        format,
-        diagram,
-        chunked: false,
-        onProgress: (current, total, file) => progress.update(current, total, file)
-      });
-      await applyPresetFlags(xray, mergedOptions.preset, currentPath);
-      const { rankedNodes, graph } = await xray.buildGraph();
-      parts.push({ root: currentPath, graph: new GraphSerializer().serialize(graph, currentPath) });
-      shareInputs.push({ currentPath, rankedNodes, graph });
-    }
-
-    const merged = mergeSerializedGraphs(parts);
+    const { graph: merged, shareInputs } = await buildGraphForRoots(mergedOptions, configPath, { format });
     const written = writeGraphOutput(merged, format, outputPath!);
     for (const f of written) Logger.success(`Graph written to ${f}`);
 
@@ -547,6 +602,30 @@ export const runSingleXray = async (
   }
 };
 
+/**
+ * Merge config with CLI options the way `map` does: `--scope <name>`
+ * (scope over base config; NotFoundError when undefined) or the regular
+ * flow (config, `--lens` overlay, CLI options on top). `config` defaults
+ * to the one `loadConfig` finds for `--config` / the first `--path`.
+ */
+export const resolveRunOptions = (
+  normalizedOptions: any,
+  config: ReturnType<typeof loadConfig> = loadConfig(normalizedOptions.config, normalizedOptions.path?.[0])
+): { mergedOptions: any; scopeName?: string } => {
+  if (normalizedOptions.scope) {
+    const scopeConfig = getScope(config, normalizedOptions.scope);
+    if (!scopeConfig) {
+      throw new NotFoundError(`Scope "${normalizedOptions.scope}" not found in config file`);
+    }
+    const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
+    return {
+      mergedOptions: mergeConfig({ ...mergedScope } as any, normalizedOptions, undefined),
+      scopeName: normalizedOptions.scope,
+    };
+  }
+  return { mergedOptions: mergeConfig(config, normalizedOptions, normalizedOptions.lens) };
+};
+
 // Shared action handler for all generation commands
 export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
   try {
@@ -602,34 +681,9 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
       return;
     }
 
-    // Handle --scope flag
-    if (normalizedOptions.scope) {
-      const scopeConfig = getScope(config, normalizedOptions.scope);
-
-      if (!scopeConfig) {
-        throw new NotFoundError(
-          `Scope "${normalizedOptions.scope}" not found in config file`
-        );
-      }
-
-      const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
-      const mergedOptions = mergeConfig(
-        { ...mergedScope } as any,
-        normalizedOptions,
-        undefined
-      );
-      await runSingleXray(mergedOptions, normalizedOptions.scope, normalizedOptions.config);
-
-      return;
-    }
-
-    // Regular flow: merge config with CLI options
-    const mergedOptions = mergeConfig(
-      config,
-      normalizedOptions,
-      normalizedOptions.lens
-    );
-    await runSingleXray(mergedOptions, undefined, normalizedOptions.config);
+    // --scope, or the regular flow (config + --lens + CLI options)
+    const { mergedOptions, scopeName } = resolveRunOptions(normalizedOptions, config);
+    await runSingleXray(mergedOptions, scopeName, normalizedOptions.config);
 
   } catch (error) {
     // CodedError (NotFoundError, UsageError, etc.) carries an exit code —

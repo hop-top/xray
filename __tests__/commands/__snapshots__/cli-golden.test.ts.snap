@@ -13,6 +13,7 @@ ANALYZE:
   graph [--flags]            Generate control flow (CFG) and data flow (DFG)
                              graphs
   query [query] [--flags]    Query call graph using function-based syntax
+  impact <symbol> [--flags]  Show transitive callers of a symbol, by area
   explore [query] [--flags]  Quickly find files by patterns, search code for
                              keywords, or explore codebase [default command]
 
@@ -2391,6 +2392,7 @@ ANALYZE:
   graph [--flags]            Generate control flow (CFG) and data flow (DFG)
                              graphs
   query [query] [--flags]    Query call graph using function-based syntax
+  impact <symbol> [--flags]  Show transitive callers of a symbol, by area
   explore [query] [--flags]  Quickly find files by patterns, search code for
                              keywords, or explore codebase [default command]
 
@@ -5051,6 +5053,143 @@ exports[`cli golden: introspection describe 1`] = `
         0,
         1,
         2
+      ]
+    },
+    {
+      "name": "impact",
+      "qualifiedName": "impact",
+      "description": "Show transitive callers of a symbol, by area",
+      "hidden": false,
+      "arguments": [
+        {
+          "name": "symbol",
+          "required": true,
+          "variadic": false,
+          "description": "Symbol name or glob (e.g. \\"createSession\\", \\"New*\\")"
+        }
+      ],
+      "options": [
+        {
+          "name": "--depth",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Caller levels to follow (default: 3)"
+        },
+        {
+          "name": "--strict",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Follow EXTRACTED call edges only (drop INFERRED)"
+        },
+        {
+          "name": "--graph",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Read a saved graph (map --format json) instead of building one"
+        },
+        {
+          "name": "--path",
+          "short": "-p",
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Root directory to analyze (repeatable) [default: config paths or current directory]"
+        },
+        {
+          "name": "--lens",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use named lens (config-file option overlay)"
+        },
+        {
+          "name": "--scope",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use specific scope from config file"
+        },
+        {
+          "name": "--lang",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Languages to parse, comma-separated names or bundles (repeatable)"
+        },
+        {
+          "name": "--format-opt",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+        },
+        {
+          "name": "--format-help",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Show available formats and their options (use --format-help <key> for one)"
+        },
+        {
+          "name": "--cols",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Restrict columns to this comma-separated list (repeatable)"
+        },
+        {
+          "name": "--columns",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Alias for --cols"
+        },
+        {
+          "name": "--template",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "eta template applied to results (mutually exclusive with --cols)"
+        },
+        {
+          "name": "--output",
+          "short": "-o",
+          "type": "string",
+          "required": false,
+          "default": "",
+          "description": "Write output to path (use - or empty for stdout)"
+        },
+        {
+          "name": "--format",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "text",
+          "description": "Output format: text, tree, json, yaml, table, csv"
+        }
+      ],
+      "subcommands": [],
+      "sideEffect": "read",
+      "idempotent": "yes",
+      "exitCodes": [
+        0,
+        1,
+        2,
+        3
       ]
     },
     {
