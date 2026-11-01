@@ -22,6 +22,7 @@ Basic commands:
 - `xray map --path ./src --depth 2` - See structure
 - `xray explore <framework>:<command>` - Find patterns
 - `xray scan --match "*.ts"` - Find files
+- `xray impact <symbol>` - Who calls this, transitively (before changing it)
 
 When calling xray: Always include full command with `--path` if needed.
 Parse results carefully: Look for file paths, patterns, and relationships.
@@ -71,6 +72,7 @@ xray express routes             # Express routes
 **Deep Analysis:**
 ```bash
 xray map --anchor src/file.ts --with incs    # Dependencies
+xray impact <symbol>                         # Transitive callers (blast radius)
 xray graph --with cf --with df               # Code flow
 ```
 
@@ -114,6 +116,13 @@ If xray fails:
 3. Read specific files to understand
 ```
 
+**Changing a function:**
+```
+1. xray impact <symbol>            (callers by area; EXTRACTED vs INFERRED)
+2. xray impact <symbol> --strict   (resolved edges only)
+3. Check INFERRED callers before relying on them
+```
+
 ### Token Awareness
 
 Each xray command costs tokens. Estimate:
@@ -121,6 +130,7 @@ Each xray command costs tokens. Estimate:
 - scan: ~50-100 tokens
 - map --depth 2: ~300-400 tokens
 - explore command: ~100-150 tokens
+- impact <symbol>: ~50-200 tokens
 
 Start cheap (scan + explore), only use map when needed.
 
@@ -206,6 +216,16 @@ xray express routes
 xray rest-api endpoints
 # Framework-specific patterns
 # Good for finding where similar code exists
+```
+
+**Change Impact (Low Token Cost: 50-200)**
+```bash
+xray impact <symbol>
+# Transitive callers of a symbol, grouped by area (default --depth 3)
+# EXTRACTED edges: resolved via file/dir/imports; INFERRED: name match only
+
+xray impact <symbol> --depth 1 --strict --format json
+# Direct, resolved callers only, machine-readable
 ```
 
 **Code Flow Analysis (High Token Cost: 500-800)**
@@ -410,7 +430,7 @@ User asks to work on code
 Before production deployment:
 
 - [ ] Understand when to invoke xray (discovery, structure, patterns)
-- [ ] Know command selection (strategy detect, scan, map, explore, graph)
+- [ ] Know command selection (strategy detect, scan, map, explore, impact, graph)
 - [ ] Can parse all output formats (markdown, lists, tables)
 - [ ] Have error recovery procedures
 - [ ] Know token costs and optimize
@@ -447,6 +467,7 @@ Use xray when:
 
 Remember:
 - Always start with `xray strategy detect` for unknown projects
+- Run `xray impact <symbol>` before changing a function's signature
 - Use findings throughout conversation, not just at start
 - Acknowledge limitations if xray output incomplete
 - Can ask clarifying questions based on xray structure
@@ -466,6 +487,7 @@ Use the xray tool with these commands:
 3. **Find patterns:** xray explore <framework>:<type>
 4. **Find files:** xray scan --match "<pattern>"
 5. **Analyze flow:** xray graph --with cf --with df
+6. **Find callers before a change:** xray impact <symbol>
 
 Error recovery:
 - Invalid path: Use absolute path and retry
@@ -491,6 +513,7 @@ When suggesting code, can use `xray` to:
 - xray react components - Find React patterns
 - xray scan --match "*.ts" - Find TypeScript files
 - xray map --anchor file.ts - Understand file context
+- xray impact <symbol> - Find callers before changing a function
 
 This helps me suggest code that matches existing patterns.
 ```

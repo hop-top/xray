@@ -4,14 +4,14 @@ Real-world scenarios and step-by-step solutions for using xray in your daily wor
 
 ## Table of Contents
 
-1. [Onboarding to a New Codebase](#onboarding-to-a-new-codebase)
-2. [Debugging a Complex Issue](#debugging-a-complex-issue)
-3. [Planning a Refactor](#planning-a-refactor)
-4. [Preparing Code for AI Analysis](#preparing-code-for-ai-analysis)
-5. [Code Review Preparation](#code-review-preparation)
-6. [Documenting Your Project](#documenting-your-project)
-7. [Multi-Project Analysis](#multi-project-analysis)
-8. [Finding Specific Patterns](#finding-specific-patterns)
+1. [Onboarding to a New Codebase](#workflow-onboarding-to-a-new-codebase)
+2. [Debugging a Complex Issue](#workflow-debugging-a-complex-issue)
+3. [Planning a Refactor](#workflow-planning-a-refactor)
+4. [Preparing Code for AI Analysis](#workflow-preparing-code-for-ai-analysis)
+5. [Code Review Preparation](#workflow-code-review-preparation)
+6. [Documenting Your Project](#workflow-documenting-your-project)
+7. [Multi-Project Analysis](#workflow-multi-project-analysis)
+8. [Finding Specific Patterns](#workflow-finding-specific-patterns)
 
 ---
 
@@ -206,12 +206,24 @@ done
 # What you're refactoring
 xray map --path ./src/authentication --with incs
 
-# What depends on it
-xray map --catch "*Auth*" --with incs
+# Who calls it, transitively, grouped by area (default --depth 3)
+xray impact createSession
 
-# Find all files importing from auth
-xray map --with incs | grep -i "auth"
+# Direct callers only, resolved edges only
+xray impact createSession --depth 1 --strict
+
+# Several symbols at once (exact name or glob, as in `query`)
+xray impact 'Auth*'
 ```
+
+`impact` walks inbound call edges from every matching definition and lists
+each caller once, at its shortest depth. Each edge is labelled:
+
+- **EXTRACTED**: resolved in the caller's file, directory or imports. Trust it.
+- **INFERRED**: matched by name only. Check it before counting it as a caller.
+
+`--strict` follows EXTRACTED edges only. The `edges:` footer of the text
+output gives the count of each.
 
 Generate a report showing:
 ```bash
@@ -219,8 +231,8 @@ echo "# Refactor Impact Analysis" > refactor-plan/impact.md
 echo "## Files to Refactor" >> refactor-plan/impact.md
 xray map --path ./src/authentication >> refactor-plan/impact.md
 echo "" >> refactor-plan/impact.md
-echo "## Dependent Files" >> refactor-plan/impact.md
-xray map --catch "*Auth*" >> refactor-plan/impact.md
+echo "## Callers" >> refactor-plan/impact.md
+xray impact 'Auth*' >> refactor-plan/impact.md
 ```
 
 ### Step 3: Identify Breaking Changes
@@ -229,8 +241,8 @@ xray map --catch "*Auth*" >> refactor-plan/impact.md
 # What does the module export?
 xray map --anchor ./src/authentication/index.ts --with incs
 
-# What's using those exports?
-# (Search the previous map for references)
+# Who uses each export? One row per caller, with depth and edge confidence
+xray impact createSession --format table
 ```
 
 Document all public interfaces that need to remain stable or migrate.
@@ -238,11 +250,22 @@ Document all public interfaces that need to remain stable or migrate.
 ### Step 4: Estimate Impact
 
 ```bash
-# How many files will need changes?
-xray map --with incs | grep "from.*auth" | wc -l
+# Machine-readable: counts.callers, counts.byDepth, groups[]
+xray impact createSession --format json -o refactor-plan/impact.json
 
-# What are the hotspots?
-xray map --with incs | grep "from.*auth" | head -20
+# Repeated queries: save the graph once, query it many times
+xray map --format json -o refactor-plan/graph.json
+xray impact createSession --graph refactor-plan/graph.json
+xray impact validateToken --graph refactor-plan/graph.json
+```
+
+**Fallback (text search)**: if `impact` reports `no matching symbol in the
+graph` (language without call extraction, symbol built dynamically), fall back
+to name matching and grep. These find definitions and text, not callers:
+
+```bash
+xray map --catch "*Auth*" --with incs
+xray map --with incs | grep -i "auth"
 ```
 
 ### Step 5: Plan the Refactor
@@ -259,7 +282,7 @@ diff refactor-plan/current-services-map.txt refactor-plan/after-refactor.txt
 ### Refactor Checklist
 
 - [ ] Identified all public exports
-- [ ] Found all dependent files
+- [ ] Found all callers (`xray impact`), checked INFERRED edges
 - [ ] Documented breaking changes
 - [ ] Planned migration strategy
 - [ ] Generated before/after maps

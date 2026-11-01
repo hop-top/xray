@@ -90,7 +90,7 @@ Large codebases are split into digestible chunks (one per directory level). Navi
 
 Each chunk has navigation links. Perfect for AI assistants that work with one file at a time.
 
-See **[Chunked Output Guide](chunked-output.md)** for details.
+See **[Best Practices: Token Budget Management](best-practices.md#token-budget-management)** for details.
 
 ### 4. Configuration
 Set once, run anywhere. Define your xray settings in `.xrayrc.json` and never type long flag combinations again.
@@ -147,7 +147,7 @@ See **[Configuration Guide](configuration.md)** for all options.
 **A:** xray is free and open-source. You control output size via token limits, so you control AI API costs.
 
 ### Q: What languages does it support?
-**A:** JavaScript, TypeScript, Python, Go, Java, C, C++, C#, Rust, Swift, Kotlin, Scala, Haskell, Elixir, Ruby, PHP, Bash, and more. See [Supported Languages](../README.md#supported-languages).
+**A:** JavaScript, TypeScript, Python, Go, Java, C, C++, C#, Rust, Swift, Kotlin, Scala, Haskell, Elixir, Ruby, PHP, Bash, and more. See [Supported Languages](../../README.md#supported-languages).
 
 ### Q: Can I use it in CI/CD?
 **A:** Yes! Use GitHub Actions or pre-commit hooks to auto-regenerate maps. See [Automation Guide](automation.md).
@@ -169,7 +169,7 @@ Choose your path:
 → **[Getting Started Guide](getting-started.md)**
 
 ### "I want to prep code for AI analysis"
-→ **[Common Workflows - AI Assistance](workflows.md#workflow-preparing-for-ai-analysis)**
+→ **[Common Workflows - AI Assistance](workflows.md#workflow-preparing-code-for-ai-analysis)**
 
 ### "I want to learn all the commands"
 → **[Command Reference](commands.md)**

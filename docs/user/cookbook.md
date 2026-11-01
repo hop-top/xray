@@ -4,14 +4,14 @@ Copy, paste, adapt these practical solutions for common tasks.
 
 ## Table of Contents
 
-1. [Quick Reference: The 10 Commands You'll Use 90% of the Time](#quick-reference)
-2. [React App: Understanding Component Architecture](#react-app)
-3. [Express API: Mapping All Routes](#express-api)
-4. [Polyglot API: Finding All Endpoints Across Services](#polyglot-api)
-5. [Debugging: Finding Where a Function is Called](#debugging)
-6. [Refactoring: Before/After Comparison](#refactoring)
-7. [Onboarding: Teaching Someone Your Project](#onboarding)
-8. [Documentation: Auto-Generating API Specs](#documentation)
+1. [Quick Reference: The 10 Commands You'll Use 90% of the Time](#quick-reference-the-10-commands-youll-use-90-of-the-time)
+2. [React App: Understanding Component Architecture](#recipe-react-app---understanding-component-architecture)
+3. [Express API: Mapping All Routes](#recipe-express-api---mapping-all-routes)
+4. [Polyglot API: Finding All Endpoints Across Services](#recipe-polyglot-api---finding-all-endpoints-across-services)
+5. [Debugging: Finding Where a Function is Called](#recipe-debugging---finding-where-a-function-is-called)
+6. [Refactoring: Before/After Comparison](#recipe-refactoring---beforeafter-comparison)
+7. [Onboarding: Teaching Someone Your Project](#recipe-onboarding---teaching-someone-your-project)
+8. [Documentation: Auto-Generating API Specs](#recipe-documentation---auto-generating-api-specs)
 
 ---
 

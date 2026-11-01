@@ -11,6 +11,7 @@ This documentation is specifically designed for AI coding agents (Claude, GPT, C
 - **Debugging an issue?** → [Bug Investigation Workflow](workflows/bug-investigation.md)
 - **Implementing a feature?** → [Feature Implementation Workflow](workflows/feature-implementation.md)
 - **Refactoring code?** → [Refactoring Workflow](workflows/refactoring.md)
+- **What breaks if I change a symbol?** → [Impact Analysis Workflow](workflows/impact-analysis.md)
 - **Reviewing code changes?** → [Code Review Workflow](workflows/code-review.md)
 
 ### For Your Decision-Making
@@ -20,19 +21,18 @@ This documentation is specifically designed for AI coding agents (Claude, GPT, C
 - **What should I do if xray fails?** → [Error Handling Protocols](error-handling.md)
 
 ### For Integration & Implementation
-- **Claude integration examples** → [Claude-Specific Patterns](examples/claude-integration.md)
-- **GPT integration examples** → [GPT-Specific Patterns](examples/gpt-integration.md)
+- **Integration examples (Claude, GPT, Copilot)** → [Agent Integration Examples](examples/README.md)
+- **Call xray as MCP tools** → [MCP Server](../user/mcp.md)
 - **System prompt templates** → [System Prompt Examples](prompts/system-prompts.md)
-- **How to describe xray in prompts** → [Prompt Design Patterns](prompts/user-prompts.md)
 
 ### For Understanding xray Output
 - **How to parse xray output** → [Output Interpretation Guide](output-interpretation.md)
-- **Understanding chunked output** → [Chunked Output Navigation](chunked-output-navigation.md)
+- **Understanding chunked output** → [Chunked Output Markers](output-interpretation.md#chunked-output-markers)
 
 ### For Reference
 - **Decision trees and flowcharts** → [Decision Trees](decision-trees.md)
-- **Common patterns and anti-patterns** → [Common Patterns](common-patterns.md)
-- **Success validation** → [Validation Criteria](validation-criteria.md)
+- **Common patterns and anti-patterns** → [Optimal Usage Patterns](optimal-usage-patterns.md)
+- **Success validation** → [Success Validation](integration-protocol.md#success-validation)
 
 ## Core Concepts
 
@@ -154,7 +154,7 @@ All examples are testable and mechanically executable, not narrative.
 1. Read: [Feature Implementation Workflow](workflows/feature-implementation.md)
 2. Reference: [Command Selection](command-selection.md) - For each decision point
 3. Reference: [Token Optimization](token-optimization.md) - If running out of tokens
-4. Reference: [Common Patterns](common-patterns.md) - To find similar implementations
+4. Reference: [Optimal Usage Patterns](optimal-usage-patterns.md) - To find similar implementations
 
 ### "I'm debugging an issue"
 1. Read: [Bug Investigation Workflow](workflows/bug-investigation.md)
@@ -165,11 +165,11 @@ All examples are testable and mechanically executable, not narrative.
 ### "I'm doing code review"
 1. Read: [Code Review Workflow](workflows/code-review.md)
 2. Reference: [Command Selection](command-selection.md) - To gather context
-3. Reference: [Validation Criteria](validation-criteria.md) - To assess impact
+3. Reference: [Success Validation](integration-protocol.md#success-validation) - To assess impact
 
 ### "Something went wrong with xray"
 1. Read: [Error Handling](error-handling.md)
-2. Reference: [Troubleshooting Checklist](common-patterns.md#troubleshooting)
+2. Reference: [Common Error Scenarios](error-handling.md#common-error-scenarios-and-solutions)
 3. Reference: [Output Interpretation](output-interpretation.md) - To understand error messages
 
 ## Files in This Directory
@@ -177,16 +177,15 @@ All examples are testable and mechanically executable, not narrative.
 ```
 docs/agent/
 ├── README.md                          (this file)
+├── INDEX.md                           (full index of agent docs)
 ├── integration-protocol.md            (how to integrate xray into agent workflows)
 ├── command-selection.md               (decision tree for command selection)
 ├── optimal-usage-patterns.md          (best practices for agents)
 ├── token-optimization.md              (managing token budget)
 ├── error-handling.md                  (error recovery protocols)
-├── output-interpretation.md           (parsing xray output)
+├── output-interpretation.md           (parsing xray output, incl. chunked output)
 ├── decision-trees.md                  (visual decision logic)
-├── common-patterns.md                 (what to do, what to avoid)
-├── validation-criteria.md             (how to verify success)
-├── chunked-output-navigation.md       (working with multiple output files)
+├── events.md                          (event system for plugins)
 │
 ├── workflows/
 │   ├── README.md                      (workflow overview)
@@ -194,17 +193,14 @@ docs/agent/
 │   ├── bug-investigation.md           (step-by-step: debugging)
 │   ├── feature-implementation.md      (step-by-step: implementing features)
 │   ├── refactoring.md                 (step-by-step: refactoring code)
+│   ├── impact-analysis.md             (step-by-step: blast radius of a change)
 │   └── code-review.md                 (step-by-step: reviewing changes)
 │
 ├── examples/
-│   ├── README.md                      (example overview)
-│   ├── claude-integration.md          (Claude-specific patterns)
-│   ├── gpt-integration.md             (GPT-specific patterns)
-│   └── copilot-integration.md         (Copilot-specific patterns)
+│   └── README.md                      (integration patterns: Claude, GPT, Copilot)
 │
 └── prompts/
-    ├── system-prompts.md              (templates for system prompts)
-    └── user-prompts.md                (templates for user prompts)
+    └── system-prompts.md              (templates for system prompts)
 ```
 
 ## Core Principles
@@ -230,6 +226,7 @@ xray scan --path ./src                 # What files exist?
 xray map --path ./src --depth 2         # How is code organized?
 xray react components           # What React components exist?
 xray map --anchor src/main.ts --with incs  # What depends on what?
+xray impact createSession               # Who calls this, transitively?
 ```
 
 ### Investigation

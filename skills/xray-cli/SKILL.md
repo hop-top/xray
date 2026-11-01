@@ -1,6 +1,6 @@
 ---
 name: xray-cli-agent
-description: Use when an agent needs to onboard to a new codebase or analyze control/data flow using the xray CLI. Covers agent-first command selection, token-efficient maps, strategy discovery, dependency tracing, control/data flow graphs, and common workflows (onboarding, bug tracing, refactor impact, code review, AI prep, monorepo scan).
+description: Use when an agent needs to onboard to a new codebase or analyze control/data flow using the xray CLI. Covers agent-first command selection, token-efficient maps, strategy discovery, dependency tracing, symbol impact (transitive callers), control/data flow graphs, MCP server use, and common workflows (onboarding, bug tracing, refactor impact, code review, AI prep, monorepo scan).
 metadata:
   short-description: xray CLI use cases for agents
 ---
@@ -28,9 +28,11 @@ Use xray to get structure, dependencies, control flow, data flow. Optimize for t
 15. CI/CD pipeline (see `commands/ci-cd-pipeline.md`)
 16. Configuration files (see `commands/config-files.md`)
 17. Infrastructure as code (see `commands/infrastructure-scan.md`)
+18. MCP server: xray as agent tools (see `commands/mcp-server.md`)
 
 ## Core Rules
 - Default: `map --with incs` for relationships.
+- Before changing a function: `impact <symbol>` for its callers.
 - Add `--with vars` for state/structure.
 - Add `--with docs` only if unclear intent.
 - Use `graph --with cf/df` only for complex logic.
@@ -116,13 +118,23 @@ xray graph --anchor <suspect-file> --with df
 ```
 
 ## Refactor impact / blast radius
-Goal: find dependents and public surface.
+Goal: find callers and public surface.
 
 Commands:
 ```bash
-xray map --path <subsystem> --with incs
+xray impact <symbol>                        # transitive callers by area (default --depth 3)
+xray impact <symbol> --depth 1 --strict     # direct callers, EXTRACTED edges only
+xray impact 'Auth*' --format json           # glob; machine-readable counts + groups
+xray map --anchor <subsystem>/index.ts --with incs   # public surface
+```
+
+Edges: EXTRACTED = resolved via caller's file/dir/imports (trust); INFERRED =
+name match only (verify). Many queries: `xray map --format json -o graph.json`
+once, then `xray impact <symbol> --graph graph.json`.
+
+Fallback (text search, when `impact` says `no matching symbol in the graph`):
+```bash
 xray map --catch "*Auth*" --with incs
-xray map --anchor <subsystem>/index.ts --with incs
 ```
 
 ## Code review prep
@@ -130,6 +142,7 @@ Goal: understand change impact.
 
 Commands:
 ```bash
+xray impact <changed-symbol> --depth 2
 xray map --anchor <changed-file> --with incs
 xray map --path <changed-area> --with incs
 ```
@@ -221,9 +234,21 @@ xray infrastructure graph
 xray infrastructure summary
 ```
 
+## MCP server
+Goal: expose xray commands as MCP tools (map, scan, graph, query, impact,
+explore, strategy list/detect, `<strategy>_<noun>`).
+
+Commands:
+```bash
+xray -C <project> mcp
+claude mcp add xray -- xray -C <project> mcp
+```
+
 ## Decision Cheatsheet
 - Need structure: `map`.
 - Need dependencies: `map --with incs`.
+- Need callers of a symbol / blast radius: `impact <symbol>`.
+- Need xray as agent tools: `mcp`.
 - Need variable context: add `--with vars`.
 - Need logic flow: `graph --with cf/df`.
 - Need framework surface: `strategy detect` + `explore`.
