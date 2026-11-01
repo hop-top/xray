@@ -7,7 +7,7 @@ import {
   XrayConfig,
   XrayExtensionConfig,
 } from '../types/xray-config';
-import { FileReadError, FileWriteError, NotFoundError } from './error/types';
+import { FileReadError, FileWriteError, NotFoundError, UsageError } from './error/types';
 
 // require(): tsconfig moduleResolution 'node' ignores the kit exports map.
 const { configDir: xdgConfigDir } = require('@hop-top/kit/xdg') as {
@@ -447,9 +447,42 @@ export function validateScanRoots(
 }
 
 /**
- * Merge CLI options with config file, with CLI taking precedence
+ * Config files `loadConfig` consults for these options: root `--config`
+ * alone, else the discovered project config then the global one.
+ */
+function consultedConfigFiles(configPath?: string, searchPath?: string): string[] {
+  if (configPath) return [path.resolve(configPath)];
+  return [findConfigPath(searchPath), findGlobalConfigPath()].filter((p): p is string => Boolean(p));
+}
+
+/**
+ * `--lens <name>` must name a lens under `lenses`; otherwise UsageError
+ * (exit 2) naming the lens, the config file(s) consulted and known lenses.
+ */
+function assertLensDefined(config: XrayConfig | null, lens: string, cliOptions: any): void {
+  if (config?.lenses && Object.prototype.hasOwnProperty.call(config.lenses, lens)) return;
+  const files = consultedConfigFiles(cliOptions?.config, cliOptions?.path?.[0]);
+  const known = Object.keys(config?.lenses || {});
+  if (!config) {
+    const where = cliOptions?.config ? ` (${path.resolve(cliOptions.config)} not loaded)` : '';
+    throw new UsageError(
+      `Unknown lens "${lens}": no config file found${where}; define "lenses" in .xrayrc.json`
+    );
+  }
+  const source = files.length > 0 ? files.join(', ') : 'config';
+  if (known.length === 0) {
+    throw new UsageError(`Unknown lens "${lens}": no lenses defined in ${source}`);
+  }
+  throw new UsageError(`Unknown lens "${lens}" in ${source}; known lenses: ${known.join(', ')}`);
+}
+
+/**
+ * Merge CLI options with config file, with CLI taking precedence.
+ * Throws UsageError when `lens` is not defined in `config.lenses`.
  */
 export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: string): any {
+  if (lens) assertLensDefined(config, lens, cliOptions);
+
   // No config file: resolve CLI options against an empty base so the
   // result has the same shape (chunked, outputFormat, ...) as with one.
   if (!config) {
@@ -460,7 +493,7 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
   // that sets only one feature does not wipe out base features set at
   // the top-level config (matches `mergeScopeWithBase` semantics).
   let baseConfig = config;
-  if (lens && config.lenses && config.lenses[lens]) {
+  if (lens && config.lenses) {
     const lensConfig = config.lenses[lens];
     Logger.debug(`Using lens: ${lens}`);
     baseConfig = {

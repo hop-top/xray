@@ -10,6 +10,7 @@
 
 import { mergeConfig, mergeScopeWithBase } from '../../src/lib/config';
 import type { XrayConfig } from '../../src/types/xray-config';
+import { UsageError } from '../../src/lib/error/types';
 
 describe('mergeConfig — plugin preset + lens forwarding', () => {
   it('forwards CLI --preset array into merged options when a config is present', () => {
@@ -250,5 +251,28 @@ describe('mergeConfig — no config file', () => {
 
   it('defaults to chunked output', () => {
     expect(mergeConfig(null, {}).chunked).toBe(true);
+  });
+});
+
+describe('mergeConfig — unknown lens', () => {
+  it('throws UsageError (exit 2) listing known lenses', () => {
+    const config: XrayConfig = { paths: ['./src'], lenses: { quick: { limit: 1 }, deep: { limit: 2 } } };
+    expect(() => mergeConfig(config, {}, 'nope')).toThrow(UsageError);
+    expect(() => mergeConfig(config, {}, 'nope')).toThrow(/Unknown lens "nope".*known lenses: quick, deep/);
+  });
+
+  it('does not resolve inherited object keys as lenses', () => {
+    const config: XrayConfig = { paths: ['./src'], lenses: { quick: { limit: 1 } } };
+    expect(() => mergeConfig(config, {}, 'toString')).toThrow(UsageError);
+  });
+
+  it('throws UsageError when no config is loaded', () => {
+    try {
+      mergeConfig(null, {}, 'quick');
+      throw new Error('expected throw');
+    } catch (err: any) {
+      expect(err).toBeInstanceOf(UsageError);
+      expect(err.exitCode).toBe(2);
+    }
   });
 });

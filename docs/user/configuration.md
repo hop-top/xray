@@ -346,6 +346,9 @@ Apply a lens with the `--lens` flag:
 xray map --lens quick
 ```
 
+An unknown lens name (or `--lens` with no config file) is a usage error:
+exit 2, naming the config file consulted and the lenses it defines.
+
 **Scopes vs Lenses:**
 - **Scopes**: Multiple independent outputs, can run all at once with `--all-scopes`
 - **Lenses**: Single output, used as a quick CLI shortcut to preset flag combinations

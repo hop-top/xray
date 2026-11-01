@@ -85,6 +85,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fallback, incl. cross-root name matches); communities no longer merge on
   name-match noise and symbols reached only by such edges stay unclustered.
   Edges without a confidence still count.
+- `--lens <name>` (`map`, `scan`, `graph`, `impact`) with a name not under
+  `lenses` — or with no config file — fails with exit 2 naming the lens,
+  the config file consulted and the known lenses, instead of silently
+  scanning the default paths and exiting 0.
 - `alias set` and startup alias registration reserve every registered command name (incl. `cache`, hidden `clear-cache`, `help`); a conflicting alias already in config is skipped with a warning instead of breaking every run
 - `infrastructure resources` accepts `--type`, `--tool` and `--provider`
   filters (declared as options; were rejected as unknown flags).
