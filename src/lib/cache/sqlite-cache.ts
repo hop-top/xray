@@ -32,6 +32,7 @@ const { open } = require('@hop-top/kit/sqlstore') as {
  *  0 (unset): relational layout (files_v2 / tags / file_analysis tables).
  *  3: kit sqlstore `kv` table; one JSON record per file.
  *  4: same layout; tag references gain member-call forms (`.name`).
+ *     `graph:*` records (merged multi-root graphs) share the kv table.
  * Any other value is invalidated (wiped) on open.
  */
 export const CACHE_SCHEMA_VERSION = 4;
@@ -148,6 +149,19 @@ export class SqliteCache {
     } catch (err) {
       // Clearing cache is not critical
       Logger.warn(`Failed to clear analysis cache for ${file}: ${(err as Error).message}`);
+    }
+  }
+
+  /** Generic JSON record (e.g. cached graphs, see graph-cache.ts); null when absent or unreadable. */
+  getRecord<T>(key: string): T | null {
+    return this.read<T>(key, key);
+  }
+
+  putRecord(key: string, value: unknown) {
+    try {
+      this.store.put(key, value);
+    } catch (err) {
+      throw new CacheWriteError('sqlite', err as Error);
     }
   }
 

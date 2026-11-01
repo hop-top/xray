@@ -8,7 +8,8 @@ import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase, valid
 import { CodedError, FileWriteError, NotFoundError } from '../lib/error/types';
 import { resolveFormatFlags } from '../lib/output-format';
 import { GraphSerializer } from '../lib/graph/serializer';
-import { mergeSerializedGraphs } from '../lib/graph/merge';
+import { deriveRootLabels, mergeSerializedGraphs } from '../lib/graph/merge';
+import { GraphCache, optionsDigest, rootFingerprint } from '../lib/cache/graph-cache';
 import { resolveCrossRootReferences } from '../lib/graph/cross-root';
 import { graphToEdgesCsv, graphToNodesCsv, graphToXml } from '../lib/graph/export';
 import type { SerializedGraph } from '../lib/query/types';
@@ -198,20 +199,46 @@ export interface BuiltGraph {
   shareInputs: Array<{ currentPath: string; rankedNodes: any; graph: any }>;
   /** Parse coverage summed across roots. */
   coverage: ParseCoverage;
+  /** Merged-graph cache outcome per root, in root order (only when `cache` was used). */
+  cache?: Array<{ label: string; hit: boolean }>;
 }
+
+/** Build options a cached root graph depends on (see graph-cache.ts). */
+const graphOptionsOf = (mergedOptions: any) => ({
+  features: featuresOf(mergedOptions),
+  languages: mergedOptions.languages ?? null,
+  queries: mergedOptions.query ?? null,
+  match: mergedOptions.match ?? null,
+  catch: mergedOptions.catch ?? null,
+  anchor: resolvePath(mergedOptions.anchor) ?? null,
+});
+
+/** `cache: <label> hit · <label> miss` (stderr line of multi-root builds). */
+export const cacheLine = (cache: NonNullable<BuiltGraph['cache']>): string =>
+  `cache: ${cache.map(c => `${c.label} ${c.hit ? 'hit' : 'miss'}`).join(' · ')}`;
 
 /**
  * Build the graph `map --format json` writes, without writing it: one
  * Xray pipeline per distinct root (presets applied), serialized and
  * merged. Roots must already be validated (`validateRunRoots`).
  * `quiet` drops per-root progress and info logs (warnings still show).
+ * `cache` (multi-root, no presets) serves unchanged roots and the merged
+ * graph from the cache db in the cwd; `shareInputs` then omits cached roots.
  */
 export const buildGraphForRoots = async (
   mergedOptions: any,
   configPath: string | undefined,
-  opts: { format?: 'json' | 'csv' | 'xml'; quiet?: boolean } = {}
+  opts: { format?: 'json' | 'csv' | 'xml'; quiet?: boolean; cache?: boolean } = {}
 ): Promise<BuiltGraph> => {
   const uniquePaths = Array.from(new Set(runRoots(mergedOptions)));
+  const cwd = process.cwd();
+  const useCache = Boolean(opts.cache) && uniquePaths.length > 1 &&
+    !(Array.isArray(mergedOptions.preset) && mergedOptions.preset.length > 0);
+  const graphCache = useCache
+    ? new GraphCache(path.join(cwd, '.xray_cache.db'), optionsDigest(graphOptionsOf(mergedOptions)))
+    : null;
+  const fingerprints = graphCache ? uniquePaths.map(rootFingerprint) : [];
+  const hits: boolean[] = [];
   const quiet = Boolean(opts.quiet) && Logger.getLevel() < LogLevel.DEBUG;
   const progressQuiet = quiet || Boolean(mergedOptions.quiet) || Logger.getLevel() < LogLevel.INFO;
   const parts: Array<{ root: string; graph: SerializedGraph }> = [];
@@ -222,6 +249,15 @@ export const buildGraphForRoots = async (
   try {
     for (let i = 0; i < uniquePaths.length; i++) {
       const currentPath = uniquePaths[i];
+      const cached = graphCache?.getRoot(currentPath, fingerprints[i]) ?? null;
+      hits.push(cached !== null);
+      if (cached) {
+        parts.push({ root: currentPath, graph: cached.graph });
+        coverage.files += cached.coverage.files;
+        coverage.parsed += cached.coverage.parsed;
+        coverage.skipped.push(...cached.coverage.skipped);
+        continue;
+      }
       if (uniquePaths.length > 1) {
         Logger.info(`\nProcessing path ${i + 1}/${uniquePaths.length}: ${currentPath}`);
       }
@@ -250,17 +286,32 @@ export const buildGraphForRoots = async (
         graph: new GraphSerializer().serialize(graph, currentPath, { references: uniquePaths.length > 1 }),
       });
       shareInputs.push({ currentPath, rankedNodes, graph });
-      const c = xray.getLastCoverage();
-      if (c) {
-        coverage.files += c.files;
-        coverage.parsed += c.parsed;
-        coverage.skipped.push(...c.skipped);
-      }
+      const c = xray.getLastCoverage() ?? { files: 0, parsed: 0, skipped: [] };
+      coverage.files += c.files;
+      coverage.parsed += c.parsed;
+      coverage.skipped.push(...c.skipped);
+      graphCache?.putRoot(currentPath, { fingerprint: fingerprints[i], graph: parts[parts.length - 1].graph, coverage: c });
     }
+  } catch (err) {
+    graphCache?.close();
+    throw err;
   } finally {
     if (Logger.getLevel() !== prevLevel) Logger.setLevel(prevLevel);
   }
-  return { graph: resolveCrossRootReferences(mergeSerializedGraphs(parts)), shareInputs, coverage };
+  if (!graphCache) {
+    return { graph: resolveCrossRootReferences(mergeSerializedGraphs(parts)), shareInputs, coverage };
+  }
+  try {
+    let graph = hits.every(Boolean) ? graphCache.getMerged(uniquePaths, cwd, fingerprints) : null;
+    if (!graph) {
+      graph = resolveCrossRootReferences(mergeSerializedGraphs(parts, cwd));
+      graphCache.putMerged(uniquePaths, cwd, fingerprints, graph);
+    }
+    const labels = deriveRootLabels(uniquePaths, cwd);
+    return { graph, shareInputs, coverage, cache: labels.map((r, i) => ({ label: r.label, hit: hits[i] })) };
+  } finally {
+    graphCache.close();
+  }
 };
 
 // Helper function to run a single xray generation

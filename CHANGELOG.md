@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   package name from its `package.json`), else `INFERRED` by same-language
   name. Edges carry `crossRoot: true`; `impact` groups such callers under
   the caller's root.
+- Multi-root `impact` (several `-p`, `--lens`) caches per-root and merged
+  graphs in `.xray_cache.db` (cwd): a root whose scanned files (path,
+  mtime, size), `package.json` and `go.mod`/`go.work` are unchanged is not
+  re-analyzed; a changed root alone is rebuilt and re-linked. stderr shows
+  `cache: <label> hit|miss` per root.
 - `--log-level <level>` (`silent|error|warn|info|debug`, case-insensitive)
   sets an explicit log level; beats `-V`, loses to `--quiet`. Bad value
   exits 2.

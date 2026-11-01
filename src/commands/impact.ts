@@ -16,7 +16,7 @@ import {
   outputRegistry, textFormatter,
 } from '../lib/output';
 import { formatTree, readSerializedGraph } from './query';
-import { buildGraphForRoots, resolveRunOptions, validateRunRoots } from './generate';
+import { buildGraphForRoots, cacheLine, resolveRunOptions, validateRunRoots } from './generate';
 
 export interface ImpactCommandOptions {
   depth?: string;
@@ -79,7 +79,8 @@ async function obtainGraph(options: ImpactCommandOptions): Promise<SerializedGra
   const cli = { path: options.path ?? [], lens: options.lens, scope: options.scope, lang: options.lang ?? [], config: options.config };
   const { mergedOptions } = resolveRunOptions(cli);
   validateRunRoots(mergedOptions, options.config);
-  const built = await buildGraphForRoots(mergedOptions, options.config, { format: 'json', quiet: true });
+  const built = await buildGraphForRoots(mergedOptions, options.config, { format: 'json', quiet: true, cache: true });
+  if (built.cache) Logger.info(cacheLine(built.cache));
   Logger.info(coverageLine(built.coverage));
   return built.graph;
 }
