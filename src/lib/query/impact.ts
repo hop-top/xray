@@ -244,6 +244,27 @@ function callerRef(n: ImpactNode): string {
   return note ? `${ref} (${note})` : ref;
 }
 
+/** `<symbol> (<where>) — N callers across M groups`: first line of text and brief. */
+function headerLine(r: ImpactResult, s: Styles | undefined): string {
+  const { matches, query } = r.symbol;
+  const bold = (t: string) => (s ? s.bold(t) : t);
+  const head =
+    matches.length === 1
+      ? `${bold(matches[0].name)}${definedAt(matches[0]) ? ' (' + definedAt(matches[0]) + ')' : ''}`
+      : `${bold(query)} (${matches.length} definitions)`;
+  const tail = r.counts.callers === 0
+    ? plural(0, 'caller', 'callers')
+    : `${plural(r.counts.callers, 'caller', 'callers')} across ${plural(r.counts.groups, 'group', 'groups')}`;
+  return `${head} — ${tail}`;
+}
+
+/** `edges: EXTRACTED n · INFERRED n[ · AMBIGUOUS n]` (counts kept edges, not callers). */
+function edgesLine(r: ImpactResult): string {
+  const footer = [`EXTRACTED ${r.counts.EXTRACTED}`, `INFERRED ${r.counts.INFERRED}`];
+  if (r.counts.AMBIGUOUS > 0) footer.push(`AMBIGUOUS ${r.counts.AMBIGUOUS}`);
+  return `edges: ${footer.join(' · ')}`;
+}
+
 /** Render the grouped summary (default `text` format). */
 export function renderImpactText(r: ImpactResult, put: (line?: string) => void, s: Styles): void {
   const { matches, query } = r.symbol;
@@ -252,14 +273,7 @@ export function renderImpactText(r: ImpactResult, put: (line?: string) => void, 
     return;
   }
 
-  const head =
-    matches.length === 1
-      ? `${s.bold(matches[0].name)}${definedAt(matches[0]) ? ' (' + definedAt(matches[0]) + ')' : ''}`
-      : `${s.bold(query)} (${matches.length} definitions)`;
-  const tail = r.counts.callers === 0
-    ? plural(0, 'caller', 'callers')
-    : `${plural(r.counts.callers, 'caller', 'callers')} across ${plural(r.counts.groups, 'group', 'groups')}`;
-  put(`${head} — ${tail}`);
+  put(headerLine(r, s));
   if (matches.length > 1) {
     const shown = matches.slice(0, LISTED_PER_GROUP).map(definedAt).join('; ');
     const more = matches.length > LISTED_PER_GROUP ? `; …and ${matches.length - LISTED_PER_GROUP} more` : '';
@@ -282,10 +296,40 @@ export function renderImpactText(r: ImpactResult, put: (line?: string) => void, 
     }
   }
 
-  // counts.EXTRACTED/INFERRED/AMBIGUOUS count kept edges, not callers.
-  const footer = [`EXTRACTED ${r.counts.EXTRACTED}`, `INFERRED ${r.counts.INFERRED}`];
-  if (r.counts.AMBIGUOUS > 0) footer.push(`AMBIGUOUS ${r.counts.AMBIGUOUS}`);
-  put(s.muted(`edges: ${footer.join(' · ')}`));
+  put(s.muted(edgesLine(r)));
+}
+
+/** Hard size cap of the `brief` format (hook context budgets). */
+export const BRIEF_MAX_CHARS = 1200;
+
+/** Callers listed per group line in `brief`. */
+const BRIEF_PER_GROUP = 3;
+
+/**
+ * Compact plain-text summary for hook scripts (`brief` format): the text
+ * header, one line per group (most callers first) naming its first
+ * {@link BRIEF_PER_GROUP} callers (shallowest first), the edges footer.
+ * At most {@link BRIEF_MAX_CHARS} chars: cut at a line end, last line `…`.
+ * Empty string when nothing matched or nothing calls the symbol, so a hook
+ * can pass the output through unchanged.
+ */
+export function renderImpactBrief(r: ImpactResult): string {
+  if (r.symbol.matches.length === 0 || r.counts.callers === 0) return '';
+
+  const lines = [headerLine(r, undefined)];
+  for (const g of r.groups) {
+    const members = r.nodes.filter(n => n.group === g.name);
+    const listed = members.slice(0, BRIEF_PER_GROUP).map(callerRef);
+    if (members.length > BRIEF_PER_GROUP) listed.push(`…and ${members.length - BRIEF_PER_GROUP} more`);
+    lines.push(`  ${g.name}: ${plural(members.length, 'caller', 'callers')} — ${listed.join(', ')}`);
+  }
+  lines.push(edgesLine(r));
+
+  const text = lines.join('\n');
+  if (text.length <= BRIEF_MAX_CHARS) return text;
+  const cut = text.slice(0, BRIEF_MAX_CHARS - 1);
+  const nl = cut.lastIndexOf('\n');
+  return (nl > 0 ? cut.slice(0, nl + 1) : cut) + '…';
 }
 
 /**

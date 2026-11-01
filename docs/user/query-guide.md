@@ -345,6 +345,21 @@ Dispatch                   internal/dispatch/dispatch.go  84    1      internal 
 …
 ```
 
+Or the size-bounded `brief` view for hook scripts: one line per group,
+top 3 callers each, at most 1200 characters, and nothing at all when the
+symbol has no callers or no match:
+
+```bash
+xray --quiet impact RunHooks --depth 2 --graph graph.json --format brief
+```
+
+```
+RunHooks (method, internal/dispatch/run.go:L108) — 35 callers across 2 groups
+  internal: 24 callers — Dispatch (internal/dispatch/dispatch.go:L85), TestRunHooks_EmptyList (internal/dispatch/run_test.go:L48), TestRunHooks_AllowHandler (internal/dispatch/run_test.go:L56), …and 21 more
+  cmd: 11 callers — runReplay (cmd/nerv/cmd_replay.go:L52), testSingleEvent (cmd/nerv/cmd_testhook.go:L140), TestReplayCmd_FlagsReachRunE (cmd/nerv/cmd_replay_test.go:L18), …and 8 more
+edges: EXTRACTED 35 · INFERRED 0
+```
+
 ### Confidence and `--strict`
 
 `calls` edges are `EXTRACTED` when xray resolved the callee by scope (same

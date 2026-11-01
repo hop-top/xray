@@ -13,7 +13,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { GraphSerializer } from '../../src/lib/graph/serializer';
 import { FunctionAdapter } from '../../src/lib/query/adapters/function';
-import { computeImpact, groupKey, renderImpactText, impactToQueryResult } from '../../src/lib/query/impact';
+import { computeImpact, groupKey, renderImpactBrief, renderImpactText, impactToQueryResult, BRIEF_MAX_CHARS } from '../../src/lib/query/impact';
 import type { SerializedGraph, SerializedNode, SerializedEdge } from '../../src/lib/query/types';
 import { formatTree } from '../../src/commands/query';
 import { coverageLine } from '../../src/commands/impact';
@@ -231,6 +231,63 @@ describe('impact text output', () => {
   });
 });
 
+describe('impact brief output (renderImpactBrief)', () => {
+  const brief = (g: SerializedGraph, sym = 'T') => renderImpactBrief(computeImpact(load(g), sym));
+
+  test('header (same as text), one line per group, edges footer', () => {
+    expect(brief(diamond()).split('\n')).toEqual([
+      'T (function, pkg/t.go:L11) — 3 callers across 2 groups',
+      '  pkg: 2 callers — A (pkg/a.go:L21), B (pkg/b.go:L31)',
+      '  cmd: 1 caller — C (cmd/c.go:L41)',
+      'edges: EXTRACTED 3 · INFERRED 0',
+    ]);
+  });
+
+  test('groups in result order (most callers first), callers shallowest first, top 3 then "…and N more"', () => {
+    const many = Array.from({ length: 5 }, (_, i) => tag(`svc/f${i}.go`, `F${i}`, i + 1));
+    const deep = tag('svc/z.go', 'Deep', 0);
+    const g = graphOf([T, A, deep, ...many], [calls(A, T), ...many.map(m => calls(m, T)), calls(deep, many[0])]);
+    const lines = brief(g).split('\n');
+    expect(lines[1]).toBe('  svc: 6 callers — F0 (svc/f0.go:L2), F1 (svc/f1.go:L3), F2 (svc/f2.go:L4), …and 3 more');
+    expect(lines[2]).toBe('  pkg: 1 caller — A (pkg/a.go:L21)');
+    expect(lines).toHaveLength(4);
+  });
+
+  test('INFERRED callers keep the "(inferred)" marker', () => {
+    const g = graphOf([T, A, B], [calls(A, T, 'INFERRED'), calls(B, T)]);
+    expect(brief(g)).toContain('  pkg: 2 callers — A (pkg/a.go:L21) (inferred), B (pkg/b.go:L31)\n');
+    expect(brief(g).split('\n').pop()).toBe('edges: EXTRACTED 1 · INFERRED 1');
+  });
+
+  test('several definitions: header only (no "defined:" line)', () => {
+    const T2 = tag('other/t.go', 'T', 4);
+    const lines = brief(graphOf([T, T2, A], [calls(A, T)])).split('\n');
+    expect(lines[0]).toBe('T (2 definitions) — 1 caller across 1 group');
+    expect(lines[1]).toBe('  pkg: 1 caller — A (pkg/a.go:L21)');
+  });
+
+  test('empty on no match and on zero callers', () => {
+    expect(brief(diamond(), 'Nope')).toBe('');
+    expect(brief(graphOf([T], []))).toBe('');
+  });
+
+  test(`hard cap ${1200} chars, cut at a line end, ending "…"`, () => {
+    expect(BRIEF_MAX_CHARS).toBe(1200);
+    const groups = Array.from({ length: 40 }, (_, i) => tag(`area${String(i).padStart(2, '0')}/some/long/path/file.go`, `Caller${i}`, i));
+    const out = brief(graphOf([T, ...groups], groups.map(m => calls(m, T))));
+    expect(out.length).toBeLessThanOrEqual(1200);
+    expect(out.endsWith('\n…')).toBe(true);
+    expect(out.startsWith('T (function, pkg/t.go:L11) — 40 callers across 40 groups\n')).toBe(true);
+    // every kept line is whole
+    for (const l of out.split('\n').slice(1, -1)) expect(l).toMatch(/^ {2}area\d\d: 1 caller — Caller\d+ \(area\d\d\/some\/long\/path\/file\.go:L\d+\)$/);
+    expect(out).not.toContain('edges:');
+  });
+
+  test('under the cap: untouched', () => {
+    expect(brief(diamond())).not.toContain('…');
+  });
+});
+
 describe('xray impact (built CLI)', () => {
   let dir: string;
   let graphFile: string;
@@ -351,6 +408,78 @@ describe('xray impact (built CLI)', () => {
     const out = path.join(dir, 'impact.csv');
     expect(run(['impact', 'T', '--graph', graphFile, '--cols', 'name,depth', '-o', out]).status).toBe(0);
     expect(fs.readFileSync(out, 'utf-8').split('\n')[0]).toBe('name,depth');
+  });
+
+  describe('hook-facing behaviour', () => {
+    // No FORCE_COLOR / NO_COLOR: colour decided by isTTY alone (stdout is a pipe here).
+    function runPiped(args: string[], cwd = dir) {
+      const env: NodeJS.ProcessEnv = { ...process.env, XRAY_NO_TELEMETRY: '1', XDG_CONFIG_HOME: path.join(dir, 'xdg') };
+      delete env.FORCE_COLOR;
+      delete env.NO_COLOR;
+      return spawnSync(process.execPath, [BIN, '--no-telemetry', ...args], { cwd, encoding: 'utf-8', env, timeout: 90_000 });
+    }
+
+    test.each([
+      ['before the subcommand', ['--quiet', 'impact', 'T']],
+      ['after the subcommand', ['impact', 'T', '--quiet']],
+    ])('--quiet %s with --graph: empty stderr', (_w, args) => {
+      const r = run([...args, '--graph', graphFile]);
+      expect(r.status).toBe(0);
+      expect(r.stderr).toBe('');
+      expect(r.stdout).toContain('3 callers across 2 groups');
+    });
+
+    test.each([
+      ['before the subcommand', ['--quiet', 'impact', 'target']],
+      ['after the subcommand', ['impact', 'target', '--quiet']],
+    ])('--quiet %s with a live root: no coverage/cache line', (_w, args) => {
+      const r = run([...args, '-p', repo], repo);
+      expect(r.status).toBe(0);
+      expect(r.stderr).not.toContain('coverage:');
+      expect(r.stderr).not.toContain('cache:');
+      expect(r.stderr).toBe('');
+      expect(r.stdout).toContain('useIt (lib/use.ts:L2)');
+    });
+
+    test.each([['text'], ['brief'], ['tree']])('no ANSI on piped stdout (--format %s)', (f) => {
+      const r = runPiped(['impact', 'T', '--graph', graphFile, '--format', f]);
+      expect(r.status).toBe(0);
+      expect(r.stdout.length).toBeGreaterThan(0);
+      expect(r.stdout).not.toMatch(/\x1b\[/);
+    });
+
+    test('no match: exit 0, message on stdout', () => {
+      const r = run(['impact', 'Nope', '--graph', graphFile]);
+      expect(r.status).toBe(0);
+      expect(r.stdout).toContain('Nope: no matching symbol in the graph');
+    });
+
+    test('--format brief prints the brief', () => {
+      const r = run(['--quiet', 'impact', 'T', '--graph', graphFile, '--format', 'brief']);
+      expect(r.status).toBe(0);
+      expect(r.stderr).toBe('');
+      expect(r.stdout).toBe([
+        'T (function, pkg/t.go:L11) — 3 callers across 2 groups',
+        '  pkg: 2 callers — A (pkg/a.go:L21), B (pkg/b.go:L31)',
+        '  cmd: 1 caller — C (cmd/c.go:L41)',
+        'edges: EXTRACTED 3 · INFERRED 0',
+        '',
+      ].join('\n'));
+    });
+
+    test('--format brief prints nothing (exit 0) on no match and on zero callers', () => {
+      const none = run(['--quiet', 'impact', 'Nope', '--graph', graphFile, '--format', 'brief']);
+      expect(none.status).toBe(0);
+      expect(none.stdout).toBe('');
+      expect(none.stderr).toBe('');
+      const zero = run(['--quiet', 'impact', 'C', '--graph', graphFile, '--format', 'brief']);
+      expect(zero.status).toBe(0);
+      expect(zero.stdout).toBe('');
+    });
+
+    test('--help lists brief among formats', () => {
+      expect(run(['impact', '--help']).stdout).toMatch(/text, brief, tree/);
+    });
   });
 
   test('impact sits in the ANALYZE help group', () => {

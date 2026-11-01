@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `xray impact --format brief`: header, one line per group (top 3
+  callers, ` (inferred)` kept), `edges:` footer; at most 1200 chars, cut
+  at a line end with `…`; prints nothing (exit 0) on no match or zero
+  callers. For hook scripts: `xray --quiet impact X --graph g.json
+  --format brief`.
 - `xray impact <symbol>`: transitive callers of a function or method
   ("what breaks if I change X?"), each at its shortest depth, grouped by
   root label (merged graphs) or top-level directory. `--depth N`

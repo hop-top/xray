@@ -6,7 +6,7 @@
  */
 import type { Command } from 'commander';
 import { GraphSerializer } from '../lib/graph/serializer';
-import { computeImpact, DEFAULT_IMPACT_DEPTH, impactToQueryResult, renderImpactText, type ImpactResult } from '../lib/query/impact';
+import { computeImpact, DEFAULT_IMPACT_DEPTH, impactToQueryResult, renderImpactBrief, renderImpactText, type ImpactResult } from '../lib/query/impact';
 import type { SerializedGraph } from '../lib/query/types';
 import type { ParseCoverage } from '../lib/xray';
 import { Logger } from '../lib/logger';
@@ -43,6 +43,10 @@ function buildRegistry() {
     adaptFormatter<ImpactResult>(formatterOf(base, 'table'), rows),
     adaptFormatter<ImpactResult>(formatterOf(base, 'csv'), rows),
     textFormatter<ImpactResult>('text', (r, put, s) => renderImpactText(r, put, s)),
+    textFormatter<ImpactResult>('brief', (r, put) => {
+      const text = renderImpactBrief(r);
+      if (text) put(text);
+    }),
     textFormatter<ImpactResult>('tree', (r, put, s) => {
       put(formatTree(impactToQueryResult(r), s).replace(/\n$/, ''));
     })
@@ -133,10 +137,15 @@ Without --graph the graph is built in memory for the configured roots
 (--path, --lens, --scope; same resolution as \`map --format json\`) and
 no map file is written.
 
+--format brief is the text summary cut down for hook scripts: header, one
+line per group (top 3 callers), edges footer, at most 1200 chars; it
+prints nothing when no symbol matches or nothing calls it.
+
 Examples:
   xray impact createSession
   xray impact 'New*' --depth 1 --strict
   xray map --format json -o graph.json && xray impact Run --graph graph.json --format json
+  xray --quiet impact Run --graph graph.json --format brief
 `;
 
 /** Register `xray impact`. */
@@ -156,7 +165,7 @@ export function registerImpactCommand(program: Command): Command {
       (value: string, previous: string[]) => previous.concat(value.split(',').map(s => s.trim()).filter(Boolean)), []);
   addOutputFlags(cmd, impactRegistry, {
     defaultFormat: 'text',
-    description: 'Output format: text, tree, json, yaml, table, csv',
+    description: 'Output format: text, brief, tree, json, yaml, table, csv',
     showInHelp: ['cols', 'output'],
   });
   return cmd.addHelpText('after', HELP_AFTER).action(runImpactCommand);

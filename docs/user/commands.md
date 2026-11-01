@@ -102,7 +102,7 @@ distance from the symbol.
 | `-p, --path <path>` | Root to analyze (repeatable; two or more roots are merged) | config `paths` or cwd |
 | `--lens <name>` / `--scope <name>` | Pick roots and options from the config file | none |
 | `--lang <list>` | Languages to parse | all detected |
-| `--format <fmt>` | `text` (default), `tree`, `json`, `yaml`, `table`, `csv` | `text` |
+| `--format <fmt>` | `text` (default), `brief`, `tree`, `json`, `yaml`, `table`, `csv` | `text` |
 | `--cols <list>` | `table`/`csv` columns: `name`, `kind`, `file`, `line`, `depth`, `group`, `confidence`, `id` | `name,file,line,depth,group,confidence` |
 | `-o, --output <path>` | Write the result to a file; the format follows its extension unless `--format` is given | stdout |
 
@@ -146,6 +146,26 @@ edges: EXTRACTED 35 · INFERRED 0
 - Text and tree show 1-based editor lines. `json`, `yaml`, `table` and
   `csv` carry the raw 0-based graph value (`line: 107` for `run.go:L108`),
   as `xray query` does.
+
+**Brief output** (`--format brief`): the text summary cut down for hook
+scripts and other size-bounded consumers. The same header, one line per
+group (most callers first) naming its first 3 callers (shallowest first,
+` (inferred)` kept), and the `edges:` footer; at most 1200 characters,
+cut at a line end with a final `…` line. It prints **nothing** (exit 0)
+when no symbol matches or nothing calls it, so a script can forward the
+output as is. Combine with root `--quiet` and a saved graph for an
+empty stderr and no rebuild:
+
+```bash
+xray --quiet impact RunHooks --graph graph.json --depth 2 --format brief
+```
+
+```
+RunHooks (method, internal/dispatch/run.go:L108) — 35 callers across 2 groups
+  internal: 24 callers — Dispatch (internal/dispatch/dispatch.go:L85), TestRunHooks_EmptyList (internal/dispatch/run_test.go:L48), TestRunHooks_AllowHandler (internal/dispatch/run_test.go:L56), …and 21 more
+  cmd: 11 callers — runReplay (cmd/nerv/cmd_replay.go:L52), testSingleEvent (cmd/nerv/cmd_testhook.go:L140), TestReplayCmd_FlagsReachRunE (cmd/nerv/cmd_replay_test.go:L18), …and 8 more
+edges: EXTRACTED 35 · INFERRED 0
+```
 
 **Record formats.** `table` and `csv` have one row per caller with the
 columns `name`, `file`, `line`, `depth`, `group`, `confidence` (`kind`
