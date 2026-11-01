@@ -2,11 +2,141 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Logger } from '../logger';
 import { getGrammar, isLanguageEnabled, packForExtension, recordSkipped } from './grammars';
+import { goDefaultName } from '../graph/go-resolver';
+
+/**
+ * How a grammar spells a call, so references can record the called name.
+ * Paths: a field name, or `#first` / `#last` (first / last named child).
+ *
+ * Reference forms recorded:
+ * - `name`      plain or scoped call (`f()`, `Foo::bar()`), or a member call
+ *               whose receiver is an import-bound name (`os.getcwd()`)
+ * - `.name`     member call on a value receiver (`r.run()`, `this.m()`)
+ * - `pkg.name`  `qualifyImports` grammars only (Go): receiver is an import
+ * Only the called name is kept; the receiver itself never is.
+ */
+export interface CallShape {
+  /** Call node type -> path to its callee. */
+  calls: Record<string, string>;
+  /** Callee wrapper type (member access, scope, generics) -> path toward the name. */
+  steps: Record<string, string>;
+  /** Node types holding the called name. */
+  leaves: string[];
+  /** Member-access node type (callee wrapper or the call itself) -> path to its receiver. */
+  receivers: Record<string, string>;
+  /** Name an import binds when it has no explicit alias. */
+  importName?: (source: string) => string | undefined;
+  /** Record import-receiver calls as `pkg.name` (graph builder resolves them via imports). */
+  qualifyImports?: boolean;
+}
+
+const JS_CALLS: CallShape = {
+  calls: { call_expression: 'function' },
+  steps: { member_expression: 'property' },
+  leaves: ['identifier', 'property_identifier', 'private_property_identifier'],
+  receivers: { member_expression: 'object' },
+};
+
+const KOTLIN_CALLS: CallShape = {
+  calls: { call_expression: '#first' },
+  steps: { navigation_expression: '#last', navigation_suffix: '#last' },
+  leaves: ['simple_identifier'],
+  receivers: { navigation_expression: '#first' },
+};
+
+/**
+ * Call shapes by language pack name (see LANGUAGE_PACKS). Adding a grammar
+ * means adding a row here. No row:
+ * - bash: commands, no call expressions / method-call syntax
+ * - haskell: function application only, no method-call syntax
+ * - elixir: no definition tags extracted (elixir.scm has imports only)
+ * Unsupported shapes (no reference recorded): calls through call results or
+ * parenthesised callees (`f()()`, `(a || b)()`), Rust macros (`m!()`),
+ * constructor calls (`new Foo()`), Rust turbofish paths (`Foo::<T>::bar()`).
+ * Import-bound receivers are only known where an import names them
+ * (explicit alias, Go package name, Python top-level module); elsewhere
+ * every member call is recorded as `.name`.
+ */
+export const CALL_SHAPES: Record<string, CallShape> = {
+  typescript: JS_CALLS,
+  javascript: JS_CALLS,
+  python: {
+    calls: { call: 'function' },
+    steps: { attribute: 'attribute' },
+    leaves: ['identifier'],
+    receivers: { attribute: 'object' },
+    importName: source => (source.startsWith('.') ? undefined : source.split('.')[0]),
+  },
+  java: { calls: { method_invocation: 'name' }, steps: {}, leaves: ['identifier'], receivers: { method_invocation: 'object' } },
+  csharp: {
+    calls: { invocation_expression: 'function' },
+    steps: {
+      member_access_expression: 'name',
+      generic_name: '#first',
+      conditional_access_expression: '#last',
+      member_binding_expression: 'name',
+    },
+    leaves: ['identifier'],
+    receivers: { member_access_expression: 'expression', conditional_access_expression: 'condition' },
+  },
+  cpp: {
+    calls: { call_expression: 'function' },
+    steps: { field_expression: 'field', qualified_identifier: 'name', template_method: 'name', template_function: 'name' },
+    leaves: ['identifier', 'field_identifier'],
+    receivers: { field_expression: 'argument' },
+  },
+  c: {
+    calls: { call_expression: 'function' },
+    steps: { field_expression: 'field' },
+    leaves: ['identifier', 'field_identifier'],
+    receivers: { field_expression: 'argument' },
+  },
+  go: {
+    calls: { call_expression: 'function' },
+    steps: { selector_expression: 'field' },
+    leaves: ['identifier', 'field_identifier'],
+    receivers: { selector_expression: 'operand' },
+    importName: goDefaultName,
+    qualifyImports: true,
+  },
+  rust: {
+    calls: { call_expression: 'function' },
+    steps: { field_expression: 'field', scoped_identifier: 'name', generic_function: 'function' },
+    leaves: ['identifier', 'field_identifier'],
+    receivers: { field_expression: 'value' },
+  },
+  php: {
+    calls: {
+      function_call_expression: 'function',
+      member_call_expression: 'name',
+      nullsafe_member_call_expression: 'name',
+      scoped_call_expression: 'name',
+    },
+    steps: { qualified_name: '#last' },
+    leaves: ['name'],
+    receivers: { member_call_expression: 'object', nullsafe_member_call_expression: 'object' },
+  },
+  ruby: { calls: { call: 'method' }, steps: {}, leaves: ['identifier', 'constant'], receivers: { call: 'receiver' } },
+  swift: {
+    calls: { call_expression: '#first' },
+    steps: { navigation_expression: 'suffix', navigation_suffix: 'suffix' },
+    leaves: ['simple_identifier'],
+    receivers: { navigation_expression: 'target' },
+  },
+  kotlin: KOTLIN_CALLS,
+  scala: {
+    calls: { call_expression: 'function' },
+    steps: { field_expression: 'field', generic_function: 'function' },
+    leaves: ['identifier'],
+    receivers: { field_expression: 'value' },
+  },
+};
 
 interface LanguageConfig {
   grammar: any;
   tagsQuery: string;
   importsQuery?: string;
+  callShape?: CallShape;
 }
 
 // Grammars load lazily (see grammars.ts); resolved configs are cached per extension.
@@ -54,6 +184,7 @@ export function getLanguageConfig(ext: string, file?: string): LanguageConfig | 
     grammar: status.grammar,
     tagsQuery: queryOverrides.get(ext) ?? query,
     importsQuery: query,
+    callShape: CALL_SHAPES[pack.name],
   };
   resolved.set(ext, config);
   return config;

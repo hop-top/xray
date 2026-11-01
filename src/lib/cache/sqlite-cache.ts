@@ -31,9 +31,10 @@ const { open } = require('@hop-top/kit/sqlstore') as {
  * On-disk layout version, stored in PRAGMA user_version.
  *  0 (unset): relational layout (files_v2 / tags / file_analysis tables).
  *  3: kit sqlstore `kv` table; one JSON record per file.
+ *  4: same layout; tag references gain member-call forms (`.name`).
  * Any other value is invalidated (wiped) on open.
  */
-export const CACHE_SCHEMA_VERSION = 3;
+export const CACHE_SCHEMA_VERSION = 4;
 
 const LEGACY_TABLES = ['tags', 'files_v2', 'file_analysis'];
 const TAGS_PREFIX = 'tags:';

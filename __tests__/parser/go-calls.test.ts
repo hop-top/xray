@@ -21,11 +21,11 @@ func main() {
 }
 `;
 
-  it('keeps pkg.Func references qualified; skips non-identifier operands', async () => {
+  it('keeps pkg.Func references qualified; value-receiver calls become .Method', async () => {
     const r = await new ParserManager('/root').parse('main.go', src);
     const main = r.tags.find(t => t.name === 'main')!;
     expect([...main.references!].sort()).toEqual(
-      ['build', 'cmd.Execute', 'fmt.Println', 'u.Run', 'x.Method'].sort()
+      ['build', 'cmd.Execute', 'fmt.Println', 'u.Run', '.Method', '.Nested'].sort()
     );
   });
 

@@ -1,6 +1,6 @@
 import * as path from 'path';
 import Parser from 'tree-sitter';
-import { getLanguageConfig } from './language-registry';
+import { getLanguageConfig, CallShape } from './language-registry';
 import { isUnavailable } from './grammars';
 import { Tag, Import } from './types';
 import { Logger } from '../logger';
@@ -68,17 +68,20 @@ export class ParserManager {
 
     const tree = parser.parse(content);
 
-    const tags = await this.extractTags(tree, langConfig.grammar, langConfig.tagsQuery, relPath, content, includeVariables, docConfig, enableCfg, enableDfg);
-
     let imports: Import[] = [];
     if (langConfig.importsQuery) {
       imports = await this.extractImports(tree, langConfig.grammar, langConfig.importsQuery, relPath);
     }
 
+    const calls = langConfig.callShape
+      ? { shape: langConfig.callShape, importNames: importBoundNames(imports, langConfig.callShape) }
+      : undefined;
+    const tags = await this.extractTags(tree, langConfig.grammar, langConfig.tagsQuery, relPath, content, includeVariables, docConfig, enableCfg, enableDfg, calls);
+
     return { tags, imports };
   }
 
-  private async extractTags(tree: Parser.Tree, language: any, queryStr: string, file: string, content: string, includeVariables: boolean, docConfig: string, enableCfg: boolean, enableDfg: boolean): Promise<Tag[]> {
+  private async extractTags(tree: Parser.Tree, language: any, queryStr: string, file: string, content: string, includeVariables: boolean, docConfig: string, enableCfg: boolean, enableDfg: boolean, calls?: CallContext): Promise<Tag[]> {
     const tags: Tag[] = [];
     if (!queryStr) {
       return tags;
@@ -155,7 +158,7 @@ export class ParserManager {
 
           // Find definition node for endLine
           let defNodeForLine = node.parent;
-          while (defNodeForLine && !defNodeForLine.type.includes('definition') && !defNodeForLine.type.includes('declaration')) {
+          while (defNodeForLine && !isDefinitionNode(defNodeForLine.type)) {
             defNodeForLine = defNodeForLine.parent;
           }
           // Fallback to name node if no definition found (e.g. variable declarator might be tricky)
@@ -164,7 +167,7 @@ export class ParserManager {
           // Extract function call references for functions/methods
           let references: string[] | undefined;
           if (kind === 'function' || kind === 'method') {
-            references = this.extractReferences(defNodeForLine);
+            references = this.extractReferences(defNodeForLine, calls);
           }
 
           tags.push({
@@ -317,8 +320,9 @@ export class ParserManager {
     return false;
   }
 
-  private extractReferences(defNode: Parser.SyntaxNode): string[] {
+  private extractReferences(defNode: Parser.SyntaxNode, calls?: CallContext): string[] {
     const references = new Set<string>();
+    if (!calls) return [];
 
     // Iterative traversal with stack to avoid stack overflow
     const stack: Parser.SyntaxNode[] = [defNode];
@@ -326,34 +330,8 @@ export class ParserManager {
     while (stack.length > 0) {
       const node = stack.pop()!;
 
-      // Check for call expressions (covers most languages)
-      if (node.type === 'call_expression') {
-        // Try to get the function name being called
-        const funcNode = node.childForFieldName('function');
-        if (funcNode) {
-          // Handle simple function calls: foo()
-          if (funcNode.type === 'identifier') {
-            references.add(funcNode.text);
-          }
-          // Go selector: pkg.Func(). Kept qualified so the graph builder can
-          // resolve it through the file's imports; plain `x.Method()` stays
-          // unresolved there (no type info).
-          else if (funcNode.type === 'selector_expression') {
-            const operand = funcNode.childForFieldName('operand');
-            const field = funcNode.childForFieldName('field');
-            if (operand && field && operand.type === 'identifier') {
-              references.add(`${operand.text}.${field.text}`);
-            }
-          }
-          // Handle member expressions: obj.method()
-          else if (funcNode.type === 'member_expression' || funcNode.type === 'attribute') {
-            const property = funcNode.childForFieldName('property') || funcNode.childForFieldName('attribute');
-            if (property) {
-              references.add(property.text);
-            }
-          }
-        }
-      }
+      const name = calledName(node, calls);
+      if (name) references.add(name);
 
       // Add children to stack in reverse order to maintain depth-first traversal order
       for (let i = node.childCount - 1; i >= 0; i--) {
@@ -472,4 +450,63 @@ export class ParserManager {
 
     return imports;
   }
+}
+
+// Definition nodes whose type names say neither "definition" nor "declaration".
+const NAMED_DEFINITIONS = new Set(['function_item', 'method', 'singleton_method']); // rust, ruby
+
+function isDefinitionNode(type: string): boolean {
+  return type.includes('definition') || type.includes('declaration') || NAMED_DEFINITIONS.has(type);
+}
+
+function step(node: Parser.SyntaxNode, path: string): Parser.SyntaxNode | null {
+  if (path === '#first') return node.firstNamedChild;
+  if (path === '#last') return node.lastNamedChild;
+  return node.childForFieldName(path);
+}
+
+interface CallContext {
+  shape: CallShape;
+  /** Names the file's imports bind (receivers that are packages/modules, not values). */
+  importNames: Set<string>;
+}
+
+function importBoundNames(imports: Import[], shape: CallShape): Set<string> {
+  const names = new Set<string>();
+  for (const imp of imports) {
+    if (imp.alias === '_' || imp.alias === '.') continue;
+    const name = imp.alias || shape.importName?.(imp.source);
+    if (name) names.add(name);
+  }
+  return names;
+}
+
+/** Reference recorded for `node` when it is a call in this grammar (forms: see CallShape). */
+function calledName(node: Parser.SyntaxNode, { shape, importNames }: CallContext): string | undefined {
+  const calleePath = shape.calls[node.type];
+  if (!calleePath) return undefined;
+  // Receiver of the member access closest to the call, if the callee is one.
+  let receiver: Parser.SyntaxNode | null | undefined;
+  const noteReceiver = (n: Parser.SyntaxNode) => {
+    const path = shape.receivers[n.type];
+    if (path && receiver === undefined) receiver = step(n, path);
+  };
+  noteReceiver(node);
+  let cur = step(node, calleePath);
+  // Bounded: wrappers nest a few levels at most (a::b::c, generic member access).
+  for (let depth = 0; cur && depth < 16; depth++) {
+    if (shape.leaves.includes(cur.type)) {
+      const name = cur.text;
+      if (!receiver) return name;
+      if (receiver.type === 'identifier' && importNames.has(receiver.text)) {
+        return shape.qualifyImports ? `${receiver.text}.${name}` : name;
+      }
+      return `.${name}`;
+    }
+    noteReceiver(cur);
+    const next = shape.steps[cur.type];
+    if (!next) return undefined;
+    cur = step(cur, next);
+  }
+  return undefined;
 }

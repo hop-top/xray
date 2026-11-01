@@ -364,4 +364,35 @@ def my_func():
             }
         } catch (e) { }
     });
+
+    describe('method-call references per grammar', () => {
+        // [file, source, enclosing definition, expected references, forbidden references]
+        // `.name` = member call on a value receiver; bare = plain/scoped call or import receiver.
+        const cases: Array<[string, string, string, string[], string[]]> = [
+            ['m.ts', 'function f(r: any) { r.runHooks(1); g(); r?.nul(); this.m(); }', 'f', ['.runHooks', 'g', '.nul', '.m'], ['runHooks', 'r.runHooks']],
+            ['m.js', 'function f(r) { r.runHooks(1); g(); }', 'f', ['.runHooks', 'g'], ['runHooks', 'r.runHooks']],
+            ['m.py', 'import os\n\ndef f(r):\n    r.run_hooks(1)\n    os.getcwd()\n    g()\n', 'f', ['.run_hooks', 'getcwd', 'g'], ['run_hooks', '.getcwd', 'r.run_hooks']],
+            ['m.go', 'package p\n\nimport (\n\t"example.com/m/pkg"\n\tu "example.com/m/util"\n)\n\nfunc f(r *R) {\n\tpkg.Fn()\n\tu.Run()\n\tr.RunHooks()\n\ta.b.Deep()\n\tg()\n}\n', 'f', ['pkg.Fn', 'u.Run', '.RunHooks', '.Deep', 'g'], ['r.RunHooks', 'RunHooks', 'a.b.Deep']],
+            ['m.rs', 'fn f(r: &R) { r.run_hooks(1); Foo::bar(); g(); r.gen::<T>(); }', 'f', ['.run_hooks', 'bar', 'g', '.gen'], ['Foo::bar', 'run_hooks']],
+            ['impl.rs', 'struct A;\nimpl A {\n    fn a(&self) { self.x(); }\n    fn b(&self) { self.y(); }\n}\n', 'a', ['.x'], ['.y', 'y']],
+            ['m.php', '<?php function f($r) { $r->runHooks(1); Foo::bar(); g(); $r?->nul(); \\A\\h(); }', 'f', ['.runHooks', 'bar', 'g', '.nul', 'h'], ['runHooks']],
+            ['m.java', 'class A { void f(R r) { r.runHooks(1); Foo.bar(); g(); } }', 'f', ['.runHooks', '.bar', 'g'], ['runHooks']],
+            ['m.cs', 'class A { void F(R r) { r.RunHooks(1); Foo.Bar(); G(); r?.Nul(); r.Gen<T>(); H<T>(); } }', 'F', ['.RunHooks', '.Bar', 'G', '.Nul', '.Gen', 'H'], ['RunHooks']],
+            ['m.cpp', 'void f(R* r) { r->run(1); Foo::bar(); g(); o.dot(); r->tmpl<int>(); }', 'f', ['.run', 'bar', 'g', '.dot', '.tmpl'], ['Foo::bar', 'run']],
+            ['m.c', 'void f(R* r) { r->run(1); g(); o.dot(); }', 'f', ['.run', 'g', '.dot'], ['run']],
+            ['m.kt', 'fun f(r: R) { r.runHooks(1); Foo.bar(); g(); r?.nul() }', 'f', ['.runHooks', '.bar', 'g', '.nul'], ['runHooks']],
+            ['m.swift', 'func f(r: R) { r.runHooks(1); Foo.bar(); g(); r?.nul() }', 'f', ['.runHooks', '.bar', 'g', '.nul'], ['runHooks']],
+            ['m.rb', 'def f(r)\n  r.run_hooks(1)\n  Foo.bar\n  g()\n  r&.nul\nend\n', 'f', ['.run_hooks', '.bar', 'g', '.nul'], ['run_hooks']],
+            ['m.scala', 'object A { def f(r: R) = { r.runHooks(1); Foo.bar(); g() } }', 'f', ['.runHooks', '.bar', 'g'], ['runHooks']],
+        ];
+
+        it.each(cases)('%s: method-call names land in the enclosing definition references', async (file, src, def, expected, forbidden) => {
+            const result = await manager.parse(file, src);
+            const tag = result.tags.find(t => t.name === def && (t.kind === 'function' || t.kind === 'method'));
+            expect(tag).toBeDefined();
+            const refs = tag!.references ?? [];
+            for (const name of expected) expect(refs).toContain(name);
+            for (const name of forbidden) expect(refs).not.toContain(name);
+        });
+    });
 });
