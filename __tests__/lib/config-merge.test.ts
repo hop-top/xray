@@ -8,7 +8,10 @@
  * delivers working --preset and --lens when users have config files.
  */
 
-import { mergeConfig, mergeScopeWithBase } from '../../src/lib/config';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { loadConfig, mergeConfig, mergeScopeWithBase, resolveConfigPaths } from '../../src/lib/config';
 import type { XrayConfig } from '../../src/types/xray-config';
 import { UsageError } from '../../src/lib/error/types';
 
@@ -273,6 +276,36 @@ describe('mergeConfig — unknown lens', () => {
     } catch (err: any) {
       expect(err).toBeInstanceOf(UsageError);
       expect(err.exitCode).toBe(2);
+    }
+  });
+});
+
+describe('resolveConfigPaths / loadConfig resolvePaths', () => {
+  it('resolves relative paths, lens + scope paths against the file dir; keeps absolute', () => {
+    const cfg: XrayConfig = {
+      paths: ['./src', '/abs/x'],
+      output: 'docs/map.txt',
+      lenses: { quick: { paths: ['lib'] }, bare: { limit: 1 } },
+      scopes: { api: { paths: ['../api'] } },
+    };
+    const r = resolveConfigPaths(cfg, '/repo/cfg/.xrayrc.json');
+    expect(r.paths).toEqual(['/repo/cfg/src', '/abs/x']);
+    expect(r.lenses!.quick.paths).toEqual(['/repo/cfg/lib']);
+    expect(r.lenses!.bare).toEqual({ limit: 1 });
+    expect(r.scopes!.api.paths).toEqual(['/repo/api']);
+    expect(r.output).toBe('docs/map.txt');
+    expect(cfg.paths).toEqual(['./src', '/abs/x']); // input not mutated
+  });
+
+  it('loadConfig keeps file paths verbatim unless resolvePaths (load-modify-save callers)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-cfg-raw-'));
+    try {
+      const file = path.join(dir, 'x.json');
+      fs.writeFileSync(file, JSON.stringify({ paths: ['./src'] }));
+      expect(loadConfig(file)!.paths).toEqual(['./src']);
+      expect(loadConfig(file, undefined, { resolvePaths: true })!.paths).toEqual([path.join(dir, 'src')]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 });

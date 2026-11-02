@@ -676,7 +676,7 @@ export const assertLensNotScoped = (options: { lens?: string; scope?: string; al
  */
 export const resolveRunOptions = (
   normalizedOptions: any,
-  config: ReturnType<typeof loadConfig> = loadConfig(normalizedOptions.config, normalizedOptions.path?.[0])
+  config: ReturnType<typeof loadConfig> = loadConfig(normalizedOptions.config, normalizedOptions.path?.[0], { resolvePaths: true })
 ): { mergedOptions: any; scopeName?: string } => {
   assertLensNotScoped(normalizedOptions);
   if (normalizedOptions.scope) {
@@ -717,7 +717,8 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
     // Load config file
     const config = loadConfig(
       normalizedOptions.config,
-      normalizedOptions.path?.[0]
+      normalizedOptions.path?.[0],
+      { resolvePaths: true }
     );
 
     // Handle --all-scopes flag

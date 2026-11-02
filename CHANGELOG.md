@@ -231,6 +231,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Relative `paths` / `lenses.<name>.paths` / `scopes.<name>.paths` in a
+  config file resolve against that file's directory, not the cwd; absolute
+  paths and CLI `--path` unchanged.
 - `--offline` now also skips the upgrade check on every command.
 - **BREAKING:** Node.js >= 22.12 required (`engines.node`); the CLI is
   built on `@hop-top/kit` and commander 15 (ESM-only). Upgrade Node

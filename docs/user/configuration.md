@@ -96,6 +96,17 @@ xray map --config /path/to/custom-config.json
 
 When using an explicit path, **no merging occurs** - only that config file is used.
 
+### Relative Paths
+
+Relative `paths`, `lenses.<name>.paths` and `scopes.<name>.paths`
+resolve against the directory of the config file that defines them
+(like `tsconfig.json` or ESLint), not the directory you run xray from.
+A project `.xrayrc.json` with `"paths": ["./src"]` scans the project's
+`src/` from any subdirectory; a relative path in the global config
+resolves against the global config directory; with `--config`, against
+that file's directory. Absolute paths are used as-is. `--path` on the
+command line stays relative to the current directory.
+
 ## Basic Configuration
 
 ### JSON Example (.xrayrc.json)
@@ -157,7 +168,7 @@ module.exports = {
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `paths` | `string[]` | Default paths to analyze |
+| `paths` | `string[]` | Default paths to analyze (relative to the config file's directory) |
 | `output` | `string` | Default output file path |
 | `limit` | `number` | Token limit for output |
 | `features` | `object` | Features to enable: `vars`, `incs`, `docs`, `cost`, `cf`, `df` |

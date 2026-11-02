@@ -237,22 +237,67 @@ function mergeConfigs(global: XrayConfig | null, project: XrayConfig | null): Xr
   return merged;
 }
 
+/** `paths` entries resolved against `dir`; non-arrays / non-strings untouched. */
+function resolveAgainst(dir: string, paths: string[] | undefined): string[] | undefined {
+  return Array.isArray(paths)
+    ? paths.map(p => (typeof p === 'string' && p !== '' ? path.resolve(dir, p) : p))
+    : paths;
+}
+
+function withResolvedPaths(
+  dir: string,
+  entries: Record<string, XrayScopeConfig>
+): Record<string, XrayScopeConfig> {
+  const out: Record<string, XrayScopeConfig> = {};
+  for (const [name, entry] of Object.entries(entries)) {
+    out[name] = entry && typeof entry === 'object' && entry.paths !== undefined
+      ? { ...entry, paths: resolveAgainst(dir, entry.paths) }
+      : entry;
+  }
+  return out;
+}
+
+/**
+ * Copy of `config` with relative `paths`, `lenses.<name>.paths` and
+ * `scopes.<name>.paths` resolved against the directory of `filepath`
+ * (the file defining them, like tsconfig/eslint); absolute paths kept.
+ * Done per file before merging so each path keeps its own base.
+ */
+export function resolveConfigPaths(config: XrayConfig, filepath: string): XrayConfig {
+  if (!config || typeof config !== 'object') return config;
+  const dir = path.dirname(path.resolve(filepath));
+  const resolved: XrayConfig = { ...config };
+  if (config.paths !== undefined) resolved.paths = resolveAgainst(dir, config.paths);
+  if (config.lenses && typeof config.lenses === 'object') {
+    resolved.lenses = withResolvedPaths(dir, config.lenses);
+  }
+  if (config.scopes && typeof config.scopes === 'object') {
+    resolved.scopes = withResolvedPaths(dir, config.scopes);
+  }
+  return resolved;
+}
+
 /**
  * Load configuration from the project directory
- * Supports directory tree walking and global config merging
+ * Supports directory tree walking and global config merging.
+ * `resolvePaths`: absolutize config scan paths against their defining
+ * file's directory (see resolveConfigPaths). Off by default so callers
+ * that load-modify-save a config (aliases) keep the file's own paths.
  */
 export function loadConfig(
   configPath?: string,
   searchPath?: string,
-  options: { projectCode?: boolean } = {}
+  options: { projectCode?: boolean; resolvePaths?: boolean } = {}
 ): XrayConfig | null {
   const projectCode = options.projectCode ?? true;
+  const load = (file: string): XrayConfig =>
+    options.resolvePaths ? resolveConfigPaths(loadConfigFile(file), file) : loadConfigFile(file);
 
   // If explicit path provided, use it (no merging)
   if (configPath) {
     const absPath = path.isAbsolute(configPath) ? configPath : path.resolve(process.cwd(), configPath);
     if (fs.existsSync(absPath)) {
-      return loadConfigFile(absPath);
+      return load(absPath);
     } else {
       Logger.warn(`Config file not found: ${configPath}`);
       return null;
@@ -261,7 +306,7 @@ export function loadConfig(
 
   // Find global config
   const globalConfigPath = findGlobalConfigPath();
-  const globalConfig = globalConfigPath ? loadConfigFile(globalConfigPath) : null;
+  const globalConfig = globalConfigPath ? load(globalConfigPath) : null;
 
   // Find project config by walking up directory tree
   let projectConfigPath = findConfigPath(searchPath);
@@ -270,7 +315,7 @@ export function loadConfig(
     Logger.debug(`Skipping JS project config: ${projectConfigPath}`);
     projectConfigPath = null;
   }
-  const projectConfig = projectConfigPath ? loadConfigFile(projectConfigPath) : null;
+  const projectConfig = projectConfigPath ? load(projectConfigPath) : null;
 
   if (projectConfigPath && !searchPath && !configPathLogged) {
     configPathLogged = true;
