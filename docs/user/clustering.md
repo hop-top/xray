@@ -28,11 +28,9 @@ the signal functional.
 Symbols that have **no `calls` edges** (file nodes, isolated helpers) land in the sentinel community
 `-1`. The root chunk labels them `Unclustered`.
 
-## Non-determinism
+## Determinism
 
-Louvain breaks modularity ties using a PRNG. Without a seeded RNG, the concrete community IDs will
-differ between runs. Pass a seeded `rng` option when calling `cluster()` directly if you need
-byte-identical output. The `ClusteringPlugin` constructor accepts the same option.
+Louvain is seeded with a fixed default (`42`), so the same graph yields the same community IDs and the same bridge / low-cohesion questions on every run; pass an `rng` option to `cluster()` or the `ClusteringPlugin` constructor to override it.
 
 ## Example
 

@@ -95,4 +95,61 @@ describe('ClusteringPlugin', () => {
       })
     ).resolves.not.toThrow();
   });
+
+  describe('default seed (no rng option)', () => {
+    /**
+     * Sparse pseudo-random call graph (structure fixed by mulberry32(1)).
+     * Probed: 10 unseeded Math.random runs over this shape gave 10 distinct
+     * partitions, so it reliably exposes Louvain's PRNG dependence.
+     */
+    function makeSparseGraph(): XrayGraph {
+      const r = mulberry32(1);
+      const g = new Graph({ type: 'directed', multi: true }) as unknown as XrayGraph;
+      const n = 100;
+      for (let i = 0; i < n; i++) {
+        g.addNode(`n${i}`, { type: 'tag', label: `n${i}`, kind: 'function', file: 'x.ts', line: 0 });
+      }
+      for (let k = 0; k < 150; k++) {
+        const a = Math.floor(r() * n);
+        const b = Math.floor(r() * n);
+        if (a !== b) g.addEdge(`n${a}`, `n${b}`, { type: 'calls', confidence: 'EXTRACTED' });
+      }
+      return g;
+    }
+
+    async function runPlugin(): Promise<Record<string, number>> {
+      const xray = makeFakeXray();
+      new ClusteringPlugin().apply(xray);
+      const graph = makeSparseGraph();
+      await xray.emitAsync('graph:complete', {
+        graph: graph as any,
+        nodeCount: graph.order,
+        edgeCount: graph.size,
+      });
+      const out: Record<string, number> = {};
+      graph.forEachNode((id) => {
+        out[id] = graph.getNodeAttribute(id, 'community') as number;
+      });
+      return out;
+    }
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it('ignores Math.random: different global PRNG streams give identical communities', async () => {
+      // Feed Math.random two different streams; an unseeded Louvain would
+      // pick up the difference (verified: these streams diverge it).
+      jest.spyOn(Math, 'random').mockImplementation(mulberry32(1));
+      const first = await runPlugin();
+      jest.spyOn(Math, 'random').mockImplementation(mulberry32(2));
+      const second = await runPlugin();
+      expect(second).toEqual(first);
+    });
+
+    it('repeated real runs give identical communities', async () => {
+      const first = await runPlugin();
+      for (let i = 0; i < 4; i++) {
+        expect(await runPlugin()).toEqual(first);
+      }
+    });
+  });
 });

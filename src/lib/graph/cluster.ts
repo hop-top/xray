@@ -7,8 +7,10 @@
  * `calls`, and `imports` edges produces a structural tautology instead of
  * a functional signal.
  *
- * Non-determinism warning: Louvain breaks modularity ties using a PRNG.
- * Pass a seeded `rng` option if you need byte-identical output across runs.
+ * Determinism: Louvain breaks modularity ties and orders its traversal with
+ * a PRNG. Without an `rng` option each call gets a fresh mulberry32 seeded
+ * with {@link DEFAULT_CLUSTER_SEED}, so identical graphs yield identical
+ * community ids across runs.
  */
 import Graph from 'graphology';
 import louvain from 'graphology-communities-louvain';
@@ -34,10 +36,29 @@ export function isClusteringEdge(attrs: Pick<EdgeAttributes, 'type'> & { confide
   return attrs.type === 'calls' && attrs.confidence !== Confidence.INFERRED;
 }
 
+/** Seed for the default per-call PRNG when no `rng` option is given. */
+export const DEFAULT_CLUSTER_SEED = 42;
+
+/** Mulberry32 — small, fast, seedable PRNG returning floats in `[0, 1)`. */
+export function mulberry32(seed: number): () => number {
+  let state = seed | 0;
+  return function () {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 export interface ClusterOptions {
   /** Louvain resolution parameter. Higher = more, smaller communities. */
   resolution?: number;
-  /** Seeded PRNG for deterministic output. Defaults to `Math.random`. */
+  /**
+   * PRNG override. Default: fresh `mulberry32(DEFAULT_CLUSTER_SEED)` per
+   * call (deterministic). A supplied function is used as-is; its state
+   * carries over between calls.
+   */
   rng?: () => number;
   /**
    * Predicate deciding which edges enter the clustering subgraph.
@@ -99,7 +120,7 @@ export function cluster(
   // the mapping. `assign()` would be one call cheaper but returns `void`.
   const detailed = louvain.detailed(subgraph as unknown as Graph, {
     resolution: opts.resolution,
-    rng: opts.rng,
+    rng: opts.rng ?? mulberry32(DEFAULT_CLUSTER_SEED),
   });
 
   // Louvain assigns every node of the copy a community, including nodes with
