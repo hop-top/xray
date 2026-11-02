@@ -121,6 +121,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Louvain clustering seeded by default (`42`): community ids and bridge /
   low-cohesion questions now identical across runs.
+- `--lens` with `--scope` or `--all-scopes` is a usage error (exit 2,
+  "--scope and --lens are exclusive"); the lens was silently dropped.
 - `hooks/pre-commit` and `action.yaml` installed the unrelated npm package
   `xray`; both now install `@xray-codes/xray`, as do the user docs.
 - `hooks/pre-commit` used the bash-only `&>` under `#!/bin/sh`: with dash

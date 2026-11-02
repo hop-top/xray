@@ -5,7 +5,7 @@ import { styles, fileProgress } from '../lib/tui';
 import { QueryResolver } from '../lib/query-resolver';
 import { Logger, LogLevel } from '../lib/logger';
 import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase, validateScanRoots } from '../lib/config';
-import { CodedError, FileWriteError, NotFoundError } from '../lib/error/types';
+import { CodedError, FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
 import { resolveFormatFlags } from '../lib/output-format';
 import { GraphSerializer } from '../lib/graph/serializer';
 import { deriveRootLabels, mergeSerializedGraphs } from '../lib/graph/merge';
@@ -659,6 +659,16 @@ export const runSingleXray = async (
 };
 
 /**
+ * `--lens` overlays the base config; `--scope` / `--all-scopes` replace it.
+ * Combined, the lens would be dropped silently: UsageError (exit 2).
+ */
+export const assertLensNotScoped = (options: { lens?: string; scope?: string; allScopes?: boolean }): void => {
+  if (!options.lens) return;
+  if (options.allScopes) throw new UsageError('--all-scopes and --lens are exclusive');
+  if (options.scope) throw new UsageError('--scope and --lens are exclusive');
+};
+
+/**
  * Merge config with CLI options the way `map` does: `--scope <name>`
  * (scope over base config; NotFoundError when undefined) or the regular
  * flow (config, `--lens` overlay, CLI options on top). `config` defaults
@@ -668,6 +678,7 @@ export const resolveRunOptions = (
   normalizedOptions: any,
   config: ReturnType<typeof loadConfig> = loadConfig(normalizedOptions.config, normalizedOptions.path?.[0])
 ): { mergedOptions: any; scopeName?: string } => {
+  assertLensNotScoped(normalizedOptions);
   if (normalizedOptions.scope) {
     const scopeConfig = getScope(config, normalizedOptions.scope);
     if (!scopeConfig) {
@@ -700,6 +711,8 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
     }
 
     Logger.debug('Generate action started', { options: normalizedOptions });
+
+    assertLensNotScoped(normalizedOptions);
 
     // Load config file
     const config = loadConfig(

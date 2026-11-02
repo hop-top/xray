@@ -348,6 +348,8 @@ xray map --lens quick
 
 An unknown lens name (or `--lens` with no config file) is a usage error:
 exit 2, naming the config file consulted and the lenses it defines.
+`--lens` cannot be combined with `--scope` or `--all-scopes` (a scope
+replaces the base config the lens would overlay): usage error, exit 2.
 
 **Scopes vs Lenses:**
 - **Scopes**: Multiple independent outputs, can run all at once with `--all-scopes`

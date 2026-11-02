@@ -116,3 +116,39 @@ describe('unknown --lens name', () => {
     expect(r.stderr).toMatch(/quick, deep/);
   });
 });
+
+describe('--lens with --scope / --all-scopes', () => {
+  const SCOPES = { core: { paths: ['./src'] } };
+  const cases: Array<[string, string[]]> = [
+    ['--scope then --lens', ['--scope', 'core', '--lens', 'quick']],
+    ['--lens then --scope', ['--lens', 'quick', '--scope', 'core']],
+    ['--all-scopes then --lens', ['--all-scopes', '--lens', 'quick']],
+    ['--lens then --all-scopes', ['--lens', 'quick', '--all-scopes']],
+  ];
+
+  it.each(cases)('map %s: exit 2, names both flags, writes nothing', (_name, flags) => {
+    writeConfig({ paths: ['./src'], skipDetect: true, lenses: LENSES, scopes: SCOPES });
+    const out = path.join(tmp, 'out.txt');
+    const r = run(['map', '--no-chunk', '-o', out, ...flags]);
+    expect(r.status).toBe(2);
+    const flag = flags.includes('--all-scopes') ? '--all-scopes' : '--scope';
+    expect(r.stderr).toContain(`${flag} and --lens are exclusive`);
+    expect(r.stderr).not.toMatch(/Found \d+ file/);
+    expect(fs.existsSync(out)).toBe(false);
+  });
+
+  it('impact --scope --lens: exit 2', () => {
+    writeConfig({ paths: ['./src'], skipDetect: true, lenses: LENSES, scopes: SCOPES });
+    const r = run(['impact', 'a', '--scope', 'core', '--lens', 'quick']);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('--scope and --lens are exclusive');
+  });
+
+  it('--scope alone still applies (exit 0, map written)', () => {
+    writeConfig({ paths: ['./src'], skipDetect: true, lenses: LENSES, scopes: SCOPES });
+    const out = path.join(tmp, 'out.txt');
+    const r = run(['map', '--no-chunk', '-o', out, '--scope', 'core']);
+    expect(r.status).toBe(0);
+    expect(fs.readFileSync(out, 'utf-8')).toContain('a.py');
+  });
+});
