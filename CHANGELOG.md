@@ -115,6 +115,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+- `npm run typecheck:tests` failed under pnpm installs (TS2307): four query
+  test files imported the undeclared `@jest/globals`; they now use the
+  global jest types like every other test.
 - `hooks/pre-commit` and `action.yaml` installed the unrelated npm package
   `xray`; both now install `@xray-codes/xray`, as do the user docs.
 - `hooks/pre-commit` used the bash-only `&>` under `#!/bin/sh`: with dash

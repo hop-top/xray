@@ -1,4 +1,3 @@
-import { describe, test, expect, beforeEach } from '@jest/globals';
 import { QueryAdapterRegistry } from '../../src/lib/query/registry';
 import type { QueryAdapter, QueryResult } from '../../src/lib/query/types';
 
