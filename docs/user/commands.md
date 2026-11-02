@@ -137,9 +137,11 @@ edges: EXTRACTED 35 · INFERRED 0
   line (`file:L52`). A caller that is not `EXTRACTED` is suffixed
   ` (inferred)`, as in `map` "used by" lines (text and tree). The graph stores no call-site positions; use
   `xray explore --search <name>` for the exact call lines.
-- **Groups**: on a merged multi-root graph, the root label; otherwise the
-  first path segment under the root (`internal/dispatch/run.go` →
-  `internal`; `.` for files at the root).
+- **Groups**: the first path segment under the root
+  (`internal/dispatch/run.go` → `internal`; `.` for files at the root).
+  On a merged multi-root graph, the root label then that segment, as one
+  flat key (`alpha/internal`; the label alone for a root's top-level
+  files); `json` `groups[].name` uses the same key.
 - **Footer** (`edges: EXTRACTED 35 · INFERRED 0`): the number of `calls`
   edges walked (shortest-path edges only), by confidence. It counts
   edges, not callers.
@@ -195,10 +197,22 @@ poly-nerv has 5 definitions; `--depth 1` finds 54 callers
 **Several roots.** Pass several `-p` roots, or a lens whose config sets
 `paths`, to analyze them as one
 [merged graph](#merged-multi-root-graphs): ids and files are prefixed with
-the root label, callers are grouped by root, and calls across roots are
-linked. Multi-root runs cache per-root and merged graphs in
-`.xray_cache.db` in the current directory and print one line per root on
-stderr:
+the root label, callers are grouped by root then top-level directory,
+and calls across roots are linked. Two Go modules, `beta` importing
+`alpha` (`xray impact Hello -p alpha -p beta`):
+
+```
+ℹ cache: alpha miss · beta miss
+ℹ coverage: 4 files parsed · skipped grammars: none
+Hello (function, alpha/greet/greet.go:L3) — 4 callers across 3 groups
+  alpha/internal: 2 callers — Start (alpha/internal/run/run.go:L5), Again (alpha/internal/run/run.go:L7)
+  alpha/cmd: 1 caller — main (alpha/cmd/app/main.go:L5)
+  beta/pkg: 1 caller — Use (beta/pkg/use/use.go:L5)
+edges: EXTRACTED 4 · INFERRED 0
+```
+
+Multi-root runs cache per-root and merged graphs in `.xray_cache.db` in
+the current directory and print one line per root on stderr:
 
 ```
 ℹ cache: main miss · symbol-impact miss     # first run
@@ -472,7 +486,7 @@ union of every root's nodes and edges.
   function in every root; a full id (`calls(web/src/main.ts::main)`) picks one.
 - `xray impact` on several roots (several `-p`, or `--lens <name>` with
   `lenses.<name>.paths`) builds the same merged graph in memory and groups
-  callers by root label. It caches each root's graph and the merged graph
+  callers by root then top-level directory (`api/internal`). It caches each root's graph and the merged graph
   in `.xray_cache.db` (current directory) and reports
   `cache: <label> hit|miss` per root on stderr; see
   [`xray impact`](#xray-impact).

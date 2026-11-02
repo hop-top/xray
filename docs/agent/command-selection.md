@@ -286,7 +286,7 @@ or name
 
 3. Other repos (if the symbol is exported)
    COMMAND: xray impact <symbol> --lens <workspace-lens>
-   WHY: Callers in every root of the lens, grouped by root
+   WHY: Callers in every root of the lens, grouped by root/directory
    TOKENS: ~150-750
 
 4. Call lines / anything impact cannot see

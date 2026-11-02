@@ -154,27 +154,32 @@ Several `-p` flags do the same without config:
 xray impact <symbol> --lens workspace
 ```
 
-Real output (two roots, labels `main` and `symbol-impact`):
+Real output (two roots, labels `main` and `symbol-impact`; caller lists
+cut after two):
 
 ```
 ℹ cache: main hit · symbol-impact hit
-ℹ coverage: served from cache (715 files) · skipped grammars: none
-RunHooks (method, main/internal/dispatch/run.go:L108) — 47 callers across 1 group
-  main: 12 callers — runReplay (main/cmd/nerv/cmd_replay.go:L52), testSingleEvent (main/cmd/nerv/cmd_testhook.go:L140), …
-    …and 7 more
+ℹ coverage: served from cache (745 files) · skipped grammars: none
+RunHooks (method, main/internal/dispatch/run.go:L109) — 57 callers across 2 groups
+  main/cmd: 2 callers — runReplay (main/cmd/nerv/cmd_replay.go:L52), testSingleEvent (main/cmd/nerv/cmd_testhook.go:L140)
+  main/internal: 11 callers — TestRunHooks_ContextParsed (main/internal/dispatch/context_test.go:L15), Dispatch (main/internal/dispatch/dispatch.go:L86), …
+    …and 6 more
 depth 2:
-    main: 23 callers — TestReplayCmd_FlagsReachRunE (main/cmd/nerv/cmd_replay_test.go:L18), …
-      …and 18 more
+    main/cmd: 10 callers — TestReplayCmd_FlagsReachRunE (main/cmd/nerv/cmd_replay_test.go:L18), TestReplayCmd_NoFlagStillErrors (main/cmd/nerv/cmd_replay_test.go:L40), …
+      …and 5 more
+    main/internal: 17 callers — TestDispatch_ContextMergedAcrossHooks (main/internal/dispatch/context_test.go:L46), TestDispatch_ContextCapped (main/internal/dispatch/context_test.go:L79), …
+      …and 12 more
 depth 3:
-    main: 12 callers — TestTestCmd_FlagsReachRunE (main/cmd/nerv/cmd_testhook_test.go:L25), …
-      …and 7 more
-edges: EXTRACTED 47 · INFERRED 0
+    main/cmd: 17 callers — TestTestCmd_FlagsReachRunE (main/cmd/nerv/cmd_testhook_test.go:L25), TestTestCmd_AllFlagReachesRunE (main/cmd/nerv/cmd_testhook_test.go:L46), …
+      …and 12 more
+edges: EXTRACTED 57 · INFERRED 0
 ```
 
 - Files and groups are prefixed with the root label (the path relative to
   the current directory with `/` → `-`; the basename for roots outside it).
-- Callers are grouped by root, so a group other than the symbol's own
-  root is a cross-repo caller.
+- Callers are grouped by root then top-level directory (`main/cmd`,
+  `main/internal`), so a group under another root label than the
+  symbol's own is a cross-repo caller.
 - `cache: <label> hit|miss`: the first run analyzes every root (`miss`);
   later runs reuse `.xray_cache.db` in the current directory for roots
   whose files did not change. Run from the same directory each time.

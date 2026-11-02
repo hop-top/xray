@@ -234,6 +234,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Relative `paths` / `lenses.<name>.paths` / `scopes.<name>.paths` in a
   config file resolve against that file's directory, not the cwd; absolute
   paths and CLI `--path` unchanged.
+- `xray impact` on several roots groups callers by root then top-level
+  directory (`alpha/internal`, `beta/pkg`) instead of by root alone; json
+  `groups[].name` uses the same flat key. Single-root output unchanged.
 - **Behaviour change**: `xray query --format table|tree` and `xray impact
   --format table` print 1-based editor lines (graph line + 1), matching
   `impact` text and `map`; `json`, `yaml`, `csv` keep the raw 0-based

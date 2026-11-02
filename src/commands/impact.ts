@@ -128,9 +128,10 @@ export async function runImpactCommand(symbol: string, options: ImpactCommandOpt
 
 const HELP_AFTER = `Walks inbound call edges from every definition matching <symbol> (exact
 name or glob, as in \`query\`) and reports each caller once, at its
-shortest depth, grouped by root label (merged multi-root graph) or by
-top-level directory. Callers are shown with their definition line; the
-graph stores no call-site positions.
+shortest depth, grouped by top-level directory (\`internal\`), or by
+root then directory on a merged multi-root graph (\`api/internal\`).
+Callers are shown with their definition line; the graph stores no
+call-site positions.
 
 EXTRACTED edges were resolved in the caller's file, directory or imports;
 INFERRED edges matched by name only. --strict follows EXTRACTED only.

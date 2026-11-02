@@ -87,20 +87,29 @@ export interface ImpactResult {
   counts: ImpactCounts;
 }
 
+/** First path segment of a directory-qualified file; `.` for a bare file name. */
+function firstSegment(file: string): string {
+  const slash = file.indexOf('/');
+  return slash < 0 ? '.' : file.slice(0, slash);
+}
+
 /**
- * Group key for a node file: the root label on a merged multi-root graph
- * (every file is prefixed `<label>/`), else the first path segment under
- * the root (`internal/dispatch/x.go` -> `internal`); `.` for root files.
+ * Group key for a node file: the first path segment under the root
+ * (`internal/dispatch/x.go` -> `internal`; `.` for root files). On a
+ * merged multi-root graph (every file is prefixed `<label>/`) the key is
+ * flat `<label>/<segment>` (`api/internal/x.go` -> `api/internal`), the
+ * label alone for a root's top-level files.
  */
 export function groupKey(file: string | undefined, roots?: ImpactRoot[]): string {
   if (!file) return '.';
-  const slash = file.indexOf('/');
-  const first = slash < 0 ? undefined : file.slice(0, slash);
   if (roots && roots.length > 1) {
     const label = roots.find(r => file.startsWith(r.label + '/'))?.label;
-    return label ?? first ?? '.';
+    if (label !== undefined) {
+      const seg = firstSegment(file.slice(label.length + 1));
+      return seg === '.' ? label : `${label}/${seg}`;
+    }
   }
-  return first ?? '.';
+  return firstSegment(file);
 }
 
 function toSymbol(id: string, attrs: any): ImpactSymbol {

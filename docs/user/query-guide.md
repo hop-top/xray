@@ -381,13 +381,34 @@ xray impact New --depth 1 --strict   # New (5 definitions) — 44 callers across
 further callers. Start without it to see the full possible blast radius;
 add it when the result is dominated by `INFERRED` edges.
 
+### Several roots
+
+With several roots (`-p` repeated, or a lens with `paths`) callers are
+grouped by root, then by top-level directory inside it, as flat
+`root/dir` keys (also the `groups[].name` of `--format json`). Two Go
+modules, `beta` importing `alpha`:
+
+```bash
+xray impact Hello -p alpha -p beta
+```
+
+```
+ℹ cache: alpha miss · beta miss                               (stderr)
+ℹ coverage: 4 files parsed · skipped grammars: none           (stderr)
+Hello (function, alpha/greet/greet.go:L3) — 4 callers across 3 groups
+  alpha/internal: 2 callers — Start (alpha/internal/run/run.go:L5), Again (alpha/internal/run/run.go:L7)
+  alpha/cmd: 1 caller — main (alpha/cmd/app/main.go:L5)
+  beta/pkg: 1 caller — Use (beta/pkg/use/use.go:L5)
+edges: EXTRACTED 4 · INFERRED 0
+```
+
 ### `impact` versus `callers()`
 
 | | `query "callers(X, recursive=true)"` | `impact X` |
 |---|---|---|
 | Graph | saved file (`--graph`) | built in memory, or `--graph` |
 | Depth per caller | depth-first: first path found, not always the shortest | shortest path |
-| Grouping | none | by root label or top-level directory |
+| Grouping | none | by top-level directory; root/directory on several roots |
 | Confidence | not shown | per edge and per caller; `--strict` |
 | Several definitions of X | all, merged | all, listed in `defined:` |
 

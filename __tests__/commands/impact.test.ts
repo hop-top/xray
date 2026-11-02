@@ -1,7 +1,7 @@
 /**
  * `xray impact <symbol>`: BFS over inbound `calls` edges from every tag
  * matching <symbol>, shortest depth per caller, per-edge confidence,
- * grouped by root label (multi-root) or first path segment (one root).
+ * grouped by first path segment (one root) or root/segment (multi-root).
  *
  * Engine + renderer are exercised in-process on fixture graphs; the CLI
  * surface (formats, flags, exit codes, in-process build) runs the built
@@ -134,21 +134,27 @@ describe('impact grouping', () => {
     expect(groupKey('main.go', undefined)).toBe('.');
   });
 
-  test('multi-root: the root label from metadata.roots', () => {
+  test('multi-root: root label from metadata.roots, then first path segment under it', () => {
     const roots = [{ label: 'api', path: '/r/api' }, { label: 'web', path: '/r/web' }];
-    expect(groupKey('api/internal/x.go', roots)).toBe('api');
-    expect(groupKey('web/src/a.ts', roots)).toBe('web');
+    expect(groupKey('api/internal/x.go', roots)).toBe('api/internal');
+    expect(groupKey('web/src/a.ts', roots)).toBe('web/src');
+    // file at a root's top level: the root label alone
+    expect(groupKey('api/main.go', roots)).toBe('api');
+    // not under any root label: first segment, as one root
+    expect(groupKey('other/x.go', roots)).toBe('other');
   });
 
-  test('multi-root fixture groups callers by root label', () => {
+  test('multi-root fixture groups callers by root/package (flat keys)', () => {
     const roots = [{ label: 'api', path: '/r/api' }, { label: 'web', path: '/r/web' }];
     const t = tag('api/pkg/t.go', 'T', 1);
     const a = tag('api/internal/a.go', 'A', 2);
+    const a2 = tag('api/internal/a2.go', 'A2', 2);
     const b = tag('api/cmd/b.go', 'B', 3);
     const w = tag('web/src/w.ts', 'W', 4);
-    const g = graphOf([t, a, b, w], [calls(a, t), calls(b, t), calls(w, t, 'INFERRED')], roots);
+    const g = graphOf([t, a, a2, b, w], [calls(a, t), calls(a2, t), calls(b, t), calls(w, t, 'INFERRED')], roots);
     const r = computeImpact(load(g), 'T', { roots });
-    expect(r.groups.map(x => [x.name, x.count])).toEqual([['api', 2], ['web', 1]]);
+    expect(r.groups.map(x => [x.name, x.count])).toEqual([['api/internal', 2], ['api/cmd', 1], ['web/src', 1]]);
+    expect(r.nodes.find(n => n.name === 'W')?.group).toBe('web/src');
   });
 });
 
@@ -445,6 +451,57 @@ describe('xray impact (built CLI)', () => {
     const out = path.join(dir, 'impact.csv');
     expect(run(['impact', 'T', '--graph', graphFile, '--cols', 'name,depth', '-o', out]).status).toBe(0);
     expect(fs.readFileSync(out, 'utf-8').split('\n')[0]).toBe('name,depth');
+  });
+
+  describe('two-root graph (alpha + beta, Go cross-root calls)', () => {
+    let work: string;
+    let g2: string;
+    const w = (rel: string, body: string) => {
+      fs.mkdirSync(path.dirname(path.join(work, rel)), { recursive: true });
+      fs.writeFileSync(path.join(work, rel), body);
+    };
+
+    beforeAll(() => {
+      work = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-impact-roots-'));
+      w('alpha/go.mod', 'module example.com/alpha\n\ngo 1.22\n');
+      w('alpha/greet/greet.go', 'package greet\n\nfunc Hello() string { return "hi" }\n');
+      w('alpha/internal/run/run.go',
+        'package run\n\nimport "example.com/alpha/greet"\n\nfunc Start() string { return greet.Hello() }\n\nfunc Again() string { return greet.Hello() }\n');
+      w('alpha/cmd/app/main.go', 'package main\n\nimport "example.com/alpha/greet"\n\nfunc main() { println(greet.Hello()) }\n');
+      w('beta/go.mod', 'module example.com/beta\n\ngo 1.22\n');
+      w('beta/pkg/use/use.go', 'package use\n\nimport "example.com/alpha/greet"\n\nfunc Use() string { return greet.Hello() }\n');
+      g2 = path.join(work, 'g.json');
+      const m = run(['map', '--skip-detect', '-p', 'alpha', '-p', 'beta', '--format', 'json', '-o', g2], work);
+      expect(m.status).toBe(0);
+    });
+    afterAll(() => fs.rmSync(work, { recursive: true, force: true }));
+
+    test('text groups by root then package', () => {
+      const r = run(['impact', 'Hello', '--graph', g2], work);
+      expect(r.status).toBe(0);
+      expect(r.stdout.split('\n').slice(0, 4)).toEqual([
+        'Hello (function, alpha/greet/greet.go:L3) — 4 callers across 3 groups',
+        '  alpha/internal: 2 callers — Start (alpha/internal/run/run.go:L5), Again (alpha/internal/run/run.go:L7)',
+        '  alpha/cmd: 1 caller — main (alpha/cmd/app/main.go:L5)',
+        '  beta/pkg: 1 caller — Use (beta/pkg/use/use.go:L5)',
+      ]);
+    });
+
+    test('json groups use flat root/package keys (schema unchanged)', () => {
+      const doc = JSON.parse(run(['impact', 'Hello', '--graph', g2, '--format', 'json'], work).stdout);
+      expect(doc.groups).toEqual([
+        { name: 'alpha/internal', count: 2, byDepth: { 1: 2 } },
+        { name: 'alpha/cmd', count: 1, byDepth: { 1: 1 } },
+        { name: 'beta/pkg', count: 1, byDepth: { 1: 1 } },
+      ]);
+      expect(doc.counts.groups).toBe(3);
+    });
+
+    test('brief lists one line per root/package group', () => {
+      const lines = run(['impact', 'Hello', '--graph', g2, '--format', 'brief'], work).stdout.trimEnd().split('\n');
+      expect(lines.slice(1, 4).map(l => l.split(':')[0].trim())).toEqual(['alpha/internal', 'alpha/cmd', 'beta/pkg']);
+      expect(lines.join('\n').length).toBeLessThanOrEqual(BRIEF_MAX_CHARS);
+    });
   });
 
   describe('hook-facing behaviour', () => {
