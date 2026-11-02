@@ -140,7 +140,8 @@ describe('Query Command', () => {
       await runQuery('--graph', graphFile, 'calls(main)');
       const lines = captured().trimEnd().split('\n');
       expect(lines[0].split(/\s+/)).toEqual(['name', 'kind', 'file', 'line']);
-      expect(lines[1]).toMatch(/^processData\s+function\s+src\/api\.ts\s+10$/);
+      // graph line 10 -> editor line 11
+      expect(lines[1]).toMatch(/^processData\s+function\s+src\/api\.ts\s+11$/);
     });
 
     test('csv honors --cols (incl. non-default columns)', async () => {

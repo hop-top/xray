@@ -11682,8 +11682,8 @@ exports[`cli golden: map / query / explore on fixture repo query --format table 
 "exit: 0
 --- stdout ---
 name   kind      file          line
-alpha  function  a.ts          0   
-gamma  function  imports/c.ts  0   
+alpha  function  a.ts          1   
+gamma  function  imports/c.ts  1   
 
 --- stderr ---
 "
@@ -11696,7 +11696,7 @@ exports[`cli golden: map / query / explore on fixture repo query --format tree c
 Call Tree:
 
 └─→ gamma
-    └─→ beta (b.ts:L2)
+    └─→ beta (b.ts:L3)
 
 --- stderr ---
 "

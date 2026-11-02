@@ -234,6 +234,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Relative `paths` / `lenses.<name>.paths` / `scopes.<name>.paths` in a
   config file resolve against that file's directory, not the cwd; absolute
   paths and CLI `--path` unchanged.
+- **Behaviour change**: `xray query --format table|tree` and `xray impact
+  --format table` print 1-based editor lines (graph line + 1), matching
+  `impact` text and `map`; `json`, `yaml`, `csv` keep the raw 0-based
+  graph value.
 - `--offline` now also skips the upgrade check on every command.
 - **BREAKING:** Node.js >= 22.12 required (`engines.node`); the CLI is
   built on `@hop-top/kit` and commander 15 (ESM-only). Upgrade Node

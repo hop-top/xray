@@ -143,9 +143,9 @@ edges: EXTRACTED 35 · INFERRED 0
 - **Footer** (`edges: EXTRACTED 35 · INFERRED 0`): the number of `calls`
   edges walked (shortest-path edges only), by confidence. It counts
   edges, not callers.
-- Text and tree show 1-based editor lines. `json`, `yaml`, `table` and
-  `csv` carry the raw 0-based graph value (`line: 107` for `run.go:L108`),
-  as `xray query` does.
+- Text, tree and table show 1-based editor lines, as `xray query` does.
+  `json`, `yaml` and `csv` carry the raw 0-based graph value (`line: 107`
+  for `run.go:L108`).
 
 **Brief output** (`--format brief`): the text summary cut down for hook
 scripts and other size-bounded consumers. The same header, one line per

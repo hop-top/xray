@@ -80,15 +80,16 @@ xray impact <symbol> --depth 1 --format table
 ```
 
 ```
-name                       file                           line  depth  group     confidence
-runReplay                  cmd/nerv/cmd_replay.go         51    1      cmd       EXTRACTED
-testSingleEvent            cmd/nerv/cmd_testhook.go       139   1      cmd       EXTRACTED
-Dispatch                   internal/dispatch/dispatch.go  84    1      internal  EXTRACTED
+name                        file                               line  depth  group     confidence
+runReplay                   cmd/nerv/cmd_replay.go             52    1      cmd       EXTRACTED
+testSingleEvent             cmd/nerv/cmd_testhook.go           140   1      cmd       EXTRACTED
+TestRunHooks_ContextParsed  internal/dispatch/context_test.go  15    1      internal  EXTRACTED
+Dispatch                    internal/dispatch/dispatch.go      86    1      internal  EXTRACTED
 …
 ```
 
-Record formats (`table`, `csv`, `json`, `yaml`) carry 0-based lines:
-add 1 for the editor line.
+`table` shows editor lines; record formats (`csv`, `json`, `yaml`)
+carry 0-based lines: add 1 for the editor line.
 
 | Confidence | Meaning | Treat as |
 |------------|---------|----------|
@@ -307,7 +308,7 @@ Rules:
 - Fix: `explore --search` for call lines
 
 **Pitfall 5: Off-by-one lines in JSON**
-- `json`, `yaml`, `table`, `csv` lines are 0-based
+- `json`, `yaml`, `csv` lines are 0-based (text, tree, table are 1-based)
 - Fix: add 1, as in the jq recipe above
 
 **Pitfall 6: Cold multi-root runs**

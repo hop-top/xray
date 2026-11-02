@@ -163,8 +163,9 @@ validateInput  function  src/utils.ts  20
 checkSchema    function  src/utils.ts  30
 ```
 
-`line` is `0` when the graph has no line for the node. Empty results print
-nothing on stdout (`No results found` on stderr).
+`table` and `tree` show 1-based editor lines, as `map` and `impact` do; `json`, `yaml` and `csv` carry the raw 0-based graph value (`line: 9`
+for the `10` above). `line` is blank when the graph has no line for the
+node. Empty results print nothing on stdout (`No results found` on stderr).
 
 ### Columns, CSV and files
 
@@ -331,17 +332,18 @@ Call Tree:
     └─→ TestRunHooks_Timeout (internal/dispatch/run_test.go:L221)
 ```
 
-Or one row per caller, with confidence (raw 0-based graph lines):
+Or one row per caller, with confidence (editor lines, as in the text):
 
 ```bash
 xray impact RunHooks --depth 1 --format table
 ```
 
 ```
-name                       file                           line  depth  group     confidence
-runReplay                  cmd/nerv/cmd_replay.go         51    1      cmd       EXTRACTED
-testSingleEvent            cmd/nerv/cmd_testhook.go       139   1      cmd       EXTRACTED
-Dispatch                   internal/dispatch/dispatch.go  84    1      internal  EXTRACTED
+name                        file                               line  depth  group     confidence
+runReplay                   cmd/nerv/cmd_replay.go             52    1      cmd       EXTRACTED
+testSingleEvent             cmd/nerv/cmd_testhook.go           140   1      cmd       EXTRACTED
+TestRunHooks_ContextParsed  internal/dispatch/context_test.go  15    1      internal  EXTRACTED
+Dispatch                    internal/dispatch/dispatch.go      86    1      internal  EXTRACTED
 …
 ```
 

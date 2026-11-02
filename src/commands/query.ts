@@ -5,6 +5,7 @@ import { GraphSerializer } from '../lib/graph/serializer';
 import { QueryAdapterRegistry } from '../lib/query/registry';
 import { FunctionAdapter } from '../lib/query/adapters/function';
 import type { QueryResult, SerializedGraph } from '../lib/query/types';
+import { editorLine } from '../lib/query/impact';
 import { QueryCommandOptions } from '../types/command-options';
 import { Logger } from '../lib/logger';
 import { NotFoundError, UsageError } from '../lib/error/types';
@@ -51,17 +52,20 @@ export const QUERY_COLUMNS = columns('name', 'kind', 'file', 'line', 'depth', 's
 const DEFAULT_QUERY_COLUMNS = columns('name', 'kind', 'file', 'line');
 
 const nodeRows = (r: QueryResult) => r.nodes;
+/** Table rows: editor (1-based) lines, as tree, impact and map show them. */
+const tableRows = (r: QueryResult) => r.nodes.map(n => (n.line == null ? n : { ...n, line: editorLine(n.line) }));
 
 /**
  * Formats: json/yaml emit the whole QueryResult document (nodes, edges,
- * metadata); table/csv render result nodes; tree renders the call tree.
+ * metadata) and csv the result nodes, all with graph (0-based) lines;
+ * table renders result nodes and tree the call tree with editor lines.
  */
 function buildRegistry() {
   const base = outputRegistry();
   return outputRegistry(
     adaptFormatter<QueryResult>(formatterOf(base, 'json'), (r) => r, true),
     adaptFormatter<QueryResult>(formatterOf(base, 'yaml'), (r) => r, true),
-    adaptFormatter<QueryResult>(formatterOf(base, 'table'), nodeRows),
+    adaptFormatter<QueryResult>(formatterOf(base, 'table'), tableRows),
     adaptFormatter<QueryResult>(formatterOf(base, 'csv'), nodeRows),
     textFormatter<QueryResult>('tree', (r, put, s) => {
       put(formatTree(r, s).replace(/\n$/, ''));
@@ -139,9 +143,12 @@ function listAdapters(): string {
   return output;
 }
 
-/** ` (file:Lline)` suffix; line 0 is a real line, only null/undefined is absent. */
+/**
+ * ` (file:Lline)` suffix with the editor line (graph line + 1); graph
+ * line 0 is a real line, only null/undefined is absent.
+ */
 function nodeLocation(node: { file?: string; line?: number }): string {
-  return node.file && node.line != null ? ' (' + node.file + ':L' + node.line + ')' : '';
+  return node.file && node.line != null ? ' (' + node.file + ':L' + editorLine(node.line) + ')' : '';
 }
 
 /** Render the call tree for a query result. */

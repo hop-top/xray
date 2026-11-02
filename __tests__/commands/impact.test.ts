@@ -344,6 +344,43 @@ describe('xray impact (built CLI)', () => {
     expect(r.stdout).toMatch(/└─→ T|├─→ T/);
   });
 
+  test('query --format tree and impact --format tree agree on (1-based) lines for the same graph', () => {
+    const loc = (out: string) => Object.fromEntries(
+      [...out.matchAll(/([A-Z]) \(([^:)]+):L(\d+)\)/g)].map(m => [m[1], `${m[2]}:L${m[3]}`])
+    );
+    const q = run(['query', '--graph', graphFile, '--format', 'tree', 'callers(T, recursive=true)']);
+    const i = run(['impact', 'T', '--graph', graphFile, '--format', 'tree']);
+    expect(q.status).toBe(0);
+    expect(i.status).toBe(0);
+    const ql = loc(q.stdout);
+    const il = loc(i.stdout);
+    expect(Object.keys(ql).sort()).toEqual(['A', 'B', 'C']);
+    for (const n of Object.keys(ql)) expect(ql[n]).toBe(il[n]);
+    expect(ql.A).toBe('pkg/a.go:L21'); // graph line 20 -> editor line 21
+  });
+
+  test('query table shows editor lines; csv and json keep the graph value', () => {
+    const q = ['query', '--graph', graphFile, 'callers(T)'];
+    const table = run([...q, '--format', 'table']).stdout;
+    expect(table).toMatch(/^A\s+function\s+pkg\/a\.go\s+21\s*$/m);
+    expect(run([...q, '--format', 'csv']).stdout).toContain('A,function,pkg/a.go,20');
+    const json = JSON.parse(run([...q, '--format', 'json']).stdout);
+    expect(json.nodes.find((n: any) => n.name === 'A').line).toBe(20);
+  });
+
+  test('impact table and query table agree on (1-based) lines; impact csv and json keep the graph value', () => {
+    const lineOf = (out: string, name: string) => out.split('\n').find(l => l.startsWith(name + ' '))?.trim().split(/\s+/);
+    const q = run(['query', '--graph', graphFile, '--format', 'table', 'callers(T)']).stdout;
+    const i = run(['impact', 'T', '--graph', graphFile, '--format', 'table', '--depth', '1']).stdout;
+    // query cols: name kind file line; impact cols: name file line depth group confidence
+    expect(lineOf(i, 'A')?.[2]).toBe('21');
+    expect(lineOf(i, 'A')?.[2]).toBe(lineOf(q, 'A')?.[3]);
+    expect(lineOf(i, 'B')?.[2]).toBe(lineOf(q, 'B')?.[3]);
+    expect(run(['impact', 'T', '--graph', graphFile, '--format', 'csv']).stdout).toContain('A,pkg/a.go,20,1,pkg,EXTRACTED');
+    const doc = JSON.parse(run(['impact', 'T', '--graph', graphFile, '--format', 'json']).stdout);
+    expect(doc.nodes.find((n: any) => n.name === 'A').line).toBe(20);
+  });
+
   test('--depth 1 differs from the default', () => {
     const one = JSON.parse(run(['impact', 'T', '--graph', graphFile, '--format', 'json', '--depth', '1']).stdout);
     const three = JSON.parse(run(['impact', 'T', '--graph', graphFile, '--format', 'json']).stdout);

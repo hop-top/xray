@@ -212,12 +212,12 @@ export function computeImpact(graph: any, symbol: string, opts: ImpactOptions = 
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/*
- * Graph lines are 0-based (tree-sitter rows). Human views (text, tree)
- * show editor lines, as the map renderers do; record formats (json, yaml,
- * table, csv) carry the graph value, as `query` does.
+/**
+ * Graph lines are 0-based (tree-sitter rows). Human views (impact text and
+ * brief, query/impact tree and table) show editor lines, as the map
+ * renderers do; record formats (json, yaml, csv) carry the graph value.
  */
-const editorLine = (line: number | undefined) => (line == null ? undefined : line + 1);
+export const editorLine = (line: number | undefined) => (line == null ? undefined : line + 1);
 
 /** `file:Lline` (editor line), the form callers and the tree use. */
 function locationOf(file: string, line: number | undefined): string {
@@ -334,14 +334,14 @@ export function renderImpactBrief(r: ImpactResult): string {
 
 /**
  * QueryResult view for query.ts `formatTree`: matched symbols (depth 0)
- * + callers, with editor (1-based) lines; edges run callee -> caller so
- * the tree is rooted at the symbol.
+ * + callers, with graph lines (formatTree shows editor lines); edges run
+ * callee -> caller so the tree is rooted at the symbol.
  */
 export function impactToQueryResult(r: ImpactResult): QueryResult {
   const nodes: QueryResult['nodes'] = [
-    ...r.symbol.matches.map(({ id, name, kind, file, line }) => ({ id, name, kind, file, line: editorLine(line), depth: 0 })),
+    ...r.symbol.matches.map(({ id, name, kind, file, line }) => ({ id, name, kind, file, line, depth: 0 })),
     ...r.nodes.map(({ id, name, kind, file, line, depth, confidence }) => ({
-      id, name, kind, file, line: editorLine(line), depth, note: confidenceNote(confidence),
+      id, name, kind, file, line, depth, note: confidenceNote(confidence),
     })),
   ];
   return {
