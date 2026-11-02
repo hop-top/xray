@@ -5,12 +5,16 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { spawnSync } from 'child_process';
+import { Command } from 'commander';
+import { registerExtensionCommands } from '../../src/commands/registration/strategies';
+import MarkdownStrategy from '../../strategies/markdown';
 
 // The strategy shells out to the external `mdq` binary; tests that need it are
 // skipped (reason in their name) when it is not runnable. CI installs a pinned mdq.
 const hasMdq = spawnSync('mdq', ['--version']).status === 0;
 const skipNote = hasMdq ? '' : ' [skipped: mdq not installed]';
 const itMdq = hasMdq ? it : it.skip;
+const describeMdq = hasMdq ? describe : describe.skip;
 
 describe('Markdown Strategy Integration', () => {
   const fixtureRoot = path.join(__dirname, '../strategy/fixtures/markdown-project');
@@ -212,5 +216,65 @@ See the [API documentation](./api.md) for more details.
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  describeMdq('`markdown stale --path` through the CLI runner' + skipNote, () => {
+    let repo: string;
+    const cwd0 = process.cwd();
+
+    beforeAll(() => {
+      repo = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'test-stale-cli-')));
+      const files: Record<string, string> = {
+        'docs/guide/index.md':
+          '# Guide\n\n[Commands](commands.md)\n[Top](../top.md#intro)\n[Gone](missing.md)\n',
+        'docs/guide/commands.md': '# Commands\n',
+        'docs/top.md': '# Top\n\n## Intro\n',
+      };
+      for (const [rel, body] of Object.entries(files)) {
+        fs.mkdirSync(path.dirname(path.join(repo, rel)), { recursive: true });
+        fs.writeFileSync(path.join(repo, rel), body);
+      }
+    });
+
+    afterAll(() => {
+      process.chdir(cwd0);
+      fs.rmSync(repo, { recursive: true, force: true });
+    });
+
+    afterEach(() => jest.restoreAllMocks());
+
+    async function runStale(pathArg: string): Promise<any> {
+      const md = new MarkdownStrategy();
+      jest.spyOn(StrategyLoader.prototype, 'discoverStrategies').mockResolvedValue([md]);
+      jest.spyOn(StrategyLoader.prototype, 'discoverExtensions').mockResolvedValue([md as any]);
+      const program = new Command().exitOverride();
+      await registerExtensionCommands(program, { projectCode: false });
+      let out = '';
+      for (const m of ['error', 'warn', 'log', 'info'] as const) {
+        jest.spyOn(console, m).mockImplementation(() => undefined);
+      }
+      jest.spyOn(process.stdout, 'write').mockImplementation((chunk: any) => {
+        out += String(chunk);
+        return true;
+      });
+      process.chdir(repo);
+      try {
+        await program.parseAsync(['markdown', 'stale', '--path', pathArg, '--format', 'json'], { from: 'user' });
+      } finally {
+        process.chdir(cwd0);
+      }
+      try { return JSON.parse(out); } catch { throw new Error(out); }
+    }
+
+    test.each([
+      ['relative', 'docs'],
+      ['absolute', 'ABS'],
+    ])('%s --path reports exactly the broken link', async (_kind, arg) => {
+      const result = await runStale(arg === 'ABS' ? path.join(repo, 'docs') : arg);
+      expect(result.stale.map((s: any) => [s.doc, s.link])).toEqual([
+        ['guide/index.md', 'missing.md'],
+      ]);
+      expect(result.count).toBe(1);
+    });
   });
 });

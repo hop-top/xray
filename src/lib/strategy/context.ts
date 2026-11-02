@@ -17,7 +17,8 @@ export class StrategyContextImpl implements StrategyContext {
   private extensionConfig: Map<string, XrayExtensionConfig> = new Map();
 
   constructor(root: string, options: StrategyContextOptions = {}) {
-    this.root = root;
+    // Relative roots resolve against cwd once; every join below assumes absolute.
+    this.root = path.resolve(root);
     this.loadExtensionConfig(options.extensions);
     this.loadPackageJson();
   }

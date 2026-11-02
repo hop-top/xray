@@ -431,6 +431,84 @@ describe('MarkdownStrategy', () => {
 
         fs.rmSync(tempDir, { recursive: true, force: true });
       });
+
+      describeMdq('link resolution' + skipNote, () => {
+        // Build a tree, analyze `doc` the way the runner does (absolute path
+        // in, project-relative key out) and return the flagged link targets.
+        async function staleLinks(tree: Record<string, string>, doc: string): Promise<string[]> {
+          const root = fs.mkdtempSync(path.join(os.tmpdir(), 'test-stale-links-'));
+          try {
+            for (const [rel, body] of Object.entries(tree)) {
+              fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+              fs.writeFileSync(path.join(root, rel), body);
+            }
+            const ctx = new StrategyContextImpl(root);
+            const res = await strategy.analyze(path.join(root, doc), ctx);
+            ctx.setFileMetadata(doc, strategy.name, res.metadata);
+            const result = await strategy.commands!.stale.handler(ctx);
+            return result.stale
+              .filter((s: any) => s.type === 'markdown_link')
+              .map((s: any) => s.link);
+          } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+          }
+        }
+
+        it('resolves a bare sibling link against the linking file', async () => {
+          expect(await staleLinks({
+            'guide/index.md': '# I\n\n[Cmds](commands.md)\n',
+            'guide/commands.md': '# C\n',
+          }, 'guide/index.md')).toEqual([]);
+        });
+
+        it('flags a bare link whose target only exists at the scan root', async () => {
+          expect(await staleLinks({
+            'guide/index.md': '# I\n\n[Cmds](commands.md)\n',
+            'commands.md': '# C\n',
+          }, 'guide/index.md')).toEqual(['commands.md']);
+        });
+
+        it('resolves ../ against the linking file', async () => {
+          expect(await staleLinks({
+            'guide/deep/index.md': '# I\n\n[Up](../top.md)\n',
+            'guide/top.md': '# T\n',
+          }, 'guide/deep/index.md')).toEqual([]);
+        });
+
+        it('strips #anchor and ?query before the existence check', async () => {
+          expect(await staleLinks({
+            'index.md': '# I\n\n[A](other.md#usage) [Q](other.md?plain=1) [B](other.md?x=1#y)\n',
+            'other.md': '# O\n',
+          }, 'index.md')).toEqual([]);
+        });
+
+        it('ignores external and same-page links', async () => {
+          expect(await staleLinks({
+            'index.md': '# I\n\n[W](https://e.x/a.md) [H](http://e.x) ' +
+              '[M](mailto:a@e.x) [S](#i)\n',
+          }, 'index.md')).toEqual([]);
+        });
+
+        it('resolves /absolute links against the scan root', async () => {
+          expect(await staleLinks({
+            'guide/index.md': '# I\n\n[Ref](/ref/api.md) [Gone](/ref/gone.md)\n',
+            'ref/api.md': '# A\n',
+          }, 'guide/index.md')).toEqual(['/ref/gone.md']);
+        });
+
+        it('skips links inside fenced and inline code', async () => {
+          expect(await staleLinks({
+            'index.md': '# I\n\n```md\n[X](nope.md)\n```\n\nUse `[Y](nope2.md)` syntax.\n',
+          }, 'index.md')).toEqual([]);
+        });
+
+        it('accepts link titles and angle-bracket targets', async () => {
+          expect(await staleLinks({
+            'index.md': '# I\n\n[T](other.md "Other") [A](<other.md>)\n',
+            'other.md': '# O\n',
+          }, 'index.md')).toEqual([]);
+        });
+      });
     });
   });
 

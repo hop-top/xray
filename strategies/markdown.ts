@@ -3,6 +3,7 @@ import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/typ
 import { execFileNoThrow } from '../src/utils/execFileNoThrow';
 import { Logger } from '../src/lib/logger';
 import { mdqInstallHint } from '../src/utils/mdqInstall';
+import { extractMarkdownLinks, resolveLinkTarget } from '../src/lib/markdown/links';
 import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -236,13 +237,8 @@ export default class MarkdownStrategy implements Strategy {
    * Extract markdown links
    */
   private extractLinks(content: string, metadata: Record<string, any>, file: string): void {
-    // Match [text](url) or [text](url#anchor)
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-    let match;
-
-    while ((match = linkRegex.exec(content)) !== null) {
-      const [_, text, url] = match;
-
+    // Prose only: links inside fenced or inline code are examples, not links.
+    for (const { text, target: url } of extractMarkdownLinks(content)) {
       // Skip external URLs
       if (url.startsWith('http://') || url.startsWith('https://')) {
         continue;
@@ -512,16 +508,20 @@ export default class MarkdownStrategy implements Strategy {
           // Check markdown links
           if (metadata?.links) {
             for (const link of metadata.links) {
-              // Check if target exists
-              const targetPath = path.isAbsolute(link.url)
-                ? link.url
-                : path.join(projectRoot, link.url);
+              // Resolve against the linking doc (bare, ./, ../) or the
+              // scan root (/x); #anchor and ?query never reach the fs.
+              const target = resolveLinkTarget(
+                link.original ?? link.url,
+                path.resolve(projectRoot, doc),
+                projectRoot
+              );
+              if (target.kind !== 'file') continue;
 
-              if (!fs.existsSync(targetPath)) {
+              if (!fs.existsSync(target.path)) {
                 stale.push({
                   doc,
                   link: link.original,
-                  target: link.url,
+                  target: path.relative(projectRoot, target.path).split(path.sep).join('/'),
                   reason: 'target_not_found',
                   type: 'markdown_link'
                 });

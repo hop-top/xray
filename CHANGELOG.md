@@ -129,6 +129,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   std/core/alloc) record no reference; repo-local ones (`./util`,
   `crate::`) record the imported name and resolve EXTRACTED through
   `imports` edges; package bindings unchanged. Cache schema 6.
+- `xray markdown stale` resolves link targets against the linking file
+  (bare `x.md`, `./`, `../`; `/x` against the scan root), strips `#anchor`
+  and `?query`, skips links inside code, and honours a relative `--path`
+  (previously 0 results relative, hundreds of false positives absolute).
 - `hooks/pre-commit` and `action.yaml` installed the unrelated npm package
   `xray`; both now install `@xray-codes/xray`, as do the user docs.
 - `hooks/pre-commit` used the bash-only `&>` under `#!/bin/sh`: with dash
