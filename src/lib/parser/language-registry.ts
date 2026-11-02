@@ -4,6 +4,8 @@ import { Logger } from '../logger';
 import { getGrammar, isLanguageEnabled, packForExtension, recordSkipped } from './grammars';
 import { goDefaultName } from '../graph/go-resolver';
 import { BUILTIN_RECEIVERS, BuiltinReceivers } from './builtin-receivers';
+import { ImportBinding, jsImportBindings, rustImportBindings } from './import-bindings';
+import type Parser from 'tree-sitter';
 
 /**
  * How a grammar spells a call, so references can record the called name.
@@ -11,10 +13,12 @@ import { BUILTIN_RECEIVERS, BuiltinReceivers } from './builtin-receivers';
  *
  * Reference forms recorded:
  * - `name`      plain or scoped call (`f()`, `Foo::bar()`), or a member call
- *               whose receiver is an import-bound name (`np.array()`)
+ *               whose receiver is an import-bound name (`np.array()`); an
+ *               aliased repo import records its exported name (`h` -> `helper`)
  * - `.name`     member call on a value receiver (`r.run()`, `this.m()`)
  * - `pkg.name`  `qualifyImports` grammars only (Go): receiver is an import
  * - nothing     the receiver / scope chain starts at a builtin (`builtins`)
+ *               or at a name bound to an external module (`bindings`)
  * Only the called name is kept; the receiver itself never is.
  */
 export interface CallShape {
@@ -34,6 +38,8 @@ export interface CallShape {
   importName?: (source: string) => string | undefined;
   /** Record import-receiver calls as `pkg.name` (graph builder resolves them via imports). */
   qualifyImports?: boolean;
+  /** Names the file's imports bind, read from its tree (grammars whose Import has no alias). */
+  bindings?: (root: Parser.SyntaxNode) => ImportBinding[];
 }
 
 const JS_CALLS: CallShape = {
@@ -41,6 +47,7 @@ const JS_CALLS: CallShape = {
   steps: { member_expression: 'property' },
   leaves: ['identifier', 'property_identifier', 'private_property_identifier'],
   receivers: { member_expression: 'object' },
+  bindings: jsImportBindings,
 };
 
 const KOTLIN_CALLS: CallShape = {
@@ -60,8 +67,8 @@ const KOTLIN_CALLS: CallShape = {
  * parenthesised callees (`f()()`, `(a || b)()`), Rust macros (`m!()`),
  * constructor calls (`new Foo()`), Rust turbofish paths (`Foo::<T>::bar()`).
  * Import-bound receivers are only known where an import names them
- * (explicit alias, Go package name, Python top-level module); elsewhere
- * every member call is recorded as `.name`.
+ * (explicit alias, Go package name, Python top-level module, TS/JS and Rust
+ * `bindings`); elsewhere every member call is recorded as `.name`.
  */
 /** Language packs sharing one call namespace (a call in one can reach the other). */
 const LANGUAGE_FAMILY: Record<string, string> = { javascript: 'typescript', c: 'cpp' };
@@ -130,6 +137,7 @@ const SHAPES: Record<string, CallShape> = {
     leaves: ['identifier', 'field_identifier'],
     receivers: { field_expression: 'value' },
     scopes: { scoped_identifier: 'path' },
+    bindings: rustImportBindings,
   },
   php: {
     calls: {

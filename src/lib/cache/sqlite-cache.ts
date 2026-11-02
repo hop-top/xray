@@ -35,9 +35,11 @@ const { open } = require('@hop-top/kit/sqlstore') as {
  *     `graph:*` records (merged multi-root graphs) share the kv table.
  *  5: same layout; calls on builtin receivers (`JSON.parse`, `fmt.Println`)
  *     no longer recorded as references.
+ *  6: same layout; TS/JS and Rust calls on import-bound names: stdlib
+ *     modules record nothing, repo modules record the bare (unaliased) name.
  * Any other value is invalidated (wiped) on open.
  */
-export const CACHE_SCHEMA_VERSION = 5;
+export const CACHE_SCHEMA_VERSION = 6;
 
 const LEGACY_TABLES = ['tags', 'files_v2', 'file_analysis'];
 const TAGS_PREFIX = 'tags:';

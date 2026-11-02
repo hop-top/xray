@@ -123,6 +123,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   low-cohesion questions now identical across runs.
 - `--lens` with `--scope` or `--all-scopes` is a usage error (exit 2,
   "--scope and --lens are exclusive"); the lens was silently dropped.
+- TS/JS and Rust calls on import-bound names (`import * as path from
+  'path'; path.parse()`, `use std::fs; fs::read()`) no longer link INFERRED
+  to same-named user methods: stdlib bindings (Node builtins, Rust
+  std/core/alloc) record no reference; repo-local ones (`./util`,
+  `crate::`) record the imported name and resolve EXTRACTED through
+  `imports` edges; package bindings unchanged. Cache schema 6.
 - `hooks/pre-commit` and `action.yaml` installed the unrelated npm package
   `xray`; both now install `@xray-codes/xray`, as do the user docs.
 - `hooks/pre-commit` used the bash-only `&>` under `#!/bin/sh`: with dash

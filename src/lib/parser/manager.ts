@@ -74,7 +74,7 @@ export class ParserManager {
     }
 
     const calls = langConfig.callShape
-      ? callContext(imports, langConfig.callShape)
+      ? callContext(imports, langConfig.callShape, tree.rootNode)
       : undefined;
     const tags = await this.extractTags(tree, langConfig.grammar, langConfig.tagsQuery, relPath, content, includeVariables, docConfig, enableCfg, enableDfg, calls);
 
@@ -471,11 +471,17 @@ interface CallContext {
   importNames: Set<string>;
   /** Receiver-chain roots that are builtins in this file (static set + stdlib imports). */
   builtinNames: Set<string>;
+  /** Names imports bind to external modules: a plain call on one records nothing. */
+  externalNames: Set<string>;
+  /** Local name -> exported name, for aliased imports of repo code (`helper as h`). */
+  renames: Map<string, string>;
 }
 
-function callContext(imports: Import[], shape: CallShape): CallContext {
+function callContext(imports: Import[], shape: CallShape, root: Parser.SyntaxNode): CallContext {
   const importNames = new Set<string>();
   const builtinNames = new Set(shape.builtins?.names ?? []);
+  const externalNames = new Set<string>();
+  const renames = new Map<string, string>();
   const userImports = new Set<string>();
   for (const imp of imports) {
     if (imp.alias === '_' || imp.alias === '.') continue;
@@ -485,9 +491,19 @@ function callContext(imports: Import[], shape: CallShape): CallContext {
     if (shape.builtins?.imports?.(imp.source)) builtinNames.add(name);
     else userImports.add(name);
   }
+  for (const b of shape.bindings?.(root) ?? []) {
+    if (b.external) {
+      builtinNames.add(b.name);
+      externalNames.add(b.name);
+      continue;
+    }
+    userImports.add(b.name);
+    if (b.module) importNames.add(b.name);
+    if (b.imported) renames.set(b.name, b.imported);
+  }
   // A name a user import binds is never a builtin, even if a stdlib import shares it.
-  for (const name of userImports) builtinNames.delete(name);
-  return { shape, importNames, builtinNames };
+  for (const name of userImports) { builtinNames.delete(name); externalNames.delete(name); }
+  return { shape, importNames, builtinNames, externalNames, renames };
 }
 
 /** Start of a receiver / scope chain: `JSON` in `JSON.x`, `std` in `::std::fs`. */
@@ -512,7 +528,7 @@ function isBuiltin(qualifier: Parser.SyntaxNode, { shape, builtinNames }: CallCo
 
 /** Reference recorded for `node` when it is a call in this grammar (forms: see CallShape). */
 function calledName(node: Parser.SyntaxNode, calls: CallContext): string | undefined {
-  const { shape, importNames } = calls;
+  const { shape, importNames, externalNames, renames } = calls;
   const calleePath = shape.calls[node.type];
   if (!calleePath) return undefined;
   // Receiver of the member access closest to the call, if the callee is one.
@@ -532,6 +548,10 @@ function calledName(node: Parser.SyntaxNode, calls: CallContext): string | undef
     if (shape.leaves.includes(cur.type)) {
       const name = cur.text;
       if ((receiver && isBuiltin(receiver, calls)) || (qualifier && isBuiltin(qualifier, calls))) return undefined;
+      if (!receiver && !qualifier) {
+        if (externalNames.has(name)) return undefined;
+        return renames.get(name) ?? name;
+      }
       if (!receiver) return name;
       if (receiver.type === 'identifier' && importNames.has(receiver.text)) {
         return shape.qualifyImports ? `${receiver.text}.${name}` : name;

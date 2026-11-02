@@ -447,4 +447,51 @@ def my_func():
             expect(tag?.references).toEqual(['.loads']);
         });
     });
+
+    describe('calls on import-bound names', () => {
+        // [file, source, exact references of `f`]
+        // Stdlib bindings (Node builtins incl. `node:`, Rust std/core/alloc) record
+        // nothing; repo-local bindings record the bare name (aliases resolved to
+        // the imported name) for the import tier; package bindings (may be a
+        // workspace sibling / another root) keep their usual form.
+        const cases: Array<[string, string, string[]]> = [
+            // TS/JS: namespace, default, named, aliased, import-require, CommonJS
+            ['ns-ext.ts', "import * as path from 'path';\nfunction f() { path.parse(x); path.posix.join(a); }\n", []],
+            ['ns-node.ts', "import * as fs from 'node:fs';\nfunction f() { fs.readFileSync(x); }\n", []],
+            ['default-ext.ts', "import assert from 'assert';\nfunction f() { assert.ok(x); assert(x); }\n", []],
+            ['default-pkg.ts', "import express from 'express';\nfunction f() { express.Router(); express(); }\n", ['.Router', 'express']],
+            ['named-ext.ts', "import { readFileSync, promises } from 'fs';\nfunction f() { readFileSync(x); promises.readFile(x); }\n", []],
+            ['alias-ext.ts', "import { parse as p } from 'path';\nfunction f() { p(x); }\n", []],
+            ['subpath-ext.ts', "import * as fsp from 'fs/promises';\nfunction f() { fsp.readFile(x); }\n", []],
+            ['scoped-pkg.ts', "import { add } from '@acme/lib';\nimport * as core from '@actions/core';\nfunction f() { add(1); core.info(x); }\n", ['add', '.info']],
+            ['require-ext.ts', "import x = require('os');\nfunction f() { x.y(); }\n", []],
+            ['ns-local.ts', "import * as util from './util';\nfunction f() { util.helper(); }\n", ['helper']],
+            ['default-local.ts', "import u from '../u';\nfunction f() { u.run(); }\n", ['run']],
+            ['named-local.ts', "import { helper } from './util';\nfunction f() { helper(); }\n", ['helper']],
+            ['alias-local.ts', "import { helper as h } from './util';\nfunction f() { h(); }\n", ['helper']],
+            ['require-local.ts', "import x = require('./x');\nfunction f() { x.y(); }\n", ['y']],
+            ['unbound.ts', "import * as path from 'path';\nfunction f(cfg: any) { cfg.parse(x); }\n", ['.parse']],
+            ['alias-path.ts', "import * as c from '@/c';\nfunction f() { c.go(); }\n", ['.go']],
+            ['ns-ext.js', "import * as path from 'path';\nfunction f() { path.parse(x); }\n", []],
+            ['cjs.js', "const path = require('path');\nconst { a, b: bb } = require('./z');\nconst { c } = require('c');\nconst { d } = require('util');\nfunction f() { path.join(x); a(); bb(); c(); d(); }\n", ['a', 'b', 'c']],
+            ['cjs-local.js', "const util = require('./util');\nfunction f() { util.helper(); }\n", ['helper']],
+            // Rust: last segment / alias of a `use` path
+            ['use-mod.rs', 'use std::fs;\nfn f() { fs::read(1); }\n', []],
+            ['use-type.rs', 'use std::collections::HashMap;\nfn f() { HashMap::new(); }\n', []],
+            ['use-list.rs', 'use std::io::{self, Read as R};\nuse std::{env};\nfn f() { io::stdin(); R::read(); env::var(x); }\n', []],
+            ['use-fn.rs', 'use std::process::exit;\nfn f() { exit(1); }\n', []],
+            ['use-root.rs', 'use ::std::fs as f2;\nuse core::mem::take;\nfn f() { f2::read(1); take(x); }\n', []],
+            ['use-crate.rs', 'use serde_json;\nuse anyhow::bail as b;\nfn f() { serde_json::to_string(x); b(); }\n', ['to_string', 'bail']],
+            ['use-local.rs', 'use crate::util;\nfn f() { util::helper(); }\n', ['helper']],
+            ['use-local-alias.rs', 'use crate::util::helper as h;\nuse super::x::{a as b};\nfn f() { h(); b(); }\n', ['helper', 'a']],
+            ['use-mod-item.rs', 'mod util;\nuse util::helper as h;\nuse crate::m;\nuse m::run as r;\nfn f() { h(); r(); }\n', ['helper', 'run']],
+        ];
+
+        it.each(cases)('%s: import-bound call references', async (file, src, expected) => {
+            const result = await manager.parse(file, src);
+            const tag = result.tags.find(t => t.name === 'f' && t.kind === 'function');
+            expect(tag).toBeDefined();
+            expect([...(tag!.references ?? [])].sort()).toEqual([...expected].sort());
+        });
+    });
 });
