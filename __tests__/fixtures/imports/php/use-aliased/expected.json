@@ -1,0 +1,97 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "php": {
+      "module": "tree-sitter-php",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "a.php",
+      "language": "php",
+      "sha256": "fc70ec16f8c5154291ab1d775b639cc01f67bf0ab08656a7c3ea5767108ea278",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 13,
+          "kind": "static",
+          "form": "use",
+          "module": "Foo\\Bar",
+          "normalized": "Foo\\Bar",
+          "package": "Foo",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use Foo\\Bar;"
+        },
+        {
+          "line": 5,
+          "column": 5,
+          "endLine": 5,
+          "endColumn": 18,
+          "kind": "static",
+          "form": "use",
+          "module": "Foo\\Baz",
+          "normalized": "Foo\\Baz",
+          "package": "Foo",
+          "locality": "unknown",
+          "alias": "Q",
+          "confidence": "syntactic",
+          "evidence": "use \\Foo\\Baz as Q, Other;"
+        },
+        {
+          "line": 5,
+          "column": 20,
+          "endLine": 5,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "use",
+          "module": "Other",
+          "normalized": "Other",
+          "package": "Other",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use \\Foo\\Baz as Q, Other;"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "use",
+          "module": "Vendor\\Pkg\\Thing",
+          "normalized": "Vendor\\Pkg\\Thing",
+          "package": "Vendor",
+          "locality": "unknown",
+          "alias": "Chose",
+          "confidence": "syntactic",
+          "evidence": "use Vendor\\Pkg\\Thing as Chose;"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 4,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

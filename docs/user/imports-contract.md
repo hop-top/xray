@@ -119,6 +119,12 @@ stay `unknown`.
 | `typescript` | `.ts`, `.tsx` (tsx grammar), `.mts`, `.cts` | `import`, `export-from`, `import-equals` |
 | `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` | `import`, `export-from` |
 | `python` | `.py` | `import`, `from` |
+| `go` | `.go` | `import` |
+| `rust` | `.rs` | `use`, `extern-crate`, `mod` (kind `include`) |
+| `php` | `.php` | `use`, `group-use`, `use-function`, `use-const`, `require`, `require_once`, `include`, `include_once` |
+
+Extensions no entry claims are omitted from `files`; a claimed extension
+whose grammar is not installed gives `status: grammar-missing`.
 
 TS/JS bindings: a default import is the name `default` aliased to the local
 (`import d from 'm'` = `names: [{name: "default", alias: "d"}]`); a
@@ -134,9 +140,33 @@ clause, `evidence` = the statement); `from` imports give one record per
 statement with `names`. Relative imports keep `normalized: null` until
 package resolution applies.
 
+Go: one record per `import_spec` (range = the declaration for a single
+`import "x"`, the spec inside a group); alias, `.` and `_` go to `alias`
+verbatim; raw (backtick) paths are unquoted; `import "C"` is a plain
+static record.
+
+Rust: use trees are flattened to one record per leaf (`self` leaf = its
+prefix, `as` -> `alias`, `*` -> `wildcard`, leading `::` stripped and its
+first segment set as `package`). Range = the declaration when it yields one
+record, else the leaf; `evidence` = the declaration. `crate`/`self`/`super`
+paths get `package: "crate"`, `locality: "local"` (`normalized: null` for
+`self`/`super`). `extern crate x [as y]` and `mod x;` (no body) are
+emitted; a `#[path]` attribute above `mod x;` is included in its range and
+evidence.
+
+PHP: one record per `use` clause, grouped use expanded with its prefix,
+FQN without leading `\`, `package` = first namespace segment. `require` /
+`include*` only with a literal path: a quoted string without
+interpolation (optionally parenthesised) or `__DIR__ . '/lit'` (folded
+against the file's directory in `normalized`); `module` keeps escapes as
+written, `normalized` is the unescaped value. Range = the declaration when
+it yields one record, else the clause; `evidence` = the statement.
+
 Not yet emitted: call forms (`require()`, `import()`, `__import__`,
-`importlib.import_module`); `locality` other than `stdlib` for `node:`;
-`resolved`; `parseErrors` and `unsupported`.
+`importlib.import_module`); non-literal PHP includes; `locality` other
+than `unknown`, except `stdlib` for `node:` and `local` for Rust
+`crate`/`self`/`super`/`mod`; `resolved`; `parseErrors` and
+`unsupported`.
 
 ## Ordering and determinism
 

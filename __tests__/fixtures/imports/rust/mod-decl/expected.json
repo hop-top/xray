@@ -1,0 +1,123 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "rust": {
+      "module": "tree-sitter-rust",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "lib.rs",
+      "language": "rust",
+      "sha256": "a3fe7de19029a81206798a27de6839b462df003c3324ab922d2ef0f01adcfcf8",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 7,
+          "kind": "include",
+          "form": "mod",
+          "module": "a",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "mod a;"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 11,
+          "kind": "include",
+          "form": "mod",
+          "module": "b",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "pub mod b;"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 15,
+          "kind": "include",
+          "form": "mod",
+          "module": "generated",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "#[path = \"gen/é.rs\"] mod generated;"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 8,
+          "endColumn": 9,
+          "kind": "include",
+          "form": "mod",
+          "module": "sys",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "#[path = \"sys/unix.rs\"] mod sys;"
+        },
+        {
+          "line": 10,
+          "column": 5,
+          "endLine": 10,
+          "endColumn": 16,
+          "kind": "include",
+          "form": "mod",
+          "module": "nested",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "mod nested;"
+        },
+        {
+          "line": 13,
+          "column": 1,
+          "endLine": 13,
+          "endColumn": 11,
+          "kind": "include",
+          "form": "mod",
+          "module": "tests",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "mod tests;"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 6,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

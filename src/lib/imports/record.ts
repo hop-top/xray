@@ -14,7 +14,10 @@ export interface ExtractContext {
   language: string;
 }
 
-export type LanguageExtractor = (root: Parser.SyntaxNode, ctx: ExtractContext) => ImportRecord[];
+export type SyntaxNode = Parser.SyntaxNode;
+
+/** Records in any order; the caller sorts. */
+export type LanguageExtractor = (root: SyntaxNode, ctx: ExtractContext) => ImportRecord[];
 
 export const EVIDENCE_MAX = 240;
 
@@ -25,21 +28,33 @@ export function evidence(text: string): string {
 }
 
 /**
- * 1-based line / column of a node's start and end. The node binding parses
- * JS strings, so columns are UTF-16 code units; `endColumn` is exclusive
- * (the column just past the last character).
+ * 1-based line / column from the start of `from` to the end of `to`
+ * (defaults to one node). The node binding parses JS strings, so columns
+ * are UTF-16 code units; `endColumn` is exclusive (the column just past the
+ * last character).
  */
-export function span(node: Parser.SyntaxNode): Pick<ImportRecord, 'line' | 'column' | 'endLine' | 'endColumn'> {
+export function span(from: SyntaxNode, to: SyntaxNode = from): Pick<ImportRecord, 'line' | 'column' | 'endLine' | 'endColumn'> {
   return {
-    line: node.startPosition.row + 1,
-    column: node.startPosition.column + 1,
-    endLine: node.endPosition.row + 1,
-    endColumn: node.endPosition.column + 1,
+    line: from.startPosition.row + 1,
+    column: from.startPosition.column + 1,
+    endLine: to.endPosition.row + 1,
+    endColumn: to.endPosition.column + 1,
   };
 }
 
+/** Source text from the start of `from` through the end of `to` (`to` at or after `from`). */
+export function textBetween(from: SyntaxNode, to: SyntaxNode): string {
+  if (from === to) return to.text;
+  let p: SyntaxNode | null = to.parent;
+  while (p && p.startIndex > from.startIndex) p = p.parent;
+  if (!p) return to.text;
+  return p.text.slice(from.startIndex - p.startIndex, to.endIndex - p.startIndex);
+}
+
 export interface RecordFields {
-  at: Parser.SyntaxNode;
+  at: SyntaxNode;
+  /** Range end node (defaults to `at`): the range spans `at`..`end`. */
+  end?: SyntaxNode;
   kind: ImportRecord['kind'];
   form: ImportRecord['form'];
   module: string;
@@ -53,14 +68,14 @@ export interface RecordFields {
   typeOnly?: boolean;
   resolved?: Resolved;
   confidence?: ImportRecord['confidence'];
-  /** Node whose text is the evidence (defaults to `at`). */
-  evidenceOf?: Parser.SyntaxNode;
+  /** Node whose text is the evidence (defaults to the range text). */
+  evidenceOf?: SyntaxNode;
 }
 
 /** Record in schema key order; optional fields omitted when absent / false. */
 export function record(f: RecordFields): ImportRecord {
   const r: ImportRecord = {
-    ...span(f.at),
+    ...span(f.at, f.end),
     kind: f.kind,
     form: f.form,
     module: f.module,
@@ -75,12 +90,12 @@ export function record(f: RecordFields): ImportRecord {
   if (f.typeOnly) r.typeOnly = true;
   if (f.resolved) r.resolved = f.resolved;
   r.confidence = f.confidence ?? 'syntactic';
-  r.evidence = evidence((f.evidenceOf ?? f.at).text);
+  r.evidence = evidence(f.evidenceOf ? f.evidenceOf.text : textBetween(f.at, f.end ?? f.at));
   return r;
 }
 
 /** Named descendants of the given types, document order (iterative). */
-export function* walk(root: Parser.SyntaxNode, types: ReadonlySet<string>): Generator<Parser.SyntaxNode> {
+export function* walk(root: SyntaxNode, types: ReadonlySet<string>): Generator<SyntaxNode> {
   const cursor = root.walk();
   let descend = true;
   for (;;) {

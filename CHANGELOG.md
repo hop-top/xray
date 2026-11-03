@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Imports extractor (library, no command yet): Go, Rust, PHP static imports
+  per `xray.imports/v1` — Go specs (alias/dot/blank, raw strings, `"C"`),
+  Rust use trees flattened per leaf + `extern crate` + `mod x;`, PHP `use`
+  (grouped, function/const) + literal `require`/`include*`.
 - Imports contract schema `xray.imports/v1` (draft): `schemas/xray.imports.v1.json`
   (shipped in the package), `docs/user/imports-contract.md`.
 - Imports extractor: static imports for TS/JS (`.mjs/.cjs/.mts/.cts` too) and

@@ -1,0 +1,79 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "go": {
+      "module": "tree-sitter-go",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "main.go",
+      "language": "go",
+      "sha256": "1d46d478490e0bdceefe2d76d4f5bd396d26302253740396b606a9d9805125eb",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 32,
+          "kind": "static",
+          "form": "import",
+          "module": "github.com/example/raw",
+          "normalized": "github.com/example/raw",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import `github.com/example/raw`"
+        },
+        {
+          "line": 6,
+          "column": 2,
+          "endLine": 6,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/é/v2",
+          "normalized": "example.com/é/v2",
+          "locality": "unknown",
+          "alias": "r",
+          "confidence": "syntactic",
+          "evidence": "r `example.com/é/v2`"
+        },
+        {
+          "line": 7,
+          "column": 2,
+          "endLine": 7,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/interp",
+          "normalized": "example.com/interp",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "\"example.com/interp\""
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 3,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

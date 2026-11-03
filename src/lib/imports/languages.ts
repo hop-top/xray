@@ -8,7 +8,10 @@
 
 import type { LanguageExtractor } from './record';
 import { extractEcmaScript } from './lang/ecmascript';
+import { extractGo } from './lang/go';
+import { extractPhp } from './lang/php';
 import { extractPython } from './lang/python';
+import { extractRust } from './lang/rust';
 
 export interface ImportLanguage {
   pack: string;
@@ -17,8 +20,11 @@ export interface ImportLanguage {
 }
 
 export const IMPORT_LANGUAGES: Record<string, ImportLanguage> = {
+  go: { pack: 'go', extensions: ['.go'], extract: extractGo },
   javascript: { pack: 'javascript', extensions: ['.js', '.jsx', '.mjs', '.cjs'], extract: extractEcmaScript },
+  php: { pack: 'php', extensions: ['.php'], extract: extractPhp },
   python: { pack: 'python', extensions: ['.py'], extract: extractPython },
+  rust: { pack: 'rust', extensions: ['.rs'], extract: extractRust },
   typescript: { pack: 'typescript', extensions: ['.ts', '.tsx', '.mts', '.cts'], extract: extractEcmaScript },
 };
 
