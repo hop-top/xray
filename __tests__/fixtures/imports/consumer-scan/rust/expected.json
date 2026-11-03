@@ -1,0 +1,340 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "rust": {
+      "module": "tree-sitter-rust",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "build.rs",
+      "language": "rust",
+      "sha256": "0888f56c93a5dcfd7c96f6c2becdcbfc4d7b48d5bb8edc10315576c4dc6ce41e",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": [
+        {
+          "line": 1,
+          "column": 1,
+          "construct": "build-script",
+          "detail": "Cargo build script of Cargo.toml: runs before compilation, may generate code",
+          "evidence": "build.rs"
+        }
+      ]
+    },
+    {
+      "path": "src/broken.rs",
+      "language": "rust",
+      "sha256": "b3aa13856f9c2ca3565dcbcc43d339e638c3cbc85bf1767894bc87c7aa1fd2c4",
+      "status": "parse-error",
+      "complete": false,
+      "parseErrors": [
+        {
+          "kind": "error",
+          "start": {
+            "line": 2,
+            "column": 1
+          },
+          "end": {
+            "line": 3,
+            "column": 17
+          }
+        }
+      ],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 13,
+          "kind": "static",
+          "form": "use",
+          "module": "std::io",
+          "normalized": "std::io",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "use std::io;"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/lib.rs",
+      "language": "rust",
+      "sha256": "620e202b5b64dd26861ff9b050e6d8aa141afe2fb6c4aa10ace25213082a2bb4",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 20,
+          "kind": "static",
+          "form": "extern-crate",
+          "module": "alloc",
+          "normalized": "alloc",
+          "package": "alloc",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "extern crate alloc;"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 9,
+          "kind": "include",
+          "form": "mod",
+          "module": "net",
+          "normalized": "crate::net",
+          "package": "crate",
+          "locality": "local",
+          "resolved": {
+            "file": "src/net/mod.rs"
+          },
+          "confidence": "syntactic",
+          "evidence": "mod net;"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 11,
+          "kind": "include",
+          "form": "mod",
+          "module": "proto",
+          "normalized": "crate::proto",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "#[path = \"gen/proto.rs\"] mod proto;"
+        },
+        {
+          "line": 8,
+          "column": 24,
+          "endLine": 8,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "use",
+          "module": "std::collections::HashMap",
+          "normalized": "std::collections::HashMap",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "use std::collections::{HashMap, HashSet as Set};"
+        },
+        {
+          "line": 8,
+          "column": 33,
+          "endLine": 8,
+          "endColumn": 47,
+          "kind": "static",
+          "form": "use",
+          "module": "std::collections::HashSet",
+          "normalized": "std::collections::HashSet",
+          "package": "std",
+          "locality": "stdlib",
+          "alias": "Set",
+          "confidence": "syntactic",
+          "evidence": "use std::collections::{HashMap, HashSet as Set};"
+        },
+        {
+          "line": 9,
+          "column": 18,
+          "endLine": 9,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "use",
+          "module": "crate::net",
+          "normalized": "crate::net",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use crate::net::{self, Conn};"
+        },
+        {
+          "line": 9,
+          "column": 24,
+          "endLine": 9,
+          "endColumn": 28,
+          "kind": "static",
+          "form": "use",
+          "module": "crate::net::Conn",
+          "normalized": "crate::net::Conn",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use crate::net::{self, Conn};"
+        },
+        {
+          "line": 10,
+          "column": 1,
+          "endLine": 10,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "use",
+          "module": "serde_json::Value",
+          "normalized": "serde_json::Value",
+          "package": "serde_json",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use ::serde_json::Value;"
+        },
+        {
+          "line": 11,
+          "column": 1,
+          "endLine": 11,
+          "endColumn": 14,
+          "kind": "static",
+          "form": "use",
+          "module": "tokio",
+          "normalized": "tokio",
+          "package": "tokio",
+          "locality": "external",
+          "wildcard": true,
+          "confidence": "syntactic",
+          "evidence": "use tokio::*;"
+        },
+        {
+          "line": 14,
+          "column": 3,
+          "endLine": 14,
+          "endColumn": 14,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "tokio",
+          "normalized": "tokio",
+          "package": "tokio",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "tokio::main"
+        },
+        {
+          "line": 16,
+          "column": 20,
+          "endLine": 16,
+          "endColumn": 40,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "serde_json",
+          "normalized": "serde_json",
+          "package": "serde_json",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "serde_json::from_str"
+        },
+        {
+          "line": 17,
+          "column": 61,
+          "endLine": 17,
+          "endColumn": 75,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "anyhow",
+          "normalized": "anyhow",
+          "package": "anyhow",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "anyhow::anyhow"
+        },
+        {
+          "line": 18,
+          "column": 5,
+          "endLine": 18,
+          "endColumn": 14,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "log",
+          "normalized": "log",
+          "package": "log",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "log::info"
+        },
+        {
+          "line": 18,
+          "column": 22,
+          "endLine": 18,
+          "endColumn": 38,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "chrono",
+          "normalized": "chrono",
+          "package": "chrono",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "chrono::Utc::now"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/net/mod.rs",
+      "language": "rust",
+      "sha256": "30b6b8d1f6f875448c65e5884b6c7c23cbaa4633ea3e86405b49546e1dad6256",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 18,
+          "kind": "static",
+          "form": "use",
+          "module": "super::proto",
+          "normalized": "crate::proto",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use super::proto;"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 4,
+          "column": 1,
+          "construct": "include-macro",
+          "detail": "include! with a non-literal path",
+          "evidence": "include!(concat!(env!(\"OUT_DIR\"), \"/gen.rs\"))"
+        },
+        {
+          "line": 5,
+          "column": 22,
+          "construct": "include-data",
+          "detail": "include_str! with a literal path",
+          "evidence": "include_str!(\"ca.pem\")"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 4,
+    "complete": 1,
+    "imports": 16,
+    "unsupported": 3,
+    "parseErrors": 1
+  }
+}

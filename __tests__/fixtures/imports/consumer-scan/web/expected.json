@@ -1,0 +1,423 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "javascript": {
+      "module": "tree-sitter-javascript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    },
+    "typescript": {
+      "module": "tree-sitter-typescript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "src/broken.ts",
+      "language": "typescript",
+      "sha256": "aa7388de2ee4be699f3873b3b2c38ff5db0a017b78c0d1a0378d30b2792dc3bd",
+      "status": "parse-error",
+      "complete": false,
+      "parseErrors": [
+        {
+          "kind": "error",
+          "start": {
+            "line": 2,
+            "column": 8
+          },
+          "end": {
+            "line": 3,
+            "column": 12
+          }
+        }
+      ],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 29,
+          "kind": "static",
+          "form": "import",
+          "module": "./util",
+          "normalized": "./util",
+          "locality": "local",
+          "names": [
+            {
+              "name": "ok"
+            }
+          ],
+          "resolved": {
+            "file": "src/util.ts"
+          },
+          "confidence": "syntactic",
+          "evidence": "import { ok } from './util';"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/config.ts",
+      "language": "typescript",
+      "sha256": "ff457d5963522851bbe322b3148e8d6404a20837e8e9010248ce9374e17888e9",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "src/index.ts",
+      "language": "typescript",
+      "sha256": "e7edfb58ceda0fdee124e8a35306febe41b2c5b47642ad312a0331563f0f1aa6",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 27,
+          "kind": "static",
+          "form": "import",
+          "module": "react",
+          "normalized": "react",
+          "package": "react",
+          "locality": "external",
+          "names": [
+            {
+              "name": "default",
+              "alias": "React"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import React from 'react';"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 62,
+          "kind": "static",
+          "form": "import",
+          "module": "@scope/ui/button",
+          "normalized": "@scope/ui/button",
+          "package": "@scope/ui",
+          "locality": "external",
+          "names": [
+            {
+              "name": "Button",
+              "alias": "Btn"
+            },
+            {
+              "name": "Theme"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { Button as Btn, type Theme } from '@scope/ui/button';"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "import",
+          "module": "node:path",
+          "normalized": "path",
+          "package": "path",
+          "locality": "stdlib",
+          "alias": "path",
+          "confidence": "syntactic",
+          "evidence": "import * as path from 'node:path';"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 21,
+          "kind": "static",
+          "form": "import",
+          "module": "./polyfill",
+          "normalized": "./polyfill",
+          "locality": "local",
+          "resolved": {
+            "file": "src/polyfill.ts"
+          },
+          "confidence": "syntactic",
+          "evidence": "import './polyfill';"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 40,
+          "kind": "static",
+          "form": "import",
+          "module": "./config",
+          "normalized": "./config",
+          "locality": "local",
+          "names": [
+            {
+              "name": "Config"
+            }
+          ],
+          "typeOnly": true,
+          "resolved": {
+            "file": "src/config.ts"
+          },
+          "confidence": "syntactic",
+          "evidence": "import type { Config } from './config';"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./util",
+          "normalized": "./util",
+          "locality": "local",
+          "names": [
+            {
+              "name": "util"
+            }
+          ],
+          "resolved": {
+            "file": "src/util.ts"
+          },
+          "confidence": "syntactic",
+          "evidence": "export { util } from './util';"
+        },
+        {
+          "line": 8,
+          "column": 1,
+          "endLine": 8,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./lazy",
+          "normalized": "./lazy",
+          "locality": "local",
+          "wildcard": true,
+          "resolved": {
+            "file": "src/lazy.js"
+          },
+          "confidence": "syntactic",
+          "evidence": "export * from './lazy';"
+        },
+        {
+          "line": 9,
+          "column": 1,
+          "endLine": 9,
+          "endColumn": 27,
+          "kind": "static",
+          "form": "import-equals",
+          "module": "fs",
+          "normalized": "fs",
+          "package": "fs",
+          "locality": "stdlib",
+          "alias": "fs",
+          "confidence": "syntactic",
+          "evidence": "import fs = require('fs');"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/lazy.js",
+      "language": "javascript",
+      "sha256": "059f1109e1a74a3bed0f787972bf675aef4be52dba4aa851f11491fb41d5bea1",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 16,
+          "endLine": 2,
+          "endColumn": 36,
+          "kind": "require",
+          "form": "require",
+          "module": "lodash/fp",
+          "normalized": "lodash/fp",
+          "package": "lodash",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "require('lodash/fp')"
+        },
+        {
+          "line": 3,
+          "column": 15,
+          "endLine": 3,
+          "endColumn": 32,
+          "kind": "require",
+          "form": "require",
+          "module": "./util",
+          "normalized": "./util",
+          "locality": "local",
+          "resolved": {
+            "file": "src/util.ts"
+          },
+          "confidence": "syntactic",
+          "evidence": "require('./util')"
+        },
+        {
+          "line": 6,
+          "column": 23,
+          "endLine": 6,
+          "endColumn": 41,
+          "kind": "dynamic",
+          "form": "import()",
+          "module": "chart.js",
+          "normalized": "chart.js",
+          "package": "chart.js",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import('chart.js')"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/plugins.ts",
+      "language": "typescript",
+      "sha256": "6fae2b2e08e41e2c46e9c559c158a275bd896ee7ee1337196884ac70aa1b5206",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 45,
+          "kind": "static",
+          "form": "import",
+          "module": "node:module",
+          "normalized": "module",
+          "package": "module",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "createRequire"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { createRequire } from 'node:module';"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 5,
+          "column": 23,
+          "construct": "dynamic-require",
+          "detail": "require with a non-literal argument",
+          "evidence": "require(`./plugins/${name}`)"
+        },
+        {
+          "line": 6,
+          "column": 28,
+          "construct": "dynamic-import",
+          "detail": "import() with a non-literal argument",
+          "evidence": "import(name)"
+        },
+        {
+          "line": 7,
+          "column": 13,
+          "construct": "create-require",
+          "detail": "createRequire makes a require the file does not bind",
+          "evidence": "createRequire(import.meta.url)"
+        },
+        {
+          "line": 8,
+          "column": 21,
+          "construct": "eval",
+          "detail": "eval of code",
+          "evidence": "eval('1 + 1')"
+        }
+      ]
+    },
+    {
+      "path": "src/polyfill.ts",
+      "language": "typescript",
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "src/types.ts",
+      "language": "typescript",
+      "sha256": "5a9e72465acff04aa63d46b6945576f853467f600b235336f9095454056c70e8",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 21,
+          "endLine": 2,
+          "endColumn": 36,
+          "kind": "static",
+          "form": "import-type",
+          "module": "redux",
+          "normalized": "redux",
+          "package": "redux",
+          "locality": "unknown",
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import('redux')"
+        },
+        {
+          "line": 3,
+          "column": 27,
+          "endLine": 3,
+          "endColumn": 43,
+          "kind": "dynamic",
+          "form": "import()",
+          "module": "./lazy",
+          "normalized": "./lazy",
+          "locality": "local",
+          "resolved": {
+            "file": "src/lazy.js"
+          },
+          "confidence": "syntactic",
+          "evidence": "import('./lazy')"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/util.ts",
+      "language": "typescript",
+      "sha256": "4a8996bea821977a255afa3522e1ea2ba2a5d29ba9ab401ce5e8512f627432b8",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 8,
+    "complete": 6,
+    "imports": 15,
+    "unsupported": 4,
+    "parseErrors": 1
+  }
+}
