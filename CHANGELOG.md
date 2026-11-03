@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Imports contract schema `xray.imports/v1` (draft): `schemas/xray.imports.v1.json`
+  (shipped in the package), `docs/user/imports-contract.md`.
 - Docs: `docs/user/harness-integration.md` (instructions / MCP / hooks;
   event table, hook rules, saved graph, trust model, setup for Claude
   Code, nerv, Gemini CLI, Codex, Cursor and any harness, troubleshooting)

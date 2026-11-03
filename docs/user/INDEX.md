@@ -213,6 +213,7 @@ Start here, then pick your next path based on what you want to do.
 - [Harness Integration](harness-integration.md) - Skill, MCP and hooks for coding agents
 - [MCP Server](mcp.md) - MCP client configuration and tools
 - [Use Cases](use-cases.md) - What xray does inside an agent session
+- [Imports Contract](imports-contract.md) - `xray.imports/v1` schema for consumers of import data (draft)
 
 ### Problem-Solving
 - [Troubleshooting Guide](troubleshooting.md) - Common issues
