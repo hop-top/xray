@@ -36,7 +36,8 @@
         "build-script", "include-macro", "include-data",
         "eval", "dynamic-include", "dynamic-new", "dynamic-static-call",
         "dynamic-require", "dynamic-import", "create-require",
-        "exec", "sys-path"
+        "exec", "sys-path",
+        "dynamic-call"
       ]
     },
     "parseErrorKind": { "enum": ["error", "missing"] },

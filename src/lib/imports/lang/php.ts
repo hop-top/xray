@@ -24,11 +24,21 @@
  * already reported). All `syntactic`: PHP resolves qualified names at
  * compile time from these rules alone. One record per resolved name per file: the first occurrence
  * gives range and evidence (the name), `occurrences` counts all.
+ *
+ * Unsupported: `eval` (any argument); `require`/`include*` whose path is
+ * not literal (dynamic-include); `new $v` / `new (expr)` / `new $o->p`
+ * (dynamic-new: anything but a name, `static`/`self`/`parent` or an
+ * anonymous class); `$v::m()` and other non-name scopes
+ * (dynamic-static-call); variable functions `$f()` / `[$a, 'm']()` and
+ * `call_user_func` / `call_user_func_array` with a non-literal callable
+ * (dynamic-call). Any of these can autoload or load a class or file whose
+ * name only exists at run time.
  */
 
 import * as posix from 'path/posix';
-import type { ImportForm, ImportKind, ImportRecord } from '../types';
+import type { ImportForm, ImportKind, ImportRecord, UnsupportedRecord } from '../types';
 import { record, walk, type LanguageExtractor, type SyntaxNode } from '../record';
+import { unsupportedAt } from '../unsupported';
 
 /** Qualified name text without whitespace or a leading `\`. */
 const fqn = (n: SyntaxNode) => n.text.replace(/\s+/g, '').replace(/^\\/, '');
@@ -123,12 +133,15 @@ function includeTarget(arg: SyntaxNode, filePath: string): { module: string; nor
   return { module: `__DIR__${tail.raw}`, normalized: folded };
 }
 
-function includeRecord(n: SyntaxNode, filePath: string, out: ImportRecord[]): void {
+function includeRecord(n: SyntaxNode, filePath: string, out: ImportRecord[], unsupported: UnsupportedRecord[] | undefined): void {
   const spec = INCLUDES[n.type];
   const arg = n.namedChildren.find(c => c.type !== 'comment');
   if (!spec || !arg) return;
   const target = includeTarget(arg, filePath);
-  if (!target) return;
+  if (!target) {
+    unsupported?.push(unsupportedAt(n, 'dynamic-include', `${spec.form} with a non-literal path`));
+    return;
+  }
   const stmt = n.parent?.type === 'expression_statement' ? n.parent : n;
   out.push(record({
     at: n, evidenceOf: stmt, kind: spec.kind, form: spec.form,
@@ -197,7 +210,52 @@ function referenceRecords(refs: Ref[], out: ImportRecord[]): void {
 }
 
 const NAMES = new Set(['qualified_name', 'relative_name']);
-const STATEMENTS = new Set(['namespace_use_declaration', ...Object.keys(INCLUDES), ...NAMES]);
+const DYNAMIC = new Set(['function_call_expression', 'object_creation_expression', 'scoped_call_expression']);
+const STATEMENTS = new Set(['namespace_use_declaration', ...Object.keys(INCLUDES), ...NAMES, ...DYNAMIC]);
+
+/** Class names a `new` / `::` can use without a run-time string. */
+const STATIC_CLASS = new Set(['name', 'qualified_name', 'relative_name', 'anonymous_class']);
+
+const CALL_USER_FUNC = new Set(['call_user_func', 'call_user_func_array']);
+
+/** Immediately invoked closures name no function. */
+const CLOSURES = new Set(['anonymous_function', 'arrow_function']);
+
+/** A literal callable: a quoted string without interpolation (`'f'`, `'A::m'`). */
+const literalCallable = (n: SyntaxNode | undefined) => !!n && literal(unparen(n)) !== undefined;
+
+function firstArg(call: SyntaxNode): SyntaxNode | undefined {
+  const a = call.childForFieldName('arguments')?.namedChildren.find(c => c.type === 'argument');
+  return a?.namedChildren.find(c => c.type !== 'comment');
+}
+
+/** Unsupported record for a call / new / scoped call, or undefined when its target is static. */
+function dynamicSite(n: SyntaxNode): UnsupportedRecord | undefined {
+  if (n.type === 'object_creation_expression') {
+    const cls = n.namedChildren.find(c => c.type !== 'comment' && c.type !== 'arguments' && c.type !== 'attribute_list');
+    if (!cls || STATIC_CLASS.has(cls.type)) return undefined;
+    return unsupportedAt(n, 'dynamic-new', 'new with a class name computed at run time');
+  }
+  if (n.type === 'scoped_call_expression') {
+    const scope = n.childForFieldName('scope');
+    if (!scope || STATIC_CLASS.has(scope.type) || scope.type === 'relative_scope') return undefined;
+    return unsupportedAt(n, 'dynamic-static-call', 'static call on a class computed at run time');
+  }
+  const fn = n.childForFieldName('function');
+  if (!fn) return undefined;
+  // `\eval(...)` / `\call_user_func(...)`: the global function, fully qualified.
+  const global = fn.type === 'qualified_name' && /^\\[^\\]+$/.test(fn.text.replace(/\s+/g, '')) ? fn.text.replace(/\s+/g, '').slice(1) : undefined;
+  if (fn.type === 'name' || global !== undefined) {
+    const lower = (global ?? fn.text).toLowerCase();
+    if (lower === 'eval') return unsupportedAt(n, 'eval', 'eval of code');
+    if (CALL_USER_FUNC.has(lower) && !literalCallable(firstArg(n))) {
+      return unsupportedAt(n, 'dynamic-call', `${lower} with a non-literal callable`);
+    }
+    return undefined;
+  }
+  if (NAMES.has(fn.type) || CLOSURES.has(unparen(fn).type)) return undefined;
+  return unsupportedAt(n, 'dynamic-call', 'call of a function named at run time');
+}
 
 export const extractPhp: LanguageExtractor = (root, ctx) => {
   const out: ImportRecord[] = [];
@@ -224,7 +282,11 @@ export const extractPhp: LanguageExtractor = (root, ctx) => {
       }
     } else if (NAMES.has(n.type)) {
       if (n.startIndex >= useEnd) names.push(n);
-    } else if (n.type in INCLUDES) includeRecord(n, ctx.path, out);
+    } else if (n.type in INCLUDES) includeRecord(n, ctx.path, out, ctx.unsupported);
+    else if (ctx.unsupported) {
+      const u = dynamicSite(n);
+      if (u) ctx.unsupported.push(u);
+    }
   }
   const refs: Ref[] = [];
   const nameRegion = regionLocator(spaces);

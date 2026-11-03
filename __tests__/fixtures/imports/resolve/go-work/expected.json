@@ -75,7 +75,7 @@
       "language": "go",
       "sha256": "1138d78730d2bd3a01b328911a9bd877da2a1e52d8ca1c829d67ab3e793c72c1",
       "status": "ok",
-      "complete": true,
+      "complete": false,
       "parseErrors": [],
       "imports": [
         {
@@ -222,7 +222,15 @@
           "evidence": "\"golang.org/x/text/language\""
         }
       ],
-      "unsupported": []
+      "unsupported": [
+        {
+          "line": 4,
+          "column": 1,
+          "construct": "cgo",
+          "detail": "cgo preamble can include C code",
+          "evidence": "import \"C\""
+        }
+      ]
     },
     {
       "path": "tools/gen/gen.go",
@@ -255,9 +263,9 @@
   ],
   "summary": {
     "files": 4,
-    "complete": 4,
+    "complete": 3,
     "imports": 13,
-    "unsupported": 0,
+    "unsupported": 1,
     "parseErrors": 0
   }
 }

@@ -27,12 +27,14 @@ export const UNSUPPORTED_CONSTRUCTS = [
   'linkname', 'cgo', 'plugin',
   // Rust
   'build-script', 'include-macro', 'include-data',
-  // PHP (eval shared with TS/JS)
+  // PHP (eval shared with TS/JS and Python)
   'eval', 'dynamic-include', 'dynamic-new', 'dynamic-static-call',
   // TS/JS (dynamic-import shared with Python)
   'dynamic-require', 'dynamic-import', 'create-require',
   // Python
   'exec', 'sys-path',
+  // PHP, additive: variable functions, call_user_func* with a non-literal callable
+  'dynamic-call',
 ] as const;
 export type UnsupportedConstruct = (typeof UNSUPPORTED_CONSTRUCTS)[number];
 

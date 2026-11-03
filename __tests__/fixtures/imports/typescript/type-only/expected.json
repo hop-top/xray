@@ -21,9 +21,21 @@
       "path": "types.ts",
       "language": "typescript",
       "sha256": "03cb92086dc94a6bedb3e03ca00daf052d9ab4c1c3f4a0178bbcbddb59748e66",
-      "status": "ok",
-      "complete": true,
-      "parseErrors": [],
+      "status": "parse-error",
+      "complete": false,
+      "parseErrors": [
+        {
+          "kind": "error",
+          "start": {
+            "line": 8,
+            "column": 8
+          },
+          "end": {
+            "line": 8,
+            "column": 12
+          }
+        }
+      ],
       "imports": [
         {
           "line": 1,
@@ -200,9 +212,9 @@
   ],
   "summary": {
     "files": 1,
-    "complete": 1,
+    "complete": 0,
     "imports": 9,
     "unsupported": 0,
-    "parseErrors": 0
+    "parseErrors": 1
   }
 }

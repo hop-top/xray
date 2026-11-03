@@ -4,7 +4,7 @@
  */
 
 import type Parser from 'tree-sitter';
-import type { ImportName, ImportRecord, Resolved, RelativeRef } from './types';
+import type { ImportName, ImportRecord, Resolved, RelativeRef, UnsupportedRecord } from './types';
 
 /** What an extractor gets per file. */
 export interface ExtractContext {
@@ -12,6 +12,8 @@ export interface ExtractContext {
   path: string;
   /** Contract language name (registry key). */
   language: string;
+  /** Sink for constructs that can load code no record names; any order, the caller sorts. Absent = not collected. */
+  unsupported?: UnsupportedRecord[];
 }
 
 export type SyntaxNode = Parser.SyntaxNode;

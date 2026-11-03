@@ -1,0 +1,84 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "python": {
+      "module": "tree-sitter-python",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "broken.py",
+      "language": "python",
+      "sha256": "1d29f7cde91f5e478f940b8d6ccd865046ef7570fc235863bbc9966a84a604ff",
+      "status": "parse-error",
+      "complete": false,
+      "parseErrors": [
+        {
+          "kind": "missing",
+          "start": {
+            "line": 3,
+            "column": 12
+          },
+          "end": {
+            "line": 3,
+            "column": 12
+          }
+        }
+      ],
+      "imports": [
+        {
+          "line": 1,
+          "column": 8,
+          "endLine": 1,
+          "endColumn": 10,
+          "kind": "static",
+          "form": "import",
+          "module": "os",
+          "normalized": "os",
+          "package": "os",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import os"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 36,
+          "kind": "static",
+          "form": "from",
+          "module": "collections",
+          "normalized": "collections",
+          "package": "collections",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "OrderedDict"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from collections import OrderedDict"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 0,
+    "imports": 2,
+    "unsupported": 0,
+    "parseErrors": 1
+  }
+}

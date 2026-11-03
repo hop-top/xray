@@ -27,15 +27,26 @@
  * `normalized` stays null for the `relative` cases (resolution). Calls that
  * yield no record are returned as `deferred` by scanPython for the
  * unsupported pass.
+ *
+ * Unsupported: deferred calls (dynamic-import, detail = the reason); calls
+ * into other importlib loaders through import bindings (`importlib.util.*`,
+ * `importlib.machinery.*`, `importlib.__import__`, names imported from
+ * them; not reload / invalidate_caches / resources / metadata / abc)
+ * (dynamic-import); `exec(...)` (exec) and `eval(...)` (eval), any argument:
+ * the string is code xray does not read; `sys.path` mutation (`insert`,
+ * `append`, `extend`, assignment, augmented or slice assignment) and
+ * `site.addsitedir(...)` (sys-path). Names are matched as written (`sys`,
+ * `site`, `exec`, `eval`), not through aliases or rebindings.
  */
 
 import type Parser from 'tree-sitter';
 import * as path from 'path';
-import type { ImportName, ImportRecord, RelativeRef } from '../types';
+import type { ImportName, ImportRecord, RelativeRef, UnsupportedRecord } from '../types';
 import { name, record, traverse, type ExtractContext } from '../record';
+import { unsupportedAt } from '../unsupported';
 
 const STATEMENTS = new Set(['import_statement', 'import_from_statement', 'future_import_statement']);
-const SCAN = new Set([...STATEMENTS, 'call', 'identifier']);
+const SCAN = new Set([...STATEMENTS, 'call', 'identifier', 'assignment', 'augmented_assignment']);
 
 /** `a . b` -> `a.b` (dotted_name identifiers joined). */
 function dotted(n: Parser.SyntaxNode): string {
@@ -101,6 +112,114 @@ export interface DeferredCall {
 export interface PythonScan {
   imports: ImportRecord[];
   deferred: DeferredCall[];
+  /** Other constructs (importlib loaders, exec / eval, sys.path), any order. */
+  unsupported: UnsupportedRecord[];
+}
+
+const DEFERRED_DETAIL: Record<DeferredCall['reason'], string> = {
+  'non-literal': 'with a non-literal argument',
+  shadowed: 'is rebound in this file',
+  'relative-without-package': 'with a relative name and no package',
+};
+
+/** Unsupported record for a deferred call: detail = callee as written + reason. */
+export function deferredRecord(d: DeferredCall): UnsupportedRecord {
+  const fn = d.node.childForFieldName('function');
+  return unsupportedAt(d.node, d.construct, `${fn ? fn.text.replace(/\s+/g, '') : 'call'} ${DEFERRED_DETAIL[d.reason]}`);
+}
+
+/** importlib members that load nothing by name (or are covered by import_module records). */
+const IMPORTLIB_INERT = new Set(['import_module', 'reload', 'invalidate_caches', 'resources', 'metadata', 'abc']);
+/** Submodules whose members are loaders (any call reported). */
+const IMPORTLIB_LOADERS = new Set(['importlib.util', 'importlib.machinery']);
+const SYS_PATH_MUTATORS = new Set(['insert', 'append', 'extend']);
+
+/** `a.b.c` attribute chain as a dotted string, or undefined for anything else. */
+function attributeChain(n: Parser.SyntaxNode | null | undefined): string | undefined {
+  const parts: string[] = [];
+  let cur = n;
+  while (cur && cur.type === 'attribute') {
+    const a = cur.childForFieldName('attribute');
+    if (!a) return undefined;
+    parts.push(a.text);
+    cur = cur.childForFieldName('object');
+  }
+  if (!cur || cur.type !== 'identifier') return undefined;
+  parts.push(cur.text);
+  return parts.reverse().join('.');
+}
+
+/** `sys.path` or `sys.path[...]` as an assignment target. */
+function isSysPath(n: Parser.SyntaxNode | null): boolean {
+  if (!n) return false;
+  if (n.type === 'subscript') return attributeChain(n.childForFieldName('value')) === 'sys.path';
+  return attributeChain(n) === 'sys.path';
+}
+
+/** Import bindings to importlib modules (local name -> dotted module) and loader functions (local name -> qualified). */
+interface LoaderBindings { modules: Map<string, string>; functions: Map<string, string> }
+
+function collectLoaders(stmt: Parser.SyntaxNode, b: LoaderBindings): void {
+  if (stmt.type === 'import_statement') {
+    for (const c of stmt.childrenForFieldName('name')) {
+      const target = c.type === 'aliased_import' ? c.childForFieldName('name') : c;
+      if (!target) continue;
+      const mod = dotted(target);
+      if (mod !== 'importlib' && !mod.startsWith('importlib.')) continue;
+      const alias = c.type === 'aliased_import' ? c.childForFieldName('alias')?.text : undefined;
+      // `import importlib.util` binds `importlib`; `import importlib.util as u` binds `u` to the submodule.
+      if (alias) b.modules.set(alias, mod);
+      else b.modules.set('importlib', 'importlib');
+    }
+  } else if (stmt.type === 'import_from_statement') {
+    const mod = stmt.childForFieldName('module_name');
+    if (!mod || mod.type === 'relative_import') return;
+    const from = dotted(mod);
+    if (from !== 'importlib' && !IMPORTLIB_LOADERS.has(from)) return;
+    for (const n of importedNames(stmt)) {
+      const qualified = `${from}.${n.name}`;
+      if (IMPORTLIB_LOADERS.has(qualified)) b.modules.set(n.alias ?? n.name, qualified);
+      else b.functions.set(n.alias ?? n.name, qualified);
+    }
+  }
+}
+
+/** Qualified importlib callee (`importlib.util.spec_from_file_location`) when it is a loader call. */
+function loaderCall(fn: Parser.SyntaxNode | null, b: LoaderBindings): string | undefined {
+  if (!fn) return undefined;
+  let qualified: string | undefined;
+  if (fn.type === 'identifier') qualified = b.functions.get(fn.text);
+  else {
+    const chain = attributeChain(fn);
+    if (!chain) return undefined;
+    const head = chain.split('.')[0];
+    const mod = b.modules.get(head);
+    if (mod) qualified = mod + chain.slice(head.length);
+  }
+  if (!qualified) return undefined;
+  const rest = qualified.split('.');
+  // importlib.<member>: inert members, and importlib.<sub> calls outside the loader submodules, are not reported.
+  if (rest.length < 2 || IMPORTLIB_INERT.has(rest[1])) return undefined;
+  if (rest.length > 2 && !IMPORTLIB_LOADERS.has(`${rest[0]}.${rest[1]}`)) return undefined;
+  if (rest.length === 2 && IMPORTLIB_LOADERS.has(qualified)) return undefined;
+  return qualified;
+}
+
+/** exec / eval / sys.path / site.addsitedir at a call. */
+function callSite(call: Parser.SyntaxNode, fn: Parser.SyntaxNode | null, loaders: LoaderBindings): UnsupportedRecord | undefined {
+  if (!fn) return undefined;
+  if (fn.type === 'identifier') {
+    if (fn.text === 'exec') return unsupportedAt(call, 'exec', 'exec of code');
+    if (fn.text === 'eval') return unsupportedAt(call, 'eval', 'eval of code');
+  }
+  const chain = attributeChain(fn);
+  if (chain === 'site.addsitedir') return unsupportedAt(call, 'sys-path', 'site.addsitedir extends the module search path');
+  if (chain && chain.startsWith('sys.path.') && SYS_PATH_MUTATORS.has(chain.slice('sys.path.'.length))) {
+    return unsupportedAt(call, 'sys-path', `${chain} changes the module search path`);
+  }
+  const loader = loaderCall(fn, loaders);
+  if (loader) return unsupportedAt(call, 'dynamic-import', `${loader}: importlib loader API, can load a module xray cannot name`);
+  return undefined;
 }
 
 /**
@@ -281,6 +400,8 @@ export function scanPython(root: Parser.SyntaxNode, ctx: ExtractContext): Python
   const deferred: DeferredCall[] = [];
   const calls: Parser.SyntaxNode[] = [];
   const importlib: ImportlibBindings = { modules: new Set(), functions: new Set() };
+  const loaders: LoaderBindings = { modules: new Map(), functions: new Map() };
+  const unsupported: UnsupportedRecord[] = [];
   let shadowed = false;
   const stack: Frame[] = [];
   traverse(root, c => {
@@ -301,8 +422,11 @@ export function scanPython(root: Parser.SyntaxNode, ctx: ExtractContext): Python
     const n = c.currentNode;
     if (type === 'call') {
       calls.push(n);
+    } else if (type === 'assignment' || type === 'augmented_assignment') {
+      if (isSysPath(n.childForFieldName('left'))) unsupported.push(unsupportedAt(n, 'sys-path', 'assignment to sys.path changes the module search path'));
     } else {
       collectImportlib(n, importlib);
+      collectLoaders(n, loaders);
       if (type === 'import_statement') imports.push(...importStatement(n));
       else {
         const r = fromStatement(n);
@@ -315,6 +439,8 @@ export function scanPython(root: Parser.SyntaxNode, ctx: ExtractContext): Python
   });
   for (const call of calls) {
     const fn = call.childForFieldName('function');
+    const site = callSite(call, fn, loaders);
+    if (site) unsupported.push(site);
     let outcome: CallOutcome | undefined;
     if (fn?.type === 'identifier' && fn.text === '__import__') {
       outcome = shadowed ? 'shadowed' : dunderImport(call);
@@ -331,9 +457,11 @@ export function scanPython(root: Parser.SyntaxNode, ctx: ExtractContext): Python
     if (typeof outcome === 'string') deferred.push({ node: call, construct: 'dynamic-import', reason: outcome });
     else imports.push(outcome);
   }
-  return { imports, deferred };
+  return { imports, deferred, unsupported };
 }
 
 export function extractPython(root: Parser.SyntaxNode, ctx: ExtractContext): ImportRecord[] {
-  return scanPython(root, ctx).imports;
+  const scan = scanPython(root, ctx);
+  if (ctx.unsupported) ctx.unsupported.push(...scan.deferred.map(deferredRecord), ...scan.unsupported);
+  return scan.imports;
 }

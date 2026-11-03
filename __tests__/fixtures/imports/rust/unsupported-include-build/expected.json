@@ -1,0 +1,101 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "rust": {
+      "module": "tree-sitter-rust",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "build.rs",
+      "language": "rust",
+      "sha256": "25deb396aa587ea43d9f6d45393d521791552dc023ecadffba7502923cb3ade1",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": [
+        {
+          "line": 1,
+          "column": 1,
+          "construct": "build-script",
+          "detail": "Cargo build script of Cargo.toml: runs before compilation, may generate code",
+          "evidence": "build.rs"
+        }
+      ]
+    },
+    {
+      "path": "src/lib.rs",
+      "language": "rust",
+      "sha256": "db16649022c054a16039f72a8de3d50c23846f3343a942d656889aa07c0a94bf",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 5,
+          "column": 25,
+          "endLine": 5,
+          "endColumn": 43,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "std",
+          "normalized": "std",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "std::include_bytes"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 1,
+          "column": 1,
+          "construct": "include-macro",
+          "detail": "include! with a non-literal path",
+          "evidence": "include!(concat!(env!(\"OUT_DIR\"), \"/generated.rs\"))"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "construct": "include-macro",
+          "detail": "include! with a literal path",
+          "evidence": "include!(\"manual.rs\")"
+        },
+        {
+          "line": 4,
+          "column": 26,
+          "construct": "include-data",
+          "detail": "include_str! with a literal path",
+          "evidence": "include_str!(\"../schema.json\")"
+        },
+        {
+          "line": 5,
+          "column": 25,
+          "construct": "include-data",
+          "detail": "include_bytes! with a literal path",
+          "evidence": "std::include_bytes!(\"logo.png\")"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 2,
+    "complete": 0,
+    "imports": 1,
+    "unsupported": 5,
+    "parseErrors": 0
+  }
+}

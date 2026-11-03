@@ -25,9 +25,15 @@
  * `syntactic`; others are `inferred`. std/core/alloc are `stdlib`. One
  * record per root per file: the first occurrence gives range and evidence
  * (the path text), `occurrences` counts all.
+ *
+ * Unsupported: `include!` (include-macro: a file compiled in place) and
+ * `include_str!` / `include_bytes!` (include-data), as macro invocations or
+ * inside other macros' token trees, with an optional `std::` / `core::`
+ * path; detail says whether the path is a string literal. Build scripts
+ * (`build.rs`) are a filename rule applied by the caller.
  */
 
-import type { ImportRecord } from '../types';
+import type { ImportRecord, UnsupportedRecord } from '../types';
 import { evidence, record, type LanguageExtractor, type SyntaxNode } from '../record';
 
 const LOCAL_ROOTS = new Set(['crate', 'self', 'super']);
@@ -234,6 +240,48 @@ function scopedOccurrence(top: SyntaxNode, inner: Set<number>): Occurrence | und
   return p.type === 'identifier' ? { at: top, end: top, root: p.text, leadingColons: false } : undefined;
 }
 
+const INCLUDE_MACROS: Record<string, UnsupportedRecord['construct']> = {
+  include: 'include-macro', include_str: 'include-data', include_bytes: 'include-data',
+};
+
+/** An include-family macro use: name token, its token tree (absent in broken input). */
+interface IncludeUse { at: SyntaxNode; name: string; tree?: SyntaxNode }
+
+const isStringLiteral = (n: SyntaxNode) => n.type === 'string_literal' || n.type === 'raw_string_literal';
+
+/** Path argument is one string literal (`include!("x.rs")`). */
+function literalPath(tree: SyntaxNode | undefined): boolean {
+  if (!tree) return false;
+  const args = tree.namedChildren.filter(c => c.type !== 'line_comment' && c.type !== 'block_comment');
+  return args.length === 1 && isStringLiteral(args[0]);
+}
+
+/** Macro name of a macro_invocation if it is an include-family macro (`include`, `std::include`, `core::include`). */
+function includeMacroName(n: SyntaxNode): string | undefined {
+  const m = n.childForFieldName('macro');
+  if (!m) return undefined;
+  if (m.type === 'identifier') return INCLUDE_MACROS[m.text] ? m.text : undefined;
+  if (m.type !== 'scoped_identifier') return undefined;
+  const root = m.childForFieldName('path');
+  const name = m.childForFieldName('name');
+  if (!root || !name || (root.text !== 'std' && root.text !== 'core')) return undefined;
+  return INCLUDE_MACROS[name.text] ? name.text : undefined;
+}
+
+function includeRecords(uses: IncludeUse[], source: string, out: UnsupportedRecord[]): void {
+  for (const u of uses) {
+    const end = u.tree ?? u.at;
+    const literal = literalPath(u.tree);
+    out.push({
+      line: u.at.startPosition.row + 1,
+      column: u.at.startPosition.column + 1,
+      construct: INCLUDE_MACROS[u.name],
+      detail: literal ? `${u.name}! with a literal path` : `${u.name}! with a non-literal path`,
+      evidence: evidence(source.slice(u.at.startIndex, end.endIndex)),
+    });
+  }
+}
+
 /** Tokens that make a following `::` a path continuation rather than a leading `::`. */
 const PATH_HEAD = new Set(['identifier', 'self', 'super', 'crate', 'metavariable', 'primitive_type', '>']);
 
@@ -242,7 +290,7 @@ const PATH_HEAD = new Set(['identifier', 'self', 'super', 'crate', 'metavariable
  * document order. Explicit stack: token trees nest without bound in
  * untrusted input.
  */
-function tokenOccurrences(tree: SyntaxNode, out: Occurrence[]): void {
+function tokenOccurrences(tree: SyntaxNode, out: Occurrence[], includes: IncludeUse[]): void {
   const stack: { t: SyntaxNode[]; i: number }[] = [{ t: tree.children, i: 0 }];
   while (stack.length > 0) {
     const frame = stack[stack.length - 1];
@@ -250,6 +298,11 @@ function tokenOccurrences(tree: SyntaxNode, out: Occurrence[]): void {
     if (i >= t.length) { stack.pop(); continue; }
     frame.i = i + 1;
     if (t[i].type === 'token_tree') { stack.push({ t: t[i].children, i: 0 }); continue; }
+    // `include!(...)` inside another macro's arguments; `x.include!` is not a macro call.
+    if (t[i].type === 'identifier' && t[i + 1]?.type === '!' && t[i - 1]?.type !== '.' && INCLUDE_MACROS[t[i].text]) {
+      const next = t[i + 2];
+      includes.push({ at: t[i], name: t[i].text, tree: next?.type === 'token_tree' ? next : undefined });
+    }
     if (t[i].type !== 'identifier' || t[i + 1]?.type !== '::' || t[i + 2]?.type !== 'identifier') continue;
     const prev = t[i - 1];
     if (prev?.type === '.' || prev?.type === '$') continue;
@@ -296,11 +349,12 @@ function referenceRecords(occs: Occurrence[], bound: Set<string>, source: string
   }
 }
 
-export const extractRust: LanguageExtractor = root => {
+export const extractRust: LanguageExtractor = (root, ctx) => {
   const out: ImportRecord[] = [];
   const bound = new Set<string>();
   const occs: Occurrence[] = [];
   const inner = new Set<number>();
+  const includes: IncludeUse[] = [];
   // One preorder walk; use / extern crate subtrees hold no references.
   const cursor = root.walk();
   let descend = true;
@@ -324,7 +378,12 @@ export const extractRust: LanguageExtractor = root => {
           break;
         }
         case 'token_tree':
-          tokenOccurrences(n, occs); enter = false; break;
+          tokenOccurrences(n, occs, includes); enter = false; break;
+        case 'macro_invocation': {
+          const name = includeMacroName(n);
+          if (name) includes.push({ at: n, name, tree: n.namedChildren.find(c => c.type === 'token_tree') });
+          break;
+        }
         default:
           if (n.type === 'mod_item') modItem(n, out);
           if (NAMED_ITEMS.has(n.type)) {
@@ -338,6 +397,8 @@ export const extractRust: LanguageExtractor = root => {
     if (!cursor.gotoParent()) break;
     descend = false;
   }
-  referenceRecords(occs, bound, root.text, out);
+  const source = root.text;
+  referenceRecords(occs, bound, source, out);
+  if (ctx?.unsupported) includeRecords(includes, source, ctx.unsupported);
   return out;
 };

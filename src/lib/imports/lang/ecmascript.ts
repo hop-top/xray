@@ -20,14 +20,21 @@
  * file-wide. Calls that yield no record (non-literal argument, shadowed
  * `require`) are returned as `deferred` by scanEcmaScript for the
  * unsupported pass.
+ *
+ * Unsupported: deferred calls (dynamic-require, dynamic-import, detail =
+ * the reason); `createRequire(...)` / `x.createRequire(...)`
+ * (create-require: a second `require` the binding rules cannot follow);
+ * `eval(...)`, `new Function(...)`, `Function(...)` (eval). Type-position
+ * `import()` with a non-literal argument is not reported (no runtime load).
  */
 
 import type Parser from 'tree-sitter';
-import type { ImportName, ImportRecord } from '../types';
+import type { ImportName, ImportRecord, UnsupportedRecord } from '../types';
 import { name, record, traverse, type ExtractContext } from '../record';
+import { unsupportedAt } from '../unsupported';
 
 const STATEMENTS = new Set(['import_statement', 'export_statement']);
-const SCAN = new Set([...STATEMENTS, 'call_expression', 'identifier', 'shorthand_property_identifier_pattern']);
+const SCAN = new Set([...STATEMENTS, 'call_expression', 'new_expression', 'identifier', 'shorthand_property_identifier_pattern']);
 
 /** Unquoted string literal (or identifier) text. */
 function unquote(n: Parser.SyntaxNode): string {
@@ -121,6 +128,37 @@ export interface DeferredCall {
 export interface EcmaScriptScan {
   imports: ImportRecord[];
   deferred: DeferredCall[];
+  /** Other constructs (create-require, eval), document order. */
+  unsupported: UnsupportedRecord[];
+}
+
+const DEFERRED_DETAIL: Record<DeferredCall['construct'], Record<DeferredCall['reason'], string>> = {
+  'dynamic-require': {
+    'non-literal': 'require with a non-literal argument',
+    shadowed: 'require is rebound in this file',
+  },
+  'dynamic-import': {
+    'non-literal': 'import() with a non-literal argument',
+    shadowed: 'import() is not resolved',
+  },
+};
+
+/** Unsupported record for a deferred call. */
+export function deferredRecord(d: DeferredCall): UnsupportedRecord {
+  return unsupportedAt(d.node, d.construct, DEFERRED_DETAIL[d.construct][d.reason]);
+}
+
+/** `eval(...)`, `Function(...)`, `createRequire(...)`, `x.createRequire(...)`. */
+function callSite(n: Parser.SyntaxNode, fn: Parser.SyntaxNode | null): UnsupportedRecord | undefined {
+  if (!fn) return undefined;
+  if (fn.type === 'identifier') {
+    if (fn.text === 'eval') return unsupportedAt(n, 'eval', 'eval of code');
+    if (fn.text === 'Function') return unsupportedAt(n, 'eval', 'Function constructor compiles code');
+    if (fn.text === 'createRequire') return unsupportedAt(n, 'create-require', 'createRequire makes a require the file does not bind');
+  } else if (fn.type === 'member_expression' && fn.childForFieldName('property')?.text === 'createRequire') {
+    return unsupportedAt(n, 'create-require', 'createRequire makes a require the file does not bind');
+  }
+  return undefined;
 }
 
 /**
@@ -198,6 +236,7 @@ const firstArgument = (call: Parser.SyntaxNode) => call.childForFieldName('argum
 export function scanEcmaScript(root: Parser.SyntaxNode): EcmaScriptScan {
   const imports: ImportRecord[] = [];
   const deferred: DeferredCall[] = [];
+  const unsupported: UnsupportedRecord[] = [];
   const requires: Parser.SyntaxNode[] = [];
   let shadowed = false;
   const stack: Frame[] = [];
@@ -233,8 +272,15 @@ export function scanEcmaScript(root: Parser.SyntaxNode): EcmaScriptScan {
       return;
     }
     const n = c.currentNode;
+    if (type === 'new_expression') {
+      const ctor = n.childForFieldName('constructor');
+      if (ctor?.type === 'identifier' && ctor.text === 'Function') unsupported.push(unsupportedAt(n, 'eval', 'Function constructor compiles code'));
+      return;
+    }
     if (type === 'call_expression') {
       const fn = n.childForFieldName('function');
+      const site = callSite(n, fn);
+      if (site) unsupported.push(site);
       if (fn?.type === 'import') {
         const arg = firstArgument(n);
         const spec = literalArg(arg);
@@ -263,9 +309,11 @@ export function scanEcmaScript(root: Parser.SyntaxNode): EcmaScriptScan {
     else imports.push(record({ at: n, kind: 'require', form: 'require', ...moduleFields(spec) }));
   }
   deferred.sort((a, b) => a.node.startIndex - b.node.startIndex);
-  return { imports, deferred };
+  return { imports, deferred, unsupported };
 }
 
-export function extractEcmaScript(root: Parser.SyntaxNode, _ctx: ExtractContext): ImportRecord[] {
-  return scanEcmaScript(root).imports;
+export function extractEcmaScript(root: Parser.SyntaxNode, ctx: ExtractContext): ImportRecord[] {
+  const scan = scanEcmaScript(root);
+  if (ctx.unsupported) ctx.unsupported.push(...scan.deferred.map(deferredRecord), ...scan.unsupported);
+  return scan.imports;
 }

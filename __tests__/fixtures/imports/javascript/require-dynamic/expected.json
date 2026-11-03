@@ -22,7 +22,7 @@
       "language": "javascript",
       "sha256": "af282119fb8ab8fbbc8808b27efbcc798e7d05dab21674d282e7a3bebca2c1ba",
       "status": "ok",
-      "complete": true,
+      "complete": false,
       "parseErrors": [],
       "imports": [
         {
@@ -81,14 +81,36 @@
           "evidence": "require('still-global')"
         }
       ],
-      "unsupported": []
+      "unsupported": [
+        {
+          "line": 10,
+          "column": 1,
+          "construct": "dynamic-require",
+          "detail": "require with a non-literal argument",
+          "evidence": "require(`./${load.name}.js`)"
+        },
+        {
+          "line": 11,
+          "column": 1,
+          "construct": "dynamic-import",
+          "detail": "import() with a non-literal argument",
+          "evidence": "import('./a' + '.js')"
+        },
+        {
+          "line": 12,
+          "column": 1,
+          "construct": "dynamic-require",
+          "detail": "require with a non-literal argument",
+          "evidence": "require('./b\\x2ejs')"
+        }
+      ]
     },
     {
       "path": "dynamic.js",
       "language": "javascript",
       "sha256": "6f926f2c545a989dcf47dcc417fb475912a9c40ebbb501c850d5b3d5f5bd322b",
       "status": "ok",
-      "complete": true,
+      "complete": false,
       "parseErrors": [],
       "imports": [
         {
@@ -120,14 +142,22 @@
           "evidence": "import('y')"
         }
       ],
-      "unsupported": []
+      "unsupported": [
+        {
+          "line": 4,
+          "column": 1,
+          "construct": "dynamic-require",
+          "detail": "require with a non-literal argument",
+          "evidence": "require(name)"
+        }
+      ]
     },
     {
       "path": "shadow/amd.js",
       "language": "javascript",
       "sha256": "c9705d685ff3a2e13eca9f795cec67855cd6b483b7a5dfa4051640fb64a7960b",
       "status": "ok",
-      "complete": true,
+      "complete": false,
       "parseErrors": [],
       "imports": [
         {
@@ -145,14 +175,22 @@
           "evidence": "import('still-dynamic')"
         }
       ],
-      "unsupported": []
+      "unsupported": [
+        {
+          "line": 4,
+          "column": 15,
+          "construct": "dynamic-require",
+          "detail": "require is rebound in this file",
+          "evidence": "require('amd-dep')"
+        }
+      ]
     }
   ],
   "summary": {
     "files": 3,
-    "complete": 3,
+    "complete": 0,
     "imports": 7,
-    "unsupported": 0,
+    "unsupported": 5,
     "parseErrors": 0
   }
 }

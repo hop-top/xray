@@ -47,7 +47,7 @@
       "language": "typescript",
       "sha256": "0da4a60ad79f8be9f7f67cdee0dcfb21c648abd1af103ee0cbb51a45c2799e3b",
       "status": "ok",
-      "complete": true,
+      "complete": false,
       "parseErrors": [],
       "imports": [
         {
@@ -175,14 +175,22 @@
           "evidence": "import(`./plugins/core`)"
         }
       ],
-      "unsupported": []
+      "unsupported": [
+        {
+          "line": 13,
+          "column": 9,
+          "construct": "dynamic-import",
+          "detail": "import() with a non-literal argument",
+          "evidence": "import(spec)"
+        }
+      ]
     }
   ],
   "summary": {
     "files": 2,
-    "complete": 2,
+    "complete": 1,
     "imports": 10,
-    "unsupported": 0,
+    "unsupported": 1,
     "parseErrors": 0
   }
 }

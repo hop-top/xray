@@ -140,9 +140,9 @@ exist. Nothing is written into the scanned tree. Full option list:
 | `path` | string | Posix path relative to `root`. |
 | `language` | string | Detected language. |
 | `sha256` | hex string | Content hash: ties the evidence to the bytes read. |
-| `status` | enum | `ok`, `parse-error` (imports still listed), `grammar-missing` (grammar not installed), `unsupported-language` (file seen, language outside the contract; never silently dropped). |
+| `status` | enum | `ok`, `parse-error` (imports still listed; also an internal extractor failure, see [Coverage](#coverage)), `grammar-missing` (grammar not installed), `unsupported-language` (source file in a language outside the contract; never silently dropped). |
 | `complete` | boolean | `status` is `ok` and `unsupported` is empty: within xray's model every reachable module is listed. See [Known limits](#known-limits). |
-| `parseErrors` | array | `{kind, start, end}` per ERROR (`kind` `error`) or MISSING (`kind` `missing`) node; `start`/`end` are `{line, column}`. |
+| `parseErrors` | array | `{kind, start, end}` per ERROR (`kind` `error`) or MISSING (`kind` `missing`, zero-width) node; `start`/`end` are `{line, column}` per `positions`, `end` exclusive. An ERROR node's nested errors are part of it. |
 | `imports` | array | Import records, sorted by (`line`, `column`, `module`). |
 | `unsupported` | array | Constructs that can load code xray cannot name, sorted by (`line`, `column`, `construct`). |
 
@@ -182,11 +182,16 @@ present only when they apply; an absent boolean means `false`.
 
 | Language | Constructs |
 |---|---|
-| Go | `linkname` (`//go:linkname`), `cgo` (`import "C"`), `plugin` (`import "plugin"`) |
-| Rust | `build-script` (`build.rs`), `include-macro` (`include!`), `include-data` (`include_str!` / `include_bytes!`) |
-| PHP | `eval`, `dynamic-include` (non-literal `require`/`include*`), `dynamic-new` (`new $v`, `new (expr)`), `dynamic-static-call` (`$v::m()`) |
-| TS/JS | `dynamic-require`, `dynamic-import`, `create-require` (`module.createRequire`), `eval` |
-| Python | `dynamic-import` (non-literal `__import__` / `import_module`), `exec`, `sys-path` (`sys.path` mutation) |
+| Go | `linkname` (every `//go:linkname` comment; `detail` = target, or the local name for the one-argument form), `cgo` (`import "C"`), `plugin` (`import "plugin"`: `plugin.Open` loads shared objects). The static record stays. |
+| Rust | `build-script` (filename rule, below), `include-macro` (`include!`), `include-data` (`include_str!` / `include_bytes!`); as invocations, with a `std::`/`core::` path, or inside other macros' arguments; `detail` says whether the path is a string literal. |
+| PHP | `eval` (any argument), `dynamic-include` (`require`/`include*` whose path is not literal: variables, interpolation, `dirname(__FILE__) . ...`), `dynamic-new` (`new $v`, `new (expr)`, `new $o->p`; not names, `static`/`self`/`parent` or anonymous classes), `dynamic-static-call` (`$v::m()`), `dynamic-call` (variable functions `$f()` / `[$o, 'm']()`, `call_user_func` / `call_user_func_array` with a non-literal callable; immediately invoked closures excluded) |
+| TS/JS | `dynamic-require` (non-literal argument, or `require` rebound in the file: `detail` says which), `dynamic-import` (`import()` with a non-literal argument outside type positions), `create-require` (`createRequire(...)`, `x.createRequire(...)`), `eval` (`eval(...)`, `new Function(...)`, `Function(...)`) |
+| Python | `dynamic-import` (`__import__` / `import_module` that yield no record: non-literal argument, `__import__` rebound, relative name without a package; plus calls into importlib's loader APIs through import bindings: `importlib.util.*`, `importlib.machinery.*`, `importlib.__import__`; not `reload`, `invalidate_caches`, `resources`, `metadata`, `abc`), `exec` / `eval` (any argument: the string is code xray does not read), `sys-path` (`sys.path.insert/append/extend`, assignment, augmented or slice assignment to `sys.path`, `site.addsitedir`) |
+
+Names are matched as written (`sys`, `site`, `exec`, `eval`, `createRequire`),
+not through aliases or rebindings; importlib loaders go through the
+file's import bindings. `line`/`column` are the start of the construct,
+`evidence` its text.
 
 ## Forms
 
@@ -224,8 +229,15 @@ stay `unknown`.
 | `rust` | `.rs` | `use`, `extern-crate`, `mod` (kind `include`), `path-root` (kind `reference`) |
 | `php` | `.php` | `use`, `group-use`, `use-function`, `use-const`, `require`, `require_once`, `include`, `include_once`, `fqn` (kind `reference`) |
 
-Extensions no entry claims are omitted from `files`; a claimed extension
-whose grammar is not installed gives `status: grammar-missing`.
+A file whose extension no entry claims is listed with `status:
+unsupported-language` (`language` = the scanner's language name, e.g.
+`java`; no grammar entry, no records) when the extension belongs to a
+language in xray's grammar catalog, i.e. source the scanner knows; other
+files (text, images, data) are omitted. Resolution-only manifests
+(`go.mod`, `go.work`, `package.json`, `Cargo.toml`) are never listed.
+`--lang` narrows to contract languages, so it drops these entries. A
+claimed extension whose grammar is not installed gives `status:
+grammar-missing`.
 
 TS/JS bindings: a default import is the name `default` aliased to the local
 (`import d from 'm'` = `names: [{name: "default", alias: "d"}]`); a
@@ -314,9 +326,25 @@ References (both languages): one record per root (Rust) or resolved name
 (PHP) per file; the first occurrence gives the range and `evidence` (the
 path / name text), `occurrences` counts every use.
 
-Not yet emitted: non-literal or shadowed call forms (reported as
-`unsupported` later); non-literal PHP includes; `parseErrors` and
-`unsupported`.
+Call forms that yield no record (non-literal argument, shadowed binding,
+relative name without a package) and non-literal PHP includes are
+reported in `unsupported` instead.
+
+### Coverage
+
+- `status` is `parse-error` when the tree has any ERROR or MISSING node;
+  imports found in the rest of the file are still listed.
+- `complete` = `status` `ok` and `unsupported` empty.
+- Rust build scripts (the one filename rule): `build.rs` beside a
+  `Cargo.toml` that has a `[package]` table, or the path named by its
+  `build = "..."` (none with `build = false`), gets one `build-script`
+  record at 1:1 (`evidence` = the `build = ...` line, else the file name).
+  Needs the manifest in the scanned set (`xray imports` always reads it).
+- Per-file isolation: an internal failure while parsing or extracting one
+  file does not stop the run. That file gets `status: parse-error`,
+  `complete: false`, no imports or unsupported records, and one
+  `parseErrors` entry of `kind` `error` spanning the whole file; nothing
+  of the failure (message, stack, paths) is written to the document.
 
 ### Resolution
 
@@ -373,5 +401,6 @@ can be loaded. Not seen in v1:
 - Rust path roots (except `::x`) are `inferred`: false
   positives (e.g. glob-imported names) and misses inside unusual macro token
   trees are possible.
-- Languages: Python, Go, Rust, TS/JS, PHP. Other files are listed as
-  `unsupported-language`. Single root per document.
+- Languages: Python, Go, Rust, TS/JS, PHP. Source files in other
+  languages the scanner knows are listed as `unsupported-language` (see
+  [Languages and forms](#languages-and-forms)). Single root per document.
