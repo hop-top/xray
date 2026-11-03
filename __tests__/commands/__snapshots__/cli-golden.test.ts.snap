@@ -11540,7 +11540,9 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
         {
           "file": "b.ts",
           "source": "./a",
-          "text": "import { alpha } from './a';"
+          "text": "import { alpha } from './a';",
+          "line": 0,
+          "kind": "static"
         }
       ]
     },
@@ -11562,7 +11564,9 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
         {
           "file": "c.ts",
           "source": "./b",
-          "text": "import { beta } from './b';"
+          "text": "import { beta } from './b';",
+          "line": 0,
+          "kind": "static"
         }
       ]
     },
@@ -11584,7 +11588,9 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
         {
           "file": "imports/a.ts",
           "source": "./b",
-          "text": "import { beta } from './b';"
+          "text": "import { beta } from './b';",
+          "line": 0,
+          "kind": "static"
         }
       ]
     },
@@ -11606,7 +11612,9 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
         {
           "file": "imports/b.ts",
           "source": "./c",
-          "text": "import { gamma } from './c';"
+          "text": "import { gamma } from './c';",
+          "line": 0,
+          "kind": "static"
         }
       ]
     },

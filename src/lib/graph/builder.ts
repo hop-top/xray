@@ -4,6 +4,9 @@ import { Tag, Import } from '../parser/types';
 import { AsyncEventEmitter } from '../events/async-emitter';
 import { GoModules, goDefaultName, goLocalImports, goImportedFiles, goVisibleFrom } from './go-resolver';
 import { resolveTsSpecifier } from './ts-specifier';
+import { resolveImports, type ResolveInput } from '../imports/resolve';
+import { contractLanguageOf } from '../imports/tree';
+import type { FileImports, ImportRecord } from '../imports/types';
 import { languageOf } from '../parser/language-registry';
 import { XrayGraph, NodeAttributes, EdgeAttributes, Confidence } from '../../types/graph';
 
@@ -52,6 +55,11 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
   // Go file -> imports (needed to map a call's package qualifier to a directory)
   private goImports: Map<string, Import[]> = new Map();
 
+  // File -> imports-contract records (contract languages), resolved in getGraph().
+  private importRecords: Map<string, ImportRecord[]> = new Map();
+  // Files outside the graph the resolution pass reads (go.mod, package.json, ...).
+  private resolutionInputs: ResolveInput[] = [];
+
   constructor() {
     super();
     this.graph = new Graph<NodeAttributes, EdgeAttributes>({ multi: true, type: 'directed' });
@@ -62,7 +70,20 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     this.goModule = mod;
   }
 
-  async addFile(file: string, tags: Tag[], imports: Import[]) {
+  /**
+   * Manifests (root-relative posix path + content) the imports resolution
+   * pass reads besides the graph's file nodes. Inputs only: no nodes.
+   */
+  setResolutionInputs(inputs: ResolveInput[]) {
+    this.resolutionInputs = inputs;
+  }
+
+  /**
+   * `records`: the file's imports-contract records (ParserManager.parse,
+   * contract languages). With them, `imports` edges come from the records'
+   * `resolved.file`; without, from relative specifiers in `imports`.
+   */
+  async addFile(file: string, tags: Tag[], imports: Import[], records?: ImportRecord[]) {
     // Add File Node
     if (!this.graph.hasNode(file)) {
       const nodeEvent = { nodeId: file, attrs: { type: 'file' as const, label: file }, skip: false };
@@ -148,6 +169,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
       }
     }
 
+    if (records && records.length > 0) this.importRecords.set(file, records);
+
     if (imports && imports.length > 0 && file.endsWith('.go')) {
       this.goImports.set(file, imports);
     }
@@ -177,8 +200,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     }
   }
 
-  async loadFromCache(file: string, tags: Tag[], imports: Import[]): Promise<void> {
-    await this.addFile(file, tags, imports);
+  async loadFromCache(file: string, tags: Tag[], imports: Import[], records?: ImportRecord[]): Promise<void> {
+    await this.addFile(file, tags, imports, records);
   }
 
   async getGraph(): Promise<XrayGraph> {
@@ -193,12 +216,13 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
   /**
    * Resolve deferred import specifiers into `imports` edges.
    *
-   * Minimum-viable resolver: relative path resolution against the set of
-   * known file nodes. External specifiers (not starting with `.` or `/`)
-   * are skipped. Tries common TS/JS extensions plus `/index.*`.
-   *
-   * TODO (spec OQ1): alias / tsconfig-paths / package.json `exports`
-   * resolution is intentionally out of scope for this pass.
+   * Files with contract records: the imports contract resolution pass
+   * (src/lib/imports/resolve) over the graph's file nodes plus the
+   * resolution inputs; each record whose module the file's `imports` still
+   * list and that resolved to a file node gives an edge. Specifiers no
+   * record covers (other languages, entries a plugin added) fall back to
+   * relative path resolution against the file nodes (common TS/JS
+   * extensions plus `/index.*`).
    */
   private async buildImportEdges() {
     if (this.pendingImports.size === 0) return;
@@ -212,8 +236,12 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
       }
     });
 
-    const resolveSpecifier = (fromFile: string, specifier: string): string | null =>
-      resolveTsSpecifier(fromFile, specifier, f => fileNodes.has(f));
+    const resolvedTargets = this.resolveRecordTargets(fileNodes);
+    const resolveSpecifier = (fromFile: string, specifier: string): string | null => {
+      const byRecord = resolvedTargets.get(fromFile);
+      if (byRecord?.has(specifier)) return byRecord.get(specifier) ?? null;
+      return resolveTsSpecifier(fromFile, specifier, f => fileNodes.has(f));
+    };
 
     const edgeEvents: Array<{
       source: string;
@@ -273,6 +301,44 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
         this.graph.addEdge(event.source, event.target, event.attrs);
       }
     }
+  }
+
+  /**
+   * File -> (record module -> resolved file node, or null when the record
+   * resolved to nothing in the graph). Covers files with contract records.
+   */
+  private resolveRecordTargets(fileNodes: Set<string>): Map<string, Map<string, string | null>> {
+    const out = new Map<string, Map<string, string | null>>();
+    if (this.importRecords.size === 0) return out;
+    const posix = (f: string) => f.split(path.sep).join('/');
+    const entries: Array<{ file: string; entry: FileImports }> = [];
+    for (const [file, records] of this.importRecords) {
+      const language = contractLanguageOf(posix(file));
+      if (!language || !fileNodes.has(file)) continue;
+      entries.push({
+        file,
+        entry: {
+          path: posix(file), language, sha256: '', status: 'ok', complete: true,
+          parseErrors: [], imports: records, unsupported: [],
+        },
+      });
+    }
+    // Sources are only tested for presence; manifests carry their text.
+    const inputs: ResolveInput[] = [...fileNodes].map(f => ({ path: posix(f), content: '' }));
+    inputs.push(...this.resolutionInputs);
+    resolveImports(entries.map(e => e.entry), inputs);
+    const nodeOf = new Map([...fileNodes].map(f => [posix(f), f]));
+    for (const { file, entry } of entries) {
+      const targets = new Map<string, string | null>();
+      for (const r of entry.imports) {
+        if (r.kind === 'reference') continue;
+        const target = r.resolved && 'file' in r.resolved ? nodeOf.get(r.resolved.file) ?? null : null;
+        // Several records per module (Rust leaves, repeated imports): any hit wins.
+        if (target !== null || !targets.has(r.module)) targets.set(r.module, target);
+      }
+      out.set(file, targets);
+    }
+    return out;
   }
 
   private async buildReferenceEdges() {

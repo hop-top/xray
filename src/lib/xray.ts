@@ -9,6 +9,9 @@ import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
 import { ChunkedRenderer } from './renderer/chunked-renderer';
 import { detectGoModules } from './graph/go-resolver';
+import { IMPORT_MANIFESTS } from './imports/collect';
+import { contractLanguageOf } from './imports/tree';
+import type { ResolveInput } from './imports/resolve';
 import { SqliteCache } from './cache/sqlite-cache';
 import { Logger } from './logger';
 import { AsyncEventEmitter } from './events/async-emitter';
@@ -77,6 +80,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
   private lastRankedNodes?: RankedNode[];
   private lastCoverage?: ParseCoverage;
   private stashes = new Map<string, unknown[]>();
+  // Manifests (go.mod, package.json, ...) listed by the last scan: imports
+  // resolution inputs, never parsed.
+  private manifests: string[] = [];
 
   constructor(config: XrayConfig) {
     super();
@@ -268,8 +274,13 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       config: this.config
     });
 
+    // One listing for sources and the manifests imports resolution reads.
     const scanner = new FileScanner(this.config.path);
-    const files = scanner.scan();
+    const sourceExts = new Set(FileScanner.supportedExtensions());
+    const manifestNames = new Set(IMPORT_MANIFESTS);
+    const listed = scanner.scan([...sourceExts, ...IMPORT_MANIFESTS.map(m => path.extname(m))]);
+    this.manifests = listed.filter(f => manifestNames.has(path.basename(f)));
+    const files = listed.filter(f => sourceExts.has(path.extname(f)) && !manifestNames.has(path.basename(f)));
     Logger.info(`Found ${files.length} files.`);
     Logger.debug(`File list:`, files.slice(0, 10));
 
@@ -305,6 +316,19 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     return files;
   }
 
+  /** Manifests of the last scan as resolution inputs (posix paths); unreadable ones are left out. */
+  private readManifests(): ResolveInput[] {
+    const out: ResolveInput[] = [];
+    for (const f of this.manifests) {
+      try {
+        out.push({ path: f.split(path.sep).join('/'), content: fs.readFileSync(path.join(this.config.path, f), 'utf-8') });
+      } catch {
+        // Tracked but deleted in the working tree, or a directory: nothing to read.
+      }
+    }
+    return out;
+  }
+
   /**
    * Shared pipeline core for `run()` and `buildGraph()`. Owns every lifecycle
    * event from per-file parsing through ranking:
@@ -326,6 +350,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     const graphBuilder = new GraphBuilder();
     if (files.some(f => f.endsWith('.go'))) {
       graphBuilder.setGoModule(detectGoModules(this.config.path, files));
+    }
+    if (files.some(f => contractLanguageOf(f.split(path.sep).join('/')) !== undefined)) {
+      graphBuilder.setResolutionInputs(this.readManifests());
     }
 
     // Forward GraphBuilder events to Xray listeners
@@ -372,7 +399,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         // Event: Cache hit - use sequential since listeners can modify cached data
         const cacheHitEvent = { file, tags: cached.tags, imports: cached.imports };
         await this.emitAsync('cache:hit', cacheHitEvent);
-        await graphBuilder.loadFromCache(file, cacheHitEvent.tags, cacheHitEvent.imports);
+        await graphBuilder.loadFromCache(file, cacheHitEvent.tags, cacheHitEvent.imports, cached.records);
         parsed++;
       } else {
         // Event: Cache miss - use parallel for observers
@@ -396,7 +423,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         if (parseBeforeEvent.skip) continue;
 
         try {
-          const { tags, imports, skipped } = await parser.parse(
+          const { tags, imports, records, skipped } = await parser.parse(
             file,
             parseBeforeEvent.content,
             includeVars,
@@ -414,7 +441,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           await this.emitAsync('graph:add-file', addFileEvent);
 
           if (!addFileEvent.skip) {
-            await graphBuilder.addFile(file, addFileEvent.tags, addFileEvent.imports);
+            await graphBuilder.addFile(file, addFileEvent.tags, addFileEvent.imports, records);
           }
 
           // Event: Cache write
@@ -424,7 +451,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           // installing it later must take effect without touching the file.
           if (!skipped) {
             parsed++;
-            this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars);
+            this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars, records);
           }
         } catch (error) {
           // Event: Parse error

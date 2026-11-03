@@ -261,6 +261,21 @@ describe('SqliteCache', () => {
       expect(cache.get('a.go', 5, 'none', false)?.imports).toEqual(imports);
     });
 
+    it('should round-trip imports contract records', () => {
+      const records = [{ line: 1, column: 1, endLine: 1, endColumn: 9, kind: 'include', form: 'mod', module: 'foo',
+        normalized: null, locality: 'local', confidence: 'syntactic', evidence: 'mod foo;' }];
+      cache.set('m.rs', 5, [], [], 'none', false, records as any);
+      expect(cache.get('m.rs', 5, 'none', false)?.records).toEqual(records);
+    });
+
+    it('should treat an entry from another imports extractor version as a miss', () => {
+      cache.set('m.rs', 5, [], [], 'none', false, []);
+      const key = 'tags:m.rs';
+      const entry = JSON.parse((rawDb(cache).prepare('SELECT value FROM kv WHERE key = ?') as any).get(key).value);
+      rawDb(cache).prepare('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)').run(key, JSON.stringify({ ...entry, extractor: '0.0.1' }));
+      expect(cache.get('m.rs', 5, 'none', false)).toBeNull();
+    });
+
     it('should handle corrupted analysis JSON gracefully', () => {
       rawDb(cache).prepare('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)').run('analysis:/test/file.ts', 'INVALID_JSON{{{');
       expect(cache.getFileAnalysis('/test/file.ts')).toBeNull();

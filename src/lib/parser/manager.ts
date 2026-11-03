@@ -4,6 +4,8 @@ import { getLanguageConfig, CallShape } from './language-registry';
 import { isUnavailable } from './grammars';
 import { Tag, Import } from './types';
 import { Logger } from '../logger';
+import { extractTreeImports } from '../imports/tree';
+import type { ImportRecord } from '../imports/types';
 
 import { graphManager } from './flow-analysis';
 import { CGraphGenerator } from './graphs/c';
@@ -42,7 +44,13 @@ export class ParserManager {
     this.root = root;
   }
 
-  async parse(relPath: string, content: string, includeVariables: boolean = false, docConfig: string = 'none', enableCfg: boolean = false, enableDfg: boolean = false): Promise<{ tags: Tag[], imports: Import[], skipped?: boolean }> {
+  /**
+   * Tags and imports of one file. Contract languages (src/lib/imports) also
+   * return their contract `records` (resolution input for the graph); their
+   * `imports` are derived from those records, other languages' from the
+   * `.scm` import captures.
+   */
+  async parse(relPath: string, content: string, includeVariables: boolean = false, docConfig: string = 'none', enableCfg: boolean = false, enableDfg: boolean = false): Promise<{ tags: Tag[], imports: Import[], records?: ImportRecord[], skipped?: boolean }> {
     // Validate docConfig
     if (docConfig && docConfig !== 'none' && docConfig !== 'all') {
       const validKinds = ['class', 'interface', 'type', 'enum', 'function', 'method', 'const', 'field'];
@@ -68,8 +76,11 @@ export class ParserManager {
 
     const tree = parser.parse(content);
 
+    const records = extractTreeImports(tree.rootNode, relPath.split(path.sep).join('/'));
     let imports: Import[] = [];
-    if (langConfig.importsQuery) {
+    if (records) {
+      imports = legacyImports(records, relPath);
+    } else if (langConfig.importsQuery) {
       imports = await this.extractImports(tree, langConfig.grammar, langConfig.importsQuery, relPath);
     }
 
@@ -78,7 +89,7 @@ export class ParserManager {
       : undefined;
     const tags = await this.extractTags(tree, langConfig.grammar, langConfig.tagsQuery, relPath, content, includeVariables, docConfig, enableCfg, enableDfg, calls);
 
-    return { tags, imports };
+    return records ? { tags, imports, records } : { tags, imports };
   }
 
   private async extractTags(tree: Parser.Tree, language: any, queryStr: string, file: string, content: string, includeVariables: boolean, docConfig: string, enableCfg: boolean, enableDfg: boolean, calls?: CallContext): Promise<Tag[]> {
@@ -345,13 +356,7 @@ export class ParserManager {
     return Array.from(references);
   }
 
-  /** Go: local name of an `import_spec` (`alias`, `.` or `_`), if any. */
-  private importAlias(sourceNode: Parser.SyntaxNode): string | undefined {
-    const spec = sourceNode.parent;
-    if (!spec || spec.type !== 'import_spec') return undefined;
-    return spec.childForFieldName('name')?.text || undefined;
-  }
-
+  /** `@import.source` / `@import.statement` captures (languages outside the imports contract). */
   private async extractImports(tree: Parser.Tree, language: any, queryStr: string, file: string): Promise<Import[]> {
     const imports: Import[] = [];
     if (!queryStr) return imports;
@@ -426,10 +431,7 @@ export class ParserManager {
             source = source.replace(/^import\s+/, '').trim();
           }
 
-          const imp: Import = { file, source, text: stmt.text };
-          const alias = this.importAlias(src.node);
-          if (alias) imp.alias = alias;
-          imports.push(imp);
+          imports.push({ file, source, text: stmt.text });
         } else {
           let source = src.source;
           if (file.endsWith('.scala') && source.startsWith('import ')) {
@@ -450,6 +452,23 @@ export class ParserManager {
 
     return imports;
   }
+}
+
+/**
+ * Map entries for contract records. `reference` records (Rust path roots,
+ * PHP FQNs in code) are usages, not import statements: left out.
+ */
+function legacyImports(records: readonly ImportRecord[], file: string): Import[] {
+  const out: Import[] = [];
+  for (const r of records) {
+    if (r.kind === 'reference') continue;
+    const imp: Import = { file, source: r.module, text: r.evidence };
+    if (r.alias !== undefined) imp.alias = r.alias;
+    imp.line = r.line - 1;
+    imp.kind = r.kind;
+    out.push(imp);
+  }
+  return out;
 }
 
 // Definition nodes whose type names say neither "definition" nor "declaration".
@@ -485,7 +504,12 @@ function callContext(imports: Import[], shape: CallShape, root: Parser.SyntaxNod
   const userImports = new Set<string>();
   for (const imp of imports) {
     if (imp.alias === '_' || imp.alias === '.') continue;
-    const name = imp.alias || shape.importName?.(imp.source);
+    // Only statement imports bind a module name (`__import__('x')`,
+    // `require('x')` bind nothing by themselves). Aliases count only where
+    // the shape maps imports to names; elsewhere bindings come from the AST.
+    if (imp.kind !== undefined && imp.kind !== 'static') continue;
+    if (!shape.importName) continue;
+    const name = imp.alias || shape.importName(imp.source);
     if (!name) continue;
     importNames.add(name);
     if (shape.builtins?.imports?.(imp.source)) builtinNames.add(name);

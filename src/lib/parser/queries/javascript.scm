@@ -24,13 +24,3 @@
 
 ; Fields and properties
 (field_definition property: (property_identifier) @name.definition.field)
-
-; Imports
-(import_statement
-  source: (string) @import.source) @import.statement
-
-; CommonJS require
-(call_expression
-  function: (identifier) @func_name
-  arguments: (arguments (string) @import.source)
-  (#eq? @func_name "require")) @import.statement

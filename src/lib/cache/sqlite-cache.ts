@@ -1,4 +1,6 @@
 import { Tag, Import } from '../parser/types';
+import { IMPORTS_EXTRACTOR_VERSION } from '../imports';
+import type { ImportRecord } from '../imports/types';
 import { CacheWriteError } from '../error/types';
 import { Logger } from '../logger';
 
@@ -37,9 +39,13 @@ const { open } = require('@hop-top/kit/sqlstore') as {
  *     no longer recorded as references.
  *  6: same layout; TS/JS and Rust calls on import-bound names: stdlib
  *     modules record nothing, repo modules record the bare (unaliased) name.
+ *  7: same layout; imports of contract languages (Go, PHP, Python, Rust,
+ *     TS/JS) derived from the imports contract extractor (more forms, Rust
+ *     per use-tree leaf, `line` / `kind`); entries carry the contract
+ *     `records` and the extractor version they came from.
  * Any other value is invalidated (wiped) on open.
  */
-export const CACHE_SCHEMA_VERSION = 6;
+export const CACHE_SCHEMA_VERSION = 7;
 
 const LEGACY_TABLES = ['tags', 'files_v2', 'file_analysis'];
 const TAGS_PREFIX = 'tags:';
@@ -51,6 +57,10 @@ interface TagsEntry {
   includeVariables: boolean;
   tags: Tag[];
   imports: Import[];
+  /** Imports contract records (contract languages only). */
+  records?: ImportRecord[];
+  /** IMPORTS_EXTRACTOR_VERSION the entry was written with; another version is a miss. */
+  extractor?: string;
 }
 
 interface AnalysisEntry {
@@ -103,25 +113,28 @@ export class SqliteCache {
     }
   }
 
-  get(file: string, mtime: number, docConfig: string, includeVariables: boolean): { tags: Tag[], imports: Import[] } | null {
+  get(file: string, mtime: number, docConfig: string, includeVariables: boolean): { tags: Tag[], imports: Import[], records?: ImportRecord[] } | null {
     const entry = this.read<TagsEntry>(TAGS_PREFIX + file, file);
     if (
       !entry ||
       entry.mtime !== mtime ||
       entry.docConfig !== docConfig ||
-      entry.includeVariables !== includeVariables
+      entry.includeVariables !== includeVariables ||
+      entry.extractor !== IMPORTS_EXTRACTOR_VERSION
     ) {
       return null;
     }
-    if (!Array.isArray(entry.tags) || !Array.isArray(entry.imports)) {
+    if (!Array.isArray(entry.tags) || !Array.isArray(entry.imports) ||
+        (entry.records !== undefined && !Array.isArray(entry.records))) {
       Logger.warn(`Corrupted cache entry for ${file}, treating as cache miss`);
       return null;
     }
-    return { tags: entry.tags, imports: entry.imports };
+    return entry.records ? { tags: entry.tags, imports: entry.imports, records: entry.records } : { tags: entry.tags, imports: entry.imports };
   }
 
-  set(file: string, mtime: number, tags: Tag[], imports: Import[], docConfig: string, includeVariables: boolean) {
-    const entry: TagsEntry = { mtime, docConfig, includeVariables, tags, imports: imports ?? [] };
+  set(file: string, mtime: number, tags: Tag[], imports: Import[], docConfig: string, includeVariables: boolean, records?: ImportRecord[]) {
+    const entry: TagsEntry = { mtime, docConfig, includeVariables, tags, imports: imports ?? [], extractor: IMPORTS_EXTRACTOR_VERSION };
+    if (records) entry.records = records;
     try {
       this.store.put(TAGS_PREFIX + file, entry);
     } catch (err) {

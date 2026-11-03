@@ -284,6 +284,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `map`/graph imports for Go, PHP, Python, Rust, TS/JS come from the imports
+  contract extractor (aliased Python imports, PHP grouped use, Go raw paths,
+  TS require/export-from/import(), Rust per use-tree leaf + `mod`); entries
+  gain `line` (0-based) and `kind`; `imports` edges from resolved targets in
+  any of these languages; cache schema 7.
 - Relative `paths` / `lenses.<name>.paths` / `scopes.<name>.paths` in a
   config file resolve against that file's directory, not the cwd; absolute
   paths and CLI `--path` unchanged.

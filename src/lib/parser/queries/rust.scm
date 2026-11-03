@@ -6,7 +6,3 @@
 (mod_item name: (identifier) @name.definition.module)
 (const_item name: (identifier) @name.definition.constant)
 (macro_definition name: (identifier) @name.definition.macro)
-
-; Imports (Use declarations)
-(use_declaration
-  argument: (_) @import.source) @import.statement
