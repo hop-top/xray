@@ -158,6 +158,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+- Imports: Rust resolution of `mod`-declared path roots linear in records
+  per file (scanned every record per record: quadratic on large files).
 - Imports: Cargo.toml headers and go.mod/go.work directives parsed in linear
   time (were cubic/quadratic on long or blank-heavy lines); evidence reads at
   most 960 source units per record instead of the whole node.

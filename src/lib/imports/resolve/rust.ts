@@ -43,6 +43,16 @@ export function rustResolver(files: FileSet): (r: ImportRecord, f: FileImports) 
     return rel.replace(/\/mod$/, '').split('/');
   };
   const absolute = (mp: string[] | null, rest: string[]) => (mp === null ? null : ['crate', ...mp, ...rest].join('::'));
+  /** Names declared by `mod x;` in a file, built once per file (a per-record scan is quadratic in records). */
+  const declared = new WeakMap<FileImports, Set<string>>();
+  const modsOf = (f: FileImports): Set<string> => {
+    let s = declared.get(f);
+    if (!s) {
+      s = new Set(f.imports.filter(m => m.form === 'mod' && m.kind === 'include').map(m => m.module));
+      declared.set(f, s);
+    }
+    return s;
+  };
 
   return (r, f) => {
     const mp = modulePath(f.path);
@@ -69,7 +79,7 @@ export function rustResolver(files: FileSet): (r: ImportRecord, f: FileImports) 
     }
     if (first.startsWith('$')) return undefined;
     if (RUST_STDLIB.has(first)) return { package: first, locality: 'stdlib' };
-    if (f.imports.some(m => m.form === 'mod' && m.kind === 'include' && m.module === first)) {
+    if (modsOf(f).has(first)) {
       return { normalized: mp === null ? r.normalized : absolute(mp, segs), package: 'crate', locality: 'local' };
     }
     return { package: first, locality: 'external' };

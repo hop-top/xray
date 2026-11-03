@@ -212,6 +212,31 @@ describe('resolution: Rust', () => {
     expect(rs.a).toEqual(['local', 'crate', null, { file: 'src/a.rs' }]);
     expect(rs['self::a::Y']).toEqual(['local', 'crate', null, null]);
   });
+
+  it('mod-declared roots: the file\'s records are read a bounded number of times per record, not scanned per record', () => {
+    // Reads of the record list while resolving N records: linear means a
+    // constant per record; a per-record scan of the list is ~N per record.
+    const readsPerRecord = (n: number) => {
+      const src = Array.from({ length: n }, (_, i) => `mod m${i};\nuse x${i}::y;\n`).join('') + 'use m0::z;\n';
+      const entries = doc({ 'src/lib.rs': src }).files;
+      let reads = 0;
+      const counted: FileImports[] = entries.map(f => ({
+        ...f,
+        imports: new Proxy([...f.imports], {
+          get(t, k, r) {
+            if (typeof k === 'string' && /^\d+$/.test(k)) reads++;
+            return Reflect.get(t, k, r);
+          },
+        }),
+      }));
+      resolveImports(counted, [{ path: 'src/lib.rs', content: src }]);
+      const m0z = counted[0].imports.find(r => r.module === 'm0::z')!;
+      expect([m0z.locality, m0z.package]).toEqual(['local', 'crate']);
+      return reads / counted[0].imports.length;
+    };
+    expect(readsPerRecord(50)).toBeLessThanOrEqual(3);
+    expect(readsPerRecord(2000)).toBeLessThanOrEqual(3);
+  });
 });
 
 describe('resolution: PHP', () => {
