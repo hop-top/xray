@@ -1,6 +1,8 @@
 import { extractImports, type ImportsSourceFile } from '../../src/lib/imports';
 import { resolveImports } from '../../src/lib/imports/resolve';
 import { applyResolution } from '../../src/lib/imports/resolve/context';
+import { nodeBuiltin } from '../../src/lib/imports/resolve/ecmascript';
+import { NODE_BUILTINS, NODE_BUILTINS_VERSION, NODE_PREFIX_ONLY_BUILTINS } from '../../src/lib/imports/resolve/node-builtins';
 import { PYTHON_STDLIB } from '../../src/lib/imports/resolve/python-stdlib';
 import type { FileImports, ImportRecord } from '../../src/lib/imports/types';
 
@@ -32,6 +34,50 @@ describe('resolution: TS/JS', () => {
       'node:test': ['stdlib', 'test', 'test', null],
       test: ['unknown', 'test', 'test', null],
     });
+  });
+
+  it('builtin set is vendored: the running Node `module.builtinModules` does not change output', () => {
+    const files = {
+      'a.ts': "import 'fs';\nimport 'node:sqlite';\nimport 'sqlite';\nimport 'madeup';\nimport 'node:madeup-only';\n",
+    };
+    const baseline = loc(recs(files, 'a.ts'));
+    expect(baseline).toEqual({
+      fs: ['stdlib', 'fs', 'fs', null],
+      'node:sqlite': ['stdlib', 'sqlite', 'sqlite', null],
+      sqlite: ['unknown', 'sqlite', 'sqlite', null],
+      madeup: ['unknown', 'madeup', 'madeup', null],
+      // `node:` is stdlib by prefix in the extractor; resolution leaves it alone.
+      'node:madeup-only': ['stdlib', 'madeup-only', 'madeup-only', null],
+    });
+    // Same records through a resolver loaded against a different Node
+    // (drops `fs`, adds `madeup` bare and `sqlite` without the prefix).
+    // Only the resolver module is reloaded: the parser stays in the outer registry;
+    // the records' locality comes from nodeBuiltin, so equal answers = equal output.
+    const specs = Object.keys(baseline);
+    let isolated: Array<string | undefined> = [];
+    jest.isolateModules(() => {
+      jest.doMock('module', () => ({
+        ...jest.requireActual<typeof import('module')>('module'),
+        builtinModules: ['madeup', 'sqlite', 'node:madeup-only'],
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod = require('../../src/lib/imports/resolve/ecmascript') as typeof import('../../src/lib/imports/resolve/ecmascript');
+      // Called while the mock is live: catches reads at load time and at call time.
+      isolated = specs.map(s => mod.nodeBuiltin(s));
+    });
+    jest.dontMock('module');
+    expect(isolated).toEqual(specs.map(s => nodeBuiltin(s)));
+  });
+
+  it('vendored Node builtin list: prefix-only modules listed apart, none overlap', () => {
+    expect(NODE_BUILTINS.has('fs')).toBe(true);
+    expect(NODE_BUILTINS.has('fs/promises')).toBe(true);
+    expect(NODE_BUILTINS.has('test')).toBe(false);
+    expect(NODE_PREFIX_ONLY_BUILTINS.has('test')).toBe(true);
+    expect(NODE_PREFIX_ONLY_BUILTINS.has('sqlite')).toBe(true);
+    expect([...NODE_PREFIX_ONLY_BUILTINS].filter(m => NODE_BUILTINS.has(m))).toEqual([]);
+    expect([...NODE_BUILTINS, ...NODE_PREFIX_ONLY_BUILTINS].every(m => !m.startsWith('node:'))).toBe(true);
+    expect(NODE_BUILTINS_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
   it('relative specifiers are local; resolved by extension and index rules', () => {

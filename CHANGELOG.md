@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Imports contract resolution pass: `locality`, `package`, `resolved` per
   language from the scanned tree (go.mod/go.work, package.json, `__init__.py`,
   Cargo crate layout, literal PHP includes); extractor 0.3.0.
+- Imports resolution: Node builtin list vendored (Node 26.13.0); TS/JS
+  `stdlib` locality no longer varies with the Node version running xray.
 - `xray imports [paths...]`: per-file imports as the `xray.imports/v1`
   JSON document (json default; yaml/table/csv/text); `describe` entry with
   its schema id and path; MCP tool `imports` with `paths` held inside the

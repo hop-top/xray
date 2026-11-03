@@ -1,9 +1,9 @@
 /**
  * TS/JS resolution.
  *
- * - Node builtin (`module.builtinModules`, bare or `node:`; prefix-only
- *   builtins such as `node:test` need the prefix) -> stdlib, `node:`
- *   stripped from `normalized`.
+ * - Node builtin (vendored list in node-builtins.ts, bare or `node:`;
+ *   prefix-only builtins such as `node:test` need the prefix) -> stdlib,
+ *   `node:` stripped from `normalized`.
  * - Relative / absolute specifier -> local; `resolved.file` by the graph
  *   builder's rules (exact, TS/JS extensions, `/index.*`).
  * - Bare specifier whose package is the `name` of a package.json in the
@@ -16,16 +16,13 @@
  *   stays unknown.
  */
 
-import { builtinModules } from 'module';
 import { resolveTsSpecifier, isPathSpecifier } from '../../graph/ts-specifier';
 import { specifierPackage } from '../lang/ecmascript';
 import type { ImportRecord } from '../types';
 import { dirOf, join, type FileSet, type Resolution } from './context';
+import { NODE_BUILTINS, NODE_PREFIX_ONLY_BUILTINS } from './node-builtins';
 
 const PREFIX = 'node:';
-/** Builtins importable without the prefix (`fs`) and only with it (`node:test`). */
-const BARE_BUILTINS = new Set(builtinModules.filter(m => !m.startsWith(PREFIX)));
-const PREFIXED_BUILTINS = new Set(builtinModules.map(m => (m.startsWith(PREFIX) ? m.slice(PREFIX.length) : m)));
 
 const DEP_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
 
@@ -33,9 +30,9 @@ const DEP_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'opti
 export function nodeBuiltin(spec: string): string | undefined {
   if (spec.startsWith(PREFIX)) {
     const name = spec.slice(PREFIX.length);
-    return PREFIXED_BUILTINS.has(name) ? name : undefined;
+    return NODE_BUILTINS.has(name) || NODE_PREFIX_ONLY_BUILTINS.has(name) ? name : undefined;
   }
-  return BARE_BUILTINS.has(spec) ? spec : undefined;
+  return NODE_BUILTINS.has(spec) ? spec : undefined;
 }
 
 export function ecmascriptResolver(files: FileSet): (r: ImportRecord, file: string) => Resolution | undefined {
