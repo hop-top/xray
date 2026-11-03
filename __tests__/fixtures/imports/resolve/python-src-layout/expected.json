@@ -1,0 +1,374 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "python": {
+      "module": "tree-sitter-python",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "scripts/run.py",
+      "language": "python",
+      "sha256": "7c0dcf2d2ccc8b50f56ae6ab1453fad80ce80b09643736066ac5a59dbb26d884",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 8,
+          "endLine": 1,
+          "endColumn": 16,
+          "kind": "static",
+          "form": "import",
+          "module": "app.util",
+          "normalized": "app.util",
+          "package": "app",
+          "locality": "local",
+          "resolved": {
+            "file": "src/app/util.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "import app.util"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 20,
+          "kind": "static",
+          "form": "from",
+          "module": ".",
+          "normalized": null,
+          "locality": "unknown",
+          "relative": {
+            "level": 1
+          },
+          "names": [
+            {
+              "name": "local"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from . import local"
+        },
+        {
+          "line": 3,
+          "column": 8,
+          "endLine": 3,
+          "endColumn": 11,
+          "kind": "static",
+          "form": "import",
+          "module": "sys",
+          "normalized": "sys",
+          "package": "sys",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import sys"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/app/__init__.py",
+      "language": "python",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "src/app/pkg/__init__.py",
+      "language": "python",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "src/app/pkg/mod.py",
+      "language": "python",
+      "sha256": "cb78bd8a17f7b751fe0d4663366dcbc257204033ef7ddd64b1f2969573b5b2e2",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "src/app/pkg/sub/__init__.py",
+      "language": "python",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "src/app/pkg/sub/deep.py",
+      "language": "python",
+      "sha256": "118a00f3132997d5c05b698a33ee9ec1e8e5ec132f77acba36f80afc8ac5db8e",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "from",
+          "module": "__future__",
+          "normalized": "__future__",
+          "package": "__future__",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "annotations"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from __future__ import annotations"
+        },
+        {
+          "line": 2,
+          "column": 8,
+          "endLine": 2,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "import",
+          "module": "os.path",
+          "normalized": "os.path",
+          "package": "os",
+          "locality": "stdlib",
+          "alias": "osp",
+          "confidence": "syntactic",
+          "evidence": "import os.path as osp"
+        },
+        {
+          "line": 3,
+          "column": 8,
+          "endLine": 3,
+          "endColumn": 12,
+          "kind": "static",
+          "form": "import",
+          "module": "json",
+          "normalized": "json",
+          "package": "json",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import json"
+        },
+        {
+          "line": 4,
+          "column": 8,
+          "endLine": 4,
+          "endColumn": 16,
+          "kind": "static",
+          "form": "import",
+          "module": "requests",
+          "normalized": "requests",
+          "package": "requests",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import requests"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 19,
+          "kind": "static",
+          "form": "from",
+          "module": "..",
+          "normalized": "app.pkg",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 2
+          },
+          "names": [
+            {
+              "name": "mod"
+            }
+          ],
+          "resolved": {
+            "file": "src/app/pkg/__init__.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from .. import mod"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "from",
+          "module": "..mod",
+          "normalized": "app.pkg.mod",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 2,
+            "module": "mod"
+          },
+          "names": [
+            {
+              "name": "a",
+              "alias": "b"
+            }
+          ],
+          "resolved": {
+            "file": "src/app/pkg/mod.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from ..mod import a as b"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "from",
+          "module": "...util",
+          "normalized": "app.util",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 3,
+            "module": "util"
+          },
+          "names": [
+            {
+              "name": "u"
+            }
+          ],
+          "resolved": {
+            "file": "src/app/util.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from ...util import u"
+        },
+        {
+          "line": 8,
+          "column": 1,
+          "endLine": 8,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "from",
+          "module": ".",
+          "normalized": "app.pkg.sub",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 1
+          },
+          "names": [
+            {
+              "name": "sibling"
+            }
+          ],
+          "resolved": {
+            "file": "src/app/pkg/sub/__init__.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from . import sibling"
+        },
+        {
+          "line": 9,
+          "column": 1,
+          "endLine": 9,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "from",
+          "module": "....",
+          "normalized": null,
+          "locality": "unknown",
+          "relative": {
+            "level": 4
+          },
+          "names": [
+            {
+              "name": "beyond"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from .... import beyond"
+        },
+        {
+          "line": 10,
+          "column": 1,
+          "endLine": 10,
+          "endColumn": 29,
+          "kind": "static",
+          "form": "from",
+          "module": "app.pkg.sub",
+          "normalized": "app.pkg.sub",
+          "package": "app",
+          "locality": "local",
+          "names": [
+            {
+              "name": "deep"
+            }
+          ],
+          "resolved": {
+            "file": "src/app/pkg/sub/__init__.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from app.pkg.sub import deep"
+        },
+        {
+          "line": 11,
+          "column": 8,
+          "endLine": 11,
+          "endColumn": 16,
+          "kind": "static",
+          "form": "import",
+          "module": "app.nope",
+          "normalized": "app.nope",
+          "package": "app",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import app.nope"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/app/util.py",
+      "language": "python",
+      "sha256": "d32c4022e219602c82a4773b3d9a90438cfdd1aca3fc6955903a287051414484",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 7,
+    "complete": 7,
+    "imports": 14,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

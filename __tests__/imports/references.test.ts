@@ -19,7 +19,7 @@ describe('Rust path-root references', () => {
     expect(rs).toEqual([{
       line: 2, column: 5, endLine: 2, endColumn: 26,
       kind: 'reference', form: 'path-root', module: 'serde_json', normalized: 'serde_json', package: 'serde_json',
-      locality: 'unknown', confidence: 'inferred', occurrences: 2, evidence: 'serde_json::to_string',
+      locality: 'external', confidence: 'inferred', occurrences: 2, evidence: 'serde_json::to_string',
     }]);
   });
 
@@ -35,7 +35,7 @@ describe('Rust path-root references', () => {
   it('leading :: is syntactic; std/core/alloc are stdlib', () => {
     const rs = refs('a.rs', 'fn f() -> ::bytes::Bytes { std::mem::drop(1); core::x(); alloc::y(); }');
     expect(rs.map(r => [r.module, r.locality, r.confidence])).toEqual([
-      ['bytes', 'unknown', 'syntactic'],
+      ['bytes', 'external', 'syntactic'],
       ['std', 'stdlib', 'inferred'],
       ['core', 'stdlib', 'inferred'],
       ['alloc', 'stdlib', 'inferred'],

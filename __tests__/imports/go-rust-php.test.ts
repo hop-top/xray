@@ -23,7 +23,9 @@ describe('Go imports', () => {
       { module: 'fmt', alias: 'f' },
       { module: 'C' },
     ]);
-    expect(rs.every(r => r.kind === 'static' && r.form === 'import' && r.locality === 'unknown')).toBe(true);
+    expect(rs.every(r => r.kind === 'static' && r.form === 'import')).toBe(true);
+    // Resolution: no dot in the first element = stdlib; `C` (cgo) is not.
+    expect(rs.map(r => r.locality)).toEqual(['stdlib', 'stdlib', 'stdlib', 'unknown']);
   });
 
   it('single import spans the declaration; grouped specs span the spec', () => {
@@ -56,8 +58,8 @@ describe('Rust imports', () => {
       { module: 'a', alias: 'aa' },
     ]);
     const lead = rs[3];
-    expect(lead).toMatchObject({ package: 'a', locality: 'unknown', normalized: 'a' });
-    expect(rs[0].package).toBeUndefined();
+    expect(lead).toMatchObject({ package: 'a', locality: 'external', normalized: 'a' });
+    expect(rs[0]).toMatchObject({ package: 'std', locality: 'stdlib' });
     expect(rs[2]).toMatchObject({ package: 'crate', locality: 'local', normalized: null });
   });
 

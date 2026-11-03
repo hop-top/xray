@@ -47,7 +47,8 @@
           "form": "import",
           "module": "os",
           "normalized": "os",
-          "locality": "unknown",
+          "package": "os",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "\"os\""
         }

@@ -72,7 +72,7 @@
           "form": "export-from",
           "module": "./helper.js",
           "normalized": "./helper.js",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "helper"
@@ -90,7 +90,7 @@
           "form": "export-from",
           "module": "./all.js",
           "normalized": "./all.js",
-          "locality": "unknown",
+          "locality": "local",
           "wildcard": true,
           "confidence": "syntactic",
           "evidence": "export * from './all.js';"
@@ -118,7 +118,7 @@
           "form": "import()",
           "module": "./lazy.js",
           "normalized": "./lazy.js",
-          "locality": "unknown",
+          "locality": "local",
           "confidence": "syntactic",
           "evidence": "import('./lazy.js')"
         }
@@ -162,7 +162,7 @@
           "form": "import",
           "module": "./card.css",
           "normalized": "./card.css",
-          "locality": "unknown",
+          "locality": "local",
           "confidence": "syntactic",
           "evidence": "import './card.css';"
         }
@@ -187,7 +187,7 @@
           "module": "path",
           "normalized": "path",
           "package": "path",
-          "locality": "unknown",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "require('path')"
         }
@@ -230,7 +230,7 @@
           "form": "export-from",
           "module": "./config.mjs",
           "normalized": "./config.mjs",
-          "locality": "unknown",
+          "locality": "local",
           "alias": "cfg",
           "confidence": "syntactic",
           "evidence": "export * as cfg from './config.mjs';"

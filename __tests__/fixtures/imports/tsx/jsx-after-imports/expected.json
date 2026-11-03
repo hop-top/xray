@@ -54,7 +54,7 @@
           "form": "import",
           "module": "./later",
           "normalized": "./later",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "later"
@@ -72,7 +72,7 @@
           "form": "import",
           "module": "./props",
           "normalized": "./props",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "Props"
@@ -91,7 +91,7 @@
           "form": "export-from",
           "module": "./button",
           "normalized": "./button",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "Button"

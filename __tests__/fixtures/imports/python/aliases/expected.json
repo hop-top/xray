@@ -35,7 +35,7 @@
           "module": "os",
           "normalized": "os",
           "package": "os",
-          "locality": "unknown",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "import os"
         },
@@ -49,7 +49,7 @@
           "module": "os.path",
           "normalized": "os.path",
           "package": "os",
-          "locality": "unknown",
+          "locality": "stdlib",
           "alias": "osp",
           "confidence": "syntactic",
           "evidence": "import os.path as osp, sys"
@@ -64,7 +64,7 @@
           "module": "sys",
           "normalized": "sys",
           "package": "sys",
-          "locality": "unknown",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "import os.path as osp, sys"
         },
@@ -78,7 +78,7 @@
           "module": "xml.etree.ElementTree",
           "normalized": "xml.etree.ElementTree",
           "package": "xml",
-          "locality": "unknown",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "import xml.etree.ElementTree"
         },
@@ -107,7 +107,7 @@
           "module": "json",
           "normalized": "json",
           "package": "json",
-          "locality": "unknown",
+          "locality": "stdlib",
           "alias": "j",
           "confidence": "syntactic",
           "evidence": "import json as j"
@@ -122,7 +122,7 @@
           "module": "importlib.util",
           "normalized": "importlib.util",
           "package": "importlib",
-          "locality": "unknown",
+          "locality": "stdlib",
           "alias": "iu",
           "confidence": "syntactic",
           "evidence": "import importlib.util as iu"

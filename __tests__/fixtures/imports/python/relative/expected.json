@@ -53,8 +53,9 @@
           "kind": "static",
           "form": "from",
           "module": ".",
-          "normalized": null,
-          "locality": "unknown",
+          "normalized": "app.pkg",
+          "package": "app",
+          "locality": "local",
           "relative": {
             "level": 1
           },
@@ -63,6 +64,9 @@
               "name": "sibling"
             }
           ],
+          "resolved": {
+            "file": "app/pkg/__init__.py"
+          },
           "confidence": "syntactic",
           "evidence": "from . import sibling"
         },
@@ -74,8 +78,9 @@
           "kind": "static",
           "form": "from",
           "module": ".sibling",
-          "normalized": null,
-          "locality": "unknown",
+          "normalized": "app.pkg.sibling",
+          "package": "app",
+          "locality": "local",
           "relative": {
             "level": 1,
             "module": "sibling"
@@ -100,8 +105,9 @@
           "kind": "static",
           "form": "from",
           "module": "..pkg.mod",
-          "normalized": null,
-          "locality": "unknown",
+          "normalized": "app.pkg.mod",
+          "package": "app",
+          "locality": "local",
           "relative": {
             "level": 2,
             "module": "pkg.mod"
@@ -112,6 +118,9 @@
               "alias": "b"
             }
           ],
+          "resolved": {
+            "file": "app/pkg/mod.py"
+          },
           "confidence": "syntactic",
           "evidence": "from ..pkg.mod import a as b"
         },
@@ -123,8 +132,9 @@
           "kind": "static",
           "form": "from",
           "module": "..",
-          "normalized": null,
-          "locality": "unknown",
+          "normalized": "app",
+          "package": "app",
+          "locality": "local",
           "relative": {
             "level": 2
           },
@@ -137,6 +147,9 @@
               "alias": "st"
             }
           ],
+          "resolved": {
+            "file": "app/__init__.py"
+          },
           "confidence": "syntactic",
           "evidence": "from .. import config, settings as st"
         },
@@ -148,8 +161,9 @@
           "kind": "static",
           "form": "from",
           "module": ".star",
-          "normalized": null,
-          "locality": "unknown",
+          "normalized": "app.pkg.star",
+          "package": "app",
+          "locality": "local",
           "relative": {
             "level": 1,
             "module": "star"

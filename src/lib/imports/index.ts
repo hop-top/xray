@@ -12,6 +12,7 @@ import * as path from 'path';
 import Parser from 'tree-sitter';
 import { getGrammar, grammarForExtension } from '../parser/grammars';
 import { IMPORT_LANGUAGES, importLanguageFor } from './languages';
+import { resolveImports } from './resolve';
 import { IMPORTS_SCHEMA_ID, POSITIONS, type FileImports, type GrammarInfo, type ImportRecord, type ImportsDoc } from './types';
 
 export * from './types';
@@ -76,6 +77,7 @@ export function extractImports(files: readonly ImportsSourceFile[], opts: Extrac
     const language = importLanguageFor(path.posix.extname(f.path));
     if (language) out.push(extractFile(f, language, grammars, parsers));
   }
+  resolveImports(out, files);
   const sortedGrammars: Record<string, GrammarInfo> = {};
   for (const k of Object.keys(grammars).sort()) sortedGrammars[k] = grammars[k];
   return {

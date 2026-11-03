@@ -35,7 +35,7 @@
           "module": "serde",
           "normalized": "serde",
           "package": "serde",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "syntactic",
           "occurrences": 2,
           "evidence": "::serde::Serialize"
@@ -50,7 +50,7 @@
           "module": "tokio",
           "normalized": "tokio",
           "package": "tokio",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "inferred",
           "occurrences": 1,
           "evidence": "tokio::main"
@@ -65,7 +65,7 @@
           "module": "chrono",
           "normalized": "chrono",
           "package": "chrono",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "syntactic",
           "occurrences": 1,
           "evidence": "::chrono::Utc::now"
@@ -80,7 +80,7 @@
           "module": "itertools",
           "normalized": "itertools",
           "package": "itertools",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "inferred",
           "occurrences": 1,
           "evidence": "itertools::join"
@@ -95,7 +95,7 @@
           "module": "regex",
           "normalized": "regex",
           "package": "regex",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "inferred",
           "occurrences": 1,
           "evidence": "regex::Regex::new"

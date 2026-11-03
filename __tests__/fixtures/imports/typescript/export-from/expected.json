@@ -34,7 +34,7 @@
           "form": "export-from",
           "module": "./ab",
           "normalized": "./ab",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "a"
@@ -56,7 +56,7 @@
           "form": "export-from",
           "module": "./default",
           "normalized": "./default",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "default"
@@ -74,7 +74,7 @@
           "form": "export-from",
           "module": "./named",
           "normalized": "./named",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "default",
@@ -96,7 +96,7 @@
           "form": "export-from",
           "module": "./star",
           "normalized": "./star",
-          "locality": "unknown",
+          "locality": "local",
           "wildcard": true,
           "confidence": "syntactic",
           "evidence": "export * from './star';"

@@ -34,7 +34,7 @@
           "form": "require",
           "module": "./debug.js",
           "normalized": "./debug.js",
-          "locality": "unknown",
+          "locality": "local",
           "confidence": "syntactic",
           "evidence": "require(`./debug.js`)"
         },

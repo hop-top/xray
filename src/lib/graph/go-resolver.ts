@@ -31,13 +31,13 @@ export interface GoModules {
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build', '.hg']);
 
-function parseModulePath(goMod: string): string | null {
+export function parseModulePath(goMod: string): string | null {
   const m = /^\s*module\s+(?:"([^"]+)"|`([^`]+)`|(\S+))/m.exec(goMod);
   return m ? (m[1] ?? m[2] ?? m[3]) : null;
 }
 
 /** Absolute directories named by the `use` directives of a go.work file. */
-function parseGoWorkUses(goWork: string, workDir: string): Set<string> {
+export function parseGoWorkUses(goWork: string, workDir: string): Set<string> {
   const out = new Set<string>();
   const text = goWork.replace(/\/\/.*$/gm, '');
   const add = (raw: string) => {
@@ -132,7 +132,7 @@ export function goSingleModule(modulePath: string, moduleDir: string, root: stri
   return { root: path.resolve(root), modules: [{ modulePath, moduleDir: dir }], moduleDirs: [dir] };
 }
 
-function ownerModuleDir(mods: GoModules, abs: string): string | null {
+export function ownerModuleDir(mods: GoModules, abs: string): string | null {
   let best: string | null = null;
   for (const d of mods.moduleDirs) {
     if ((abs === d || abs.startsWith(d + path.sep)) && (best === null || d.length > best.length)) best = d;

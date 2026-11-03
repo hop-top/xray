@@ -34,7 +34,10 @@
           "form": "require",
           "module": "a.php",
           "normalized": "a.php",
-          "locality": "unknown",
+          "locality": "local",
+          "resolved": {
+            "file": "sub/a.php"
+          },
           "confidence": "syntactic",
           "evidence": "require 'a.php';"
         },

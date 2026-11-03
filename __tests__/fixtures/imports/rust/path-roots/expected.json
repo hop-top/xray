@@ -34,7 +34,8 @@
           "form": "use",
           "module": "std::collections::hash_map",
           "normalized": "std::collections::hash_map",
-          "locality": "unknown",
+          "package": "std",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "use std::collections::hash_map;"
         },
@@ -47,7 +48,8 @@
           "form": "use",
           "module": "anyhow",
           "normalized": "anyhow",
-          "locality": "unknown",
+          "package": "anyhow",
+          "locality": "external",
           "confidence": "syntactic",
           "evidence": "use anyhow::{self, Context as _};"
         },
@@ -60,7 +62,8 @@
           "form": "use",
           "module": "anyhow::Context",
           "normalized": "anyhow::Context",
-          "locality": "unknown",
+          "package": "anyhow",
+          "locality": "external",
           "alias": "_",
           "confidence": "syntactic",
           "evidence": "use anyhow::{self, Context as _};"
@@ -75,7 +78,7 @@
           "module": "rand",
           "normalized": "rand",
           "package": "rand",
-          "locality": "unknown",
+          "locality": "external",
           "alias": "rng",
           "confidence": "syntactic",
           "evidence": "extern crate rand as rng;"
@@ -104,7 +107,7 @@
           "module": "serde_json",
           "normalized": "serde_json",
           "package": "serde_json",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "inferred",
           "occurrences": 2,
           "evidence": "serde_json::to_string"
@@ -134,7 +137,7 @@
           "module": "tokio",
           "normalized": "tokio",
           "package": "tokio",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "inferred",
           "occurrences": 1,
           "evidence": "tokio::io::AsyncRead"
@@ -149,7 +152,7 @@
           "module": "futures",
           "normalized": "futures",
           "package": "futures",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "inferred",
           "occurrences": 1,
           "evidence": "futures::io::AsyncBufRead"
@@ -164,7 +167,7 @@
           "module": "bytes",
           "normalized": "bytes",
           "package": "bytes",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "syntactic",
           "occurrences": 2,
           "evidence": "::bytes::Bytes"
@@ -179,7 +182,7 @@
           "module": "log",
           "normalized": "log",
           "package": "log",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "inferred",
           "occurrences": 1,
           "evidence": "log::info"

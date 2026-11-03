@@ -34,7 +34,7 @@
           "form": "import-equals",
           "module": "./y.cjs",
           "normalized": "./y.cjs",
-          "locality": "unknown",
+          "locality": "local",
           "alias": "y",
           "confidence": "syntactic",
           "evidence": "import y = require('./y.cjs');"
@@ -60,7 +60,7 @@
           "module": "fs",
           "normalized": "fs",
           "package": "fs",
-          "locality": "unknown",
+          "locality": "stdlib",
           "names": [
             {
               "name": "default",
@@ -144,7 +144,7 @@
           "form": "import",
           "module": "./side-effect",
           "normalized": "./side-effect",
-          "locality": "unknown",
+          "locality": "local",
           "confidence": "syntactic",
           "evidence": "import './side-effect';"
         },
@@ -157,7 +157,7 @@
           "form": "import",
           "module": "./data.json",
           "normalized": "./data.json",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "default",
@@ -191,7 +191,7 @@
           "form": "import",
           "module": "../up/late",
           "normalized": "../up/late",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "default",
@@ -256,7 +256,7 @@
           "form": "import",
           "module": "./x.mjs",
           "normalized": "./x.mjs",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "x"

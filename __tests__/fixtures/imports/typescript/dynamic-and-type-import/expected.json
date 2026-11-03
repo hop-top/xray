@@ -60,7 +60,7 @@
           "module": "fs",
           "normalized": "fs",
           "package": "fs",
-          "locality": "unknown",
+          "locality": "stdlib",
           "alias": "fs",
           "confidence": "syntactic",
           "evidence": "import fs = require('fs');"
@@ -74,7 +74,7 @@
           "form": "import()",
           "module": "./lazy",
           "normalized": "./lazy",
-          "locality": "unknown",
+          "locality": "local",
           "confidence": "syntactic",
           "evidence": "import('./lazy')"
         },
@@ -87,7 +87,7 @@
           "form": "require",
           "module": "./config.json",
           "normalized": "./config.json",
-          "locality": "unknown",
+          "locality": "local",
           "confidence": "syntactic",
           "evidence": "require('./config.json')"
         },
@@ -100,7 +100,7 @@
           "form": "import-type",
           "module": "./types",
           "normalized": "./types",
-          "locality": "unknown",
+          "locality": "local",
           "typeOnly": true,
           "confidence": "syntactic",
           "evidence": "import('./types')"
@@ -114,7 +114,7 @@
           "form": "import-type",
           "module": "./query",
           "normalized": "./query",
-          "locality": "unknown",
+          "locality": "local",
           "typeOnly": true,
           "confidence": "syntactic",
           "evidence": "import('./query')"
@@ -128,7 +128,7 @@
           "form": "import-type",
           "module": "./model",
           "normalized": "./model",
-          "locality": "unknown",
+          "locality": "local",
           "typeOnly": true,
           "confidence": "syntactic",
           "evidence": "import('./model')"
@@ -142,7 +142,7 @@
           "form": "import-type",
           "module": "./cast",
           "normalized": "./cast",
-          "locality": "unknown",
+          "locality": "local",
           "typeOnly": true,
           "confidence": "syntactic",
           "evidence": "import('./cast')"
@@ -156,7 +156,7 @@
           "form": "import-type",
           "module": "./item",
           "normalized": "./item",
-          "locality": "unknown",
+          "locality": "local",
           "typeOnly": true,
           "confidence": "syntactic",
           "evidence": "import('./item')"
@@ -170,7 +170,7 @@
           "form": "import()",
           "module": "./plugins/core",
           "normalized": "./plugins/core",
-          "locality": "unknown",
+          "locality": "local",
           "confidence": "syntactic",
           "evidence": "import(`./plugins/core`)"
         }

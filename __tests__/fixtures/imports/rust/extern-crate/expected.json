@@ -35,7 +35,7 @@
           "module": "alloc",
           "normalized": "alloc",
           "package": "alloc",
-          "locality": "unknown",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "extern crate alloc;"
         },
@@ -49,7 +49,7 @@
           "module": "foo",
           "normalized": "foo",
           "package": "foo",
-          "locality": "unknown",
+          "locality": "external",
           "alias": "bar",
           "confidence": "syntactic",
           "evidence": "extern crate foo as bar;"
@@ -79,7 +79,7 @@
           "module": "log",
           "normalized": "log",
           "package": "log",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "syntactic",
           "evidence": "extern crate log;"
         }

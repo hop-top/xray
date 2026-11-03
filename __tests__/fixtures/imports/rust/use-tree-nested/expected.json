@@ -34,7 +34,8 @@
           "form": "use",
           "module": "serde::Deserialize",
           "normalized": "serde::Deserialize",
-          "locality": "unknown",
+          "package": "serde",
+          "locality": "external",
           "confidence": "syntactic",
           "evidence": "use serde::{Deserialize, de::{self, Visitor}};"
         },
@@ -47,7 +48,8 @@
           "form": "use",
           "module": "serde::de",
           "normalized": "serde::de",
-          "locality": "unknown",
+          "package": "serde",
+          "locality": "external",
           "confidence": "syntactic",
           "evidence": "use serde::{Deserialize, de::{self, Visitor}};"
         },
@@ -60,7 +62,8 @@
           "form": "use",
           "module": "serde::de::Visitor",
           "normalized": "serde::de::Visitor",
-          "locality": "unknown",
+          "package": "serde",
+          "locality": "external",
           "confidence": "syntactic",
           "evidence": "use serde::{Deserialize, de::{self, Visitor}};"
         },
@@ -73,7 +76,8 @@
           "form": "use",
           "module": "std::fmt",
           "normalized": "std::fmt",
-          "locality": "unknown",
+          "package": "std",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "use {std::fmt, serde as s};"
         },
@@ -86,7 +90,8 @@
           "form": "use",
           "module": "serde",
           "normalized": "serde",
-          "locality": "unknown",
+          "package": "serde",
+          "locality": "external",
           "alias": "s",
           "confidence": "syntactic",
           "evidence": "use {std::fmt, serde as s};"
@@ -100,7 +105,8 @@
           "form": "use",
           "module": "a::b::c::d",
           "normalized": "a::b::c::d",
-          "locality": "unknown",
+          "package": "a",
+          "locality": "external",
           "confidence": "syntactic",
           "evidence": "use a::{b::{c::{d, e as f}, g::*}, h};"
         },
@@ -113,7 +119,8 @@
           "form": "use",
           "module": "a::b::c::e",
           "normalized": "a::b::c::e",
-          "locality": "unknown",
+          "package": "a",
+          "locality": "external",
           "alias": "f",
           "confidence": "syntactic",
           "evidence": "use a::{b::{c::{d, e as f}, g::*}, h};"
@@ -127,7 +134,8 @@
           "form": "use",
           "module": "a::b::g",
           "normalized": "a::b::g",
-          "locality": "unknown",
+          "package": "a",
+          "locality": "external",
           "wildcard": true,
           "confidence": "syntactic",
           "evidence": "use a::{b::{c::{d, e as f}, g::*}, h};"
@@ -141,7 +149,8 @@
           "form": "use",
           "module": "a::h",
           "normalized": "a::h",
-          "locality": "unknown",
+          "package": "a",
+          "locality": "external",
           "confidence": "syntactic",
           "evidence": "use a::{b::{c::{d, e as f}, g::*}, h};"
         },
@@ -154,7 +163,8 @@
           "form": "use",
           "module": "tokio::io",
           "normalized": "tokio::io",
-          "locality": "unknown",
+          "package": "tokio",
+          "locality": "external",
           "alias": "tio",
           "confidence": "syntactic",
           "evidence": "use tokio::{io::{self as tio}, net};"
@@ -168,7 +178,8 @@
           "form": "use",
           "module": "tokio::net",
           "normalized": "tokio::net",
-          "locality": "unknown",
+          "package": "tokio",
+          "locality": "external",
           "confidence": "syntactic",
           "evidence": "use tokio::{io::{self as tio}, net};"
         }

@@ -1,0 +1,194 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "php": {
+      "module": "tree-sitter-php",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "index.php",
+      "language": "php",
+      "sha256": "12d793fe34d127afed6b688293d8ff7e9a7645a84bc9c9005507d36ecf78203b",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 19,
+          "kind": "static",
+          "form": "use",
+          "module": "App\\Lib\\Thing",
+          "normalized": "App\\Lib\\Thing",
+          "package": "App",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use App\\Lib\\Thing;"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 31,
+          "kind": "require",
+          "form": "require",
+          "module": "__DIR__/lib/a.php",
+          "normalized": "lib/a.php",
+          "locality": "local",
+          "resolved": {
+            "file": "lib/a.php"
+          },
+          "confidence": "syntactic",
+          "evidence": "require __DIR__ . '/lib/a.php';"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 25,
+          "kind": "require",
+          "form": "require_once",
+          "module": "lib/b.php",
+          "normalized": "lib/b.php",
+          "locality": "local",
+          "resolved": {
+            "file": "lib/b.php"
+          },
+          "confidence": "syntactic",
+          "evidence": "require_once 'lib/b.php';"
+        },
+        {
+          "line": 8,
+          "column": 1,
+          "endLine": 8,
+          "endColumn": 22,
+          "kind": "include",
+          "form": "include",
+          "module": "./lib/a.php",
+          "normalized": "./lib/a.php",
+          "locality": "local",
+          "resolved": {
+            "file": "lib/a.php"
+          },
+          "confidence": "syntactic",
+          "evidence": "include './lib/a.php';"
+        },
+        {
+          "line": 9,
+          "column": 1,
+          "endLine": 9,
+          "endColumn": 22,
+          "kind": "include",
+          "form": "include",
+          "module": "missing.php",
+          "normalized": "missing.php",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "include 'missing.php';"
+        },
+        {
+          "line": 10,
+          "column": 1,
+          "endLine": 10,
+          "endColumn": 25,
+          "kind": "include",
+          "form": "include",
+          "module": "/etc/php/x.php",
+          "normalized": "/etc/php/x.php",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "include '/etc/php/x.php';"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "lib/a.php",
+      "language": "php",
+      "sha256": "1ab7a11eea6da94f07bf0f527466840035d565a4b65957e95624d31bd96abb9c",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 34,
+          "kind": "require",
+          "form": "require",
+          "module": "__DIR__/../index.php",
+          "normalized": "index.php",
+          "locality": "local",
+          "resolved": {
+            "file": "index.php"
+          },
+          "confidence": "syntactic",
+          "evidence": "require __DIR__ . '/../index.php';"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 39,
+          "kind": "require",
+          "form": "require",
+          "module": "__DIR__/../../outside.php",
+          "normalized": "../outside.php",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "require __DIR__ . '/../../outside.php';"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "lib/b.php",
+      "language": "php",
+      "sha256": "4fe038ff52279f61ecac22d29a022e00a9a197867517b8045a0af86ef8bf33ab",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 16,
+          "kind": "include",
+          "form": "include",
+          "module": "a.php",
+          "normalized": "a.php",
+          "locality": "local",
+          "resolved": {
+            "file": "lib/a.php"
+          },
+          "confidence": "syntactic",
+          "evidence": "include 'a.php';"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 3,
+    "complete": 3,
+    "imports": 9,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

@@ -164,7 +164,8 @@ and metavariable roots, CamelCase roots (types, enum variants), primitive
 types (`u32::MAX`), and roots bound in the file by a `use` leaf (its alias
 or last segment), `extern crate` (alias or name), `mod` or a named item.
 `::x` always names a crate: `confidence: syntactic`, never shadowed by a
-binding; other roots are `inferred`. `std`/`core`/`alloc` are `stdlib`.
+binding; other roots are `inferred`. Locality per Resolution
+(`std`/`core`/`alloc`/`proc_macro`/`test` = `stdlib`, else `external`).
 `module` = `normalized` = `package` = the root.
 
 PHP: one record per `use` clause, grouped use expanded with its prefix,
@@ -213,10 +214,25 @@ References (both languages): one record per root (Rust) or resolved name
 path / name text), `occurrences` counts every use.
 
 Not yet emitted: non-literal or shadowed call forms (reported as
-`unsupported` later); non-literal PHP includes; `locality` other
-than `unknown`, except `stdlib` for `node:` and `local` for Rust
-`crate`/`self`/`super`/`mod`; `resolved`; `parseErrors` and
+`unsupported` later); non-literal PHP includes; `parseErrors` and
 `unsupported`.
+
+### Resolution
+
+A pass after extraction sets `locality`, `package`, `resolved` and, where
+only the file tree can derive it, `normalized`. It sees only the scanned
+file set: manifests must be part of it (`go.mod`, `go.work`,
+`package.json`; `Cargo.toml` and `__init__.py` as markers). No filesystem
+or network access, no `node_modules`: `external` means declared by a
+manifest, not installed. Every record kind goes through the same rules.
+
+| Lang | Rules |
+|---|---|
+| TS/JS | Node builtin (`module.builtinModules` of the running Node; `node:`-only builtins such as `node:test` need the prefix) -> `stdlib`. Relative / absolute (root-relative) -> `local`, `resolved.file` by exact path, `.ts .tsx .js .jsx .mjs .cjs`, then `/index.*` (the graph builder's rules). Bare specifier whose package is the `name` of a package.json in the tree -> `local`, `resolved.dir` (subpath: `resolved.file` when it resolves). Declared in the nearest package.json (`dependencies`, `devDependencies`, `peerDependencies`, `optionalDependencies`) -> `external`. Else `unknown`. |
+| Python | Package from the `__init__.py` chain (a chain reaching the scan root has no known name). Relative -> absolute `normalized`, `local`; too many levels or no package -> `normalized: null`, `unknown`. First segment in CPython 3.13 `sys.stdlib_module_names` -> `stdlib`. Absolute resolving to `<r>/a/b.py` or `<r>/a/b/__init__.py` for r = package root, scan root, `src/` -> `local` + `resolved.file`. Else `unknown`. |
+| Go | Under a go.mod module of the tree (longest module path; a go.work narrows the set to its `use` entries) -> `local`, `package` = module path, `resolved.dir` when the directory holds a scanned `.go` file. First element without a dot -> `stdlib` (`C` stays `unknown`). Longest `require` of the file's own go.mod -> `external`, `package` = that module. Else `unknown`. |
+| Rust | Crate root = nearest Cargo.toml with `src/lib.rs` or `src/main.rs`; module path from the file's place under `src/` (not `src/bin/`). `self`/`super` -> `crate::…` (null when unknown or above the root). `mod x;` -> `crate::<module>::x`, `resolved.file` = `#[path]` (relative to the file's directory) or `x.rs` / `x/mod.rs`. `std`/`core`/`alloc`/`proc_macro`/`test` -> `stdlib`. Root declared by a `mod x;` in the same file -> `local`. Else `external`, `package` = first segment (inline modules and other local items are not seen). |
+| PHP | Literal include: `__DIR__ . '/x'` as folded, other relative literals against the including file's directory -> `local` + `resolved.file` when scanned. Absolute paths, stream wrappers, `use` and FQN references -> `unknown`. |
 
 ## Ordering and determinism
 

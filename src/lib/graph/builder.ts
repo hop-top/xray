@@ -3,6 +3,7 @@ import Graph from 'graphology';
 import { Tag, Import } from '../parser/types';
 import { AsyncEventEmitter } from '../events/async-emitter';
 import { GoModules, goDefaultName, goLocalImports, goImportedFiles, goVisibleFrom } from './go-resolver';
+import { resolveTsSpecifier } from './ts-specifier';
 import { languageOf } from '../parser/language-registry';
 import { XrayGraph, NodeAttributes, EdgeAttributes, Confidence } from '../../types/graph';
 
@@ -211,43 +212,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
       }
     });
 
-    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
-    const indexSuffixes = [
-      '/index.ts', '/index.tsx', '/index.js', '/index.jsx',
-      '/index.mjs', '/index.cjs'
-    ];
-
-    const resolveSpecifier = (fromFile: string, specifier: string): string | null => {
-      // Skip externals — only relative (`.`, `..`) or absolute specifiers.
-      if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
-        return null;
-      }
-
-      const fromDir = path.posix.dirname(fromFile.split(path.sep).join('/'));
-      const normalizedSpec = specifier.split(path.sep).join('/');
-      // For absolute specifiers, strip leading slash so we resolve within the
-      // project root (files nodes are relative paths).
-      const base = normalizedSpec.startsWith('/')
-        ? path.posix.normalize(normalizedSpec.slice(1))
-        : path.posix.normalize(path.posix.join(fromDir, normalizedSpec));
-
-      // 1) Exact match (specifier already includes extension)
-      if (fileNodes.has(base)) return base;
-
-      // 2) Try common extensions
-      for (const ext of extensions) {
-        const candidate = base + ext;
-        if (fileNodes.has(candidate)) return candidate;
-      }
-
-      // 3) Try directory/index.*
-      for (const idx of indexSuffixes) {
-        const candidate = base + idx;
-        if (fileNodes.has(candidate)) return candidate;
-      }
-
-      return null;
-    };
+    const resolveSpecifier = (fromFile: string, specifier: string): string | null =>
+      resolveTsSpecifier(fromFile, specifier, f => fileNodes.has(f));
 
     const edgeEvents: Array<{
       source: string;

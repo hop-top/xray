@@ -34,7 +34,7 @@
           "form": "import",
           "module": "./models",
           "normalized": "./models",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "A"
@@ -94,7 +94,7 @@
           "form": "import",
           "module": "./mixed",
           "normalized": "./mixed",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "E"
@@ -115,7 +115,7 @@
           "form": "import",
           "module": "./only-inline",
           "normalized": "./only-inline",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "G"
@@ -149,7 +149,7 @@
           "form": "export-from",
           "module": "./eye",
           "normalized": "./eye",
-          "locality": "unknown",
+          "locality": "local",
           "names": [
             {
               "name": "I"
@@ -168,7 +168,7 @@
           "form": "export-from",
           "module": "./star-types",
           "normalized": "./star-types",
-          "locality": "unknown",
+          "locality": "local",
           "wildcard": true,
           "typeOnly": true,
           "confidence": "syntactic",

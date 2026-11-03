@@ -34,7 +34,8 @@
           "form": "import",
           "module": "fmt",
           "normalized": "fmt",
-          "locality": "unknown",
+          "package": "fmt",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "\"fmt\""
         },
@@ -47,7 +48,8 @@
           "form": "import",
           "module": "fmt",
           "normalized": "fmt",
-          "locality": "unknown",
+          "package": "fmt",
+          "locality": "stdlib",
           "alias": "f",
           "confidence": "syntactic",
           "evidence": "f \"fmt\""
@@ -61,7 +63,8 @@
           "form": "import",
           "module": "math",
           "normalized": "math",
-          "locality": "unknown",
+          "package": "math",
+          "locality": "stdlib",
           "alias": ".",
           "confidence": "syntactic",
           "evidence": ". \"math\""
@@ -75,7 +78,8 @@
           "form": "import",
           "module": "net/http/pprof",
           "normalized": "net/http/pprof",
-          "locality": "unknown",
+          "package": "net",
+          "locality": "stdlib",
           "alias": "_",
           "confidence": "syntactic",
           "evidence": "_ \"net/http/pprof\""
@@ -89,7 +93,8 @@
           "form": "import",
           "module": "unicode/utf8",
           "normalized": "unicode/utf8",
-          "locality": "unknown",
+          "package": "unicode",
+          "locality": "stdlib",
           "alias": "β",
           "confidence": "syntactic",
           "evidence": "β \"unicode/utf8\""
@@ -103,7 +108,8 @@
           "form": "import",
           "module": "strings",
           "normalized": "strings",
-          "locality": "unknown",
+          "package": "strings",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "\"strings\""
         }

@@ -34,7 +34,8 @@
           "form": "use",
           "module": "std::fmt",
           "normalized": "std::fmt",
-          "locality": "unknown",
+          "package": "std",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "use std::fmt;"
         },
@@ -48,7 +49,7 @@
           "module": "serde_json",
           "normalized": "serde_json",
           "package": "serde_json",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "syntactic",
           "evidence": "use ::serde_json;"
         },
@@ -62,7 +63,7 @@
           "module": "serde::Serialize",
           "normalized": "serde::Serialize",
           "package": "serde",
-          "locality": "unknown",
+          "locality": "external",
           "confidence": "syntactic",
           "evidence": "use ::serde::{Serialize, de::*};"
         },
@@ -76,7 +77,7 @@
           "module": "serde::de",
           "normalized": "serde::de",
           "package": "serde",
-          "locality": "unknown",
+          "locality": "external",
           "wildcard": true,
           "confidence": "syntactic",
           "evidence": "use ::serde::{Serialize, de::*};"
@@ -163,7 +164,8 @@
           "form": "use",
           "module": "std::collections::HashMap",
           "normalized": "std::collections::HashMap",
-          "locality": "unknown",
+          "package": "std",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "use std::collections::HashMap;"
         },
@@ -176,7 +178,8 @@
           "form": "use",
           "module": "std::io::Write",
           "normalized": "std::io::Write",
-          "locality": "unknown",
+          "package": "std",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "use std::io::Write;"
         },

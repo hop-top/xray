@@ -35,7 +35,7 @@
           "module": "importlib",
           "normalized": "importlib",
           "package": "importlib",
-          "locality": "unknown",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "import importlib"
         },
@@ -47,8 +47,9 @@
           "kind": "dynamic",
           "form": "import_module",
           "module": ".plugins",
-          "normalized": null,
-          "locality": "unknown",
+          "normalized": "app.plugins",
+          "package": "app",
+          "locality": "local",
           "relative": {
             "level": 1,
             "module": "plugins"
@@ -87,7 +88,7 @@
           "module": "importlib",
           "normalized": "importlib",
           "package": "importlib",
-          "locality": "unknown",
+          "locality": "stdlib",
           "alias": "il",
           "confidence": "syntactic",
           "evidence": "import importlib as il"
@@ -102,7 +103,7 @@
           "module": "importlib.util",
           "normalized": "importlib.util",
           "package": "importlib",
-          "locality": "unknown",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "import importlib.util"
         },
@@ -116,7 +117,7 @@
           "module": "importlib",
           "normalized": "importlib",
           "package": "importlib",
-          "locality": "unknown",
+          "locality": "stdlib",
           "names": [
             {
               "name": "import_module"
@@ -135,7 +136,7 @@
           "module": "importlib",
           "normalized": "importlib",
           "package": "importlib",
-          "locality": "unknown",
+          "locality": "stdlib",
           "names": [
             {
               "name": "import_module",
@@ -155,7 +156,7 @@
           "module": "os.path",
           "normalized": "os.path",
           "package": "os",
-          "locality": "unknown",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "__import__('os.path')"
         },
@@ -167,8 +168,9 @@
           "kind": "dynamic",
           "form": "__import__",
           "module": "sibling",
-          "normalized": null,
-          "locality": "unknown",
+          "normalized": "app.pkg.sibling",
+          "package": "app",
+          "locality": "local",
           "relative": {
             "level": 1,
             "module": "sibling"
@@ -186,7 +188,7 @@
           "module": "json",
           "normalized": "json",
           "package": "json",
-          "locality": "unknown",
+          "locality": "stdlib",
           "confidence": "syntactic",
           "evidence": "importlib.import_module('json')"
         },
@@ -240,8 +242,9 @@
           "kind": "dynamic",
           "form": "import_module",
           "module": ".d",
-          "normalized": null,
-          "locality": "unknown",
+          "normalized": "app.pkg.mod.d",
+          "package": "app",
+          "locality": "local",
           "relative": {
             "level": 1,
             "module": "mod.d"
@@ -257,8 +260,9 @@
           "kind": "dynamic",
           "form": "import_module",
           "module": "..e",
-          "normalized": null,
-          "locality": "unknown",
+          "normalized": "app.e",
+          "package": "app",
+          "locality": "local",
           "relative": {
             "level": 2,
             "module": "e"

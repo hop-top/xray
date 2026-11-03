@@ -1,0 +1,408 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "typescript": {
+      "module": "tree-sitter-typescript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "packages/app/src/helpers.ts",
+      "language": "typescript",
+      "sha256": "f017cf92f05e097238bd7bdba695cd0a83b4c4729384b1ad79000b5674ce4a27",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "packages/app/src/index.ts",
+      "language": "typescript",
+      "sha256": "d27192963ecf4040098f3b64584540a4442d737f080544e050369e5fa821c4b6",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "import",
+          "module": "fs",
+          "normalized": "fs",
+          "package": "fs",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "readFile"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { readFile } from 'fs';"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "import",
+          "module": "node:path",
+          "normalized": "path",
+          "package": "path",
+          "locality": "stdlib",
+          "alias": "path",
+          "confidence": "syntactic",
+          "evidence": "import * as path from 'node:path';"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 34,
+          "kind": "static",
+          "form": "import",
+          "module": "node:test",
+          "normalized": "test",
+          "package": "test",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "test"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { test } from 'node:test';"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "import",
+          "module": "test",
+          "normalized": "test",
+          "package": "test",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "default",
+              "alias": "t"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import t from 'test';"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 36,
+          "kind": "static",
+          "form": "import",
+          "module": "./helpers",
+          "normalized": "./helpers",
+          "locality": "local",
+          "names": [
+            {
+              "name": "helper"
+            }
+          ],
+          "resolved": {
+            "file": "packages/app/src/helpers.ts"
+          },
+          "confidence": "syntactic",
+          "evidence": "import { helper } from './helpers';"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 29,
+          "kind": "static",
+          "form": "import",
+          "module": "./lib",
+          "normalized": "./lib",
+          "locality": "local",
+          "names": [
+            {
+              "name": "lib"
+            }
+          ],
+          "resolved": {
+            "file": "packages/app/src/lib/index.ts"
+          },
+          "confidence": "syntactic",
+          "evidence": "import { lib } from './lib';"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 34,
+          "kind": "static",
+          "form": "import",
+          "module": "./missing",
+          "normalized": "./missing",
+          "locality": "local",
+          "names": [
+            {
+              "name": "gone"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { gone } from './missing';"
+        },
+        {
+          "line": 8,
+          "column": 1,
+          "endLine": 8,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "import",
+          "module": "@acme/util",
+          "normalized": "@acme/util",
+          "package": "@acme/util",
+          "locality": "local",
+          "names": [
+            {
+              "name": "trim"
+            }
+          ],
+          "resolved": {
+            "dir": "packages/util"
+          },
+          "confidence": "syntactic",
+          "evidence": "import { trim } from '@acme/util';"
+        },
+        {
+          "line": 9,
+          "column": 1,
+          "endLine": 9,
+          "endColumn": 46,
+          "kind": "static",
+          "form": "import",
+          "module": "@acme/util/src/strings",
+          "normalized": "@acme/util/src/strings",
+          "package": "@acme/util",
+          "locality": "local",
+          "names": [
+            {
+              "name": "pad"
+            }
+          ],
+          "resolved": {
+            "file": "packages/util/src/strings.ts"
+          },
+          "confidence": "syntactic",
+          "evidence": "import { pad } from '@acme/util/src/strings';"
+        },
+        {
+          "line": 10,
+          "column": 1,
+          "endLine": 10,
+          "endColumn": 28,
+          "kind": "static",
+          "form": "import",
+          "module": "lodash/fp",
+          "normalized": "lodash/fp",
+          "package": "lodash",
+          "locality": "external",
+          "names": [
+            {
+              "name": "default",
+              "alias": "fp"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import fp from 'lodash/fp';"
+        },
+        {
+          "line": 11,
+          "column": 1,
+          "endLine": 11,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "import",
+          "module": "vitest",
+          "normalized": "vitest",
+          "package": "vitest",
+          "locality": "external",
+          "names": [
+            {
+              "name": "describe"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { describe } from 'vitest';"
+        },
+        {
+          "line": 12,
+          "column": 1,
+          "endLine": 12,
+          "endColumn": 34,
+          "kind": "static",
+          "form": "import",
+          "module": "react",
+          "normalized": "react",
+          "package": "react",
+          "locality": "external",
+          "names": [
+            {
+              "name": "useState"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { useState } from 'react';"
+        },
+        {
+          "line": 13,
+          "column": 1,
+          "endLine": 13,
+          "endColumn": 42,
+          "kind": "static",
+          "form": "import",
+          "module": "typescript",
+          "normalized": "typescript",
+          "package": "typescript",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "Config"
+            }
+          ],
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import type { Config } from 'typescript';"
+        },
+        {
+          "line": 14,
+          "column": 1,
+          "endLine": 14,
+          "endColumn": 29,
+          "kind": "static",
+          "form": "import",
+          "module": "left-pad",
+          "normalized": "left-pad",
+          "package": "left-pad",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "default",
+              "alias": "left"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import left from 'left-pad';"
+        },
+        {
+          "line": 15,
+          "column": 1,
+          "endLine": 15,
+          "endColumn": 34,
+          "kind": "static",
+          "form": "import",
+          "module": "#internal",
+          "normalized": "#internal",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "default",
+              "alias": "internal"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import internal from '#internal';"
+        },
+        {
+          "line": 16,
+          "column": 1,
+          "endLine": 16,
+          "endColumn": 40,
+          "kind": "static",
+          "form": "export-from",
+          "module": "../../util/src/strings",
+          "normalized": "../../util/src/strings",
+          "locality": "local",
+          "wildcard": true,
+          "resolved": {
+            "file": "packages/util/src/strings.ts"
+          },
+          "confidence": "syntactic",
+          "evidence": "export * from '../../util/src/strings';"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "packages/app/src/lib/index.ts",
+      "language": "typescript",
+      "sha256": "493f085426f60da1aeeb44e6143b7e0d41d7ba80467e06823341fcf8339effbe",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "packages/util/src/index.ts",
+      "language": "typescript",
+      "sha256": "f5078b0483c678300204899fca681a1df63a72adb4db851816e03788d67c70b7",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 27,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./strings",
+          "normalized": "./strings",
+          "locality": "local",
+          "wildcard": true,
+          "resolved": {
+            "file": "packages/util/src/strings.ts"
+          },
+          "confidence": "syntactic",
+          "evidence": "export * from './strings';"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "packages/util/src/strings.ts",
+      "language": "typescript",
+      "sha256": "ad2351d8ba4b44a3919027f083dd3a3b7bfc74b789583fff92038990e0c0917d",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 5,
+    "complete": 5,
+    "imports": 17,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}
