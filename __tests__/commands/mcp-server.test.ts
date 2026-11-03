@@ -218,6 +218,35 @@ describe('xray mcp over stdio', () => {
     expect(text(r)).toMatch(/unknown argument "graph"/);
   });
 
+  it('lists imports: paths positional, path/lang/format, root', async () => {
+    const r = await client.request('tools/list');
+    const imports = (r.result.tools as Array<{ name: string; description?: string; inputSchema: any }>).find((t) => t.name === 'imports')!;
+    expect(Object.keys(imports.inputSchema.properties).sort()).toEqual(['format', 'lang', 'path', 'paths', 'root']);
+    expect(imports.inputSchema.properties.paths).toMatchObject({ type: 'array', items: { type: 'string' } });
+    expect(imports.description).toMatch(/xray\.imports\/v1/);
+  });
+
+  it('calls imports: the CLI document, narrowed by contained paths', async () => {
+    const r = await client.call('imports', { format: 'json' });
+    expect(r.result.isError).toBe(false);
+    const cli = spawnSync(process.execPath, [BIN, 'imports', '--format', 'json'], { cwd: repo, env, encoding: 'utf-8' });
+    expect(cli.status).toBe(0);
+    expect(JSON.parse(text(r))).toEqual(JSON.parse(cli.stdout));
+    const doc = JSON.parse(text(r));
+    expect(doc.schema).toBe('xray.imports/v1');
+    expect(doc.files.map((f: any) => f.path)).toEqual(['a.ts', 'b.ts', 'c.ts', 'imports/a.ts', 'imports/b.ts', 'imports/c.ts', 'sub/d.ts']);
+    const sub = await client.call('imports', { paths: ['sub'], lang: ['ts'] });
+    expect(sub.result.isError).toBe(false);
+    expect(JSON.parse(text(sub)).files.map((f: any) => f.path)).toEqual(['sub/d.ts']);
+  }, 60_000);
+
+  it.each([[['..']], [['/']], [['sub', '../..']]])('rejects imports paths %j outside the server root', async (paths) => {
+    const r = await client.call('imports', { paths });
+    expect(r.error).toBeUndefined();
+    expect(r.result.isError).toBe(true);
+    expect(text(r)).toMatch(/paths "[^"]*" is outside the server root/);
+  });
+
   it('returns map output as content without writing it into the project', async () => {
     const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, txt: true });
     expect(r.result.isError).toBe(false);

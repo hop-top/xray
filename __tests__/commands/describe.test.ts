@@ -5,7 +5,10 @@
  * without parsing free-text `--help` output.
  */
 import { Command } from 'commander';
+import * as fs from 'fs';
+import * as path from 'path';
 import { buildDescribeDoc } from '../../src/commands/describe';
+import { IMPORTS_SCHEMA_ID } from '../../src/lib/imports/types';
 
 function makeProgram(): Command {
   // Synthetic program that mirrors xray's surface enough to exercise
@@ -32,6 +35,12 @@ function makeProgram(): Command {
     .command('remove')
     .description('Remove an alias')
     .argument('<name>', 'Alias name')
+    .action(() => {});
+  root
+    .command('imports')
+    .description('Imports contract')
+    .argument('[paths...]', 'Paths')
+    .option('--format <fmt>', 'Output format', 'json')
     .action(() => {});
   root
     .command('describe')
@@ -136,6 +145,18 @@ describe('xray describe', () => {
     const alias = doc.commands.find((c) => c.name === 'alias')!;
     const remove = alias.subcommands.find((c) => c.name === 'remove')!;
     expect(remove.exitCodes).toContain(3);
+  });
+
+  it('classifies imports as read / yes, exit 3, with its output schema id and shipped path', () => {
+    const imports = doc.commands.find((c) => c.name === 'imports')!;
+    expect(imports).toMatchObject({ sideEffect: 'read', idempotent: 'yes', exitCodes: [0, 1, 2, 3] });
+    expect(imports.output).toEqual({ schema: IMPORTS_SCHEMA_ID, path: 'schemas/xray.imports.v1.json', formats: ['json', 'yaml'] });
+    const root = path.resolve(__dirname, '../..');
+    const schema = JSON.parse(fs.readFileSync(path.join(root, imports.output!.path), 'utf8'));
+    expect(schema.properties.schema.const).toBe(IMPORTS_SCHEMA_ID);
+    expect(require('../../package.json').files).toContain(imports.output!.path.split('/')[0]);
+    // Only commands with a versioned document carry `output`.
+    expect(doc.commands.find((c) => c.name === 'scan')!.output).toBeUndefined();
   });
 
   it('exposes the describe command itself', () => {

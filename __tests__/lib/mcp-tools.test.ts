@@ -63,6 +63,12 @@ function tree(): Command {
     .option('--scope <name>', 'Scope')
     .option('--lang <list>', 'Languages', repeat, [])
     .option('--format <fmt>', 'Format');
+  root.command('imports')
+    .argument('[paths...]', 'Files or directories inside the root')
+    .option('-p, --path <root>', 'Root directory')
+    .option('--lang <list>', 'Languages', repeat, [])
+    .option('-o, --output <path>', 'Output file')
+    .option('--format <fmt>', 'Format');
   root.command('alias').command('set');
   return root;
 }
@@ -129,6 +135,17 @@ describe('shapeLeaf', () => {
     expect(leaf.description).toMatch(/what breaks/i);
     expect(def).toMatchObject({ name: 'impact', path: ['impact'], positionals: ['symbol'], fileOutput: false });
     expect(def.policy).toMatchObject({ root: 'path', configFromPath: true, detectOnRoot: false });
+  });
+
+  it('exposes imports: paths positional (array), path/lang/format, root; no output', () => {
+    const { leaf, def } = shaped(root, ['imports']);
+    expect(Object.keys(leaf.properties).sort()).toEqual(['format', 'lang', 'path', 'paths', 'root']);
+    expect(leaf.properties.paths).toMatchObject({ type: 'array', items: { type: 'string' } });
+    expect(leaf.properties.lang.type).toBe('array');
+    expect(leaf.required).toBeUndefined();
+    expect(leaf.description).toMatch(/xray\.imports\/v1/);
+    expect(def).toMatchObject({ name: 'imports', positionals: ['paths'], fileOutput: false });
+    expect(def.policy).toMatchObject({ root: 'path', configFromPath: false, positionals: { paths: 'path' } });
   });
 
   it('offers root only on tools with a project scope', () => {
@@ -284,6 +301,25 @@ describe('root containment', () => {
     expect(buildArgv(d, m, { query: ['.ts:sub/q.scm'] }, scope).argv).toEqual([
       'map', `--query=.ts:${path.join(serverRoot, 'sub/q.scm')}`,
     ]);
+  });
+
+  it('contains imports positional paths (outside, absolute, symlink escape); value positionals pass through', () => {
+    const r = tree();
+    const c = findCommand(r, ['imports'])!;
+    const d = shaped(r, ['imports']).def;
+    const scope: PathScope = {
+      dir: serverRoot, explicit: false, contain: (v, b, l) => containPath(serverRoot, b, v, l),
+    };
+    for (const p of ['../other', outside, '/', 'escape/x.py', 'sub/../../other']) {
+      expect(() => buildArgv(d, c, { paths: ['sub', p] }, scope)).toThrow(/paths "[^"]*" is outside the server root/);
+    }
+    expect(() => buildArgv(d, c, { paths: ['https://example.com/x'] }, scope)).toThrow(/not a URL/);
+    expect(buildArgv(d, c, { paths: ['sub', 'sub/x.py'], lang: ['go'] }, scope).argv).toEqual([
+      'imports', '--lang=go', '--', path.join(serverRoot, 'sub'), path.join(serverRoot, 'sub/x.py'),
+    ]);
+    // explore's [query] is a value: never resolved as a path.
+    const e = findCommand(r, ['explore'])!;
+    expect(buildArgv(shaped(r, ['explore']).def, e, { query: '../other' }, scope).argv).toEqual(['explore', '--', '../other']);
   });
 
   it('contains config --file against the project path', () => {

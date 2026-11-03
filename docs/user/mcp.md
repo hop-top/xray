@@ -66,6 +66,7 @@ Any other stdio client: run `xray -C <project> mcp`.
 | `explore` | `xray explore [query]` | match / search / stats rows |
 | `query` | `xray query <query>` | call-graph query result |
 | `impact` | `xray impact <symbol>` | transitive callers by area ("what breaks if I change X") |
+| `imports` | `xray imports [paths...]` | the [`xray.imports/v1`](imports-contract.md) document: per-file imports, parse errors, unsupported constructs |
 | `strategy_list` | `xray strategy list` | available strategies |
 | `strategy_detect` | `xray strategy detect` | strategies detected for the project |
 | `<strategy>_<noun>` | `xray <strategy> <noun>` | strategy insight, e.g. `react_hooks`, `express_routes`, `markdown_toc` |
@@ -88,6 +89,10 @@ exposed.
 `impact` takes `symbol`, `depth`, `strict`, `format`, `lens`, `scope`
 and `root`; its graph is always built over the call root, so `--graph`
 (and `--path`, `--lang`) are not exposed.
+
+`imports` takes `paths`, `path`, `lang`, `format` and `root`. Every entry
+of `paths` is a path argument: resolved against `root` and held inside
+the server root like `path`; `--output` is not exposed.
 
 Not exposed: commands that change state (`cache clear`, `alias set`,
 `strategy install`, `lang add`, ...) and flags that write files, load
@@ -142,7 +147,7 @@ and a JS project config (`.xrayrc.js`) are code, and xray loads them.
   server root (absolute, or relative to the server root); anything
   outside, including through symlinks, is refused. It never becomes the
   working directory: it reaches the command as its `--path` (map, scan,
-  graph, explore, impact, strategy detect, `<strategy>_<noun>`), and `query`
+  graph, explore, impact, imports, strategy detect, `<strategy>_<noun>`), and `query`
   builds its graph over it. `strategy_list` has no project scope and
   takes no `root`. Relative path arguments resolve against `root`.
 - Sub-roots with their own config (`.xrayrc*`, `xray.config.*`, a
@@ -161,7 +166,7 @@ and a JS project config (`.xrayrc.js`) are code, and xray loads them.
   Add a config file to the server root, or start the server with
   `--config <file>`, to scope such sub-roots.
 - Every path-valued argument is held inside the server root: `path`,
-  `anchor`, `graph`, `config keys|values --file`, and each path in
+  `anchor`, `graph`, `config keys|values --file`, `imports` `paths`, and each path in
   map's `query` (`path`, `.ext:path`, comma lists). URLs are refused
   wherever a path is expected; the server never makes the CLI fetch a
   remote query file.

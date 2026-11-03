@@ -8,8 +8,9 @@
  * (`--no-x`) as booleans and the per-call `root`.
  *
  * Options are allowlisted per tool (`ToolPolicy`): an option is exposed
- * only when listed, and every listed option that names a file or
- * directory is contained in the server root.
+ * only when listed, and every listed option (and positional, via
+ * `ToolPolicy.positionals`) that names a file or directory is contained
+ * in the server root.
  *
  * Pure (no I/O beyond the injected path resolver): tool selection,
  * schema shaping and argv building are unit-tested against small
@@ -50,6 +51,11 @@ export type RootScope = 'path' | 'graph' | 'none';
 /** Per-tool allowlist: only these options are exposed and accepted. */
 export interface ToolPolicy {
   options: Readonly<Record<string, ParamKind>>;
+  /**
+   * Kind per positional argument (commander name). Unlisted positionals
+   * are `value`; a `path` positional is contained like a `path` option.
+   */
+  positionals?: Readonly<Record<string, 'value' | 'path'>>;
   root: RootScope;
   /**
    * The command loads xray config by walking up from its `--path`
@@ -119,6 +125,15 @@ const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
     stats: 'value', 'list-strategies': 'value', format: 'value',
   }),
   query: scoped({ graph: 'path', 'list-adapters': 'value', format: 'value' }, 'graph'),
+  // Parses only (no config); positional paths held inside the server root.
+  imports: {
+    ...scoped({ path: 'path', lang: 'value', format: 'value' }),
+    positionals: { paths: 'path' },
+    description:
+      'Per-file imports as the xray.imports/v1 JSON document (schemas/xray.imports.v1.json): 1-based line/column, ' +
+      'normalized module, package, locality, parse errors and unsupported constructs (complete: false). ' +
+      'paths: files/dirs inside root to narrow to; lang: python, go, rust, typescript|ts, javascript|js, php.',
+  },
   // Builds its graph in process like map (config walks up from --path);
   // --graph not offered: the graph always comes from the call root.
   impact: {
@@ -418,11 +433,18 @@ export function buildArgv(
     if (policy.detectOnRoot && given.detect === undefined && given['skip-detect'] !== true) opts.push('--detect');
   }
 
-  for (const key of def.positionals) {
+  const declared = cmd.registeredArguments as readonly Argument[];
+  def.positionals.forEach((key, i) => {
     const v = given[key];
-    if (v === undefined || v === null) continue;
-    positionals.push(...values(key, v));
-  }
+    if (v === undefined || v === null) return;
+    const name = declared[i]?.name() ?? key;
+    const kind = policy.positionals && Object.prototype.hasOwnProperty.call(policy.positionals, name)
+      ? policy.positionals[name]
+      : 'value';
+    for (const val of values(key, v)) {
+      positionals.push(kind === 'path' ? containedPath(key, val, scope.dir, scope) : val);
+    }
+  });
 
   return {
     argv: [...def.path, ...opts, ...(positionals.length > 0 ? ['--', ...positionals] : [])],

@@ -30,6 +30,7 @@ const SIDE_EFFECTS: Record<string, SideEffect> = {
   graph: 'write-local',
   query: 'read',
   impact: 'read',
+  imports: 'read',
   explore: 'read',
   describe: 'read',
   paths: 'read',
@@ -49,6 +50,7 @@ const IDEMPOTENT: Record<string, Idempotent> = {
   graph: 'conditional',
   query: 'yes',
   impact: 'yes',
+  imports: 'yes',
   explore: 'yes',
   describe: 'yes',
   paths: 'yes',
@@ -67,8 +69,15 @@ const IDEMPOTENT: Record<string, Idempotent> = {
 const EXTRA_EXIT_CODES: Record<string, number[]> = {
   'alias.remove': [3],
   impact: [3],
+  imports: [3],
   paths: [3],
   'alias.set': [5],
+};
+
+// Commands whose machine output is a versioned document: schema id (the
+// payload's `schema` field) and the schema file shipped in the package.
+const OUTPUT_SCHEMAS: Record<string, OutputSchemaDoc> = {
+  imports: { schema: 'xray.imports/v1', path: 'schemas/xray.imports.v1.json', formats: ['json', 'yaml'] },
 };
 
 const EXIT_CODES: Record<string, string> = {
@@ -97,6 +106,15 @@ interface OptionDoc {
   choices?: string[];
 }
 
+interface OutputSchemaDoc {
+  /** Schema id carried in the payload. */
+  schema: string;
+  /** JSON Schema file, relative to the package root. */
+  path: string;
+  /** `--format` values that emit the document. */
+  formats: string[];
+}
+
 interface CommandDoc {
   name: string;
   qualifiedName: string;
@@ -108,6 +126,7 @@ interface CommandDoc {
   sideEffect: SideEffect;
   idempotent: Idempotent;
   exitCodes: number[];
+  output?: OutputSchemaDoc;
 }
 
 // Telemetry policy, so a consumer can verify a subprocess run records
@@ -189,6 +208,9 @@ function walk(cmd: Command, parentPath: string[] = []): CommandDoc {
   const name = cmd.name();
   const qualifiedName = [...parentPath, name].join('.');
   const cls = classify(qualifiedName);
+  const output = Object.prototype.hasOwnProperty.call(OUTPUT_SCHEMAS, qualifiedName)
+    ? OUTPUT_SCHEMAS[qualifiedName]
+    : undefined;
 
   return {
     name,
@@ -201,6 +223,7 @@ function walk(cmd: Command, parentPath: string[] = []): CommandDoc {
     sideEffect: cls.sideEffect,
     idempotent: cls.idempotent,
     exitCodes: cls.exitCodes,
+    ...(output ? { output: { ...output, formats: [...output.formats] } } : {}),
   };
 }
 

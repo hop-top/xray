@@ -1,7 +1,7 @@
 # Imports Contract (`xray.imports/v1`)
 
-**Status: draft.** The schema and field set below are the target for the
-upcoming `xray imports` command. Within v1 they only change additively (see
+**Status: draft.** The schema and field set below are what
+[`xray imports`](#usage) emits. Within v1 they only change additively (see
 [Compatibility](#compatibility)); the contract is frozen once the
 verification suite lands.
 
@@ -19,6 +19,107 @@ honest coverage take priority over breadth.
 - Consumers MUST ignore unknown fields. The schema leaves objects open
   (no `additionalProperties: false`), so a v1 validator keeps accepting
   documents from later v1 releases.
+
+## Usage
+
+```bash
+xray imports [paths...] [-p <root>] [--lang <list>] [--format json|yaml|table|csv|text] [-o <file>]
+```
+
+`json` (default) and `yaml` print this document; `table`/`csv`/`text`
+are views of it. One root per document (`-p`, default the current
+directory; `root` echoes it as given); `[paths...]` narrow to files or
+directories inside it; `--lang` selects contract languages. Both select
+the files reported only: manifests under the root (`go.mod`, `go.work`,
+`package.json`, `Cargo.toml`) are always read for resolution. Exit `0`
+whenever a document is produced (parse errors and unsupported constructs
+are data), `2` on usage errors, `3` when the root or a path does not
+exist. Nothing is written into the scanned tree. Full option list:
+[Commands: `xray imports`](commands.md#xray-imports).
+
+`xray imports` in `__tests__/fixtures/imports/go/raw-string`:
+
+```json
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.1.0",
+    "extractor": "0.3.0"
+  },
+  "grammars": {
+    "go": {
+      "module": "tree-sitter-go",
+      "version": "0.25.0",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "go/raw-string/main.go",
+      "language": "go",
+      "sha256": "1d46d478490e0bdceefe2d76d4f5bd396d26302253740396b606a9d9805125eb",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 32,
+          "kind": "static",
+          "form": "import",
+          "module": "github.com/example/raw",
+          "normalized": "github.com/example/raw",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import `github.com/example/raw`"
+        },
+        {
+          "line": 6,
+          "column": 2,
+          "endLine": 6,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/é/v2",
+          "normalized": "example.com/é/v2",
+          "locality": "unknown",
+          "alias": "r",
+          "confidence": "syntactic",
+          "evidence": "r `example.com/é/v2`"
+        },
+        {
+          "line": 7,
+          "column": 2,
+          "endLine": 7,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/interp",
+          "normalized": "example.com/interp",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "\"example.com/interp\""
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 3,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}
+```
 
 ## Document
 
@@ -105,7 +206,7 @@ clause (grouped use expanded); Python and TS/JS one per statement, with
 |---|---|---|---|---|
 | Python | dotted, relative keeps dots | absolute dotted: relative resolved from the file's package (`__init__.py` chain); `null` if file not in a package | first segment of normalized | `stdlib` (vendored `sys.stdlib_module_names`), `local` (resolves in tree), else `unknown` |
 | Go | import path unquoted (raw or interpreted) | same | go.mod module path (local) or longest matching `require` path (external); stdlib: first element | `stdlib` (no dot in first element; `C` special), `local` (go.mod / go.work module), `external` (go.mod require), else `unknown` |
-| Rust | one leaf path per use-tree leaf, `::` joined, leading `::` stripped | `crate`/`self`/`super` rewritten to `crate::…` when the crate root is known (Cargo.toml + lib.rs/main.rs) | first segment (`crate` for local) | `stdlib` (std/core/alloc), `local` (crate/self/super, or root bound by a `mod`/local item), `external` otherwise |
+| Rust | one leaf path per use-tree leaf, `::` joined, leading `::` stripped | `crate`/`self`/`super` rewritten to `crate::…` when the crate root is known (Cargo.toml + lib.rs/main.rs) | first segment (`crate` for local) | `stdlib` (std/core/alloc/proc_macro/test), `local` (crate/self/super, or root bound by a `mod`/local item), `external` otherwise |
 | TS/JS | specifier unquoted | `node:` stripped for builtins; else = module | `@scope/name` or `name`; none for relative | `stdlib` (Node builtin), `local` (relative/absolute), `external` (declared in nearest package.json), else `unknown` |
 | PHP | FQN without leading `\`; include path literal | `use`: as written; FQN references: resolved via namespace + use aliases (PHP name-resolution rules); include: `__DIR__ . 'x'` folded | first namespace segment | `local` for resolved include files; else `unknown` (no psr-4 in v1) |
 

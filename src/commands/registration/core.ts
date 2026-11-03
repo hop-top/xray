@@ -6,6 +6,7 @@ import { handleClearCacheAction } from '../clear-cache';
 import { bindFlag, registerCompletionCommand, staticValues } from '../completion';
 import { addQueryOutputFlags, runQueryCommand } from '../query';
 import { registerImpactCommand } from '../impact';
+import { registerImportsCommand } from '../imports';
 import { handleDescribeAction } from '../describe';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
@@ -22,6 +23,7 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   graph: 'analyze',
   query: 'analyze',
   impact: 'analyze',
+  imports: 'analyze',
   strategy: 'strategy',
   alias: 'management',
   lang: 'management',
@@ -68,6 +70,9 @@ export function registerCoreCommands(program: Command): void {
 
   // Impact command - transitive callers of a symbol, grouped by area
   registerImpactCommand(program);
+
+  // Imports command - per-file imports as the xray.imports/v1 contract
+  registerImportsCommand(program);
 
   // Strategy management command
   program.addCommand(registerStrategyCommand());

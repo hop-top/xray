@@ -14,6 +14,8 @@ ANALYZE:
                              graphs
   query [query] [--flags]    Query call graph using function-based syntax
   impact <symbol> [--flags]  Show transitive callers of a symbol, by area
+  imports [paths] [--flags]  List every file's imports as the xray.imports/v1
+                             JSON contract
   explore [query] [--flags]  Quickly find files by patterns, search code for
                              keywords, or explore codebase [default command]
 
@@ -1128,6 +1130,63 @@ Show help for a command or command group
 
 FLAGS:
   -h, --help  Display help
+
+
+--- stderr ---
+"
+`;
+
+exports[`cli golden: --help xray imports --help 1`] = `
+"exit: 0
+--- stdout ---
+Usage: xray imports [options] [paths...]
+
+List every file's imports as the xray.imports/v1 JSON contract
+
+ARGUMENTS:
+  paths                Files or directories inside the root to narrow the scan
+                       to
+
+FLAGS:
+  -p, --path <root>    Root directory (file paths are relative to it) [default:
+                       current directory]
+  --lang <list>        Languages to include, comma-separated: python, go, rust,
+                       typescript|ts, javascript|js, php (repeatable) (default:
+                       [])
+  --cols <cols...>     Restrict columns to this comma-separated list
+                       (repeatable) (default: [])
+  -o, --output <path>  Write output to path (use - or empty for stdout)
+                       (default: "")
+  --format <fmt>       Output format: json, yaml, table, csv, text (default:
+                       "json")
+  -h, --help           Display help
+
+Emits the xray.imports/v1 document (schemas/xray.imports.v1.json): per file
+its imports with 1-based line/column (UTF-16 columns), normalized module,
+package and locality, plus parse errors and constructs xray cannot follow.
+Languages: python, go, rust, typescript (ts), javascript (js), php.
+
+Files are listed as \`scan\` lists them (git ls-files, else .gitignore),
+relative to the root (-p, default: current directory). [paths...] narrow
+the scan to files or directories inside the root (relative to the current
+directory). --lang and [paths...] select the files reported; manifests
+(go.mod, go.work, package.json, Cargo.toml) anywhere under the root are
+always read for resolution. Parses only: no graph, no cache, nothing
+written outside -o.
+
+Exit 0 whenever a document is produced: parse errors and unsupported
+constructs are data (\`complete: false\` on the file), not failures.
+Exit 2 on usage errors (unknown --lang, a path outside the root), 3 when
+the root or a path does not exist.
+
+--format json/yaml: the whole document. table/csv: one row per import.
+text: per-file summary.
+
+Examples:
+  xray imports
+  xray imports -p ../svc --lang go,rust
+  xray imports src/api --format table
+  xray imports -o imports.json
 
 
 --- stderr ---
@@ -2393,6 +2452,8 @@ ANALYZE:
                              graphs
   query [query] [--flags]    Query call graph using function-based syntax
   impact <symbol> [--flags]  Show transitive callers of a symbol, by area
+  imports [paths] [--flags]  List every file's imports as the xray.imports/v1
+                             JSON contract
   explore [query] [--flags]  Quickly find files by patterns, search code for
                              keywords, or explore codebase [default command]
 
@@ -5204,6 +5265,111 @@ exports[`cli golden: introspection describe 1`] = `
         2,
         3
       ]
+    },
+    {
+      "name": "imports",
+      "qualifiedName": "imports",
+      "description": "List every file's imports as the xray.imports/v1 JSON contract",
+      "hidden": false,
+      "arguments": [
+        {
+          "name": "paths",
+          "required": false,
+          "variadic": true,
+          "description": "Files or directories inside the root to narrow the scan to"
+        }
+      ],
+      "options": [
+        {
+          "name": "--path",
+          "short": "-p",
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Root directory (file paths are relative to it) [default: current directory]"
+        },
+        {
+          "name": "--lang",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Languages to include, comma-separated: python, go, rust, typescript|ts, javascript|js, php (repeatable)"
+        },
+        {
+          "name": "--format-opt",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+        },
+        {
+          "name": "--format-help",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Show available formats and their options (use --format-help <key> for one)"
+        },
+        {
+          "name": "--cols",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Restrict columns to this comma-separated list (repeatable)"
+        },
+        {
+          "name": "--columns",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Alias for --cols"
+        },
+        {
+          "name": "--template",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "eta template applied to results (mutually exclusive with --cols)"
+        },
+        {
+          "name": "--output",
+          "short": "-o",
+          "type": "string",
+          "required": false,
+          "default": "",
+          "description": "Write output to path (use - or empty for stdout)"
+        },
+        {
+          "name": "--format",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "json",
+          "description": "Output format: json, yaml, table, csv, text"
+        }
+      ],
+      "subcommands": [],
+      "sideEffect": "read",
+      "idempotent": "yes",
+      "exitCodes": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "output": {
+        "schema": "xray.imports/v1",
+        "path": "schemas/xray.imports.v1.json",
+        "formats": [
+          "json",
+          "yaml"
+        ]
+      }
     },
     {
       "name": "strategy",

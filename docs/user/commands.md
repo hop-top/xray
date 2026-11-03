@@ -11,6 +11,7 @@ Complete guide to every xray command and option. Start with the decision tree to
 - **Scan for files matching a pattern** → [`xray scan`](#xray-scan)
 - **See control flow or data flow** → [`xray graph`](#xray-graph)
 - **See what breaks if you change a function** → [`xray impact`](#xray-impact)
+- **List every file's imports as a stable JSON contract** → [`xray imports`](#xray-imports)
 - **Detect what frameworks are used** → [`xray strategy detect`](#xray-strategy-detect)
 - **See all available strategies** → [`xray strategy list`](#xray-strategy-list)
 - **Create command shortcuts** → [`xray alias`](#xray-alias)
@@ -241,6 +242,71 @@ xray map --format json -o graph && xray impact Run --graph graph.json --format j
 
 See the [query guide](query-guide.md#impact-analysis-with-xray-impact) for
 how `impact` relates to `callers()`.
+
+### `xray imports`
+
+Every file's imports as the [`xray.imports/v1`](imports-contract.md)
+document: 1-based line/column (UTF-16 columns), module as written and
+normalized, package, locality, plus parse errors and constructs xray cannot
+follow (`complete: false` on the file). For tools that use imports as
+evidence; parses only (no graph, no strategies, no cache).
+
+```bash
+xray imports [paths...] [-p <root>] [--lang <list>] [--format <fmt>] [--cols <list>] [-o <file>]
+```
+
+| Option | Meaning |
+|--------|---------|
+| `[paths...]` | Narrow to these files/directories (relative to the current directory; each must be inside the root) |
+| `-p, --path <root>` | Root; every `path` in the document is relative to it, and `root` echoes it as given. Default: current directory. One root per document |
+| `--lang <list>` | Contract languages to include: `python`, `go`, `rust`, `typescript` (`ts`), `javascript` (`js`), `php`; comma-separated, repeatable |
+| `--format` | `json` (default) or `yaml`: the whole document. `table`, `csv`: one row per import (`file`, `line`, `column`, `kind`, `form`, `module`, `normalized`, `locality`; `--cols` adds `language`, `endLine`, `endColumn`, `package`, `alias`, `typeOnly`, `confidence`, `evidence`). `text`: per-file summary |
+
+Files are listed as `xray scan` lists them (`git ls-files`, else the
+root's `.gitignore`), plus `.mjs`/`.cjs`/`.mts`/`.cts`. `--lang` and
+`[paths...]` select the files reported; manifests (`go.mod`, `go.work`,
+every `package.json`, `Cargo.toml`) anywhere under the root (not
+gitignored) are always read for module resolution and never listed in
+`files`. Output goes to
+stdout (or `-o`); nothing is written into the scanned tree. Two runs on the
+same input are byte-identical.
+
+**Exit codes.** `0` whenever a document is produced: parse errors and
+unsupported constructs are data, not failures. `2` on usage errors (unknown
+`--lang` or `--format`, a path outside the root). `3` when the root or a
+path does not exist.
+
+**Text output** (`xray imports go/raw-string python/relative --format text`
+in `__tests__/fixtures/imports`):
+
+```
+go/raw-string/main.go (go, ok)
+  3:1  static import  github.com/example/raw  [unknown]
+  6:2  static import  example.com/é/v2  [unknown]
+  7:2  static import  example.com/interp  [unknown]
+python/relative/app/__init__.py (python, ok)
+python/relative/app/pkg/__init__.py (python, ok)
+python/relative/app/pkg/mod.py (python, ok)
+  1:1  static from  .  [unknown]
+  2:1  static from  .sibling  [unknown]
+  3:1  static from  ..pkg.mod  [unknown]
+  4:1  static from  ..  [unknown]
+  5:1  static from  .star  [unknown]
+  6:1  static from  ...  [unknown]
+4 files, 4 complete · 9 imports · 0 unsupported · 0 parse errors
+```
+
+**Examples:**
+```bash
+xray imports                                 # current directory, JSON document
+xray imports -p ../svc --lang go,rust        # one root, two languages
+xray imports src/api --format table          # one row per import under src/api
+xray imports -o imports.json                 # write the document to a file
+```
+
+`xray describe` lists the command with its schema id and file
+(`output.schema`, `output.path`); the MCP server exposes it as the
+[`imports` tool](mcp.md#tools).
 
 ### `xray <strategy> <command>`
 
@@ -517,7 +583,7 @@ column; exit 3: graph file not found. See the [query guide](query-guide.md).
 
 ### Structured output (record commands)
 
-`query`, `impact`, `explore`, `paths`, `alias list`, `strategy list` and the strategy
+`query`, `impact`, `imports`, `explore`, `paths`, `alias list`, `strategy list` and the strategy
 commands (`express routes`, `react components`, `rest-api endpoints`, ...)
 render their results through one output layer:
 
@@ -534,6 +600,7 @@ Records per command:
 | Command | Columns |
 |---------|---------|
 | `impact` | `name`, `file`, `line`, `depth`, `group`, `confidence` (also `kind`, `id`) |
+| `imports` | `file`, `line`, `column`, `kind`, `form`, `module`, `normalized`, `locality` (also `language`, `endLine`, `endColumn`, `package`, `alias`, `typeOnly`, `confidence`, `evidence`); default format `json` (the whole document) |
 | `explore` | `type`, `path` |
 | `explore -m` | `path` |
 | `explore -s` | `file`, `line`, `keyword`, `content` (every match; the text view caps 5 per file) |

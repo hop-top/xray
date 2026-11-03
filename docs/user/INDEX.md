@@ -281,6 +281,7 @@ Start here, then pick your next path based on what you want to do.
 | Debug an issue | [Workflows: Debugging](workflows.md#workflow-debugging-a-complex-issue) | [Cookbook: Debugging](cookbook.md) |
 | Plan a refactor | [Workflows: Refactor](workflows.md#workflow-planning-a-refactor) | [Cookbook: Refactor](cookbook.md) |
 | What breaks if I change X? | [Commands: xray impact](commands.md#xray-impact) | [Query guide: impact](query-guide.md#impact-analysis-with-xray-impact) |
+| Feed imports to an audit tool | [Commands: xray imports](commands.md#xray-imports) | [Imports contract](imports-contract.md) |
 | Give my coding agent xray | [Harness Integration](harness-integration.md) | [Use Cases](use-cases.md), [MCP Server](mcp.md) |
 | Document project | [Workflows: Documentation](workflows.md#workflow-documenting-your-project) | [Cookbook: Docs](cookbook.md) |
 | Set up team | [Configuration](configuration.md) | [Automation](automation.md) |

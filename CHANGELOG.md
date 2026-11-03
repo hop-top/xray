@@ -40,7 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Imports contract resolution pass: `locality`, `package`, `resolved` per
   language from the scanned tree (go.mod/go.work, package.json, `__init__.py`,
   Cargo crate layout, literal PHP includes); extractor 0.3.0.
-
+- `xray imports [paths...]`: per-file imports as the `xray.imports/v1`
+  JSON document (json default; yaml/table/csv/text); `describe` entry with
+  its schema id and path; MCP tool `imports` with `paths` held inside the
+  server root.
 - Imports extractor (library, no command yet): Go, Rust, PHP static imports
   per `xray.imports/v1` — Go specs (alias/dot/blank, raw strings, `"C"`),
   Rust use trees flattened per leaf + `extern crate` + `mod x;`, PHP `use`

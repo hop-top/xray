@@ -38,8 +38,9 @@ export class FileScanner {
     return knownExtensions();
   }
 
-  scan(): string[] {
-    const supportedExts = new Set(FileScanner.supportedExtensions());
+  /** Files under the root with one of `extensions` (default: supportedExtensions()). */
+  scan(extensions: Iterable<string> = FileScanner.supportedExtensions()): string[] {
+    const supportedExts = new Set(extensions);
 
     try {
       const gitFiles = execSync('git ls-files --cached --others --exclude-standard', {

@@ -28,7 +28,7 @@ const PKG_VERSION: string = require('../../package.json').version;
 // commands (generate, clear-cache) included on purpose.
 const COMMANDS: string[][] = [
   [],
-  ['map'], ['scan'], ['graph'], ['generate'], ['query'], ['explore'],
+  ['map'], ['scan'], ['graph'], ['generate'], ['query'], ['explore'], ['imports'],
   ['strategy'],
   ['strategy', 'list'], ['strategy', 'detect'], ['strategy', 'info'],
   ['strategy', 'create'], ['strategy', 'install'], ['strategy', 'remove'],
