@@ -156,7 +156,7 @@ function includeRecord(n: SyntaxNode, stmt: SyntaxNode | undefined, filePath: st
  * are pushed as they start (index order) and popped once ended, so each
  * query is amortized O(1) instead of a scan over every region.
  */
-function regionLocator(spaces: PhpNamespace[]): (n: SyntaxNode) => number {
+export function regionLocator(spaces: PhpNamespace[]): (n: SyntaxNode) => number {
   const open: number[] = [];
   let next = 0;
   return n => {

@@ -1,4 +1,6 @@
 import { extractImports } from '../../src/lib/imports';
+import { regionLocator, type PhpNamespace } from '../../src/lib/imports/lang/php';
+import { iterations, measure } from '../support/imports-adversarial';
 
 // Targeted checks for kind `reference` records (Rust path roots, PHP
 // qualified names); the goldens rust/path-roots, rust/attr-macro-paths and
@@ -168,6 +170,30 @@ describe('PHP qualified-name references', () => {
 // Untrusted input: nesting depth must not overflow the JS stack (or go
 // quadratic) and abort extraction. 20k overflowed the recursive versions on
 // Node 26 (10k already did); tree-sitter itself parses these fine.
+//
+// Work is bounded deterministically, never by wall-clock: each pass runs at
+// n and 4n first (support/imports-adversarial.ts counters: `.parent`
+// accesses flat, source text read linear; array-iterator element visits
+// linear), so a quadratic regression fails at small sizes; then the full
+// size must complete with the right records.
+
+/** Iterator element visits at 4n over those at n: ~4 when linear, ~16 when quadratic. Both runs must succeed (a failed file stops early). */
+function iterationGrowth(gen: (n: number) => string, file: string, n: number): number {
+  const at = (k: number) => {
+    const { count, value } = iterations(() => extractImports([{ path: file, content: gen(k) }], { root: '.', xrayVersion: 'test' }));
+    expect(value.files[0].status).toBe('ok');
+    return count;
+  };
+  return at(4 * n) / at(n);
+}
+
+/** `.parent` accesses at n and 4n (equal: no per-node or per-record climb) and text-read growth. */
+function climbs(gen: (n: number) => string, file: string, n: number) {
+  const small = measure(file, gen(n));
+  const large = measure(file, gen(4 * n));
+  return { parent: [small.parent, large.parent], textGrowth: large.text / Math.max(1, small.text) };
+}
+
 describe('Rust extractor on deeply nested input', () => {
   const DEPTH = 20000;
   const segs = (d: number) => Array.from({ length: d }, (_, i) => `a${i}`).join('::');
@@ -185,12 +211,12 @@ describe('Rust extractor on deeply nested input', () => {
     expect(rs[1].module).toBe('serde');
   });
 
-  it('use trees nested 100k deep, linear time', () => {
-    const t0 = Date.now();
-    const rs = all(`use ${'a::{'.repeat(100000)}b${'}'.repeat(100000)};`);
-    expect(rs.map(r => r.module.length)).toEqual([100000 * 3 + 1]);
-    // Copying the prefix per level was quadratic (~29 s at this depth; ~1 s now).
-    expect(Date.now() - t0).toBeLessThan(8000);
+  it('use trees nested 100k deep: prefix not copied per level', () => {
+    // Copying the prefix per level was quadratic (~29 s at 100k).
+    const gen = (n: number) => `use ${'a::{'.repeat(n)}b${'}'.repeat(n)};`;
+    expect(iterationGrowth(gen, 'a.rs', 250)).toBeLessThan(5);
+    expect(climbs(gen, 'a.rs', 1000).parent).toEqual([0, 0]);
+    expect(all(gen(100000)).map(r => r.module.length)).toEqual([100000 * 3 + 1]);
   });
 
   it('use paths (long scoped_identifier chains)', () => {
@@ -198,43 +224,59 @@ describe('Rust extractor on deeply nested input', () => {
     expect(rs.map(r => [r.kind, r.module.split('::').length])).toEqual([['static', DEPTH], ['reference', 1]]);
   });
 
-  it('expression paths (long scoped_identifier chains), linear time', () => {
-    const t0 = Date.now();
-    const rs = refs('a.rs', `fn f() { ${segs(DEPTH)}(); serde::x(); }`);
-    expect(rs.map(r => [r.module, r.evidence.length])).toEqual([['a0', 240], ['serde', 8]]);
-    // Climbing `.parent` per chain link was quadratic (~11 s at this depth; ~0.1 s now).
-    expect(Date.now() - t0).toBeLessThan(5000);
+  it('expression paths (long scoped_identifier chains): no climb per chain link', () => {
+    // Climbing `.parent` per chain link was quadratic (~11 s at 20k).
+    const gen = (n: number) => `fn f() { ${segs(n)}(); serde::x(); }`;
+    const c = climbs(gen, 'a.rs', 1000);
+    expect([c.parent, c.textGrowth < 5]).toEqual([[0, 0], true]);
+    expect(refs('a.rs', gen(DEPTH)).map(r => [r.module, r.evidence.length])).toEqual([['a0', 240], ['serde', 8]]);
   });
 
-  it('many distinct roots deep in token trees, linear time', () => {
-    const t0 = Date.now();
-    const rs = refs('a.rs', `fn f() { m!(${Array.from({ length: DEPTH }, (_, i) => `r${i}::x(`).join('')}${')'.repeat(DEPTH)}); }`);
+  it('many distinct roots deep in token trees: range text without climbs', () => {
+    // Range text via `.parent` per record was quadratic (~77 s at 20k).
+    const gen = (n: number) => `fn f() { m!(${Array.from({ length: n }, (_, i) => `r${i}::x(`).join('')}${')'.repeat(n)}); }`;
+    const c = climbs(gen, 'a.rs', 1000);
+    expect([c.parent, c.textGrowth < 5]).toEqual([[0, 0], true]);
+    const rs = refs('a.rs', gen(DEPTH));
     expect(rs).toHaveLength(DEPTH);
     expect(rs[DEPTH - 1].evidence).toBe(`r${DEPTH - 1}::x`);
-    // Range text via `.parent` per record was quadratic (~77 s at this depth; ~0.4 s now).
-    expect(Date.now() - t0).toBeLessThan(8000);
   });
 });
 
 describe('PHP extractor on deeply nested input', () => {
-  it('qualified names nested 20k deep, linear time', () => {
-    const t0 = Date.now();
-    const rs = refs('a.php', `<?php\n${'\\A\\f('.repeat(20000)}${')'.repeat(20000)}; new \\V\\X();`);
-    expect(rs.map(r => [r.normalized, r.occurrences])).toEqual([['A\\f', 20000], ['V\\X', 1]]);
-    // `.parent` per name was quadratic (~27 s at this depth; ~0.3 s now).
-    expect(Date.now() - t0).toBeLessThan(8000);
+  it('qualified names nested 20k deep: no climb per name', () => {
+    // `.parent` per name was quadratic (~27 s at 20k).
+    const gen = (n: number) => `<?php\n${'\\A\\f('.repeat(n)}${')'.repeat(n)}; new \\V\\X();`;
+    const c = climbs(gen, 'a.php', 1000);
+    expect([c.parent, c.textGrowth < 5]).toEqual([[0, 0], true]);
+    expect(refs('a.php', gen(20000)).map(r => [r.normalized, r.occurrences])).toEqual([['A\\f', 20000], ['V\\X', 1]]);
   });
 
-  it('many names and many namespace blocks: linear time', () => {
-    const N = 60000;
+  it('many names and many namespace blocks: region lookup amortized O(1) per name', () => {
+    // Scanning every namespace region per name was O(names x namespaces) (~7 s at 60k x 60k).
     // Worst case for a per-name scan over regions: every name in the first
     // region, N empty regions after it.
+    const regionReads = (n: number) => {
+      const spaces: PhpNamespace[] = [{ name: 'First', line: 1, column: 1, endLine: n + 2, endColumn: 1 }];
+      for (let i = 0; i < n; i++) spaces.push({ name: `N${i}`, line: n + 2 + i, column: 1, endLine: n + 3 + i, endColumn: 1 });
+      let reads = 0;
+      const counted = new Proxy(spaces, {
+        get(t, k, r) {
+          if (typeof k === 'string' && /^\d+$/.test(k)) reads++;
+          return Reflect.get(t, k, r);
+        },
+      });
+      const locate = regionLocator(counted);
+      for (let i = 0; i < n; i++) {
+        expect(locate({ startPosition: { row: i + 1, column: 0 } } as Parameters<typeof locate>[0])).toBe(0);
+      }
+      return reads / n;
+    };
+    expect(regionReads(100)).toBeLessThanOrEqual(4);
+    expect(regionReads(10000)).toBeLessThanOrEqual(4);
+    const N = 60000;
     const src = `<?php\nnamespace First;\n${'X\\Y;\n'.repeat(N)}${Array.from({ length: N }, (_, i) => `namespace N${i};\n`).join('')}`;
-    const t0 = Date.now();
-    const rs = refs('a.php', src);
-    expect(rs.map(r => [r.normalized, r.occurrences])).toEqual([['First\\X\\Y', N]]);
-    // Scanning every namespace region per name was O(names x namespaces): ~7 s here; ~1.3 s now.
-    expect(Date.now() - t0).toBeLessThan(4000);
+    expect(refs('a.php', src).map(r => [r.normalized, r.occurrences])).toEqual([['First\\X\\Y', N]]);
   });
 
   it('region lookup: nested and overlapping regions resolve to the latest-starting container', () => {

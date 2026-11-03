@@ -146,6 +146,28 @@ export function measure(file: string, content: Content): Work & { doc: ImportsDo
   }
 }
 
+/**
+ * Array elements visited through the array iterator while `fn` runs:
+ * spread, for-of, Array.from, destructuring. Replacing
+ * Array.prototype[Symbol.iterator] turns off V8's fast path, so every
+ * element copied by `[...a, ...b]` is counted: a prefix copied per nesting
+ * level shows up as quadratic.
+ */
+export function iterations<T>(fn: () => T): { count: number; value: T } {
+  const original = Array.prototype[Symbol.iterator];
+  let count = 0;
+  Array.prototype[Symbol.iterator] = function (this: unknown[]) {
+    const it = original.call(this);
+    return { next: () => (count++, it.next()), [Symbol.iterator]() { return this; } } as unknown as IterableIterator<unknown>;
+  } as typeof original;
+  try {
+    const value = fn();
+    return { count, value };
+  } finally {
+    Array.prototype[Symbol.iterator] = original;
+  }
+}
+
 /** Contract checks every case shares. */
 export function expectValid(doc: ImportsDoc, file: string): FileImports {
   expect(doc.files.map(f => f.path)).toEqual([file]);
