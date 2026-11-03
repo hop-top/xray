@@ -88,7 +88,7 @@
         "language": { "type": "string", "minLength": 1 },
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "status": { "$ref": "#/$defs/fileStatus" },
-        "complete": { "type": "boolean", "description": "status ok and unsupported empty." },
+        "complete": { "type": "boolean", "description": "status ok, unsupported empty and resolution succeeded." },
         "parseErrors": { "type": "array", "items": { "$ref": "#/$defs/parseError" } },
         "imports": { "type": "array", "items": { "$ref": "#/$defs/importRecord" } },
         "unsupported": { "type": "array", "items": { "$ref": "#/$defs/unsupportedRecord" } }

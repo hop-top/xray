@@ -142,7 +142,7 @@ exist. Nothing is written into the scanned tree (see
 | `language` | string | Detected language. |
 | `sha256` | hex string | Content hash: ties the evidence to the bytes read. |
 | `status` | enum | `ok`, `parse-error` (imports still listed; also an internal extractor failure, see [Coverage](#coverage)), `grammar-missing` (grammar not installed), `unsupported-language` (source file in a language outside the contract; never silently dropped). |
-| `complete` | boolean | `status` is `ok` and `unsupported` is empty: within xray's model every reachable module is listed. See [Known limits](#known-limits). |
+| `complete` | boolean | `status` is `ok`, `unsupported` is empty and resolution succeeded: within xray's model every reachable module is listed. See [Known limits](#known-limits). |
 | `parseErrors` | array | `{kind, start, end}` per ERROR (`kind` `error`) or MISSING (`kind` `missing`, zero-width) node; `start`/`end` are `{line, column}` per `positions`, `end` exclusive. An ERROR node's nested errors are part of it. |
 | `imports` | array | Import records, sorted by (`line`, `column`, `module`). |
 | `unsupported` | array | Constructs that can load code xray cannot name, sorted by (`line`, `column`, `construct`). |
@@ -335,7 +335,8 @@ reported in `unsupported` instead.
 
 - `status` is `parse-error` when the tree has any ERROR or MISSING node;
   imports found in the rest of the file are still listed.
-- `complete` = `status` `ok` and `unsupported` empty.
+- `complete` = `status` `ok`, `unsupported` empty and resolution succeeded
+  (see [Resolution](#resolution)).
 - Rust build scripts (the one filename rule): `build.rs` beside a
   `Cargo.toml` that has a `[package]` table, or the path named by its
   `build = "..."` (none with `build = false`), gets one `build-script`
@@ -355,6 +356,13 @@ file set: manifests must be part of it (`go.mod`, `go.work`,
 `package.json`; `Cargo.toml` and `__init__.py` as markers). No filesystem
 or network access, no `node_modules`: `external` means declared by a
 manifest, not installed. Every record kind goes through the same rules.
+
+Per-file isolation: an internal failure while resolving one file's
+records leaves them as extracted (no `resolved`; `locality` only where
+extraction sets it, e.g. `node:` and Rust `crate`/`self`/`super`, else
+`unknown`) and sets `complete: false`, with no unsupported or parse-error
+entry; nothing of the failure is written to the document. The run
+continues.
 
 | Lang | Rules |
 |---|---|

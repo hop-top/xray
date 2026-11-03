@@ -10,6 +10,7 @@
  * nothing leaves the record as extracted.
  */
 
+import { Logger } from '../../logger';
 import type { FileImports, ImportRecord } from '../types';
 import { applyResolution, FileSet, type ResolveInput, type Resolution } from './context';
 import { ecmascriptResolver } from './ecmascript';
@@ -33,18 +34,53 @@ const FACTORIES: Record<string, (files: FileSet) => Resolver> = {
   typescript: files => byPath(ecmascriptResolver(files)),
 };
 
-/** Resolves every record of `entries` in place against the scanned `inputs`. */
+const FAILED = Symbol('resolver-failed');
+
+/**
+ * Resolves every record of `entries` in place against the scanned `inputs`.
+ *
+ * Per-file isolation: an exception from a resolver (or its factory) leaves
+ * that file's records exactly as extracted (no `resolved`, no
+ * resolution-derived locality) and sets `complete: false`; no unsupported
+ * record (no construct describes it) and nothing of the failure goes into
+ * the document, only a debug line naming the file. Other files resolve.
+ */
 export function resolveImports(entries: FileImports[], inputs: readonly ResolveInput[]): void {
   const files = new FileSet(inputs);
-  const resolvers = new Map<string, Resolver | undefined>();
+  const resolvers = new Map<string, Resolver | typeof FAILED | undefined>();
   for (const entry of entries) {
     if (entry.imports.length === 0) continue;
-    if (!resolvers.has(entry.language)) resolvers.set(entry.language, FACTORIES[entry.language]?.(files));
+    if (!resolvers.has(entry.language)) {
+      let made: Resolver | typeof FAILED | undefined;
+      try {
+        made = FACTORIES[entry.language]?.(files);
+      } catch (err) {
+        Logger.debug(`imports: resolver setup failed for ${entry.language} (${errName(err)})`);
+        made = FAILED;
+      }
+      resolvers.set(entry.language, made);
+    }
     const resolve = resolvers.get(entry.language);
     if (!resolve) continue;
-    entry.imports = entry.imports.map(r => {
-      const res = resolve(r, entry);
-      return res ? applyResolution(r, res) : r;
-    });
+    if (resolve === FAILED) {
+      unresolved(entry);
+      continue;
+    }
+    try {
+      entry.imports = entry.imports.map(r => {
+        const res = resolve(r, entry);
+        return res ? applyResolution(r, res) : r;
+      });
+    } catch (err) {
+      // map() never assigned: entry.imports still holds the extracted records.
+      Logger.debug(`imports: resolution failed for ${entry.path} (${errName(err)})`);
+      unresolved(entry);
+    }
   }
 }
+
+function unresolved(entry: FileImports): void {
+  entry.complete = false;
+}
+
+const errName = (err: unknown) => (err instanceof Error ? err.name : typeof err);
