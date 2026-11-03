@@ -23,10 +23,50 @@ export type LanguageExtractor = (root: SyntaxNode, ctx: ExtractContext) => Impor
 
 export const EVIDENCE_MAX = 240;
 
-/** Whitespace-collapsed text, at most EVIDENCE_MAX code points (truncation ends in `…`). */
+/**
+ * UTF-16 units of source read for one evidence string: EVIDENCE_MAX code
+ * points with room for surrogate pairs and collapsed whitespace. Evidence
+ * work is bounded by this, never by the size of the node.
+ */
+export const EVIDENCE_WINDOW = EVIDENCE_MAX * 4;
+
+/**
+ * Whitespace-collapsed text, at most EVIDENCE_MAX code points (truncation
+ * ends in `…`). `cut`: the text is a window of a longer range, so the
+ * result is truncated even when the window collapses short.
+ */
+function collapse(text: string, cut: boolean): string {
+  // A window ending inside a surrogate pair: drop the lone high half.
+  const last = text.charCodeAt(text.length - 1);
+  const t = cut && last >= 0xd800 && last <= 0xdbff ? text.slice(0, -1) : text;
+  const cps = Array.from(t.replace(/\s+/g, ' ').trim());
+  return !cut && cps.length <= EVIDENCE_MAX ? cps.join('') : cps.slice(0, EVIDENCE_MAX - 1).join('') + '…';
+}
+
+/** Evidence of `source[start, end)`, reading at most EVIDENCE_WINDOW units of it. */
+export function evidenceRange(source: string, start: number, end: number): string {
+  const stop = Math.min(end, start + EVIDENCE_WINDOW);
+  return collapse(source.slice(start, stop), stop < end);
+}
+
+/** Evidence of an arbitrary string (bounded the same way). */
 export function evidence(text: string): string {
-  const cps = Array.from(text.replace(/\s+/g, ' ').trim());
-  return cps.length <= EVIDENCE_MAX ? cps.join('') : cps.slice(0, EVIDENCE_MAX - 1).join('') + '…';
+  return evidenceRange(text, 0, text.length);
+}
+
+/**
+ * Evidence of the source from the start of `from` through the end of `to`
+ * (`to` at or after `from`, same tree). Reads at most EVIDENCE_WINDOW units
+ * straight from the tree's input: never the node's full `.text`, no
+ * `.parent` climbs.
+ */
+export function nodeEvidence(from: SyntaxNode, to: SyntaxNode = from): string {
+  const start = from.startIndex;
+  const end = Math.max(start, to.endIndex);
+  const stop = Math.min(end, start + EVIDENCE_WINDOW);
+  // Tree#getText reads only startIndex/endIndex of its argument.
+  const text = from.tree.getText({ startIndex: start, endIndex: stop } as SyntaxNode);
+  return collapse(text, stop < end);
 }
 
 /**
@@ -42,15 +82,6 @@ export function span(from: SyntaxNode, to: SyntaxNode = from): Pick<ImportRecord
     endLine: to.endPosition.row + 1,
     endColumn: to.endPosition.column + 1,
   };
-}
-
-/** Source text from the start of `from` through the end of `to` (`to` at or after `from`). */
-export function textBetween(from: SyntaxNode, to: SyntaxNode): string {
-  if (from === to) return to.text;
-  let p: SyntaxNode | null = to.parent;
-  while (p && p.startIndex > from.startIndex) p = p.parent;
-  if (!p) return to.text;
-  return p.text.slice(from.startIndex - p.startIndex, to.endIndex - p.startIndex);
 }
 
 export interface RecordFields {
@@ -95,7 +126,7 @@ export function record(f: RecordFields): ImportRecord {
   if (f.resolved) r.resolved = f.resolved;
   r.confidence = f.confidence ?? 'syntactic';
   if (f.occurrences !== undefined) r.occurrences = f.occurrences;
-  r.evidence = evidence(f.evidenceOf ? f.evidenceOf.text : textBetween(f.at, f.end ?? f.at));
+  r.evidence = f.evidenceOf ? nodeEvidence(f.evidenceOf) : nodeEvidence(f.at, f.end ?? f.at);
   return r;
 }
 

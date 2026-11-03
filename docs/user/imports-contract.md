@@ -170,7 +170,7 @@ present only when they apply; an absent boolean means `false`.
 | `resolved` | `{file}` or `{dir}` | Target in the tree (`dir` for Go packages); absent when unresolved. |
 | `confidence` | enum | `syntactic` (read directly from syntax) or `inferred` (Rust path roots without a leading `::`; filter these if you need certainty). |
 | `occurrences` | integer | `kind` `reference` only: uses in the file (first occurrence gives the position). |
-| `evidence` | string | Source text, whitespace-collapsed, at most 240 characters. |
+| `evidence` | string | Source text, whitespace-collapsed, at most 240 characters (see [Ordering and determinism](#ordering-and-determinism)). |
 
 ### Unsupported record
 
@@ -179,7 +179,7 @@ present only when they apply; an absent boolean means `false`.
 | `line`, `column` | integer | Start of the construct. |
 | `construct` | enum | See table below. |
 | `detail` | string | Optional human-readable detail (e.g. linkname target). |
-| `evidence` | string | Source text, whitespace-collapsed, at most 240 characters. |
+| `evidence` | string | Source text, whitespace-collapsed, at most 240 characters (see [Ordering and determinism](#ordering-and-determinism)). |
 
 | Language | Constructs |
 |---|---|
@@ -377,6 +377,11 @@ continues.
 `files` by posix `path`; `imports` by (`line`, `column`, `module`);
 `unsupported` by (`line`, `column`, `construct`); `parseErrors` by
 `start`. The same input and xray version produce byte-identical output.
+
+`evidence` reads at most 960 UTF-16 units (4 x 240) of the record's
+range, whatever the node's size; a longer range always ends in `…`. Only
+a range whose first 960 units are mostly whitespace collapses to fewer
+than 239 characters before the `…`.
 
 ## Caching
 

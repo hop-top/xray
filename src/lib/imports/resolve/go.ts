@@ -14,7 +14,7 @@
  */
 
 import * as path from 'path';
-import { goPackageDir, ownerModuleDir, parseGoWorkUses, parseModulePath, type GoModule, type GoModules } from '../../graph/go-resolver';
+import { goPackageDir, ownerModuleDir, parseGoModRequires, parseGoWorkUses, parseModulePath, type GoModule, type GoModules } from '../../graph/go-resolver';
 import type { ImportRecord } from '../types';
 import { dirOf, join, type FileSet, type Resolution } from './context';
 
@@ -24,19 +24,6 @@ import { dirOf, join, type FileSet, type Resolution } from './context';
  */
 const VROOT = path.resolve(path.sep, '__xray_scan_root__');
 const abs = (dir: string) => (dir === '' ? VROOT : path.join(VROOT, ...dir.split('/')));
-
-/** Module paths of `require` directives (single-line and blocks). */
-export function parseGoModRequires(goMod: string): string[] {
-  const text = goMod.replace(/\/\/.*$/gm, '');
-  const out: string[] = [];
-  const add = (line: string) => {
-    const m = /^\s*(?:"([^"]+)"|`([^`]+)`|(\S+))\s+\S/.exec(line);
-    if (m) out.push(m[1] ?? m[2] ?? m[3]);
-  };
-  for (const m of text.matchAll(/^\s*require\s*\(([^)]*)\)/gm)) m[1].split('\n').forEach(add);
-  for (const m of text.matchAll(/^\s*require\s+([^(\s][^\n]*)$/gm)) add(m[1]);
-  return out;
-}
 
 export function goResolver(files: FileSet): (r: ImportRecord, file: string) => Resolution | undefined {
   const all: GoModule[] = [];

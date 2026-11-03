@@ -4,14 +4,14 @@
  */
 
 import * as posix from 'path/posix';
-import { evidence, type SyntaxNode } from './record';
+import { evidence, nodeEvidence, type SyntaxNode } from './record';
 import type { ParseError, Position, UnsupportedConstruct, UnsupportedRecord } from './types';
 
 /** Unsupported record at the start of `at`; evidence = `at`'s text unless given. */
 export function unsupportedAt(at: SyntaxNode, construct: UnsupportedConstruct, detail?: string, text?: string): UnsupportedRecord {
   const r: UnsupportedRecord = { line: at.startPosition.row + 1, column: at.startPosition.column + 1, construct } as UnsupportedRecord;
   if (detail !== undefined) r.detail = detail;
-  r.evidence = evidence(text ?? at.text);
+  r.evidence = text !== undefined ? evidence(text) : nodeEvidence(at);
   return r;
 }
 
@@ -53,9 +53,10 @@ function cargoBuild(toml: string): { inPackage: boolean; build?: string | boolea
   let line: string | undefined;
   for (const raw of toml.split(/\r?\n/)) {
     const l = raw.trim();
-    const header = /^\[\s*([^\]]+?)\s*\]/.exec(l);
-    if (header && !l.startsWith('[[')) {
-      table = header[1];
+    // Table header `[name]`: first `]`, no regex (a long unclosed `[` line must stay linear).
+    const close = l.startsWith('[') ? l.indexOf(']') : -1;
+    if (close > 1 && !l.startsWith('[[')) {
+      table = l.slice(1, close).trim();
       if (table === 'package') inPackage = true;
       continue;
     }

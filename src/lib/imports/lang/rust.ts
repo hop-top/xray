@@ -34,7 +34,7 @@
  */
 
 import type { ImportRecord, UnsupportedRecord } from '../types';
-import { evidence, record, type LanguageExtractor, type SyntaxNode } from '../record';
+import { nodeEvidence, record, type LanguageExtractor, type SyntaxNode } from '../record';
 
 const LOCAL_ROOTS = new Set(['crate', 'self', 'super']);
 
@@ -268,7 +268,7 @@ function includeMacroName(n: SyntaxNode): string | undefined {
   return INCLUDE_MACROS[name.text] ? name.text : undefined;
 }
 
-function includeRecords(uses: IncludeUse[], source: string, out: UnsupportedRecord[]): void {
+function includeRecords(uses: IncludeUse[], out: UnsupportedRecord[]): void {
   for (const u of uses) {
     const end = u.tree ?? u.at;
     const literal = literalPath(u.tree);
@@ -277,7 +277,7 @@ function includeRecords(uses: IncludeUse[], source: string, out: UnsupportedReco
       column: u.at.startPosition.column + 1,
       construct: INCLUDE_MACROS[u.name],
       detail: literal ? `${u.name}! with a literal path` : `${u.name}! with a non-literal path`,
-      evidence: evidence(source.slice(u.at.startIndex, end.endIndex)),
+      evidence: nodeEvidence(u.at, end),
     });
   }
 }
@@ -325,12 +325,8 @@ function isCandidateRoot(root: string): boolean {
   return !/^[A-Z]/.test(root) && !LOCAL_ROOTS.has(root) && !PRIMITIVES.has(root);
 }
 
-/**
- * `source` = the root's text: evidence is sliced from it, since the shared
- * range-text helper reads the parent's text and `.parent` costs O(depth) —
- * quadratic for many records deep in nested token trees.
- */
-function referenceRecords(occs: Occurrence[], bound: Set<string>, source: string, out: ImportRecord[]): void {
+/** Evidence = the occurrence's range, read from the tree's input (no `.parent` climbs). */
+function referenceRecords(occs: Occurrence[], bound: Set<string>, out: ImportRecord[]): void {
   const byRoot = new Map<string, { first: Occurrence; count: number }>();
   for (const o of occs) {
     if (!isCandidateRoot(o.root) || (!o.leadingColons && bound.has(o.root))) continue;
@@ -340,11 +336,10 @@ function referenceRecords(occs: Occurrence[], bound: Set<string>, source: string
   }
   for (const [root, { first, count }] of byRoot) {
     const r = record({
-      at: first.at, end: first.end, evidenceOf: first.at, kind: 'reference', form: 'path-root',
+      at: first.at, end: first.end, kind: 'reference', form: 'path-root',
       module: root, normalized: root, package: root, locality: STDLIB.has(root) ? 'stdlib' : 'unknown',
       confidence: first.leadingColons ? 'syntactic' : 'inferred', occurrences: count,
     });
-    r.evidence = evidence(source.slice(first.at.startIndex, first.end.endIndex));
     out.push(r);
   }
 }
@@ -397,8 +392,7 @@ export const extractRust: LanguageExtractor = (root, ctx) => {
     if (!cursor.gotoParent()) break;
     descend = false;
   }
-  const source = root.text;
-  referenceRecords(occs, bound, source, out);
-  if (ctx?.unsupported) includeRecords(includes, source, ctx.unsupported);
+  referenceRecords(occs, bound, out);
+  if (ctx?.unsupported) includeRecords(includes, ctx.unsupported);
   return out;
 };

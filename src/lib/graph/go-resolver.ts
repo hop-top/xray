@@ -31,21 +31,94 @@ export interface GoModules {
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build', '.hg']);
 
+/*
+ * go.mod / go.work directive parsing, line by line and regex-free across
+ * lines: `^\s*` / `[^)]*` patterns over the whole file backtrack
+ * quadratically on long runs of blank lines or unclosed blocks.
+ */
+
+/** Lines with `//` comments removed (quotes not considered, as before). */
+function goLines(text: string): string[] {
+  return text.split('\n').map(l => {
+    const i = l.indexOf('//');
+    return i < 0 ? l : l.slice(0, i);
+  });
+}
+
+/** Text after `keyword` on a trimmed line when the keyword is followed by whitespace or `(`; else undefined. */
+function afterKeyword(line: string, keyword: string): string | undefined {
+  if (!line.startsWith(keyword)) return undefined;
+  const rest = line.slice(keyword.length);
+  return rest === '' || /^[\s(]/.test(rest) ? rest : undefined;
+}
+
+/**
+ * Arguments of `keyword` directives: each line of `keyword ( ... )` blocks
+ * (text after `(` through the first `)`; an unclosed block yields nothing),
+ * then each single-line `keyword arg...`. Linear in the text.
+ */
+function goDirectiveArgs(text: string, keyword: string): string[] {
+  const blocks: string[] = [];
+  const singles: string[] = [];
+  let open: string[] | undefined;
+  for (const raw of goLines(text)) {
+    if (open) {
+      const close = raw.indexOf(')');
+      open.push(close < 0 ? raw : raw.slice(0, close));
+      if (close >= 0) {
+        blocks.push(...open);
+        open = undefined;
+      }
+      continue;
+    }
+    const rest = afterKeyword(raw.trim(), keyword);
+    if (rest === undefined) continue;
+    const arg = rest.trimStart();
+    if (arg.startsWith('(')) {
+      const body = arg.slice(1);
+      const close = body.indexOf(')');
+      if (close >= 0) blocks.push(body.slice(0, close));
+      else open = [body];
+    } else if (arg !== '' && arg.length < rest.length) {
+      singles.push(arg);
+    }
+  }
+  return [...blocks, ...singles];
+}
+
 export function parseModulePath(goMod: string): string | null {
-  const m = /^\s*module\s+(?:"([^"]+)"|`([^`]+)`|(\S+))/m.exec(goMod);
-  return m ? (m[1] ?? m[2] ?? m[3]) : null;
+  for (const raw of goMod.split('\n')) {
+    const rest = afterKeyword(raw.trim(), 'module');
+    if (rest === undefined) continue;
+    const arg = rest.trimStart();
+    if (arg === '' || arg.length === rest.length) continue;
+    for (const q of ['"', '`']) {
+      if (!arg.startsWith(q)) continue;
+      const end = arg.indexOf(q, 1);
+      if (end > 1) return arg.slice(1, end);
+    }
+    return arg.split(/\s/, 1)[0];
+  }
+  return null;
 }
 
 /** Absolute directories named by the `use` directives of a go.work file. */
 export function parseGoWorkUses(goWork: string, workDir: string): Set<string> {
   const out = new Set<string>();
-  const text = goWork.replace(/\/\/.*$/gm, '');
-  const add = (raw: string) => {
-    const dir = raw.trim().replace(/^["`]|["`]$/g, '');
+  for (const arg of goDirectiveArgs(goWork, 'use')) {
+    const dir = arg.trim().replace(/^["`]|["`]$/g, '');
     if (dir) out.add(path.resolve(workDir, dir));
-  };
-  for (const m of text.matchAll(/^\s*use\s*\(([^)]*)\)/gm)) m[1].split('\n').forEach(add);
-  for (const m of text.matchAll(/^\s*use\s+([^(\s][^\n]*)$/gm)) add(m[1]);
+  }
+  return out;
+}
+
+/** Module paths of `require` directives (single-line and blocks). */
+export function parseGoModRequires(goMod: string): string[] {
+  const out: string[] = [];
+  for (const line of goDirectiveArgs(goMod, 'require')) {
+    const m = /^\s*(?:"([^"]+)"|`([^`]+)`|(\S+))\s+\S/.exec(line);
+    if (m) out.push(m[1] ?? m[2] ?? m[3]);
+  }
   return out;
 }
 

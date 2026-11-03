@@ -158,6 +158,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+- Imports: Cargo.toml headers and go.mod/go.work directives parsed in linear
+  time (were cubic/quadratic on long or blank-heavy lines); evidence reads at
+  most 960 source units per record instead of the whole node.
 - `xray imports`: a resolver failure on one file no longer aborts the run;
   that file keeps its extracted records and gets `complete: false`.
 - Imports extractor version 0.4.0 for the coverage output (`unsupported[]`,
