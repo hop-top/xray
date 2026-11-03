@@ -45,7 +45,7 @@ exist. Nothing is written into the scanned tree (see
   "schema": "xray.imports/v1",
   "xray": {
     "version": "0.1.0",
-    "extractor": "0.3.0"
+    "extractor": "0.4.0"
   },
   "grammars": {
     "go": {

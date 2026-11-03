@@ -158,6 +158,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+- Imports extractor version 0.4.0 for the coverage output (`unsupported[]`,
+  `parseErrors[]`, `status`, `complete`): cache entries from 0.3.0 are misses.
 - `npm run typecheck:tests` failed under pnpm installs (TS2307): four query
   test files imported the undeclared `@jest/globals`; they now use the
   global jest types like every other test.
