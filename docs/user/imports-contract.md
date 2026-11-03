@@ -23,7 +23,7 @@ honest coverage take priority over breadth.
 ## Usage
 
 ```bash
-xray imports [paths...] [-p <root>] [--lang <list>] [--format json|yaml|table|csv|text] [-o <file>]
+xray imports [paths...] [-p <root>] [--lang <list>] [--format json|yaml|table|csv|text] [-o <file>] [--no-cache]
 ```
 
 `json` (default) and `yaml` print this document; `table`/`csv`/`text`
@@ -34,7 +34,8 @@ the files reported only: manifests under the root (`go.mod`, `go.work`,
 `package.json`, `Cargo.toml`) are always read for resolution. Exit `0`
 whenever a document is produced (parse errors and unsupported constructs
 are data), `2` on usage errors, `3` when the root or a path does not
-exist. Nothing is written into the scanned tree. Full option list:
+exist. Nothing is written into the scanned tree (see
+[Caching](#caching)). Full option list:
 [Commands: `xray imports`](commands.md#xray-imports).
 
 `xray imports` in `__tests__/fixtures/imports/go/raw-string`:
@@ -368,6 +369,29 @@ manifest, not installed. Every record kind goes through the same rules.
 `files` by posix `path`; `imports` by (`line`, `column`, `module`);
 `unsupported` by (`line`, `column`, `construct`); `parseErrors` by
 `start`. The same input and xray version produce byte-identical output.
+
+## Caching
+
+`xray imports` keeps one entry per file in xray's cache directory
+(`xray paths` → `cache-dir`, i.e. `$XDG_CACHE_HOME/xray` when set), under
+`imports/<root id>.db`: one SQLite store per root, directory mode 700,
+file mode 600. It never writes under the scanned root; a cache directory
+inside the root (or a relative `XDG_CACHE_HOME`) runs uncached.
+`--no-cache` neither reads nor writes it.
+
+An entry is reused only when the file's path, content `sha256`, extractor
+version, language and grammar (module, version, source) all match; it
+holds the file entry before resolution, which runs on every invocation
+(it depends on the file set), and before Cargo `build-script` records,
+which depend on `Cargo.toml` and are applied after lookup. Files with no
+content to extract (`unsupported-language`, `grammar-missing`) are never
+cached, and a file whose extraction failed is never written. Entries are treated as untrusted: any entry
+that is malformed, fails its checksum or is not exactly a file entry is a
+miss and is recomputed. Output with and without the cache is
+byte-identical. `--verbose` prints hit/miss counts on stderr.
+
+Delete the directory to reset it (`xray cache clear` clears
+`.xray_cache.db` only).
 
 ## Compatibility
 

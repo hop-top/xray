@@ -1153,6 +1153,7 @@ FLAGS:
   --lang <list>        Languages to include, comma-separated: python, go, rust,
                        typescript|ts, javascript|js, php (repeatable) (default:
                        [])
+  --no-cache           Parse every file; do not read or write the per-file cache
   --cols <cols...>     Restrict columns to this comma-separated list
                        (repeatable) (default: [])
   -o, --output <path>  Write output to path (use - or empty for stdout)
@@ -1171,8 +1172,11 @@ relative to the root (-p, default: current directory). [paths...] narrow
 the scan to files or directories inside the root (relative to the current
 directory). --lang and [paths...] select the files reported; manifests
 (go.mod, go.work, package.json, Cargo.toml) anywhere under the root are
-always read for resolution. Parses only: no graph, no cache, nothing
-written outside -o.
+always read for resolution. Parses only: no graph. Unchanged files are
+read from a per-file cache in xray's cache directory (\`xray paths\`,
+cache-dir/imports), never under the root; output is identical with or
+without it. --no-cache parses every file and writes no cache. Cache
+hits/misses show at --verbose (stderr).
 
 Exit 0 whenever a document is produced: parse errors and unsupported
 constructs are data (\`complete: false\` on the file), not failures.
@@ -5295,6 +5299,14 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": [],
           "description": "Languages to include, comma-separated: python, go, rust, typescript|ts, javascript|js, php (repeatable)"
+        },
+        {
+          "name": "--no-cache",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Parse every file; do not read or write the per-file cache"
         },
         {
           "name": "--format-opt",

@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   imports, importlib loaders, exec/eval, sys.path), `parseErrors[]` with
   `status: parse-error`, `complete`, other-language source as
   `unsupported-language`; one file's extractor failure no longer aborts the run.
+- `xray imports` per-file cache outside the scanned tree
+  (`<cache-dir>/imports/<root id>.db`): path + content sha256 + extractor +
+  grammar version; invalid entries are misses; `--no-cache` disables;
+  output unchanged.
 - `xray.imports/v1` call forms with literal arguments: TS/JS `require()`,
   `import()` (type-position `import()` as `import-type`), Python
   `__import__` and `importlib.import_module` (extractor 0.3.0).

@@ -20,6 +20,7 @@ import { Logger } from '../logger';
 import { getGrammar, grammarForExtension, packForExtension } from '../parser/grammars';
 import { IMPORT_MANIFESTS } from './collect';
 import { IMPORT_LANGUAGES, importLanguageFor } from './languages';
+import type { ImportsCache } from './cache';
 import { resolveImports } from './resolve';
 import { cargoBuildScripts, endOf, parseErrors } from './unsupported';
 import {
@@ -43,6 +44,8 @@ export interface ExtractImportsOptions {
   root: string;
   /** xray package version for the header. */
   xrayVersion: string;
+  /** Per-file entry cache (./cache); absent = parse every file. */
+  cache?: ImportsCache;
 }
 
 const cmp = (a: string | number, b: string | number) => (a < b ? -1 : a > b ? 1 : 0);
@@ -61,57 +64,81 @@ interface RunState {
   parsers: Map<unknown, Parser>;
   /** Cargo build scripts by path (filename rule). */
   buildScripts: Map<string, UnsupportedRecord>;
+  cache: ImportsCache | undefined;
 }
 
 const bytesOf = (file: ImportsSourceFile) => (typeof file.content === 'string' ? Buffer.from(file.content, 'utf8') : file.content);
 const sha256Of = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
-/** Exceptions stop at the file: no message, stack or path leaves this function. */
+/**
+ * Exceptions stop at the file: no message, stack or path leaves this
+ * function. Isolation covers the cache lookup and the extraction; an entry
+ * whose extraction threw is never written to the cache.
+ */
 function extractFile(file: ImportsSourceFile, language: string, run: RunState): FileImports {
   const bytes = bytesOf(file);
   const sha256 = sha256Of(bytes);
+  const entry = { path: file.path, language, sha256 };
   try {
-    return parseFile(file, bytes, { path: file.path, language, sha256 }, run);
+    const lang = IMPORT_LANGUAGES[language];
+    const status = getGrammar(lang.pack);
+    const grammar = grammarForExtension(status, path.posix.extname(file.path));
+    if (!grammar) {
+      return { ...entry, status: 'grammar-missing', complete: false, parseErrors: [], imports: [], unsupported: [] };
+    }
+    run.grammars[language] = { module: status.module, version: status.version ?? 'unknown', source: status.source ?? 'xray' };
+    const key = { path: file.path, sha256, extractor: IMPORTS_EXTRACTOR_VERSION, language, grammar: run.grammars[language] };
+    const hit = run.cache?.get(key);
+    if (hit) return withBuildScript({ path: file.path, ...hit }, run);
+    const result = parseFile(file, bytes, entry, grammar, run);
+    if (run.cache) {
+      const { path: _path, ...rest } = result;
+      run.cache.set(key, rest);
+    }
+    return withBuildScript(result, run);
   } catch (err) {
     Logger.debug(`imports: extraction failed for ${file.path} (${err instanceof Error ? err.name : typeof err})`);
     const text = bytes.toString('utf8').replace(/^\uFEFF/, '');
     return {
-      path: file.path, language, sha256, status: 'parse-error', complete: false,
+      ...entry, status: 'parse-error', complete: false,
       parseErrors: [{ kind: 'error', start: { line: 1, column: 1 }, end: endOf(text) }],
       imports: [], unsupported: [],
     };
   }
 }
 
+/**
+ * Cargo build scripts depend on the file set (Cargo.toml), not the file's
+ * content, so they are applied after the cache, never stored in it.
+ */
+function withBuildScript(result: FileImports, run: RunState): FileImports {
+  const script = result.language === 'rust' ? run.buildScripts.get(result.path) : undefined;
+  if (!script) return result;
+  const unsupported = [...result.unsupported, { ...script }].sort(byStart);
+  return { ...result, complete: false, unsupported };
+}
+
+/** Content-only entry: depends on path, bytes, extractor and grammar (the cache key). */
 function parseFile(
   file: ImportsSourceFile,
   bytes: Buffer,
   entry: Pick<FileImports, 'path' | 'language' | 'sha256'>,
+  grammar: ReturnType<typeof grammarForExtension>,
   run: RunState
 ): FileImports {
   const { language } = entry;
-  const { grammars, parsers } = run;
   const lang = IMPORT_LANGUAGES[language];
-  const status = getGrammar(lang.pack);
-  const grammar = grammarForExtension(status, path.posix.extname(file.path));
-  if (!grammar) {
-    return { ...entry, status: 'grammar-missing', complete: false, parseErrors: [], imports: [], unsupported: [] };
-  }
-  grammars[language] = { module: status.module, version: status.version ?? 'unknown', source: status.source ?? 'xray' };
-
-  let parser = parsers.get(grammar);
+  let parser = run.parsers.get(grammar);
   if (!parser) {
     parser = new Parser();
     parser.setLanguage(grammar);
-    parsers.set(grammar, parser);
+    run.parsers.set(grammar, parser);
   }
   // A BOM is not a column in any editor; the hash above still covers it.
   const text = bytes.toString('utf8').replace(/^\uFEFF/, '');
   const tree = parser.parse(text);
   const unsupported: UnsupportedRecord[] = [];
   const imports = lang.extract(tree.rootNode, { path: file.path, language, unsupported }).sort(byPosition);
-  const script = language === 'rust' ? run.buildScripts.get(file.path) : undefined;
-  if (script) unsupported.push({ ...script });
   unsupported.sort(byStart);
   const errors = parseErrors(tree.rootNode);
   const fileStatus = errors.length > 0 ? 'parse-error' : 'ok';
@@ -133,7 +160,7 @@ function unclaimedFile(file: ImportsSourceFile): FileImports | undefined {
 
 export function extractImports(files: readonly ImportsSourceFile[], opts: ExtractImportsOptions): ImportsDoc {
   const grammars: Record<string, GrammarInfo> = {};
-  const run: RunState = { grammars, parsers: new Map(), buildScripts: cargoBuildScripts(files) };
+  const run: RunState = { grammars, parsers: new Map(), buildScripts: cargoBuildScripts(files), cache: opts.cache };
   const out: FileImports[] = [];
   for (const f of [...files].sort((a, b) => cmp(a.path, b.path))) {
     const language = importLanguageFor(path.posix.extname(f.path));

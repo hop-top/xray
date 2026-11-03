@@ -249,10 +249,10 @@ Every file's imports as the [`xray.imports/v1`](imports-contract.md)
 document: 1-based line/column (UTF-16 columns), module as written and
 normalized, package, locality, plus parse errors and constructs xray cannot
 follow (`complete: false` on the file). For tools that use imports as
-evidence; parses only (no graph, no strategies, no cache).
+evidence; parses only (no graph, no strategies).
 
 ```bash
-xray imports [paths...] [-p <root>] [--lang <list>] [--format <fmt>] [--cols <list>] [-o <file>]
+xray imports [paths...] [-p <root>] [--lang <list>] [--format <fmt>] [--cols <list>] [-o <file>] [--no-cache]
 ```
 
 | Option | Meaning |
@@ -261,6 +261,7 @@ xray imports [paths...] [-p <root>] [--lang <list>] [--format <fmt>] [--cols <li
 | `-p, --path <root>` | Root; every `path` in the document is relative to it, and `root` echoes it as given. Default: current directory. One root per document |
 | `--lang <list>` | Contract languages to include: `python`, `go`, `rust`, `typescript` (`ts`), `javascript` (`js`), `php`; comma-separated, repeatable |
 | `--format` | `json` (default) or `yaml`: the whole document. `table`, `csv`: one row per import (`file`, `line`, `column`, `kind`, `form`, `module`, `normalized`, `locality`; `--cols` adds `language`, `endLine`, `endColumn`, `package`, `alias`, `typeOnly`, `confidence`, `evidence`). `text`: per-file summary |
+| `--no-cache` | Parse every file; neither read nor write the per-file cache |
 
 Files are listed as `xray scan` lists them (`git ls-files`, else the
 root's `.gitignore`), plus `.mjs`/`.cjs`/`.mts`/`.cts`. `--lang` and
@@ -268,8 +269,11 @@ root's `.gitignore`), plus `.mjs`/`.cjs`/`.mts`/`.cts`. `--lang` and
 every `package.json`, `Cargo.toml`) anywhere under the root (not
 gitignored) are always read for module resolution and never listed in
 `files`. Output goes to
-stdout (or `-o`); nothing is written into the scanned tree. Two runs on the
-same input are byte-identical.
+stdout (or `-o`); nothing is written into the scanned tree. Unchanged
+files come from a per-file cache in xray's cache directory
+(`cache-dir/imports`, see [Caching](imports-contract.md#caching)); output
+is the same with `--no-cache`. Two runs on the same input are
+byte-identical.
 
 **Exit codes.** `0` whenever a document is produced: parse errors and
 unsupported constructs are data, not failures. `2` on usage errors (unknown

@@ -2,11 +2,14 @@
  * `xray imports [paths...]`: the `xray.imports/v1` document for one root
  * (schemas/xray.imports.v1.json, docs/user/imports-contract.md). Parses
  * only: no tags, references or graph. Reads the tree, writes stdout (or
- * `-o`), nothing else.
+ * `-o`) and the per-file cache outside the tree (lib/imports/cache.ts,
+ * off with --no-cache); never anything under the root.
  */
 import type { Command } from 'commander';
 import { extractImports, type FileImports, type ImportsDoc } from '../lib/imports';
+import { openImportsCache } from '../lib/imports/cache';
 import { collectImportFiles } from '../lib/imports/collect';
+import { Logger } from '../lib/logger';
 import { IMPORTS_SCHEMA_ID } from '../lib/imports/types';
 import {
   adaptFormatter, addOutputFlags, assertFormat, colsRequested, columns, emit, formatterOf,
@@ -20,6 +23,8 @@ export interface ImportsCommandOptions {
   path?: string;
   lang?: string[];
   format?: string;
+  /** false with --no-cache; the per-file cache is on otherwise. */
+  cache?: boolean;
 }
 
 /** Table/csv columns (and the `--cols` vocabulary): one row per import record. */
@@ -91,7 +96,16 @@ export function handleImportsAction(paths: readonly string[], options: ImportsCo
   const files = collectImportFiles(root, { paths, languages: options.lang ?? [] });
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { version } = require('../../package.json') as { version: string };
-  return extractImports(files, { root, xrayVersion: version });
+  const cache = options.cache === false ? undefined : openImportsCache(root);
+  try {
+    return extractImports(files, { root, xrayVersion: version, cache });
+  } finally {
+    if (cache) {
+      cache.close();
+      const s = cache.stats;
+      Logger.debug(`imports cache: ${s.hits} hits, ${s.misses} misses (${s.invalid} invalid), ${s.writes} written; ${cache.file}`);
+    }
+  }
 }
 
 /** Commander action: build, then render through the kit format registry. */
@@ -115,8 +129,11 @@ relative to the root (-p, default: current directory). [paths...] narrow
 the scan to files or directories inside the root (relative to the current
 directory). --lang and [paths...] select the files reported; manifests
 (go.mod, go.work, package.json, Cargo.toml) anywhere under the root are
-always read for resolution. Parses only: no graph, no cache, nothing
-written outside -o.
+always read for resolution. Parses only: no graph. Unchanged files are
+read from a per-file cache in xray's cache directory (\`xray paths\`,
+cache-dir/imports), never under the root; output is identical with or
+without it. --no-cache parses every file and writes no cache. Cache
+hits/misses show at --verbose (stderr).
 
 Exit 0 whenever a document is produced: parse errors and unsupported
 constructs are data (\`complete: false\` on the file), not failures.
@@ -141,7 +158,8 @@ export function registerImportsCommand(program: Command): Command {
     .argument('[paths...]', 'Files or directories inside the root to narrow the scan to')
     .option('-p, --path <root>', 'Root directory (file paths are relative to it) [default: current directory]')
     .option('--lang <list>', 'Languages to include, comma-separated: python, go, rust, typescript|ts, javascript|js, php (repeatable)',
-      (value: string, previous: string[]) => previous.concat(value.split(',').map(s => s.trim()).filter(Boolean)), []);
+      (value: string, previous: string[]) => previous.concat(value.split(',').map(s => s.trim()).filter(Boolean)), [])
+    .option('--no-cache', 'Parse every file; do not read or write the per-file cache');
   addOutputFlags(cmd, importsRegistry, {
     defaultFormat: 'json',
     description: 'Output format: json, yaml, table, csv, text',
