@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Logger } from '../logger';
-import { getGrammar, isLanguageEnabled, packForExtension, recordSkipped } from './grammars';
+import { getGrammar, grammarForExtension, isLanguageEnabled, packForExtension, recordSkipped } from './grammars';
 import { goDefaultName } from '../graph/go-resolver';
 import { BUILTIN_RECEIVERS, BuiltinReceivers } from './builtin-receivers';
 import { ImportBinding, jsImportBindings, rustImportBindings } from './import-bindings';
@@ -226,7 +226,7 @@ export function getLanguageConfig(ext: string, file?: string): LanguageConfig | 
   // Note: we reuse tagsQuery for importsQuery for now as we added import captures to the same files
   const query = loadQuery(pack.query);
   const config: LanguageConfig = {
-    grammar: status.grammar,
+    grammar: grammarForExtension(status, ext),
     tagsQuery: queryOverrides.get(ext) ?? query,
     importsQuery: query,
     callShape: CALL_SHAPES[pack.name],

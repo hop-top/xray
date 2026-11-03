@@ -239,4 +239,16 @@ require_relative 'utils'
         expect(imports[1].source).toBe('Data.Map');
     });
 
+    it('parses .tsx with the tsx grammar (imports after JSX are kept)', async () => {
+        const code = [
+            "import React from 'react';",
+            "const App = () => <div className=\"x\">it's {1 < 2 ? <b>a</b> : null}</div>;",
+            "import { later } from './later';",
+            "export function View() { return <App />; }",
+        ].join('\n');
+        const result = await manager.parse('view.tsx', code);
+        expect(result.imports.map(i => i.source)).toEqual(['react', './later']);
+        expect(result.tags.map(t => t.name)).toEqual(expect.arrayContaining(['App', 'View']));
+    });
+
 });

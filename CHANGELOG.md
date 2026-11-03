@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Imports contract schema `xray.imports/v1` (draft): `schemas/xray.imports.v1.json`
   (shipped in the package), `docs/user/imports-contract.md`.
+- Imports extractor: static imports for TS/JS (`.mjs/.cjs/.mts/.cts` too) and
+  Python per the `xray.imports/v1` contract; `.tsx` now parsed with the tsx
+  grammar (`map` no longer loses symbols/imports after JSX).
 - Docs: `docs/user/harness-integration.md` (instructions / MCP / hooks;
   event table, hook rules, saved graph, trust model, setup for Claude
   Code, nerv, Gemini CLI, Codex, Cursor and any harness, troubleshooting)

@@ -27,6 +27,8 @@ export interface LanguagePack {
   range: string;
   /** Property of the module holding the grammar (e.g. php -> `php`). */
   exportKey?: string;
+  /** Per-extension override of `exportKey` (e.g. `.tsx` -> `tsx`: JSX needs the tsx grammar). */
+  extensionExports?: Record<string, string>;
   /** File extensions (with dot) parsed with this grammar. */
   extensions: string[];
   /** Query file under src/lib/parser/queries. */
@@ -36,7 +38,7 @@ export interface LanguagePack {
 }
 
 export const LANGUAGE_PACKS: LanguagePack[] = [
-  { name: 'typescript', module: 'tree-sitter-typescript', range: '^0.23.2', exportKey: 'typescript', extensions: ['.ts', '.tsx'], query: 'typescript.scm', aliases: ['ts'] },
+  { name: 'typescript', module: 'tree-sitter-typescript', range: '^0.23.2', exportKey: 'typescript', extensionExports: { '.tsx': 'tsx' }, extensions: ['.ts', '.tsx'], query: 'typescript.scm', aliases: ['ts'] },
   { name: 'javascript', module: 'tree-sitter-javascript', range: '^0.25.0', extensions: ['.js', '.jsx'], query: 'javascript.scm', aliases: ['js'] },
   { name: 'python', module: 'tree-sitter-python', range: '^0.25.0', extensions: ['.py'], query: 'python.scm', aliases: ['py'] },
   { name: 'java', module: 'tree-sitter-java', range: '^0.23.5', extensions: ['.java'], query: 'java.scm' },
@@ -152,6 +154,8 @@ export interface GrammarStatus {
   /** The raw required module (set when ok), for callers needing other exports (e.g. tsx). */
   moduleExports?: any;
   source?: GrammarSource;
+  /** `version` from the loaded module's package.json (set when ok and readable). */
+  version?: string;
   /** missing = not installed; broken = installed but failed to load; blocked = XRAY_LANG_BLOCK. */
   reason?: 'missing' | 'broken' | 'blocked';
   error?: string;
@@ -177,19 +181,19 @@ function blockedLanguages(): Set<string> {
  * never via repo-local config. The managed dir is only redirectable by
  * XRAY_LANG_DIR / XDG_DATA_HOME (user environment), never by repo files.
  */
-function candidates(mod: string): Array<{ source: GrammarSource; load: () => any }> {
-  const list: Array<{ source: GrammarSource; load: () => any }> = [
-    { source: 'xray', load: () => require(mod) },
-    { source: 'managed', load: () => createRequire(path.join(managedDir(), 'noop.js'))(mod) },
+function candidates(mod: string): Array<{ source: GrammarSource; load: (spec?: string) => any }> {
+  const list: Array<{ source: GrammarSource; load: (spec?: string) => any }> = [
+    { source: 'xray', load: (spec = mod) => require(spec) },
+    { source: 'managed', load: (spec = mod) => createRequire(path.join(managedDir(), 'noop.js'))(spec) },
   ];
   if (process.env.XRAY_ALLOW_PROJECT_GRAMMARS === '1') {
     list.push({
       source: 'project',
-      load: () => {
+      load: (spec = mod) => {
         const from = path.join(process.cwd(), 'noop.js');
-        const resolved = createRequire(from).resolve(mod);
-        Logger.warn(`loading grammar from project path ${resolved} (XRAY_ALLOW_PROJECT_GRAMMARS=1)`);
-        return createRequire(from)(mod);
+        const resolved = createRequire(from).resolve(spec);
+        if (spec === mod) Logger.warn(`loading grammar from project path ${resolved} (XRAY_ALLOW_PROJECT_GRAMMARS=1)`);
+        return createRequire(from)(spec);
       },
     });
   }
@@ -216,6 +220,12 @@ export function getGrammar(language: string): GrammarStatus {
         const grammar = pack.exportKey ? mod[pack.exportKey] : mod;
         if (!grammar) throw new Error(`module '${pack.module}' has no export '${pack.exportKey}'`);
         status = { language: name, module: pack.module, ok: true, grammar, moduleExports: mod, source: c.source };
+        try {
+          const v = c.load(`${pack.module}/package.json`)?.version;
+          if (typeof v === 'string') status.version = v;
+        } catch {
+          // version is informational; a package without a readable package.json still loads
+        }
         break;
       } catch (err: any) {
         if (!isNotFound(err, pack.module)) {
@@ -227,6 +237,16 @@ export function getGrammar(language: string): GrammarStatus {
   }
   cache.set(name, status);
   return status;
+}
+
+/**
+ * Grammar object for a file extension of a loaded pack: the pack's
+ * `extensionExports` entry when present (`.tsx` -> tsx), else its default.
+ */
+export function grammarForExtension(status: GrammarStatus, ext: string): any {
+  if (!status.ok) return undefined;
+  const key = getPack(status.language)?.extensionExports?.[ext];
+  return key ? status.moduleExports?.[key] ?? status.grammar : status.grammar;
 }
 
 export function isGrammarAvailable(language: string): boolean {

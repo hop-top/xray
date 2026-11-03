@@ -17,8 +17,10 @@ import type { ImportsDoc } from '../../src/lib/imports/types';
 // parseErrors by start).
 //
 // Header values that change without any output change are pinned here:
-// `xray.version` via the option, `xray.extractor` replaced by a placeholder
-// (asserted separately) so a version bump does not rewrite every golden.
+// `xray.version` via the option, `xray.extractor` and every
+// `grammars.<lang>.version` replaced by a placeholder (asserted separately)
+// so a version or grammar bump does not rewrite every golden; record changes
+// a grammar bump causes still show up in the goldens.
 //
 // XRAY_UPDATE_GOLDENS=1 rewrites expected.json from the extractor; review the
 // diff before committing.
@@ -56,9 +58,14 @@ function inputs(dir: string, rel = ''): ImportsSourceFile[] {
 
 const cmp = (a: string | number, b: string | number) => (a < b ? -1 : a > b ? 1 : 0);
 
+const GOLDEN_GRAMMAR_VERSION = '0.0.0-golden';
+
 function run(c: Case): ImportsDoc {
   const doc = extractImports(inputs(c.dir), { root: '.', xrayVersion: GOLDEN_XRAY.version });
-  return { ...doc, xray: { ...doc.xray, extractor: GOLDEN_XRAY.extractor } };
+  const grammars = Object.fromEntries(
+    Object.entries(doc.grammars).map(([k, g]) => [k, { ...g, version: GOLDEN_GRAMMAR_VERSION }])
+  );
+  return { ...doc, xray: { ...doc.xray, extractor: GOLDEN_XRAY.extractor }, grammars };
 }
 
 function orderViolations(doc: ImportsDoc): string[] {
@@ -108,6 +115,13 @@ describe('imports golden fixtures', () => {
     expect(IMPORTS_EXTRACTOR_VERSION).toMatch(/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/);
     const doc = extractImports([], { root: '.', xrayVersion: '1.2.3' });
     expect(doc.xray).toEqual({ version: '1.2.3', extractor: IMPORTS_EXTRACTOR_VERSION });
+  });
+
+  it('grammar header reports the loaded module version (placeholder only in goldens)', () => {
+    const doc = extractImports([{ path: 'a.py', content: 'import os\n' }], { root: '.', xrayVersion: 'x' });
+    const pkg = JSON.parse(fs.readFileSync(require.resolve('tree-sitter-python/package.json'), 'utf8'));
+    expect(doc.grammars).toEqual({ python: { module: 'tree-sitter-python', version: pkg.version, source: 'xray' } });
+    expect(pkg.version).not.toBe(GOLDEN_GRAMMAR_VERSION);
   });
 
   describe.each(all.map(c => [`${c.lang}/${c.name}`, c] as const))('%s', (_id, c) => {

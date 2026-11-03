@@ -53,7 +53,7 @@ present only when they apply; an absent boolean means `false`.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `line`, `column`, `endLine`, `endColumn` | integer | Range of the import (statement or clause), per `positions`. |
+| `line`, `column`, `endLine`, `endColumn` | integer | Range of the import (statement or clause), per `positions`; the end is exclusive (`endColumn` is the column just past the last character). |
 | `kind` | enum, closed | `static` (declaration syntax), `require` (call form with literal argument: `require`, `require_once`), `dynamic` (`import()`, `__import__`, `import_module` with literal argument), `include` (file inclusion: PHP `include*`, Rust `mod x;`), `reference` (path root or qualified name used in code, no import statement). |
 | `form` | string, open | Concrete syntax; see [Forms](#forms). |
 | `module` | string | As written, lexically cleaned: quotes, surrounding whitespace, leading `\` (PHP) / `::` (Rust) removed. |
@@ -111,6 +111,32 @@ clause (grouped use expanded); Python and TS/JS one per statement, with
 
 Path aliases (tsconfig `paths`/`baseUrl`) are not applied: such specifiers
 stay `unknown`.
+
+### Languages and forms
+
+| Language | Extensions | Static forms |
+|---|---|---|
+| `typescript` | `.ts`, `.tsx` (tsx grammar), `.mts`, `.cts` | `import`, `export-from`, `import-equals` |
+| `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` | `import`, `export-from` |
+| `python` | `.py` | `import`, `from` |
+
+TS/JS bindings: a default import is the name `default` aliased to the local
+(`import d from 'm'` = `names: [{name: "default", alias: "d"}]`); a
+namespace import, `export * as ns from` and `import x = require()` set
+`alias`; `export * from` sets `wildcard`. `typeOnly` is set for
+`import type` / `export type` statements only (an inline
+`import { type A }` keeps the module load). Import attributes
+(`with {...}`) are ignored. `node:` specifiers are `stdlib` with the
+prefix stripped from `normalized`.
+
+Python: `import a.b as c, d` gives one record per module (range = the
+clause, `evidence` = the statement); `from` imports give one record per
+statement with `names`. Relative imports keep `normalized: null` until
+package resolution applies.
+
+Not yet emitted: call forms (`require()`, `import()`, `__import__`,
+`importlib.import_module`); `locality` other than `stdlib` for `node:`;
+`resolved`; `parseErrors` and `unsupported`.
 
 ## Ordering and determinism
 
