@@ -133,7 +133,8 @@ function includeTarget(arg: SyntaxNode, filePath: string): { module: string; nor
   return { module: `__DIR__${tail.raw}`, normalized: folded };
 }
 
-function includeRecord(n: SyntaxNode, filePath: string, out: ImportRecord[], unsupported: UnsupportedRecord[] | undefined): void {
+/** `stmt`: the expression_statement holding `n` as a child, if any (the evidence). */
+function includeRecord(n: SyntaxNode, stmt: SyntaxNode | undefined, filePath: string, out: ImportRecord[], unsupported: UnsupportedRecord[] | undefined): void {
   const spec = INCLUDES[n.type];
   const arg = n.namedChildren.find(c => c.type !== 'comment');
   if (!spec || !arg) return;
@@ -142,9 +143,8 @@ function includeRecord(n: SyntaxNode, filePath: string, out: ImportRecord[], uns
     unsupported?.push(unsupportedAt(n, 'dynamic-include', `${spec.form} with a non-literal path`));
     return;
   }
-  const stmt = n.parent?.type === 'expression_statement' ? n.parent : n;
   out.push(record({
-    at: n, evidenceOf: stmt, kind: spec.kind, form: spec.form,
+    at: n, evidenceOf: stmt ?? n, kind: spec.kind, form: spec.form,
     module: target.module, normalized: target.normalized, locality: 'unknown',
   }));
 }
@@ -211,7 +211,7 @@ function referenceRecords(refs: Ref[], out: ImportRecord[]): void {
 
 const NAMES = new Set(['qualified_name', 'relative_name']);
 const DYNAMIC = new Set(['function_call_expression', 'object_creation_expression', 'scoped_call_expression']);
-const STATEMENTS = new Set(['namespace_use_declaration', ...Object.keys(INCLUDES), ...NAMES, ...DYNAMIC]);
+const STATEMENTS = new Set(['namespace_use_declaration', 'expression_statement', ...Object.keys(INCLUDES), ...NAMES, ...DYNAMIC]);
 
 /** Class names a `new` / `::` can use without a run-time string. */
 const STATIC_CLASS = new Set(['name', 'qualified_name', 'relative_name', 'anonymous_class']);
@@ -267,9 +267,14 @@ export const extractPhp: LanguageExtractor = (root, ctx) => {
   // its clauses, not references; tracked by range since `.parent` costs
   // O(depth) per call (quadratic on deeply nested expressions).
   let useEnd = -1;
+  // Include node id -> its expression_statement (preorder reaches the
+  // statement first), again instead of `.parent`.
+  const statementOf = new Map<number, SyntaxNode>();
   const useRegion = regionLocator(spaces);
   for (const n of walk(root, STATEMENTS)) {
-    if (n.type === 'namespace_use_declaration') {
+    if (n.type === 'expression_statement') {
+      for (const c of n.namedChildren) if (c.type in INCLUDES) statementOf.set(c.id, n);
+    } else if (n.type === 'namespace_use_declaration') {
       useEnd = n.endIndex;
       const clauses = useClauses(n);
       useRecords(n, clauses, out);
@@ -282,7 +287,7 @@ export const extractPhp: LanguageExtractor = (root, ctx) => {
       }
     } else if (NAMES.has(n.type)) {
       if (n.startIndex >= useEnd) names.push(n);
-    } else if (n.type in INCLUDES) includeRecord(n, ctx.path, out, ctx.unsupported);
+    } else if (n.type in INCLUDES) includeRecord(n, statementOf.get(n.id), ctx.path, out, ctx.unsupported);
     else if (ctx.unsupported) {
       const u = dynamicSite(n);
       if (u) ctx.unsupported.push(u);

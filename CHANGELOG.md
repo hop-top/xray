@@ -158,6 +158,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+- Imports: PHP `require`/`include` evidence found without `.parent` lookups
+  (O(depth) each: quadratic on deeply nested includes).
 - Imports: Rust resolution of `mod`-declared path roots linear in records
   per file (scanned every record per record: quadratic on large files).
 - Imports: Cargo.toml headers and go.mod/go.work directives parsed in linear

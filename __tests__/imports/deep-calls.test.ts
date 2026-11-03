@@ -1,7 +1,7 @@
 import Parser from 'tree-sitter';
 import { extractImports } from '../../src/lib/imports';
 
-// Deep-input guards for the call-form passes (TS/JS, Python), bounded by
+// Deep-input guards for the call-form passes (TS/JS, Python, PHP includes), bounded by
 // operation count, not wall-clock: node-tree-sitter computes `.parent` by
 // descending from the root (O(depth) per access), so any ancestor climb per
 // node makes a pass quadratic on deep input. The passes must carry ancestor
@@ -90,5 +90,20 @@ describe('Python call forms on deeply nested input', () => {
     const { small, large } = scaling('a.py', gen);
     expect(large.imports.map(r => [r.module, r.form])).toEqual([['m', 'from']]);
     expect([small.count, large.count]).toEqual([0, 0]);
+  });
+});
+
+describe('PHP include forms on deeply nested input', () => {
+  it('literal require/include records nested in arrays: statement evidence without climbing', () => {
+    const { small, large } = scaling('a.php', n => `<?php\n$x = ${'[require "a.php", '.repeat(n)}0${']'.repeat(n)};\n`);
+    expect(large.imports.filter(r => r.kind === 'require')).toHaveLength(4 * N);
+    expect([small.count, large.count]).toEqual([0, 0]);
+  });
+
+  it('a statement-level include still takes the statement as evidence', () => {
+    const { large } = scaling('a.php', n => `<?php\n${'require_once "b.php";\n'.repeat(n)}f(include "c.php");\n`);
+    const forms = large.imports.map(r => [r.form, r.evidence]);
+    expect(forms[0]).toEqual(['require_once', 'require_once "b.php";']);
+    expect(forms[forms.length - 1]).toEqual(['include', 'include "c.php"']);
   });
 });
