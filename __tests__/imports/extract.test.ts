@@ -92,9 +92,12 @@ describe('extractImports file handling', () => {
     ]);
   });
 
-  it('call forms are not static imports', () => {
-    expect(records('a.js', "const a = require('a'); import('b');\n")).toEqual([]);
-    expect(records('a.py', "__import__('a')\nimportlib.import_module('b')\n")).toEqual([]);
+  it('call forms get their own kinds, never static (details: calls.test.ts)', () => {
+    expect(records('a.js', "const a = require('a'); import('b');\n").map(r => [r.kind, r.form])).toEqual([
+      ['require', 'require'],
+      ['dynamic', 'import()'],
+    ]);
+    expect(records('a.py', "__import__('a')\n").map(r => [r.kind, r.form])).toEqual([['dynamic', '__import__']]);
   });
 });
 

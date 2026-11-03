@@ -94,6 +94,33 @@
           "wildcard": true,
           "confidence": "syntactic",
           "evidence": "export * from './all.js';"
+        },
+        {
+          "line": 5,
+          "column": 13,
+          "endLine": 5,
+          "endColumn": 32,
+          "kind": "require",
+          "form": "require",
+          "module": "cjs-only",
+          "normalized": "cjs-only",
+          "package": "cjs-only",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "require('cjs-only')"
+        },
+        {
+          "line": 6,
+          "column": 20,
+          "endLine": 6,
+          "endColumn": 39,
+          "kind": "dynamic",
+          "form": "import()",
+          "module": "./lazy.js",
+          "normalized": "./lazy.js",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import('./lazy.js')"
         }
       ],
       "unsupported": []
@@ -149,7 +176,22 @@
       "status": "ok",
       "complete": true,
       "parseErrors": [],
-      "imports": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 14,
+          "endLine": 1,
+          "endColumn": 29,
+          "kind": "require",
+          "form": "require",
+          "module": "path",
+          "normalized": "path",
+          "package": "path",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "require('path')"
+        }
+      ],
       "unsupported": []
     },
     {
@@ -200,7 +242,7 @@
   "summary": {
     "files": 4,
     "complete": 4,
-    "imports": 8,
+    "imports": 11,
     "unsupported": 0,
     "parseErrors": 0
   }

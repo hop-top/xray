@@ -17,7 +17,7 @@ import { IMPORTS_SCHEMA_ID, POSITIONS, type FileImports, type GrammarInfo, type 
 export * from './types';
 
 /** Semver; bump on any output change for the same input (minor additive, patch fix). */
-export const IMPORTS_EXTRACTOR_VERSION = '0.2.0';
+export const IMPORTS_EXTRACTOR_VERSION = '0.3.0';
 
 export interface ImportsSourceFile {
   /** Posix path relative to `root`. */

@@ -162,8 +162,31 @@ against the file's directory in `normalized`); `module` keeps escapes as
 written, `normalized` is the unescaped value. Range = the declaration when
 it yields one record, else the clause; `evidence` = the statement.
 
-Not yet emitted: call forms (`require()`, `import()`, `__import__`,
-`importlib.import_module`); non-literal PHP includes; `locality` other
+Call forms (TS/JS, Python), at any depth, only with a literal argument:
+a string or substitution-free template string (TS/JS); a `str` literal
+without interpolation, or a concatenation of such (Python). Escape
+sequences are not decoded: an argument with one is not literal.
+- `require('m')`: kind `require`, form `require`. Only while `require` is
+  the global: any binding of the name in the file (declaration,
+  parameter, destructuring, import, assignment; TS `declare` excluded)
+  disables these records file-wide.
+- `import('m')`: kind `dynamic`, form `import()`. TS type-position
+  `import('m').T` (`type`, annotations, `typeof`, `as`): kind `static`,
+  form `import-type`, `typeOnly` (erased at compile time).
+- `__import__('m')`: kind `dynamic`, form `__import__`, unless the file
+  rebinds `__import__`; literal `level=N` > 0 sets `relative`.
+- `import_module('m'[, package])`: kind `dynamic`, form `import_module`,
+  through a binding made by an import in the same file (`import importlib`,
+  `import importlib as il`, `from importlib import import_module [as f]`).
+  Relative names: literal `package` -> `normalized` per importlib's
+  `resolve_name` (no `relative`); `package=__package__` -> `relative` as
+  for `from .`; `package=__name__` -> `relative` rewritten to the
+  package-relative form (`.a` in `pkg/mod.py` = `{level: 1, module:
+  "mod.a"}`; in `__init__.py` `__name__` is the package).
+Range and `evidence` = the call. Bindings are file-wide, not scope-aware.
+
+Not yet emitted: non-literal or shadowed call forms (reported as
+`unsupported` later); non-literal PHP includes; `locality` other
 than `unknown`, except `stdlib` for `node:` and `local` for Rust
 `crate`/`self`/`super`/`mod`; `resolved`; `parseErrors` and
 `unsupported`.
