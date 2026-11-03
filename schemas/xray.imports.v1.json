@@ -37,7 +37,8 @@
         "eval", "dynamic-include", "dynamic-new", "dynamic-static-call",
         "dynamic-require", "dynamic-import", "create-require",
         "exec", "sys-path",
-        "dynamic-call"
+        "dynamic-call",
+        "oversized-module"
       ]
     },
     "parseErrorKind": { "enum": ["error", "missing"] },

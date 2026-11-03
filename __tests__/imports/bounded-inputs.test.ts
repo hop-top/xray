@@ -4,14 +4,16 @@
  *   directives) has no backtracking pattern that goes polynomial on long
  *   lines, blank-line runs or unclosed blocks;
  * - evidence reads at most EVIDENCE_WINDOW source units per record, never
- *   a node's full text, whatever the node's size.
+ *   a node's full text, whatever the node's size;
+ * - module strings read at most MODULE_WINDOW source units per read, and a
+ *   module built from many segments stops reading once past the cap.
  */
 import * as fs from 'fs';
 import * as path from 'path';
 import Parser from 'tree-sitter';
 import { parseGoModRequires, parseGoWorkUses, parseModulePath } from '../../src/lib/graph/go-resolver';
 import { extractImports } from '../../src/lib/imports';
-import { EVIDENCE_MAX, EVIDENCE_WINDOW, evidence } from '../../src/lib/imports/record';
+import { EVIDENCE_MAX, EVIDENCE_WINDOW, MODULE_MAX, MODULE_WINDOW, evidence } from '../../src/lib/imports/record';
 import { cargoBuildScripts } from '../../src/lib/imports/unsupported';
 
 const SRC = path.resolve(__dirname, '..', '..', 'src');
@@ -92,12 +94,14 @@ describe('go.mod / go.work directives', () => {
   });
 });
 
-describe('evidence is bounded by EVIDENCE_WINDOW, not the node', () => {
-  const BIG = 20 * 1024 * 1024;
-  let reads: number[];
+const BIG = 20 * 1024 * 1024;
+
+/** Length of every source read (getText) from trees parsed in the current test. */
+function spyReads(): number[] {
+  const reads: number[] = [];
   const parse = Parser.prototype.parse;
   beforeEach(() => {
-    reads = [];
+    reads.length = 0;
     // Each tree gets its own getText at parse; every node `.text` and bounded read goes through it.
     jest.spyOn(Parser.prototype, 'parse').mockImplementation(function (this: Parser, ...args: Parameters<Parser['parse']>) {
       const tree = parse.apply(this, args);
@@ -111,6 +115,11 @@ describe('evidence is bounded by EVIDENCE_WINDOW, not the node', () => {
     });
   });
   afterEach(() => jest.restoreAllMocks());
+  return reads;
+}
+
+describe('evidence is bounded by EVIDENCE_WINDOW, not the node', () => {
+  const reads = spyReads();
 
   it('window = EVIDENCE_MAX * 4', () => {
     expect(EVIDENCE_WINDOW).toBe(EVIDENCE_MAX * 4);
@@ -145,5 +154,51 @@ describe('evidence is bounded by EVIDENCE_WINDOW, not the node', () => {
     const long = 'x'.repeat(BIG);
     expect(evidence(long)).toBe('x'.repeat(EVIDENCE_MAX - 1) + '…');
     expect(evidence('😀'.repeat(300))).toBe('😀'.repeat(EVIDENCE_MAX - 1) + '…');
+  });
+});
+
+describe('module strings are bounded by MODULE_WINDOW, not the node', () => {
+  const reads = spyReads();
+  const big = 'a'.repeat(BIG);
+  const sum = () => reads.reduce((n, x) => n + x, 0);
+
+  it('window = MODULE_MAX * 2', () => {
+    expect(MODULE_WINDOW).toBe(MODULE_MAX * 2);
+  });
+
+  it.each([
+    ['typescript string specifier', 'a.ts', `import x from "${big}";\n`],
+    ['javascript require literal', 'a.js', `require("${big}");\n`],
+    ['javascript import() template', 'a.js', `import(\`${big}\`);\n`],
+    ['python import (one huge segment)', 'a.py', `import ${big}\n`],
+    ['python __import__ literal', 'a.py', `__import__("${big}")\n`],
+    ['go import path', 'a.go', `package m\n\nimport "${big}"\n`],
+    ['rust use path (one huge segment)', 'a.rs', `use ${big}::x;\n`],
+    ['rust mod name', 'a.rs', `mod ${big};\n`],
+    ['php use name', 'a.php', `<?php\nuse ${big}\\X;\n`],
+    ['php use name, whitespace-padded', 'a.php', `<?php\nuse A${' '.repeat(BIG >> 2)}\\${big}\\X;\n`],
+    ['php include literal', 'a.php', `<?php\nrequire "${big}";\n`],
+  ])('%s over 20 MB: no read beyond the window, module truncated', (_what, file, src) => {
+    const doc = extractImports([{ path: file, content: src }], { root: '.', xrayVersion: 't' });
+    const f = doc.files[0];
+    expect(Math.max(0, ...reads)).toBeLessThanOrEqual(MODULE_WINDOW);
+    expect(f.imports.map(r => r.module.length)).toEqual([MODULE_MAX + 1]);
+    expect(f.unsupported.map(u => u.construct)).toEqual(['oversized-module']);
+  });
+
+  it.each([
+    ['python long dotted path', 'a.py', (n: number) => `import ${Array(n).fill('a').join('.')}\n`],
+    ['python from long dotted path', 'a.py', (n: number) => `from ${Array(n).fill('a').join('.')} import x\n`],
+  ])('%s: segment reads stop past the cap (total read independent of the path length)', (_what, file, src) => {
+    const total = (n: number) => {
+      reads.length = 0;
+      const doc = extractImports([{ path: file, content: src(n) }], { root: '.', xrayVersion: 't' });
+      expect(doc.files[0].imports.map(r => r.module.length)).toEqual([MODULE_MAX + 1]);
+      return sum();
+    };
+    const small = total(50_000);
+    expect(total(200_000)).toBe(small);
+    // A few bounded module reads of the path (record, loader bindings) plus evidence.
+    expect(small).toBeLessThanOrEqual(4 * MODULE_WINDOW);
   });
 });

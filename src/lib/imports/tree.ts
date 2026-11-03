@@ -6,7 +6,7 @@
  */
 
 import * as path from 'path';
-import type { SyntaxNode } from './record';
+import { capModules, type SyntaxNode } from './record';
 import { IMPORT_LANGUAGES, importLanguageFor } from './languages';
 import type { ImportRecord } from './types';
 
@@ -21,7 +21,7 @@ export function contractLanguageOf(file: string): string | undefined {
 export function extractTreeImports(root: SyntaxNode, file: string): ImportRecord[] | undefined {
   const language = contractLanguageOf(file);
   if (language === undefined) return undefined;
-  return IMPORT_LANGUAGES[language]
-    .extract(root, { path: file, language })
-    .sort((a, b) => cmp(a.line, b.line) || cmp(a.column, b.column) || cmp(a.module, b.module));
+  const records = IMPORT_LANGUAGES[language].extract(root, { path: file, language });
+  capModules(records);
+  return records.sort((a, b) => cmp(a.line, b.line) || cmp(a.column, b.column) || cmp(a.module, b.module));
 }

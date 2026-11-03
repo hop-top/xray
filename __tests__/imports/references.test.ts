@@ -1,6 +1,7 @@
 import { extractImports } from '../../src/lib/imports';
 import { regionLocator, type PhpNamespace } from '../../src/lib/imports/lang/php';
 import { iterations, measure } from '../support/imports-adversarial';
+import { MODULE_MAX } from '../../src/lib/imports/record';
 
 // Targeted checks for kind `reference` records (Rust path roots, PHP
 // qualified names); the goldens rust/path-roots, rust/attr-macro-paths and
@@ -207,7 +208,8 @@ describe('Rust extractor on deeply nested input', () => {
 
   it('use trees (nested lists)', () => {
     const rs = all(`use ${'a::{'.repeat(DEPTH)}b${'}'.repeat(DEPTH)};\nfn f() { serde::x(); }`);
-    expect(rs.map(r => [r.kind, r.module.length > 0 ? r.module.split('::').length : 0])).toEqual([['static', DEPTH + 1], ['reference', 1]]);
+    // The joined path is far past MODULE_MAX: emitted truncated (oversized-module.test.ts).
+    expect(rs.map(r => [r.kind, r.module])).toEqual([['static', `${'a::'.repeat(DEPTH)}b`.slice(0, MODULE_MAX) + '…'], ['reference', 'serde']]);
     expect(rs[1].module).toBe('serde');
   });
 
@@ -216,12 +218,12 @@ describe('Rust extractor on deeply nested input', () => {
     const gen = (n: number) => `use ${'a::{'.repeat(n)}b${'}'.repeat(n)};`;
     expect(iterationGrowth(gen, 'a.rs', 250)).toBeLessThan(5);
     expect(climbs(gen, 'a.rs', 1000).parent).toEqual([0, 0]);
-    expect(all(gen(100000)).map(r => r.module.length)).toEqual([100000 * 3 + 1]);
+    expect(all(gen(100000)).map(r => r.module.length)).toEqual([MODULE_MAX + 1]);
   });
 
   it('use paths (long scoped_identifier chains)', () => {
     const rs = all(`use ${segs(DEPTH)};\nfn f() { serde::x(); }`);
-    expect(rs.map(r => [r.kind, r.module.split('::').length])).toEqual([['static', DEPTH], ['reference', 1]]);
+    expect(rs.map(r => [r.kind, r.module])).toEqual([['static', segs(DEPTH).slice(0, MODULE_MAX) + '…'], ['reference', 'serde']]);
   });
 
   it('expression paths (long scoped_identifier chains): no climb per chain link', () => {

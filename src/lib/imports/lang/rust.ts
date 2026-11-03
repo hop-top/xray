@@ -34,7 +34,7 @@
  */
 
 import type { ImportRecord, UnsupportedRecord } from '../types';
-import { nodeEvidence, record, type LanguageExtractor, type SyntaxNode } from '../record';
+import { joinModule, moduleText, nodeEvidence, record, type LanguageExtractor, type SyntaxNode } from '../record';
 
 const LOCAL_ROOTS = new Set(['crate', 'self', 'super']);
 
@@ -47,17 +47,20 @@ interface Leaf {
   wildcard?: boolean;
 }
 
-/** Segments of a path node (identifier, crate/self/super, scoped_identifier); iterative (chains can be arbitrarily long). */
+/**
+ * Segments of a path node (identifier, crate/self/super, scoped_identifier); iterative (chains can be arbitrarily long).
+ * Each segment is a bounded read (moduleText); joins go through joinModule.
+ */
 function pathOf(n: SyntaxNode): Path {
   const names: string[] = [];
   let cur: SyntaxNode | null = n;
   while (cur && cur.type === 'scoped_identifier') {
     const name = cur.childForFieldName('name');
-    if (name) names.push(name.text);
+    if (name) names.push(moduleText(name));
     cur = cur.childForFieldName('path');
   }
   names.reverse();
-  return cur ? { segments: [cur.text, ...names], leadingColons: false } : { segments: names, leadingColons: true };
+  return cur ? { segments: [moduleText(cur), ...names], leadingColons: false } : { segments: names, leadingColons: true };
 }
 
 const join = (a: Path, b: Path): Path =>
@@ -133,9 +136,9 @@ function leafPath(prefix: Path, n: SyntaxNode): Path {
 function useForm(segments: string[], leadingColons: boolean): Pick<ImportRecord, 'normalized' | 'package' | 'locality'> {
   const first = segments[0];
   if (first !== undefined && LOCAL_ROOTS.has(first)) {
-    return { normalized: first === 'crate' ? segments.join('::') : null, package: 'crate', locality: 'local' };
+    return { normalized: first === 'crate' ? joinModule(segments, '::') : null, package: 'crate', locality: 'local' };
   }
-  return { normalized: segments.join('::'), package: leadingColons && first ? first : undefined, locality: 'unknown' };
+  return { normalized: joinModule(segments, '::'), package: leadingColons && first ? first : undefined, locality: 'unknown' };
 }
 
 function useRecords(decl: SyntaxNode, out: ImportRecord[]): void {
@@ -147,7 +150,7 @@ function useRecords(decl: SyntaxNode, out: ImportRecord[]): void {
     if (l.path.segments.length === 0) continue;
     out.push(record({
       at: ls.length === 1 ? decl : l.node, evidenceOf: decl, kind: 'static', form: 'use',
-      module: l.path.segments.join('::'), ...useForm(l.path.segments, l.path.leadingColons),
+      module: joinModule(l.path.segments, '::'), ...useForm(l.path.segments, l.path.leadingColons),
       alias: l.alias, wildcard: l.wildcard,
     }));
   }
@@ -157,10 +160,11 @@ function externCrate(decl: SyntaxNode, out: ImportRecord[]): void {
   const name = decl.childForFieldName('name');
   if (!name) return;
   const alias = decl.childForFieldName('alias');
-  const self = name.text === 'self';
+  const crate = moduleText(name);
+  const self = crate === 'self';
   out.push(record({
-    at: decl, kind: 'static', form: 'extern-crate', module: name.text,
-    normalized: self ? null : name.text, package: self ? 'crate' : name.text, locality: self ? 'local' : 'unknown',
+    at: decl, kind: 'static', form: 'extern-crate', module: crate,
+    normalized: self ? null : crate, package: self ? 'crate' : crate, locality: self ? 'local' : 'unknown',
     alias: alias?.text,
   }));
 }
@@ -183,7 +187,7 @@ function modItem(item: SyntaxNode, out: ImportRecord[]): void {
   if (!name) return;
   const start = pathAttribute(item) ?? item;
   out.push(record({
-    at: start, end: item, kind: 'include', form: 'mod', module: name.text, normalized: null, package: 'crate', locality: 'local',
+    at: start, end: item, kind: 'include', form: 'mod', module: moduleText(name), normalized: null, package: 'crate', locality: 'local',
   }));
 }
 
@@ -235,9 +239,9 @@ function scopedOccurrence(top: SyntaxNode, inner: Set<number>): Occurrence | und
   if (!p) {
     const name = n.childForFieldName('name');
     if (!name || !n.children.some(c => c.type === '::')) return undefined;
-    return { at: top, end: top, root: name.text, leadingColons: true };
+    return { at: top, end: top, root: moduleText(name), leadingColons: true };
   }
-  return p.type === 'identifier' ? { at: top, end: top, root: p.text, leadingColons: false } : undefined;
+  return p.type === 'identifier' ? { at: top, end: top, root: moduleText(p), leadingColons: false } : undefined;
 }
 
 const INCLUDE_MACROS: Record<string, UnsupportedRecord['construct']> = {
@@ -316,7 +320,7 @@ function tokenOccurrences(tree: SyntaxNode, out: Occurrence[], includes: Include
     }
     let j = i;
     while (t[j + 1]?.type === '::' && t[j + 2]?.type === 'identifier') j += 2;
-    out.push({ at, end: t[j], root: t[i].text, leadingColons });
+    out.push({ at, end: t[j], root: moduleText(t[i]), leadingColons });
     frame.i = j + 1;
   }
 }
@@ -351,6 +355,7 @@ export const extractRust: LanguageExtractor = (root, ctx) => {
   const inner = new Set<number>();
   const includes: IncludeUse[] = [];
   // One preorder walk; use / extern crate subtrees hold no references.
+  // Bindings are read like roots (moduleText), so the two compare alike.
   const cursor = root.walk();
   let descend = true;
   for (;;) {
@@ -363,7 +368,7 @@ export const extractRust: LanguageExtractor = (root, ctx) => {
         case 'extern_crate_declaration': {
           externCrate(n, out); enter = false;
           const name = n.childForFieldName('alias') ?? n.childForFieldName('name');
-          if (name) bound.add(name.text);
+          if (name) bound.add(moduleText(name));
           break;
         }
         case 'scoped_identifier': case 'scoped_type_identifier': {
@@ -383,7 +388,7 @@ export const extractRust: LanguageExtractor = (root, ctx) => {
           if (n.type === 'mod_item') modItem(n, out);
           if (NAMED_ITEMS.has(n.type)) {
             const name = n.childForFieldName('name');
-            if (name) bound.add(name.text);
+            if (name) bound.add(moduleText(name));
           }
       }
     }

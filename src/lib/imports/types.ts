@@ -35,6 +35,8 @@ export const UNSUPPORTED_CONSTRUCTS = [
   'exec', 'sys-path',
   // PHP, additive: variable functions, call_user_func* with a non-literal callable
   'dynamic-call',
+  // All languages, additive: a module string longer than MODULE_MAX, truncated
+  'oversized-module',
 ] as const;
 export type UnsupportedConstruct = (typeof UNSUPPORTED_CONSTRUCTS)[number];
 

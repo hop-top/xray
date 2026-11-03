@@ -66,8 +66,11 @@ export function resolveImports(entries: FileImports[], inputs: readonly ResolveI
       unresolved(entry);
       continue;
     }
+    // Truncated records (capModules) name no real module: left as extracted.
+    const capped = new Set(entry.unsupported.filter(u => u.construct === 'oversized-module').map(u => `${u.line}:${u.column}`));
     try {
       entry.imports = entry.imports.map(r => {
+        if (capped.size > 0 && capped.has(`${r.line}:${r.column}`)) return r;
         const res = resolve(r, entry);
         return res ? applyResolution(r, res) : r;
       });

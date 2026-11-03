@@ -1,4 +1,5 @@
 import { adversarialSuite, bytes, BAD_UTF8, NOISE, PAD, rep, seq } from '../support/imports-adversarial';
+import { MODULE_MAX } from '../../src/lib/imports/record';
 
 // Adversarial inputs for PHP: see ../support/imports-adversarial.ts.
 
@@ -19,7 +20,10 @@ adversarialSuite('php', {
   comments: `<?php\n${rep('// use X\\A;\n/* new \\B\\C(); */\n# require "x";\n', 1000)}`,
 }, {
   deep: f => expect(f.imports.map(r => [r.module, r.occurrences ?? 1]).filter(([m]) => m !== 'a.php')).toEqual([['A\\B', 50_000]]),
-  huge: f => expect(f.imports.map(r => r.module.length)).toEqual([20 * 1024 * 1024, 3]),
+  huge: f => {
+    expect(f.imports.map(r => r.module.length)).toEqual([MODULE_MAX + 1, 3]);
+    expect(f.unsupported.map(u => u.construct)).toEqual(['oversized-module']);
+  },
   long: f => expect(mods(f)).toEqual(['X\\Y', 'z.php']),
   bom: f => expect(f.imports.map(r => [r.line, r.column, r.module])).toEqual([[1, 7, 'X\\A']]),
   crlf: f => expect(f.imports.map(r => [r.line, r.module])).toEqual([[2, 'X\\A'], [3, 'Y\\B'], [6, 'z.php']]),

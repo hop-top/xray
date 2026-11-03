@@ -37,11 +37,11 @@
 
 import * as posix from 'path/posix';
 import type { ImportForm, ImportKind, ImportRecord, UnsupportedRecord } from '../types';
-import { record, walk, type LanguageExtractor, type SyntaxNode } from '../record';
+import { moduleSource, moduleText, record, walk, type LanguageExtractor, type SyntaxNode } from '../record';
 import { unsupportedAt } from '../unsupported';
 
-/** Qualified name text without whitespace or a leading `\`. */
-const fqn = (n: SyntaxNode) => n.text.replace(/\s+/g, '').replace(/^\\/, '');
+/** Qualified name text without whitespace or a leading `\`; bounded read (moduleText). */
+const fqn = (n: SyntaxNode) => moduleText(n, true).replace(/^\\/, '');
 
 function clauseType(n: SyntaxNode): string | undefined {
   return n.childForFieldName('type')?.text.toLowerCase();
@@ -107,9 +107,10 @@ function codePoint(hex: string): string | undefined {
 function literal(n: SyntaxNode): Literal | undefined {
   if (n.type !== 'string' && n.type !== 'encapsed_string') return undefined;
   if (n.namedChildren.some(c => c.type !== 'string_content' && c.type !== 'escape_sequence')) return undefined;
-  const t = n.text;
+  // Bounded read (moduleSource): a cut literal has no closing quote to drop; capModules truncates it and nulls its value.
+  const { text: t, cut } = moduleSource(n);
   if (t.length < 2) return undefined;
-  const raw = t.slice(1, -1);
+  const raw = cut ? t.slice(1) : t.slice(1, -1);
   return { raw, value: unescape(raw, t[0] === '"') };
 }
 
@@ -177,7 +178,7 @@ interface Ref { node: SyntaxNode; module: string; normalized: string }
 
 /** Resolved name of a qualified_name / relative_name, or undefined for an unqualified one. */
 function resolveName(n: SyntaxNode, ns: string, aliases: Map<string, string> | undefined): Ref | undefined {
-  const text = n.text.replace(/\s+/g, '');
+  const text = moduleText(n, true);
   const within = (rest: string) => (ns ? `${ns}\\${rest}` : rest);
   if (n.type === 'relative_name') {
     const rest = text.replace(/^namespace\\/i, '');

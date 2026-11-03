@@ -158,6 +158,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+- Imports: module strings capped at 4096 UTF-16 units (truncated + `…`,
+  `normalized: null`, unresolved, new `oversized-module` construct); at most
+  8192 source units read per module string. Extractor 0.5.0.
 - Imports: PHP `require`/`include` evidence found without `.parent` lookups
   (O(depth) each: quadratic on deeply nested includes).
 - Imports: Rust resolution of `mod`-declared path roots linear in records

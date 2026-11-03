@@ -1,4 +1,5 @@
 import { adversarialSuite, bytes, BAD_UTF8, NOISE, PAD, rep, seq, type LanguageCases } from '../support/imports-adversarial';
+import { MODULE_MAX } from '../../src/lib/imports/record';
 
 // Adversarial inputs for TS/JS: see ../support/imports-adversarial.ts.
 
@@ -25,7 +26,8 @@ for (const [lang, c] of [['typescript', ts], ['javascript', js]] as const) {
   adversarialSuite(lang, c, {
     deep: f => expect(f.imports.length).toBe(2 * 50_000),
     huge: f => {
-      expect(f.imports.map(r => r.module.length)).toEqual([20 * 1024 * 1024, 1]);
+      expect(f.imports.map(r => r.module.length)).toEqual([MODULE_MAX + 1, 1]);
+      expect(f.unsupported.map(u => u.construct)).toEqual(['oversized-module']);
       expect(Array.from(f.imports[0].evidence)).toHaveLength(240);
     },
     long: f => expect(mods(f)).toEqual(['x', 'y']),

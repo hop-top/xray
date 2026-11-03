@@ -278,14 +278,15 @@ describe('imports cache: key components', () => {
     }
   });
 
-  it('an entry written by extractor 0.3.0 is a miss under the current extractor (0.4.0)', () => {
+  it.each(['0.3.0', '0.4.0'])('an entry written by extractor %s is a miss under the current extractor (0.5.0)', stale => {
     // 0.4.0: unsupported[] / parseErrors[] / status output; a 0.3.0 entry lacks them.
-    expect(IMPORTS_EXTRACTOR_VERSION).toBe('0.4.0');
+    // 0.5.0: oversized module strings truncated; a 0.4.0 entry may hold one at full size.
+    expect(IMPORTS_EXTRACTOR_VERSION).toBe('0.5.0');
     const dir = freshDir();
     const c = openImportsCache(root, { dir })!;
-    const stale = JSON.parse(cold(files)).files.find((f: { path: string }) => f.path === 'app/pkg/mod.py');
-    const { path: _p, ...entry } = stale;
-    c.set(keyOf(c, { extractor: '0.3.0' }), entry);
+    const old = JSON.parse(cold(files)).files.find((f: { path: string }) => f.path === 'app/pkg/mod.py');
+    const { path: _p, ...entry } = old;
+    c.set(keyOf(c, { extractor: stale }), entry);
     c.close();
     const warm = cachedRun(root, files, dir);
     expect(warm.json).toBe(cold(files));

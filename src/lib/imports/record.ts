@@ -43,6 +43,110 @@ function collapse(text: string, cut: boolean): string {
   return !cut && cps.length <= EVIDENCE_MAX ? cps.join('') : cps.slice(0, EVIDENCE_MAX - 1).join('') + '…';
 }
 
+/**
+ * Longest `module` / `normalized` / `relative.module` emitted, in UTF-16
+ * units. A record with a longer one is truncated by capModules.
+ */
+export const MODULE_MAX = 4096;
+
+/**
+ * UTF-16 units of source read for one module string. Twice MODULE_MAX: a
+ * read cut at the window still yields more than MODULE_MAX units once
+ * quotes or a leading `\` / `::` are dropped, so a cut is never mistaken for
+ * a short module.
+ */
+export const MODULE_WINDOW = MODULE_MAX * 2;
+
+const WS = /\s+/g;
+
+/**
+ * Source of `[start, end)` for a module string, straight from the tree's
+ * input in MODULE_WINDOW reads (never the node's full `.text`). `squeeze`
+ * drops whitespace. Reading stops once the result holds MODULE_WINDOW units
+ * (one read unless whitespace was squeezed out); `cut` = the end was not
+ * reached.
+ */
+function moduleRange(tree: Parser.Tree, start: number, end: number, squeeze: boolean): { text: string; cut: boolean } {
+  let text = '';
+  let at = start;
+  while (at < end && text.length < MODULE_WINDOW) {
+    const stop = Math.min(end, at + MODULE_WINDOW);
+    // Tree#getText reads only startIndex/endIndex of its argument.
+    const chunk = tree.getText({ startIndex: at, endIndex: stop } as SyntaxNode);
+    text += squeeze ? chunk.replace(WS, '') : chunk;
+    at = stop;
+  }
+  return { text, cut: at < end };
+}
+
+/** Module-string source of `n` (see moduleRange). */
+export function moduleSource(n: SyntaxNode, squeeze = false): { text: string; cut: boolean } {
+  return moduleRange(n.tree, n.startIndex, n.endIndex, squeeze);
+}
+
+/** Module-string text of `n`: all of it, or at least MODULE_WINDOW units when longer. */
+export function moduleText(n: SyntaxNode, squeeze = false): string {
+  return moduleSource(n, squeeze).text;
+}
+
+/**
+ * Module-string texts of `n`'s named children (all of them, or those
+ * `accept` takes) joined by `sep`, document order. Cursor walk: stops
+ * reading once the result holds MODULE_WINDOW units, whatever the number of
+ * children.
+ */
+export function joinChildren(n: SyntaxNode, sep: string, accept?: (type: string) => boolean): string {
+  const c = n.walk();
+  let out = '';
+  let first = true;
+  if (!c.gotoFirstChild()) return out;
+  do {
+    if (!c.nodeIsNamed || (accept && !accept(c.nodeType))) continue;
+    if (!first) out += sep;
+    first = false;
+    out += moduleRange(n.tree, c.startIndex, c.endIndex, false).text;
+    if (out.length >= MODULE_WINDOW) break;
+  } while (c.gotoNextSibling());
+  return out;
+}
+
+/** `parts` joined by `sep`, stopping once the result holds MODULE_WINDOW units. */
+export function joinModule(parts: readonly string[], sep: string): string {
+  let out = '';
+  for (let i = 0; i < parts.length && out.length < MODULE_WINDOW; i++) out += (i > 0 ? sep : '') + parts[i];
+  return out;
+}
+
+/** MODULE_MAX units then `…`; a cut pair loses its high surrogate. */
+function truncateModule(s: string): string {
+  const last = s.charCodeAt(MODULE_MAX - 1);
+  return s.slice(0, last >= 0xd800 && last <= 0xdbff ? MODULE_MAX - 1 : MODULE_MAX) + '…';
+}
+
+export const OVERSIZED_DETAIL = `module string longer than ${MODULE_MAX} UTF-16 units, truncated`;
+
+/**
+ * Caps oversized module strings in place: a record whose `module`,
+ * `normalized` or `relative.module` exceeds MODULE_MAX gets each long one
+ * truncated (truncateModule), `normalized: null` (a truncated name must not
+ * pass for a real module), no `package` / `resolved`, `locality: unknown`,
+ * and one `oversized-module` record at its start in `unsupported` (when
+ * given). Resolution skips these records (resolve/index.ts).
+ */
+export function capModules(records: ImportRecord[], unsupported?: UnsupportedRecord[]): void {
+  for (const r of records) {
+    const rel = r.relative?.module;
+    if (r.module.length <= MODULE_MAX && (r.normalized?.length ?? 0) <= MODULE_MAX && (rel?.length ?? 0) <= MODULE_MAX) continue;
+    if (r.module.length > MODULE_MAX) r.module = truncateModule(r.module);
+    if (r.relative && rel !== undefined && rel.length > MODULE_MAX) r.relative.module = truncateModule(rel);
+    r.normalized = null;
+    delete r.package;
+    delete r.resolved;
+    r.locality = 'unknown';
+    unsupported?.push({ line: r.line, column: r.column, construct: 'oversized-module', detail: OVERSIZED_DETAIL, evidence: r.evidence });
+  }
+}
+
 /** Evidence of `source[start, end)`, reading at most EVIDENCE_WINDOW units of it. */
 export function evidenceRange(source: string, start: number, end: number): string {
   const stop = Math.min(end, start + EVIDENCE_WINDOW);

@@ -1,4 +1,5 @@
 import { adversarialSuite, bytes, BAD_UTF8, NOISE, PAD, rep, seq } from '../support/imports-adversarial';
+import { MODULE_MAX } from '../../src/lib/imports/record';
 
 // Adversarial inputs for Python: see ../support/imports-adversarial.ts.
 
@@ -19,7 +20,10 @@ adversarialSuite('python', {
   comments: rep('# import x\n"""docstring import y"""\n', 1000),
 }, {
   deep: f => expect(f.imports.length).toBe(1 + 2 * 50_000),
-  huge: f => expect(f.imports.map(r => r.module.length)).toEqual([20 * 1024 * 1024, 1]),
+  huge: f => {
+    expect(f.imports.map(r => r.module.length)).toEqual([MODULE_MAX + 1, 1]);
+    expect(f.unsupported.map(u => u.construct)).toEqual(['oversized-module']);
+  },
   long: f => expect(mods(f)).toEqual(['x', 'y']),
   bom: f => expect(f.imports.map(r => [r.line, r.column, r.module])).toEqual([[1, 8, 'x']]), // range = the clause
   crlf: f => expect(f.imports.map(r => [r.line, r.column, r.endLine, r.module])).toEqual([[1, 8, 1, 'x'], [2, 1, 4, 'y'], [5, 1, 5, 'z']]),

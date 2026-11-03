@@ -12,12 +12,13 @@
  */
 
 import type { ImportRecord, UnsupportedRecord } from '../types';
-import { record, walk, type LanguageExtractor, type SyntaxNode } from '../record';
+import { moduleSource, record, walk, type LanguageExtractor, type SyntaxNode } from '../record';
 import { unsupportedAt } from '../unsupported';
 
-/** Path without quotes, raw (backtick) or interpreted. Escapes left as written. */
+/** Path without quotes, raw (backtick) or interpreted. Escapes left as written. Bounded read (moduleSource). */
 function unquote(lit: SyntaxNode): string {
-  const t = lit.text;
+  const { text: t, cut } = moduleSource(lit);
+  if (cut) return t.slice(1);
   return t.length >= 2 ? t.slice(1, -1) : t;
 }
 

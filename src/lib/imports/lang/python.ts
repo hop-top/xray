@@ -42,15 +42,28 @@
 import type Parser from 'tree-sitter';
 import * as path from 'path';
 import type { ImportName, ImportRecord, RelativeRef, UnsupportedRecord } from '../types';
-import { name, record, traverse, type ExtractContext } from '../record';
+import { joinChildren, joinModule, MODULE_WINDOW, moduleText, name, record, traverse, type ExtractContext } from '../record';
 import { unsupportedAt } from '../unsupported';
 
 const STATEMENTS = new Set(['import_statement', 'import_from_statement', 'future_import_statement']);
 const SCAN = new Set([...STATEMENTS, 'call', 'identifier', 'assignment', 'augmented_assignment']);
 
-/** `a . b` -> `a.b` (dotted_name identifiers joined). */
-function dotted(n: Parser.SyntaxNode): string {
+/** `a . b` -> `a.b` (dotted_name identifiers joined), for imported names. */
+function dottedName(n: Parser.SyntaxNode): string {
   return n.type === 'dotted_name' ? n.namedChildren.map(c => c.text).join('.') : n.text;
+}
+
+/** dottedName for a module: bounded reads (joinChildren / moduleText). */
+function dotted(n: Parser.SyntaxNode): string {
+  return n.type === 'dotted_name' ? joinChildren(n, '.') : moduleText(n);
+}
+
+/** `.` tokens of an import_prefix (`. .` is level 2), without reading its text. */
+function prefixLevel(prefix: Parser.SyntaxNode): number {
+  const c = prefix.walk();
+  let level = 0;
+  if (c.gotoFirstChild()) do if (c.nodeType === '.') level++; while (c.gotoNextSibling());
+  return level;
 }
 
 function absolute(module: string): Pick<ImportRecord, 'module' | 'normalized' | 'package' | 'locality'> {
@@ -68,9 +81,9 @@ function importStatement(stmt: Parser.SyntaxNode): ImportRecord[] {
 
 function importedNames(stmt: Parser.SyntaxNode): ImportName[] {
   return stmt.childrenForFieldName('name').map(c => {
-    if (c.type !== 'aliased_import') return name(dotted(c));
+    if (c.type !== 'aliased_import') return name(dottedName(c));
     const n = c.childForFieldName('name');
-    return name(n ? dotted(n) : c.text, c.childForFieldName('alias')?.text);
+    return name(n ? dottedName(n) : c.text, c.childForFieldName('alias')?.text);
   });
 }
 
@@ -86,14 +99,15 @@ function fromStatement(stmt: Parser.SyntaxNode): ImportRecord | undefined {
     return record({ at: stmt, kind: 'static', form: 'from', ...absolute(dotted(mod)), names, wildcard });
   }
   const prefix = mod.namedChildren.find(c => c.type === 'import_prefix');
-  const level = prefix ? prefix.text.replace(/[^.]/g, '').length : 0;
+  const level = prefix ? prefixLevel(prefix) : 0;
   const sub = mod.namedChildren.find(c => c.type === 'dotted_name');
   const relative: RelativeRef = sub ? { level, module: dotted(sub) } : { level };
   return record({
     at: stmt,
     kind: 'static',
     form: 'from',
-    module: '.'.repeat(level) + (sub ? dotted(sub) : ''),
+    // Dots past MODULE_WINDOW only lengthen a module capModules truncates anyway.
+    module: '.'.repeat(Math.min(level, MODULE_WINDOW)) + (sub ? dotted(sub) : ''),
     normalized: null,
     locality: 'unknown',
     relative,
@@ -232,17 +246,20 @@ export function literalArg(n: Parser.SyntaxNode | undefined): string | undefined
   if (!n) return undefined;
   if (n.type === 'concatenated_string') {
     const parts = n.namedChildren.map(literalArg);
-    return parts.every(p => p !== undefined) ? parts.join('') : undefined;
+    return parts.every(p => p !== undefined) ? joinModule(parts as string[], '') : undefined;
   }
   if (n.type !== 'string') return undefined;
   const prefix = (n.namedChildren.find(c => c.type === 'string_start')?.text ?? '').replace(/['"]/g, '').toLowerCase();
   if (prefix.includes('b')) return undefined;
-  let out = '';
+  const parts: Parser.SyntaxNode[] = [];
   for (const c of n.namedChildren) {
     if (c.type === 'string_start' || c.type === 'string_end') continue;
     if (c.type !== 'string_content' || c.namedChildCount > 0) return undefined;
-    out += c.text;
+    parts.push(c);
   }
+  // Bounded reads: every part is checked above, text is read only up to MODULE_WINDOW.
+  let out = '';
+  for (let i = 0; i < parts.length && out.length < MODULE_WINDOW; i++) out += moduleText(parts[i]);
   return out;
 }
 

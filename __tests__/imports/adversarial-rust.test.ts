@@ -1,4 +1,5 @@
 import { adversarialSuite, bytes, BAD_UTF8, NOISE, PAD, rep, seq } from '../support/imports-adversarial';
+import { MODULE_MAX } from '../../src/lib/imports/record';
 
 // Adversarial inputs for Rust: see ../support/imports-adversarial.ts.
 
@@ -18,7 +19,10 @@ adversarialSuite('rust', {
   invalidUtf8: bytes('include!("', BAD_UTF8, '");\nuse ok::fine;\n'),
   comments: rep('// use x::a;\n/* serde::x() */\n/// doc tokio::y\n', 1000),
 }, {
-  deep: f => expect(mods(f)).toEqual([`${rep('a::', 50_000)}b`, 'serde', 'tokio']),
+  deep: f => {
+    expect(mods(f)).toEqual([`${rep('a::', 50_000)}b`.slice(0, MODULE_MAX) + '…', 'serde', 'tokio']);
+    expect(f.unsupported.map(u => u.construct)).toEqual(['oversized-module']);
+  },
   huge: f => {
     expect(mods(f)).toEqual(['std::fmt']);
     expect(f.unsupported.map(u => [u.construct, Array.from(u.evidence).length])).toEqual([['include-macro', 240]]);

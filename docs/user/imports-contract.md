@@ -46,7 +46,7 @@ exist. Nothing is written into the scanned tree (see
   "schema": "xray.imports/v1",
   "xray": {
     "version": "0.1.0",
-    "extractor": "0.4.0"
+    "extractor": "0.5.0"
   },
   "grammars": {
     "go": {
@@ -188,6 +188,7 @@ present only when they apply; an absent boolean means `false`.
 | Rust | `build-script` (filename rule, below), `include-macro` (`include!`), `include-data` (`include_str!` / `include_bytes!`); as invocations, with a `std::`/`core::` path, or inside other macros' arguments; `detail` says whether the path is a string literal. |
 | PHP | `eval` (any argument), `dynamic-include` (`require`/`include*` whose path is not literal: variables, interpolation, `dirname(__FILE__) . ...`), `dynamic-new` (`new $v`, `new (expr)`, `new $o->p`; not names, `static`/`self`/`parent` or anonymous classes), `dynamic-static-call` (`$v::m()`), `dynamic-call` (variable functions `$f()` / `[$o, 'm']()`, `call_user_func` / `call_user_func_array` with a non-literal callable; immediately invoked closures excluded) |
 | TS/JS | `dynamic-require` (non-literal argument, or `require` rebound in the file: `detail` says which), `dynamic-import` (`import()` with a non-literal argument outside type positions), `create-require` (`createRequire(...)`, `x.createRequire(...)`), `eval` (`eval(...)`, `new Function(...)`, `Function(...)`; any argument) |
+| All | `oversized-module` (a record whose `module`, `normalized` or `relative.module` is longer than 4096 UTF-16 units; the record is kept truncated, see [Coverage](#coverage)) |
 | Python | `dynamic-import` (`__import__` / `import_module` that yield no record: non-literal argument, `__import__` rebound, relative name without a package; plus calls into importlib's loader APIs through import bindings: `importlib.util.*`, `importlib.machinery.*`, `importlib.__import__`; not `reload`, `invalidate_caches`, `resources`, `metadata`, `abc`), `exec` / `eval` (any argument: the string is code xray does not read), `sys-path` (`sys.path.insert/append/extend`, assignment, augmented or slice assignment to `sys.path`, `site.addsitedir`) |
 
 `eval` / `exec` (and TS/JS `Function`) are reported whatever the argument,
@@ -353,6 +354,15 @@ reported in `unsupported` instead.
   `complete: false`, no imports or unsupported records, and one
   `parseErrors` entry of `kind` `error` spanning the whole file; nothing
   of the failure (message, stack, paths) is written to the document.
+- Module strings are capped at 4096 UTF-16 units. A record whose
+  `module`, `normalized` or `relative.module` is longer keeps its range,
+  `kind`, `form` and other fields, with each long string cut to 4096 units
+  plus `…` (a cut surrogate pair loses its high half), `normalized: null`
+  (a truncated name is never a real module id), no `package` or
+  `resolved`, and `locality: unknown`; resolution skips it. One
+  `oversized-module` unsupported record at its start makes the file not
+  complete. Extraction reads at most 8192 units of source per module
+  string, whatever the literal's or path's size.
 
 ### Resolution
 
@@ -467,6 +477,9 @@ can be loaded. Not seen in v1:
 - Rust path roots (except `::x`) are `inferred`: false
   positives (e.g. glob-imported names) and misses inside unusual macro token
   trees are possible.
+- Module strings longer than 4096 UTF-16 units are truncated and flagged
+  `oversized-module` (see [Coverage](#coverage)); the module they name is
+  not reported.
 - Languages: Python, Go, Rust, TS/JS, PHP. Source files in other
   languages the scanner knows are listed as `unsupported-language` (see
   [Languages and forms](#languages-and-forms)). Single root per document.

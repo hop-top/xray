@@ -30,7 +30,7 @@
 
 import type Parser from 'tree-sitter';
 import type { ImportName, ImportRecord, UnsupportedRecord } from '../types';
-import { name, record, traverse, type ExtractContext } from '../record';
+import { joinChildren, moduleText, name, record, traverse, type ExtractContext } from '../record';
 import { unsupportedAt } from '../unsupported';
 
 const STATEMENTS = new Set(['import_statement', 'export_statement']);
@@ -40,6 +40,12 @@ const SCAN = new Set([...STATEMENTS, 'call_expression', 'new_expression', 'ident
 function unquote(n: Parser.SyntaxNode): string {
   if (n.type !== 'string') return n.text;
   return n.namedChildren.map(c => c.text).join('');
+}
+
+/** unquote for a module specifier: bounded reads (moduleText / joinChildren). */
+function specifier(n: Parser.SyntaxNode): string {
+  if (n.type !== 'string') return moduleText(n);
+  return joinChildren(n, '');
 }
 
 const hasToken = (n: Parser.SyntaxNode, tok: string) => n.children.some(c => !c.isNamed && c.type === tok);
@@ -85,7 +91,7 @@ function importStatement(stmt: Parser.SyntaxNode): ImportRecord | undefined {
     const src = req.childForFieldName('source');
     if (!src) return undefined;
     const alias = req.namedChildren.find(c => c.type === 'identifier');
-    return record({ at: stmt, kind: 'static', form: 'import-equals', ...moduleFields(unquote(src)), alias: alias?.text, typeOnly });
+    return record({ at: stmt, kind: 'static', form: 'import-equals', ...moduleFields(specifier(src)), alias: alias?.text, typeOnly });
   }
   const src = stmt.childForFieldName('source');
   if (!src) return undefined;
@@ -97,7 +103,7 @@ function importStatement(stmt: Parser.SyntaxNode): ImportRecord | undefined {
     else if (c.type === 'namespace_import') alias = c.namedChildren.find(x => x.type === 'identifier')?.text;
     else if (c.type === 'named_imports') names.push(...specifiers(c, 'import_specifier'));
   }
-  return record({ at: stmt, kind: 'static', form: 'import', ...moduleFields(unquote(src)), alias, names, typeOnly });
+  return record({ at: stmt, kind: 'static', form: 'import', ...moduleFields(specifier(src)), alias, names, typeOnly });
 }
 
 function exportFrom(stmt: Parser.SyntaxNode): ImportRecord | undefined {
@@ -110,7 +116,7 @@ function exportFrom(stmt: Parser.SyntaxNode): ImportRecord | undefined {
     at: stmt,
     kind: 'static',
     form: 'export-from',
-    ...moduleFields(unquote(src)),
+    ...moduleFields(specifier(src)),
     alias: nsName ? unquote(nsName) : undefined,
     names: clause ? specifiers(clause, 'export_specifier') : undefined,
     wildcard: !ns && !clause && hasToken(stmt, '*'),
@@ -168,9 +174,8 @@ function callSite(n: Parser.SyntaxNode, fn: Parser.SyntaxNode | null): Unsupport
  */
 export function literalArg(n: Parser.SyntaxNode | undefined): string | undefined {
   if (!n || (n.type !== 'string' && n.type !== 'template_string')) return undefined;
-  const parts = n.namedChildren;
-  if (parts.some(c => c.type !== 'string_fragment')) return undefined;
-  return parts.map(c => c.text).join('');
+  if (n.namedChildren.some(c => c.type !== 'string_fragment')) return undefined;
+  return joinChildren(n, '');
 }
 
 /** Parents whose `name` field binds; other binding positions by field below. */

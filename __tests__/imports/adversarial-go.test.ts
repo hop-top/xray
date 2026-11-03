@@ -1,4 +1,5 @@
 import { adversarialSuite, bytes, BAD_UTF8, NOISE, PAD, rep, seq } from '../support/imports-adversarial';
+import { MODULE_MAX } from '../../src/lib/imports/record';
 
 // Adversarial inputs for Go: see ../support/imports-adversarial.ts. Imports
 // are top-level only; nesting and size go into function bodies, literals,
@@ -22,8 +23,8 @@ adversarialSuite('go', {
 }, {
   deep: f => expect(mods(f)).toEqual(['fmt']),
   huge: f => {
-    expect(f.imports.map(r => r.module.length)).toEqual([20 * 1024 * 1024, 3]);
-    expect(f.unsupported.map(u => u.construct)).toEqual(['linkname']);
+    expect(f.imports.map(r => r.module.length)).toEqual([MODULE_MAX + 1, 3]);
+    expect(f.unsupported.map(u => u.construct)).toEqual(['oversized-module', 'linkname']);
   },
   many: f => expect(f.unsupported.length).toBe(2 * 50_000),
   long: f => expect(mods(f)).toEqual(expect.arrayContaining(['x'])),

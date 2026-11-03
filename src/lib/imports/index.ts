@@ -8,6 +8,9 @@
  * language), else omitted; resolution-only manifests (IMPORT_MANIFESTS) are
  * never listed. A missing grammar yields `status: grammar-missing`.
  *
+ * Module strings longer than MODULE_MAX are truncated and reported as
+ * `oversized-module` (record.ts capModules), before the cache.
+ *
  * Per-file isolation: an exception while parsing or extracting one file
  * yields that file as `parse-error` with one whole-file `error` range and no
  * imports; the run continues.
@@ -21,6 +24,7 @@ import { getGrammar, grammarForExtension, packForExtension } from '../parser/gra
 import { IMPORT_MANIFESTS } from './collect';
 import { IMPORT_LANGUAGES, importLanguageFor } from './languages';
 import type { ImportsCache } from './cache';
+import { capModules } from './record';
 import { resolveImports } from './resolve';
 import { cargoBuildScripts, endOf, parseErrors } from './unsupported';
 import {
@@ -31,7 +35,7 @@ import {
 export * from './types';
 
 /** Semver; bump on any output change for the same input (minor additive, patch fix). */
-export const IMPORTS_EXTRACTOR_VERSION = '0.4.0';
+export const IMPORTS_EXTRACTOR_VERSION = '0.5.0';
 
 export interface ImportsSourceFile {
   /** Posix path relative to `root`. */
@@ -138,7 +142,9 @@ function parseFile(
   const text = bytes.toString('utf8').replace(/^\uFEFF/, '');
   const tree = parser.parse(text);
   const unsupported: UnsupportedRecord[] = [];
-  const imports = lang.extract(tree.rootNode, { path: file.path, language, unsupported }).sort(byPosition);
+  const imports = lang.extract(tree.rootNode, { path: file.path, language, unsupported });
+  capModules(imports, unsupported);
+  imports.sort(byPosition);
   unsupported.sort(byStart);
   const errors = parseErrors(tree.rootNode);
   const fileStatus = errors.length > 0 ? 'parse-error' : 'ok';
