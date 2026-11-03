@@ -32,7 +32,7 @@
 import type Parser from 'tree-sitter';
 import * as path from 'path';
 import type { ImportName, ImportRecord, RelativeRef } from '../types';
-import { name, record, walk, type ExtractContext } from '../record';
+import { name, record, traverse, type ExtractContext } from '../record';
 
 const STATEMENTS = new Set(['import_statement', 'import_from_statement', 'future_import_statement']);
 const SCAN = new Set([...STATEMENTS, 'call', 'identifier']);
@@ -140,9 +140,6 @@ export function resolveName(name: string, pkg: string): string | null {
   return rest ? `${base}.${rest}` : base;
 }
 
-const same = (a: Parser.SyntaxNode | null | undefined, b: Parser.SyntaxNode) =>
-  !!a && a.startIndex === b.startIndex && a.endIndex === b.endIndex && a.type === b.type;
-
 /** Parents where any identifier child binds; others by field below. */
 const CHILD_BINDERS = new Set(['parameters', 'lambda_parameters', 'typed_parameter', 'pattern_list', 'tuple_pattern', 'list_pattern', 'as_pattern_target', 'global_statement', 'nonlocal_statement']);
 const FIELD_BINDERS: Record<string, string> = {
@@ -158,20 +155,33 @@ const FIELD_BINDERS: Record<string, string> = {
   named_expression: 'name',
 };
 
-/** Whether this identifier occurrence binds its name. */
-function binds(id: Parser.SyntaxNode): boolean {
-  const p = id.parent;
-  if (!p) return false;
-  if (CHILD_BINDERS.has(p.type)) return true;
-  if (FIELD_BINDERS[p.type]) return same(p.childForFieldName(FIELD_BINDERS[p.type]), id);
-  // `from m import __import__` / `import __import__`: a one-segment dotted_name binds.
-  if (p.type === 'dotted_name' && p.namedChildCount === 1) {
-    const g = p.parent;
-    if (g?.type === 'import_statement') return true;
-    if (g?.type === 'import_from_statement') return !same(g.childForFieldName('module_name'), p);
-  }
+/**
+ * Ancestor state carried down the walk (no `.parent` climbs: each access is
+ * O(depth) in node-tree-sitter, which made the pass quadratic on deep input).
+ */
+interface Frame {
+  type: string;
+  /** Field of this node in its parent. */
+  field: string | null;
+  /** Named children entered so far. */
+  named: number;
+  /** Parent's type. */
+  parentType: string | undefined;
+  /** dotted_name: an `__import__` identifier child (binds when it is the only segment). */
+  dunder?: boolean;
+}
+
+/** Whether an identifier binds its name, given its parent frame and its field there. */
+function binds(parent: Frame | undefined, field: string | null): boolean {
+  if (!parent) return false;
+  if (CHILD_BINDERS.has(parent.type)) return true;
+  if (FIELD_BINDERS[parent.type]) return field === FIELD_BINDERS[parent.type];
   return false;
 }
+
+/** `from m import __import__` / `import __import__`: a one-segment dotted_name binds (decided on leave). */
+const dottedBinds = (f: Frame) =>
+  f.named === 1 && (f.parentType === 'import_statement' || (f.parentType === 'import_from_statement' && f.field !== 'module_name'));
 
 /** Names bound to importlib (module) and to importlib.import_module (function) by imports. */
 interface ImportlibBindings { modules: Set<string>; functions: Set<string> }
@@ -272,21 +282,37 @@ export function scanPython(root: Parser.SyntaxNode, ctx: ExtractContext): Python
   const calls: Parser.SyntaxNode[] = [];
   const importlib: ImportlibBindings = { modules: new Set(), functions: new Set() };
   let shadowed = false;
-  for (const n of walk(root, SCAN)) {
-    if (n.type === 'identifier') {
+  const stack: Frame[] = [];
+  traverse(root, c => {
+    const parent = stack[stack.length - 1];
+    const type = c.nodeType;
+    const isNamed = c.nodeIsNamed;
+    if (parent && isNamed) parent.named++;
+    const field = parent ? c.currentFieldName ?? null : null;
+    stack.push({ type, field, named: 0, parentType: parent?.type });
+    if (!isNamed || !SCAN.has(type)) return;
+    if (type === 'identifier') {
       // Byte-length test first: skips materializing the text of most identifiers.
-      if (!shadowed && n.endIndex - n.startIndex === 10 && n.text === '__import__' && binds(n)) shadowed = true;
-    } else if (n.type === 'call') {
+      if (shadowed || c.endIndex - c.startIndex !== 10 || c.nodeText !== '__import__') return;
+      if (parent?.type === 'dotted_name') parent.dunder = true;
+      else if (binds(parent, field)) shadowed = true;
+      return;
+    }
+    const n = c.currentNode;
+    if (type === 'call') {
       calls.push(n);
     } else {
       collectImportlib(n, importlib);
-      if (n.type === 'import_statement') imports.push(...importStatement(n));
+      if (type === 'import_statement') imports.push(...importStatement(n));
       else {
         const r = fromStatement(n);
         if (r) imports.push(r);
       }
     }
-  }
+  }, () => {
+    const f = stack.pop()!;
+    if (f.dunder && dottedBinds(f)) shadowed = true;
+  });
   for (const call of calls) {
     const fn = call.childForFieldName('function');
     let outcome: CallOutcome | undefined;

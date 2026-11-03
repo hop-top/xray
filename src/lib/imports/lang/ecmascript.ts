@@ -24,7 +24,7 @@
 
 import type Parser from 'tree-sitter';
 import type { ImportName, ImportRecord } from '../types';
-import { name, record, walk, type ExtractContext } from '../record';
+import { name, record, traverse, type ExtractContext } from '../record';
 
 const STATEMENTS = new Set(['import_statement', 'export_statement']);
 const SCAN = new Set([...STATEMENTS, 'call_expression', 'identifier', 'shorthand_property_identifier_pattern']);
@@ -135,9 +135,6 @@ export function literalArg(n: Parser.SyntaxNode | undefined): string | undefined
   return parts.map(c => c.text).join('');
 }
 
-const same = (a: Parser.SyntaxNode | null | undefined, b: Parser.SyntaxNode) =>
-  !!a && a.startIndex === b.startIndex && a.endIndex === b.endIndex && a.type === b.type;
-
 /** Parents whose `name` field binds; other binding positions by field below. */
 const NAME_BINDERS = new Set([
   'variable_declarator', 'function_declaration', 'function_expression', 'function',
@@ -155,25 +152,6 @@ const FIELD_BINDERS: Record<string, string> = {
   catch_clause: 'parameter',
 };
 
-function insideAmbient(n: Parser.SyntaxNode): boolean {
-  for (let p = n.parent; p; p = p.parent) if (p.type === 'ambient_declaration') return true;
-  return false;
-}
-
-/** Whether this identifier (or shorthand pattern) occurrence binds its name. */
-function binds(id: Parser.SyntaxNode): boolean {
-  if (id.type === 'shorthand_property_identifier_pattern') return true;
-  const p = id.parent;
-  if (!p) return false;
-  let hit: boolean;
-  if (NAME_BINDERS.has(p.type)) hit = same(p.childForFieldName('name'), id);
-  else if (CHILD_BINDERS.has(p.type)) hit = true;
-  else if (p.type === 'import_specifier') hit = same(p.childForFieldName('alias') ?? p.childForFieldName('name'), id);
-  else if (FIELD_BINDERS[p.type]) hit = same(p.childForFieldName(FIELD_BINDERS[p.type]), id);
-  else hit = false;
-  return hit && !insideAmbient(id);
-}
-
 /** Type nodes: an `import()` under one is a TS type import. */
 const TYPE_CONTEXTS = new Set([
   'type_annotation', 'type_alias_declaration', 'type_query', 'type_arguments', 'type_parameters',
@@ -181,14 +159,36 @@ const TYPE_CONTEXTS = new Set([
   'omitting_type_annotation', 'asserts_annotation', 'type_predicate_annotation', 'constraint', 'default_type',
 ]);
 
-function inTypePosition(call: Parser.SyntaxNode): boolean {
-  let child = call;
-  for (let p = call.parent; p; child = p, p = p.parent) {
-    if (TYPE_CONTEXTS.has(p.type)) return true;
-    // `x as T` / `x satisfies T`: the type is the second named child.
-    if ((p.type === 'as_expression' || p.type === 'satisfies_expression') && !same(p.namedChild(0), child)) return true;
-    if (p.type.endsWith('_statement') || p.type.endsWith('_declaration') || p.type === 'program') return false;
-  }
+/** Where the climb for a type position stops: statements, declarations, the program. */
+const typeBoundary = (type: string) => type.endsWith('_statement') || type.endsWith('_declaration') || type === 'program';
+
+/**
+ * Ancestor state carried down the walk (no `.parent` climbs: each access is
+ * O(depth) in node-tree-sitter, which made the pass quadratic on deep input).
+ */
+interface Frame {
+  type: string;
+  /** Named children entered so far. */
+  named: number;
+  /** Under an `ambient_declaration` (strict ancestor). */
+  ambient: boolean;
+  /**
+   * Type position: the nearest ancestor that decides is a type context, or
+   * the type side of `as` / `satisfies` (not their first named child); a
+   * statement, declaration or the program decides "not a type".
+   */
+  typePos: boolean;
+  /** import_specifier: a `require` in its `name` field, and whether an `alias` follows. */
+  specifierName?: boolean;
+  specifierAlias?: boolean;
+}
+
+/** Whether an identifier binds its name, given its parent frame and its field there. */
+function binds(parent: Frame | undefined, field: string | null): boolean {
+  if (!parent) return false;
+  if (NAME_BINDERS.has(parent.type)) return field === 'name';
+  if (CHILD_BINDERS.has(parent.type)) return true;
+  if (FIELD_BINDERS[parent.type]) return field === FIELD_BINDERS[parent.type];
   return false;
 }
 
@@ -200,20 +200,47 @@ export function scanEcmaScript(root: Parser.SyntaxNode): EcmaScriptScan {
   const deferred: DeferredCall[] = [];
   const requires: Parser.SyntaxNode[] = [];
   let shadowed = false;
-  for (const n of walk(root, SCAN)) {
-    if (n.type === 'identifier' || n.type === 'shorthand_property_identifier_pattern') {
-      // Byte-length test first: skips materializing the text of most identifiers.
-      if (!shadowed && n.endIndex - n.startIndex === 7 && n.text === 'require' && binds(n)) shadowed = true;
-      continue;
+  const stack: Frame[] = [];
+  traverse(root, c => {
+    const parent = stack[stack.length - 1];
+    const type = c.nodeType;
+    const isNamed = c.nodeIsNamed;
+    const index = parent && isNamed ? parent.named++ : -1;
+    let typePos = false;
+    if (parent) {
+      if (TYPE_CONTEXTS.has(parent.type)) typePos = true;
+      // `x as T` / `x satisfies T`: the type is the second named child.
+      else if ((parent.type === 'as_expression' || parent.type === 'satisfies_expression') && index !== 0) typePos = true;
+      else if (!typeBoundary(parent.type)) typePos = parent.typePos;
     }
-    if (n.type === 'call_expression') {
+    const ambient = !!parent && (parent.ambient || parent.type === 'ambient_declaration');
+    const frame: Frame = { type, named: 0, ambient, typePos };
+    const field = parent ? c.currentFieldName ?? null : null;
+    if (parent?.type === 'import_specifier' && field === 'alias') parent.specifierAlias = true;
+    stack.push(frame);
+    if (!isNamed || !SCAN.has(type)) return;
+    if (type === 'identifier' || type === 'shorthand_property_identifier_pattern') {
+      // Byte-length test first: skips materializing the text of most identifiers.
+      if (shadowed || c.endIndex - c.startIndex !== 7 || c.nodeText !== 'require') return;
+      // A shorthand pattern binds even in ambient context; other positions only outside it.
+      if (type === 'shorthand_property_identifier_pattern') { shadowed = true; return; }
+      if (ambient) return;
+      // import_specifier: binds as the alias, or as the name when no alias follows (decided on leave).
+      if (parent?.type === 'import_specifier') {
+        if (field === 'alias') shadowed = true;
+        else if (field === 'name') parent.specifierName = true;
+      } else if (binds(parent, field)) shadowed = true;
+      return;
+    }
+    const n = c.currentNode;
+    if (type === 'call_expression') {
       const fn = n.childForFieldName('function');
       if (fn?.type === 'import') {
         const arg = firstArgument(n);
         const spec = literalArg(arg);
         if (spec === undefined) {
-          if (arg && !inTypePosition(n)) deferred.push({ node: n, construct: 'dynamic-import', reason: 'non-literal' });
-        } else if (inTypePosition(n)) {
+          if (arg && !typePos) deferred.push({ node: n, construct: 'dynamic-import', reason: 'non-literal' });
+        } else if (typePos) {
           imports.push(record({ at: n, kind: 'static', form: 'import-type', ...moduleFields(spec), typeOnly: true }));
         } else {
           imports.push(record({ at: n, kind: 'dynamic', form: 'import()', ...moduleFields(spec) }));
@@ -221,11 +248,14 @@ export function scanEcmaScript(root: Parser.SyntaxNode): EcmaScriptScan {
       } else if (fn?.type === 'identifier' && fn.text === 'require' && firstArgument(n)) {
         requires.push(n);
       }
-      continue;
+      return;
     }
-    const r = n.type === 'import_statement' ? importStatement(n) : exportFrom(n);
+    const r = type === 'import_statement' ? importStatement(n) : exportFrom(n);
     if (r) imports.push(r);
-  }
+  }, () => {
+    const f = stack.pop()!;
+    if (f.specifierName && !f.specifierAlias) shadowed = true;
+  });
   for (const n of requires) {
     const spec = literalArg(firstArgument(n));
     if (shadowed) deferred.push({ node: n, construct: 'dynamic-require', reason: 'shadowed' });

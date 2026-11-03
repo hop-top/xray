@@ -110,6 +110,25 @@ export function* walk(root: SyntaxNode, types: ReadonlySet<string>): Generator<S
   }
 }
 
+/**
+ * Document-order cursor walk over every node with enter / leave callbacks,
+ * so callers carry ancestor state down a stack instead of climbing
+ * `.parent` (O(depth) per access in node-tree-sitter). `enter` sees the
+ * cursor on the node; `leave` runs after its subtree, in reverse order.
+ */
+export function traverse(root: SyntaxNode, enter: (c: Parser.TreeCursor) => void, leave: () => void): void {
+  const cursor = root.walk();
+  for (;;) {
+    enter(cursor);
+    if (cursor.gotoFirstChild()) continue;
+    for (;;) {
+      leave();
+      if (cursor.gotoNextSibling()) break;
+      if (!cursor.gotoParent()) return;
+    }
+  }
+}
+
 /** Imported name; `alias` kept whenever written (`import { x as x }` is explicit). */
 export function name(n: string, alias?: string): ImportName {
   return alias !== undefined ? { name: n, alias } : { name: n };
