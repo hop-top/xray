@@ -34,7 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `xray.imports/v1` call forms with literal arguments: TS/JS `require()`,
   `import()` (type-position `import()` as `import-type`), Python
   `__import__` and `importlib.import_module` (extractor 0.3.0).
-
+- Imports extractor: kind `reference` records for Rust path roots
+  (`serde_json::to_string`, `#[derive(::serde::Serialize)]`) and PHP qualified
+  names (`\Vendor\Pkg\Thing`), one per root / name per file with `occurrences`.
 - Imports extractor (library, no command yet): Go, Rust, PHP static imports
   per `xray.imports/v1` — Go specs (alias/dot/blank, raw strings, `"C"`),
   Rust use trees flattened per leaf + `extern crate` + `mod x;`, PHP `use`

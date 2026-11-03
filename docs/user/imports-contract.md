@@ -66,7 +66,7 @@ present only when they apply; an absent boolean means `false`.
 | `wildcard` | boolean | `from m import *`, `export * from`, Rust `::*`. |
 | `typeOnly` | boolean | TS `import type`, type-position `import()`. |
 | `resolved` | `{file}` or `{dir}` | Target in the tree (`dir` for Go packages); absent when unresolved. |
-| `confidence` | enum | `syntactic` (read directly from syntax) or `inferred` (Rust path roots, PHP relative-qualified names; filter these if you need certainty). |
+| `confidence` | enum | `syntactic` (read directly from syntax) or `inferred` (Rust path roots without a leading `::`; filter these if you need certainty). |
 | `occurrences` | integer | `kind` `reference` only: uses in the file (first occurrence gives the position). |
 | `evidence` | string | Source text, whitespace-collapsed, at most 240 characters. |
 
@@ -120,8 +120,8 @@ stay `unknown`.
 | `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` | `import`, `export-from` |
 | `python` | `.py` | `import`, `from` |
 | `go` | `.go` | `import` |
-| `rust` | `.rs` | `use`, `extern-crate`, `mod` (kind `include`) |
-| `php` | `.php` | `use`, `group-use`, `use-function`, `use-const`, `require`, `require_once`, `include`, `include_once` |
+| `rust` | `.rs` | `use`, `extern-crate`, `mod` (kind `include`), `path-root` (kind `reference`) |
+| `php` | `.php` | `use`, `group-use`, `use-function`, `use-const`, `require`, `require_once`, `include`, `include_once`, `fqn` (kind `reference`) |
 
 Extensions no entry claims are omitted from `files`; a claimed extension
 whose grammar is not installed gives `status: grammar-missing`.
@@ -154,6 +154,19 @@ paths get `package: "crate"`, `locality: "local"` (`normalized: null` for
 emitted; a `#[path]` attribute above `mod x;` is included in its range and
 evidence.
 
+Rust references (`path-root`): the root of each path used in code outside
+`use` / `extern crate` — expressions, patterns, types, impl headers,
+qualified types (`<T as tokio::io::AsyncRead>`), macro and attribute paths
+(`log::info!`, `#[tokio::main]`) — plus a token scan of attribute and macro
+arguments and `macro_rules` bodies (an identifier followed by `::`, not
+preceded by `::` or `.`). Skipped: `crate`/`self`/`super`/`Self`/`$crate`
+and metavariable roots, CamelCase roots (types, enum variants), primitive
+types (`u32::MAX`), and roots bound in the file by a `use` leaf (its alias
+or last segment), `extern crate` (alias or name), `mod` or a named item.
+`::x` always names a crate: `confidence: syntactic`, never shadowed by a
+binding; other roots are `inferred`. `std`/`core`/`alloc` are `stdlib`.
+`module` = `normalized` = `package` = the root.
+
 PHP: one record per `use` clause, grouped use expanded with its prefix,
 FQN without leading `\`, `package` = first namespace segment. `require` /
 `include*` only with a literal path: a quoted string without
@@ -184,6 +197,20 @@ sequences are not decoded: an argument with one is not literal.
   package-relative form (`.a` in `pkg/mod.py` = `{level: 1, module:
   "mod.a"}`; in `__init__.py` `__name__` is the package).
 Range and `evidence` = the call. Bindings are file-wide, not scope-aware.
+
+PHP references (`fqn`): every qualified name outside `use` clauses (`new`,
+static and function calls, `instanceof`, types, `X::class`, attributes,
+trait `use`), resolved per PHP rules: leading `\` = fully qualified
+(`module` without it); `namespace\X` = current namespace; a first segment
+matching a class `use` alias of the same namespace block (case-insensitive;
+`use function` / `use const` do not apply) = alias target; else prefixed by
+the current namespace. Unqualified names are skipped. All are `syntactic`:
+PHP's name-resolution rules make the result deterministic. `normalized` = the
+resolved name, `package` = its first segment.
+
+References (both languages): one record per root (Rust) or resolved name
+(PHP) per file; the first occurrence gives the range and `evidence` (the
+path / name text), `occurrences` counts every use.
 
 Not yet emitted: non-literal or shadowed call forms (reported as
 `unsupported` later); non-literal PHP includes; `locality` other
@@ -226,7 +253,7 @@ can be loaded. Not seen in v1:
 - Resolution: tsconfig `paths`/`baseUrl`, package.json `exports`/`imports`
   maps, composer psr-4, Cargo dependency tables / workspaces,
   pyproject / site-packages. Affected records stay `unknown`.
-- Rust path roots and PHP relative-qualified names are `inferred`: false
+- Rust path roots (except `::x`) are `inferred`: false
   positives (e.g. glob-imported names) and misses inside unusual macro token
   trees are possible.
 - Languages: Python, Go, Rust, TS/JS, PHP. Other files are listed as

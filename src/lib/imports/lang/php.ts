@@ -13,6 +13,17 @@
  *
  * Range: the declaration when it yields one record, else the clause.
  * Evidence: the declaration / statement.
+ *
+ * References (kind reference, form fqn): every qualified_name / relative_name
+ * outside `use` clauses (new, static and function calls, instanceof, types,
+ * `X::class`, attributes, trait `use`), resolved per PHP rules for qualified
+ * names: leading `\` = fully qualified; `namespace\X` = current namespace;
+ * first segment matching a class `use` alias of the same namespace block
+ * (case-insensitive) -> alias target; else prefixed by the current
+ * namespace. Unqualified names are skipped (same namespace or use-bound,
+ * already reported). All `syntactic`: PHP resolves qualified names at
+ * compile time from these rules alone. One record per resolved name per file: the first occurrence
+ * gives range and evidence (the name), `occurrences` counts all.
  */
 
 import * as posix from 'path/posix';
@@ -26,23 +37,31 @@ function clauseType(n: SyntaxNode): string | undefined {
   return n.childForFieldName('type')?.text.toLowerCase();
 }
 
-function useRecords(decl: SyntaxNode, out: ImportRecord[]): void {
+interface UseClause { clause: SyntaxNode; module: string; alias?: string; type?: string; group: boolean }
+
+function useClauses(decl: SyntaxNode): UseClause[] {
   const declType = clauseType(decl);
   const group = decl.childForFieldName('body');
   const prefixNode = group ? decl.namedChildren.find(c => c.type === 'namespace_name') : undefined;
   const prefix = prefixNode ? fqn(prefixNode) : '';
-  const clauses = (group ?? decl).namedChildren.filter(c => c.type === 'namespace_use_clause');
-  for (const clause of clauses) {
+  const out: UseClause[] = [];
+  for (const clause of (group ?? decl).namedChildren) {
+    if (clause.type !== 'namespace_use_clause') continue;
     const alias = clause.childForFieldName('alias');
     const nameNode = clause.namedChildren.find(c => c !== alias && (c.type === 'qualified_name' || c.type === 'name'));
     if (!nameNode) continue;
     const name = fqn(nameNode);
-    const module = prefix ? `${prefix}\\${name}` : name;
-    const type = clauseType(clause) ?? declType;
-    const form: ImportForm = type === 'function' ? 'use-function' : type === 'const' ? 'use-const' : group ? 'group-use' : 'use';
+    out.push({ clause, module: prefix ? `${prefix}\\${name}` : name, alias: alias?.text, type: clauseType(clause) ?? declType, group: !!group });
+  }
+  return out;
+}
+
+function useRecords(decl: SyntaxNode, clauses: UseClause[], out: ImportRecord[]): void {
+  for (const c of clauses) {
+    const form: ImportForm = c.type === 'function' ? 'use-function' : c.type === 'const' ? 'use-const' : c.group ? 'group-use' : 'use';
     out.push(record({
-      at: clauses.length === 1 ? decl : clause, evidenceOf: decl, kind: 'static', form,
-      module, normalized: module, package: module.split('\\')[0], locality: 'unknown', alias: alias?.text,
+      at: clauses.length === 1 ? decl : c.clause, evidenceOf: decl, kind: 'static', form,
+      module: c.module, normalized: c.module, package: c.module.split('\\')[0], locality: 'unknown', alias: c.alias,
     }));
   }
 }
@@ -117,14 +136,104 @@ function includeRecord(n: SyntaxNode, filePath: string, out: ImportRecord[]): vo
   }));
 }
 
-const STATEMENTS = new Set(['namespace_use_declaration', ...Object.keys(INCLUDES)]);
+/**
+ * Locator for the namespace region holding a node: the latest-starting
+ * region whose [start, end) contains it, -1 outside any (regions can nest or
+ * overlap in broken input). Queries must come in document order: regions
+ * are pushed as they start (index order) and popped once ended, so each
+ * query is amortized O(1) instead of a scan over every region.
+ */
+function regionLocator(spaces: PhpNamespace[]): (n: SyntaxNode) => number {
+  const open: number[] = [];
+  let next = 0;
+  return n => {
+    const line = n.startPosition.row + 1;
+    const column = n.startPosition.column + 1;
+    const before = (l: number, c: number) => line < l || (line === l && column < c);
+    while (next < spaces.length && !before(spaces[next].line, spaces[next].column)) open.push(next++);
+    while (open.length > 0) {
+      const s = spaces[open[open.length - 1]];
+      if (before(s.endLine, s.endColumn)) return open[open.length - 1];
+      open.pop();
+    }
+    return -1;
+  };
+}
+
+interface Ref { node: SyntaxNode; module: string; normalized: string }
+
+/** Resolved name of a qualified_name / relative_name, or undefined for an unqualified one. */
+function resolveName(n: SyntaxNode, ns: string, aliases: Map<string, string> | undefined): Ref | undefined {
+  const text = n.text.replace(/\s+/g, '');
+  const within = (rest: string) => (ns ? `${ns}\\${rest}` : rest);
+  if (n.type === 'relative_name') {
+    const rest = text.replace(/^namespace\\/i, '');
+    return { node: n, module: text, normalized: within(rest) };
+  }
+  if (text.startsWith('\\')) {
+    const name = text.slice(1);
+    return { node: n, module: name, normalized: name };
+  }
+  const cut = text.indexOf('\\');
+  if (cut < 0) return undefined;
+  const target = aliases?.get(text.slice(0, cut).toLowerCase());
+  return { node: n, module: text, normalized: target ? target + text.slice(cut) : within(text) };
+}
+
+function referenceRecords(refs: Ref[], out: ImportRecord[]): void {
+  const byName = new Map<string, { first: Ref; count: number }>();
+  for (const r of refs) {
+    const seen = byName.get(r.normalized);
+    if (seen) seen.count++;
+    else byName.set(r.normalized, { first: r, count: 1 });
+  }
+  for (const { first, count } of byName.values()) {
+    out.push(record({
+      at: first.node, kind: 'reference', form: 'fqn', module: first.module, normalized: first.normalized,
+      package: first.normalized.split('\\')[0], locality: 'unknown',
+      occurrences: count,
+    }));
+  }
+}
+
+const NAMES = new Set(['qualified_name', 'relative_name']);
+const STATEMENTS = new Set(['namespace_use_declaration', ...Object.keys(INCLUDES), ...NAMES]);
 
 export const extractPhp: LanguageExtractor = (root, ctx) => {
   const out: ImportRecord[] = [];
+  const spaces = phpNamespaces(root);
+  // Class / namespace `use` aliases per namespace region (lowercased: PHP names are case-insensitive).
+  const aliases = new Map<number, Map<string, string>>();
+  const names: SyntaxNode[] = [];
+  // Names inside the last `use` declaration (preorder reaches it first) are
+  // its clauses, not references; tracked by range since `.parent` costs
+  // O(depth) per call (quadratic on deeply nested expressions).
+  let useEnd = -1;
+  const useRegion = regionLocator(spaces);
   for (const n of walk(root, STATEMENTS)) {
-    if (n.type === 'namespace_use_declaration') useRecords(n, out);
-    else if (n.type in INCLUDES) includeRecord(n, ctx.path, out);
+    if (n.type === 'namespace_use_declaration') {
+      useEnd = n.endIndex;
+      const clauses = useClauses(n);
+      useRecords(n, clauses, out);
+      const region = useRegion(n);
+      for (const c of clauses) {
+        if (c.type === 'function' || c.type === 'const') continue;
+        let m = aliases.get(region);
+        if (!m) aliases.set(region, (m = new Map()));
+        m.set((c.alias ?? c.module.slice(c.module.lastIndexOf('\\') + 1)).toLowerCase(), c.module);
+      }
+    } else if (NAMES.has(n.type)) {
+      if (n.startIndex >= useEnd) names.push(n);
+    } else if (n.type in INCLUDES) includeRecord(n, ctx.path, out);
   }
+  const refs: Ref[] = [];
+  const nameRegion = regionLocator(spaces);
+  for (const n of names) {
+    const region = nameRegion(n);
+    const r = resolveName(n, spaces[region]?.name ?? '', aliases.get(region));
+    if (r) refs.push(r);
+  }
+  referenceRecords(refs, out);
   return out;
 };
 

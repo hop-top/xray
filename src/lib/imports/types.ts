@@ -15,7 +15,7 @@ export type ImportKind = (typeof IMPORT_KINDS)[number];
 export const LOCALITIES = ['stdlib', 'local', 'external', 'unknown'] as const;
 export type Locality = (typeof LOCALITIES)[number];
 
-/** `inferred`: Rust path roots, PHP relative-qualified names. */
+/** `inferred`: Rust path roots without a leading `::` (heuristic). */
 export const CONFIDENCES = ['syntactic', 'inferred'] as const;
 export type Confidence = (typeof CONFIDENCES)[number];
 

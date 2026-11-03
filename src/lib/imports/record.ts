@@ -68,6 +68,8 @@ export interface RecordFields {
   typeOnly?: boolean;
   resolved?: Resolved;
   confidence?: ImportRecord['confidence'];
+  /** kind `reference` only. */
+  occurrences?: number;
   /** Node whose text is the evidence (defaults to the range text). */
   evidenceOf?: SyntaxNode;
 }
@@ -90,6 +92,7 @@ export function record(f: RecordFields): ImportRecord {
   if (f.typeOnly) r.typeOnly = true;
   if (f.resolved) r.resolved = f.resolved;
   r.confidence = f.confidence ?? 'syntactic';
+  if (f.occurrences !== undefined) r.occurrences = f.occurrences;
   r.evidence = evidence(f.evidenceOf ? f.evidenceOf.text : textBetween(f.at, f.end ?? f.at));
   return r;
 }

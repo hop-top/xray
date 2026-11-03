@@ -11,10 +11,24 @@
  * Evidence: the declaration. Package only when certain from syntax: leading
  * `::` (a crate) or crate/self/super (`crate`, locality local). A bare first
  * segment may be a local module (2018 paths) and is left to resolution.
+ *
+ * References (kind reference, form path-root): the root of every path used
+ * outside `use` / `extern crate` — leftmost segment of scoped_identifier /
+ * scoped_type_identifier chains (expressions, patterns, types, impl headers,
+ * qualified types, macro and attribute paths), plus a token scan of
+ * token_trees (attribute and macro arguments, macro_rules bodies), which the
+ * grammar leaves unparsed: an identifier followed by `::` and not preceded
+ * by `::` or `.`. Skipped: crate/self/super/Self/`$crate`/metavariable
+ * roots, CamelCase roots (types, enum variants), primitive types (`u32::MAX`)
+ * and roots bound in the file by a `use` leaf, `extern crate`, `mod` or a
+ * named item. A leading `::` root names a crate whatever the bindings and is
+ * `syntactic`; others are `inferred`. std/core/alloc are `stdlib`. One
+ * record per root per file: the first occurrence gives range and evidence
+ * (the path text), `occurrences` counts all.
  */
 
 import type { ImportRecord } from '../types';
-import { record, walk, type LanguageExtractor, type SyntaxNode } from '../record';
+import { evidence, record, type LanguageExtractor, type SyntaxNode } from '../record';
 
 const LOCAL_ROOTS = new Set(['crate', 'self', 'super']);
 
@@ -27,52 +41,80 @@ interface Leaf {
   wildcard?: boolean;
 }
 
-/** Segments of a path node (identifier, crate/self/super, scoped_identifier). */
+/** Segments of a path node (identifier, crate/self/super, scoped_identifier); iterative (chains can be arbitrarily long). */
 function pathOf(n: SyntaxNode): Path {
-  if (n.type !== 'scoped_identifier') return { segments: [n.text], leadingColons: false };
-  const parent = n.childForFieldName('path');
-  const name = n.childForFieldName('name');
-  const head: Path = parent ? pathOf(parent) : { segments: [], leadingColons: true };
-  return { segments: name ? [...head.segments, name.text] : head.segments, leadingColons: head.leadingColons };
+  const names: string[] = [];
+  let cur: SyntaxNode | null = n;
+  while (cur && cur.type === 'scoped_identifier') {
+    const name = cur.childForFieldName('name');
+    if (name) names.push(name.text);
+    cur = cur.childForFieldName('path');
+  }
+  names.reverse();
+  return cur ? { segments: [cur.text, ...names], leadingColons: false } : { segments: names, leadingColons: true };
 }
 
 const join = (a: Path, b: Path): Path =>
   ({ segments: [...a.segments, ...b.segments], leadingColons: a.leadingColons || (a.segments.length === 0 && b.leadingColons) });
 
-const EMPTY: Path = { segments: [], leadingColons: false };
+/** Use-tree prefix shared by nested lists (linked, so deep nesting stays linear). */
+interface Prefix { up: Prefix | null; segments: string[]; len: number; leadingColons: boolean }
 
-/** Leaves of a use tree under `prefix`. */
-function leaves(n: SyntaxNode, prefix: Path, out: Leaf[]): void {
-  switch (n.type) {
-    case 'use_list':
-      for (const c of n.namedChildren) leaves(c, prefix, out);
-      return;
-    case 'scoped_use_list': {
-      const p = n.childForFieldName('path');
-      const list = n.childForFieldName('list');
-      // `::{a, b}` has no path but a leading `::` token.
-      const head = p ? pathOf(p) : { segments: [], leadingColons: n.children.some(c => c.type === '::') };
-      if (list) leaves(list, join(prefix, head), out);
-      return;
+const ROOT_PREFIX: Prefix = { up: null, segments: [], len: 0, leadingColons: false };
+
+/** Same result as `join(path(p), head)`, without copying `p`. */
+const extend = (p: Prefix, head: Path): Prefix =>
+  ({ up: p, segments: head.segments, len: p.len + head.segments.length, leadingColons: p.leadingColons || (p.len === 0 && head.leadingColons) });
+
+function path(p: Prefix): Path {
+  const chunks: string[][] = [];
+  for (let q: Prefix | null = p; q; q = q.up) chunks.push(q.segments);
+  const segments: string[] = [];
+  for (let i = chunks.length - 1; i >= 0; i--) for (const s of chunks[i]) segments.push(s);
+  return { segments, leadingColons: p.leadingColons };
+}
+
+/**
+ * Leaves of a use tree, document order. Explicit stack: lists nest without
+ * bound in untrusted input.
+ */
+function leaves(root: SyntaxNode, out: Leaf[]): void {
+  const stack: { node: SyntaxNode; at: Prefix }[] = [{ node: root, at: ROOT_PREFIX }];
+  for (let top = stack.pop(); top; top = stack.pop()) {
+    const { node: n, at } = top;
+    switch (n.type) {
+      case 'use_list': {
+        const cs = n.namedChildren;
+        for (let i = cs.length - 1; i >= 0; i--) stack.push({ node: cs[i], at });
+        break;
+      }
+      case 'scoped_use_list': {
+        const p = n.childForFieldName('path');
+        const list = n.childForFieldName('list');
+        // `::{a, b}` has no path but a leading `::` token.
+        const head = p ? pathOf(p) : { segments: [], leadingColons: n.children.some(c => c.type === '::') };
+        if (list) stack.push({ node: list, at: extend(at, head) });
+        break;
+      }
+      case 'use_as_clause': {
+        const p = n.childForFieldName('path');
+        const alias = n.childForFieldName('alias');
+        if (p) out.push({ node: n, path: leafPath(path(at), p), alias: alias?.text });
+        break;
+      }
+      case 'use_wildcard': {
+        const p = n.namedChildren.find(c => c.type !== 'comment');
+        // `*` alone in a list (`a::{*}`) has no path child.
+        const head = p ? pathOf(p) : { segments: [], leadingColons: n.children.some(c => c.type === '::') };
+        out.push({ node: n, path: join(path(at), head), wildcard: true });
+        break;
+      }
+      case 'identifier': case 'scoped_identifier': case 'self': case 'crate': case 'super': case 'metavariable':
+        out.push({ node: n, path: leafPath(path(at), n) });
+        break;
+      default:
+        break;
     }
-    case 'use_as_clause': {
-      const p = n.childForFieldName('path');
-      const alias = n.childForFieldName('alias');
-      if (p) out.push({ node: n, path: leafPath(prefix, p), alias: alias?.text });
-      return;
-    }
-    case 'use_wildcard': {
-      const p = n.namedChildren.find(c => c.type !== 'comment');
-      // `*` alone in a list (`a::{*}`) has no path child.
-      const head = p ? pathOf(p) : { segments: [], leadingColons: n.children.some(c => c.type === '::') };
-      out.push({ node: n, path: join(prefix, head), wildcard: true });
-      return;
-    }
-    case 'identifier': case 'scoped_identifier': case 'self': case 'crate': case 'super': case 'metavariable':
-      out.push({ node: n, path: leafPath(prefix, n) });
-      return;
-    default:
-      return;
   }
 }
 
@@ -94,7 +136,7 @@ function useRecords(decl: SyntaxNode, out: ImportRecord[]): void {
   const arg = decl.childForFieldName('argument');
   if (!arg) return;
   const ls: Leaf[] = [];
-  leaves(arg, EMPTY, ls);
+  leaves(arg, ls);
   for (const l of ls) {
     if (l.path.segments.length === 0) continue;
     out.push(record({
@@ -139,15 +181,163 @@ function modItem(item: SyntaxNode, out: ImportRecord[]): void {
   }));
 }
 
-const DECLARATIONS = new Set(['use_declaration', 'extern_crate_declaration', 'mod_item']);
+/** Names a use declaration binds: alias, else the leaf's last segment (`_` / `*` bind nothing usable). */
+function useBindings(decl: SyntaxNode, out: Set<string>): void {
+  const arg = decl.childForFieldName('argument');
+  if (!arg) return;
+  const ls: Leaf[] = [];
+  leaves(arg, ls);
+  for (const l of ls) {
+    if (l.wildcard) continue;
+    const name = l.alias ?? l.path.segments[l.path.segments.length - 1];
+    if (name !== undefined && name !== '_') out.add(name);
+  }
+}
+
+const NAMED_ITEMS = new Set([
+  'mod_item', 'function_item', 'function_signature_item', 'struct_item', 'enum_item', 'union_item',
+  'trait_item', 'type_item', 'const_item', 'static_item',
+]);
+
+const PRIMITIVES = new Set([
+  'bool', 'char', 'str', 'f32', 'f64',
+  'i8', 'i16', 'i32', 'i64', 'i128', 'isize', 'u8', 'u16', 'u32', 'u64', 'u128', 'usize',
+]);
+
+const STDLIB = new Set(['std', 'core', 'alloc']);
+
+const SCOPED = new Set(['scoped_identifier', 'scoped_type_identifier']);
+
+/** One path-root occurrence: range `at`..`end`, root name, written with a leading `::`. */
+interface Occurrence { at: SyntaxNode; end: SyntaxNode; root: string; leadingColons: boolean }
+
+/**
+ * Occurrence for a parsed path chain, given its outermost link (preorder
+ * reaches it first). Follows `path` fields down to the innermost link,
+ * marking each in `inner` so the walk skips them; the root is a plain
+ * identifier (or absent: leading `::`); other roots (crate/self/super,
+ * metavariable, generic or bracketed types) are not crates. Range = the
+ * outermost link. Iterative and linear: chains can be arbitrarily long.
+ */
+function scopedOccurrence(top: SyntaxNode, inner: Set<number>): Occurrence | undefined {
+  let n = top;
+  for (let p = n.childForFieldName('path'); p && SCOPED.has(p.type); p = n.childForFieldName('path')) {
+    inner.add(p.id);
+    n = p;
+  }
+  const p = n.childForFieldName('path');
+  if (!p) {
+    const name = n.childForFieldName('name');
+    if (!name || !n.children.some(c => c.type === '::')) return undefined;
+    return { at: top, end: top, root: name.text, leadingColons: true };
+  }
+  return p.type === 'identifier' ? { at: top, end: top, root: p.text, leadingColons: false } : undefined;
+}
+
+/** Tokens that make a following `::` a path continuation rather than a leading `::`. */
+const PATH_HEAD = new Set(['identifier', 'self', 'super', 'crate', 'metavariable', 'primitive_type', '>']);
+
+/**
+ * `ident (:: ident)*` sequences in a token_tree, nested trees included,
+ * document order. Explicit stack: token trees nest without bound in
+ * untrusted input.
+ */
+function tokenOccurrences(tree: SyntaxNode, out: Occurrence[]): void {
+  const stack: { t: SyntaxNode[]; i: number }[] = [{ t: tree.children, i: 0 }];
+  while (stack.length > 0) {
+    const frame = stack[stack.length - 1];
+    const { t, i } = frame;
+    if (i >= t.length) { stack.pop(); continue; }
+    frame.i = i + 1;
+    if (t[i].type === 'token_tree') { stack.push({ t: t[i].children, i: 0 }); continue; }
+    if (t[i].type !== 'identifier' || t[i + 1]?.type !== '::' || t[i + 2]?.type !== 'identifier') continue;
+    const prev = t[i - 1];
+    if (prev?.type === '.' || prev?.type === '$') continue;
+    let leadingColons = false;
+    let at = t[i];
+    if (prev?.type === '::') {
+      const before = t[i - 2];
+      if (before && PATH_HEAD.has(before.type)) continue;
+      leadingColons = true;
+      at = prev;
+    }
+    let j = i;
+    while (t[j + 1]?.type === '::' && t[j + 2]?.type === 'identifier') j += 2;
+    out.push({ at, end: t[j], root: t[i].text, leadingColons });
+    frame.i = j + 1;
+  }
+}
+
+function isCandidateRoot(root: string): boolean {
+  return !/^[A-Z]/.test(root) && !LOCAL_ROOTS.has(root) && !PRIMITIVES.has(root);
+}
+
+/**
+ * `source` = the root's text: evidence is sliced from it, since the shared
+ * range-text helper reads the parent's text and `.parent` costs O(depth) —
+ * quadratic for many records deep in nested token trees.
+ */
+function referenceRecords(occs: Occurrence[], bound: Set<string>, source: string, out: ImportRecord[]): void {
+  const byRoot = new Map<string, { first: Occurrence; count: number }>();
+  for (const o of occs) {
+    if (!isCandidateRoot(o.root) || (!o.leadingColons && bound.has(o.root))) continue;
+    const seen = byRoot.get(o.root);
+    if (seen) seen.count++;
+    else byRoot.set(o.root, { first: o, count: 1 });
+  }
+  for (const [root, { first, count }] of byRoot) {
+    const r = record({
+      at: first.at, end: first.end, evidenceOf: first.at, kind: 'reference', form: 'path-root',
+      module: root, normalized: root, package: root, locality: STDLIB.has(root) ? 'stdlib' : 'unknown',
+      confidence: first.leadingColons ? 'syntactic' : 'inferred', occurrences: count,
+    });
+    r.evidence = evidence(source.slice(first.at.startIndex, first.end.endIndex));
+    out.push(r);
+  }
+}
 
 export const extractRust: LanguageExtractor = root => {
   const out: ImportRecord[] = [];
-  for (const n of walk(root, DECLARATIONS)) {
-    if (n.type === 'use_declaration') useRecords(n, out);
-    else if (n.type === 'extern_crate_declaration') externCrate(n, out);
-    else if (n.type === 'mod_item') modItem(n, out);
+  const bound = new Set<string>();
+  const occs: Occurrence[] = [];
+  const inner = new Set<number>();
+  // One preorder walk; use / extern crate subtrees hold no references.
+  const cursor = root.walk();
+  let descend = true;
+  for (;;) {
+    let enter = descend;
+    if (descend && cursor.nodeIsNamed) {
+      const n = cursor.currentNode;
+      switch (n.type) {
+        case 'use_declaration':
+          useRecords(n, out); useBindings(n, bound); enter = false; break;
+        case 'extern_crate_declaration': {
+          externCrate(n, out); enter = false;
+          const name = n.childForFieldName('alias') ?? n.childForFieldName('name');
+          if (name) bound.add(name.text);
+          break;
+        }
+        case 'scoped_identifier': case 'scoped_type_identifier': {
+          if (inner.has(n.id)) break;
+          const o = scopedOccurrence(n, inner);
+          if (o) occs.push(o);
+          break;
+        }
+        case 'token_tree':
+          tokenOccurrences(n, occs); enter = false; break;
+        default:
+          if (n.type === 'mod_item') modItem(n, out);
+          if (NAMED_ITEMS.has(n.type)) {
+            const name = n.childForFieldName('name');
+            if (name) bound.add(name.text);
+          }
+      }
+    }
+    if (enter && cursor.gotoFirstChild()) { descend = true; continue; }
+    if (cursor.gotoNextSibling()) { descend = true; continue; }
+    if (!cursor.gotoParent()) break;
+    descend = false;
   }
+  referenceRecords(occs, bound, root.text, out);
   return out;
 };
-
