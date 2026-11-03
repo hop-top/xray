@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/xray-codes/xray/main/schemas/xray.imports.v1.json",
   "title": "xray.imports/v1",
-  "description": "Per-file imports extracted by `xray imports`. Draft: additive-only within v1; consumers MUST ignore unknown fields. See docs/user/imports-contract.md.",
+  "description": "Per-file imports extracted by `xray imports`. Frozen v1: changes within v1 are additive only (optional fields, form / construct values, opt-in status values); consumers MUST ignore unknown fields. See docs/user/imports-contract.md.",
   "type": "object",
   "required": ["schema", "xray", "grammars", "root", "positions", "files", "summary"],
   "properties": {

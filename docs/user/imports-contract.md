@@ -1,9 +1,10 @@
 # Imports Contract (`xray.imports/v1`)
 
-**Status: draft.** The schema and field set below are what
-[`xray imports`](#usage) emits. Within v1 they only change additively (see
-[Compatibility](#compatibility)); the contract is frozen once the
-verification suite lands.
+**Status: frozen (v1).** The schema and field set below are what
+[`xray imports`](#usage) emits. Frozen means no breaking change within
+`xray.imports/v1`: later v1 releases only add (optional fields, `form` and
+`construct` values, opt-in `status` values); anything else is
+`xray.imports/v2`. See [Compatibility](#compatibility).
 
 A per-file JSON document listing every import xray can see, with exact
 positions and normalized module ids, and an explicit flag on every file
@@ -38,7 +39,7 @@ exist. Nothing is written into the scanned tree (see
 [Caching](#caching)). Full option list:
 [Commands: `xray imports`](commands.md#xray-imports).
 
-`xray imports` in `__tests__/fixtures/imports/go/raw-string`:
+`xray imports go/raw-string`, run in `__tests__/fixtures/imports`:
 
 ```json
 {
@@ -130,7 +131,7 @@ exist. Nothing is written into the scanned tree (see
 | `xray` | `{version, extractor}` | xray package version; `extractor` semver bumps on any output change for the same input (minor = additive, patch = fix that changes output). Record it next to results. |
 | `grammars` | `{<lang>: {module, version, source}}` | Grammar module actually loaded per language present in `files`; `source` says where it was loaded from. Lets you attribute differences to grammar bumps. |
 | `root` | string | Scan root as given; every `path` is relative to it. |
-| `positions` | object | Fixed conventions: `line` `"1-based"`, `column` `"1-based, UTF-16 code units"` (what editors show). |
+| `positions` | object | Fixed conventions: `line` `"1-based"`, `column` `"1-based, UTF-16 code units"` (what editors show). See [Line numbers](#line-numbers). |
 | `files` | array | One entry per scanned file, sorted by `path`. |
 | `summary` | object | Counts: `files`, `complete`, `imports`, `unsupported`, `parseErrors`. |
 
@@ -186,8 +187,13 @@ present only when they apply; an absent boolean means `false`.
 | Go | `linkname` (every `//go:linkname` comment; `detail` = target, or the local name for the one-argument form), `cgo` (`import "C"`), `plugin` (`import "plugin"`: `plugin.Open` loads shared objects). The static record stays. |
 | Rust | `build-script` (filename rule, below), `include-macro` (`include!`), `include-data` (`include_str!` / `include_bytes!`); as invocations, with a `std::`/`core::` path, or inside other macros' arguments; `detail` says whether the path is a string literal. |
 | PHP | `eval` (any argument), `dynamic-include` (`require`/`include*` whose path is not literal: variables, interpolation, `dirname(__FILE__) . ...`), `dynamic-new` (`new $v`, `new (expr)`, `new $o->p`; not names, `static`/`self`/`parent` or anonymous classes), `dynamic-static-call` (`$v::m()`), `dynamic-call` (variable functions `$f()` / `[$o, 'm']()`, `call_user_func` / `call_user_func_array` with a non-literal callable; immediately invoked closures excluded) |
-| TS/JS | `dynamic-require` (non-literal argument, or `require` rebound in the file: `detail` says which), `dynamic-import` (`import()` with a non-literal argument outside type positions), `create-require` (`createRequire(...)`, `x.createRequire(...)`), `eval` (`eval(...)`, `new Function(...)`, `Function(...)`) |
+| TS/JS | `dynamic-require` (non-literal argument, or `require` rebound in the file: `detail` says which), `dynamic-import` (`import()` with a non-literal argument outside type positions), `create-require` (`createRequire(...)`, `x.createRequire(...)`), `eval` (`eval(...)`, `new Function(...)`, `Function(...)`; any argument) |
 | Python | `dynamic-import` (`__import__` / `import_module` that yield no record: non-literal argument, `__import__` rebound, relative name without a package; plus calls into importlib's loader APIs through import bindings: `importlib.util.*`, `importlib.machinery.*`, `importlib.__import__`; not `reload`, `invalidate_caches`, `resources`, `metadata`, `abc`), `exec` / `eval` (any argument: the string is code xray does not read), `sys-path` (`sys.path.insert/append/extend`, assignment, augmented or slice assignment to `sys.path`, `site.addsitedir`) |
+
+`eval` / `exec` (and TS/JS `Function`) are reported whatever the argument,
+a literal string included: xray does not parse the code in the string, and
+for governance an over-report beats a missed load. This is part of the
+frozen contract.
 
 Names are matched as written (`sys`, `site`, `exec`, `eval`, `createRequire`),
 not through aliases or rebindings; importlib loaders go through the
@@ -372,6 +378,15 @@ continues.
 | Rust | Crate root = nearest Cargo.toml with `src/lib.rs` or `src/main.rs`; module path from the file's place under `src/` (not `src/bin/`). `self`/`super` -> `crate::…` (null when unknown or above the root). `mod x;` -> `crate::<module>::x`, `resolved.file` = `#[path]` (relative to the file's directory) or `x.rs` / `x/mod.rs`. `std`/`core`/`alloc`/`proc_macro`/`test` -> `stdlib`. Root declared by a `mod x;` in the same file -> `local`. Else `external`, `package` = first segment (inline modules and other local items are not seen). |
 | PHP | Literal include: `__DIR__ . '/x'` as folded, other relative literals against the including file's directory -> `local` + `resolved.file` when scanned. Absolute paths, stream wrappers, `use` and FQN references -> `unknown`. |
 
+## Line numbers
+
+Contract positions are 1-based lines and 1-based columns in UTF-16 code
+units (`positions`), as editors show them. The graph outputs (`xray map` /
+`scan` / `graph --format json|yaml|csv|xml`) keep the graph convention:
+every `line` there is 0-based, including a file node's raw `imports[].line`
+(`import os` on the first line is `line: 1` here, `line: 0` in the graph).
+Add 1 to compare. See [Output Formats](commands.md#output-formats).
+
 ## Ordering and determinism
 
 `files` by posix `path`; `imports` by (`line`, `column`, `module`);
@@ -406,7 +421,15 @@ byte-identical. `--verbose` prints hit/miss counts on stderr.
 Delete the directory to reset it (`xray cache clear` clears
 `.xray_cache.db` only).
 
+Entry validation takes its enum sets (`kind`, `locality`, `confidence`,
+`status`, `construct`, parse-error `kind`) from `src/lib/imports/types.ts`,
+which a test pins to the schema: the cache accepts exactly the values the
+schema allows, and an additive value needs no second list to update.
+
 ## Compatibility
+
+v1 is frozen: these rules are the whole change policy for
+`xray.imports/v1`.
 
 Additive within v1 (no version bump):
 - a new optional field;
@@ -423,6 +446,12 @@ Breaking (requires `xray.imports/v2`):
 
 The `extractor` version changes whenever output changes for the same input,
 even within these rules; record it with results if you diff runs.
+
+Consumers: pin on `"schema": "xray.imports/v1"`, ignore unknown fields,
+accept unknown `form` values, and treat an unknown `construct` or `status`
+as "file not complete". A document that validates against
+`schemas/xray.imports.v1.json` today validates against every later v1
+schema.
 
 ## Known limits
 

@@ -295,6 +295,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `xray.imports/v1` frozen: changes within v1 are additive only (contract
+  doc and schema description); line conventions vs graph output documented.
 - `map`/graph imports for Go, PHP, Python, Rust, TS/JS come from the imports
   contract extractor (aliased Python imports, PHP grouped use, Go raw paths,
   TS require/export-from/import(), Rust per use-tree leaf + `mod`); entries

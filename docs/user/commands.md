@@ -499,7 +499,10 @@ CSV columns (fixed order, header row; empty = absent):
 
 `root` is the root label for merged graphs and empty for a single root.
 File imports are not a column: they are the `imports` edges (JSON/XML also
-keep the raw import list). Load with any CSV tool, e.g.
+keep the raw import list). Every graph `line` is 0-based, the raw
+`imports[].line` included (`import os` on the first line is `line: 0`);
+the [`xray imports`](imports-contract.md#line-numbers) contract is 1-based
+(lines and UTF-16 columns). Load with any CSV tool, e.g.
 `duckdb -c "select * from 'g.edges.csv'"`.
 
 XML shape (text is escaped; control characters illegal in XML 1.0 become
