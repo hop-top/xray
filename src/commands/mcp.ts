@@ -13,7 +13,7 @@ import { UsageError } from '../lib/error/types';
 const { version } = require('../../package.json');
 
 /** Root flags that take a separate value token. */
-const ROOT_VALUE_FLAGS = new Set(['--log-level', '--config', '-C', '--chdir']);
+export const ROOT_VALUE_FLAGS: ReadonlySet<string> = new Set(['--log-level', '--config', '-C', '--chdir']);
 
 export interface McpRequest {
   /** argv index of the `-C/--chdir` value token, when given. */

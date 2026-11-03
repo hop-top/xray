@@ -13,7 +13,7 @@ import { validate } from '../support/json-schema';
 import { extractImports } from '../../src/lib/imports';
 import { collectImportFiles, IMPORT_MANIFESTS, resolveImportLanguages } from '../../src/lib/imports/collect';
 import type { ImportsDoc } from '../../src/lib/imports/types';
-import { telemetryOffReason } from '../../src/lib/telemetry-policy';
+import { CI_ENV_VARS, telemetryOffReason } from '../../src/lib/telemetry-policy';
 
 const ROOT = path.resolve(__dirname, '../..');
 const BIN = path.join(ROOT, 'bin', 'xray');
@@ -208,6 +208,38 @@ describe('xray imports writes nothing under the scanned root', () => {
     expect(snapshotTree(root)).toEqual(before);
     expect(fs.existsSync(path.join(root, '.xray'))).toBe(false);
     expect(fs.existsSync(path.join(root, '.xray_cache.db'))).toBe(false);
+  }, 60_000);
+
+  it('at a terminal with saved consent, the default (json) format records nothing under the root', async () => {
+    const base = fs.mkdtempSync(path.join(sandbox, 'tty-'));
+    const root = path.join(base, 'repo');
+    copyDir(path.join(FIXTURES, 'python', 'relative'), root);
+    const xdg = path.join(base, 'xdg');
+    fs.mkdirSync(path.join(xdg, 'xray'), { recursive: true });
+    fs.writeFileSync(path.join(xdg, 'xray', 'config.json'), JSON.stringify({ telemetry: { enabled: true } }));
+    // Interactive run: stdin/stdout report a TTY (preloaded), no CI, no opt-out env.
+    const preload = path.join(base, 'fake-tty.js');
+    fs.writeFileSync(preload, 'process.stdout.isTTY = true; process.stdin.isTTY = true;\n');
+    const interactive: NodeJS.ProcessEnv = { XDG_CONFIG_HOME: xdg, XRAY_NO_TELEMETRY: '', DO_NOT_TRACK: '' };
+    for (const k of CI_ENV_VARS) interactive[k] = '';
+    const runTTY = (args: string[]) => new Promise<Result>((resolve, reject) => {
+      const p = spawn(process.execPath, ['-r', preload, BIN, ...args], { cwd: root, env: { ...env, ...interactive }, stdio: ['ignore', 'pipe', 'pipe'] });
+      let stdout = '';
+      let stderr = '';
+      p.stdout.setEncoding('utf-8').on('data', (d: string) => (stdout += d));
+      p.stderr.setEncoding('utf-8').on('data', (d: string) => (stderr += d));
+      p.on('error', reject);
+      p.on('close', (status) => resolve({ status, stdout, stderr }));
+    });
+    const before = snapshotTree(root);
+    const r = await runTTY(['imports', '-p', root]);
+    expect(r.status).toBe(0);
+    expect(JSON.parse(r.stdout).summary.files).toBeGreaterThan(0);
+    expect(snapshotTree(root)).toEqual(before);
+    // Control: an explicit human format at the same terminal does record (consent decides).
+    const text = await runTTY(['imports', '-p', root, '--format', 'text']);
+    expect(text.status).toBe(0);
+    expect(fs.existsSync(path.join(root, '.xray', 'telemetry.json'))).toBe(true);
   }, 60_000);
 
   it('telemetry treats `imports --format json` as a machine run even at a terminal', () => {

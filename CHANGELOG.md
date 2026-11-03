@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Telemetry off regardless of saved consent for non-TTY stdout, machine
   formats (`--format json|yaml|csv|xml`, `--json`/`--csv`/`--xml`), CI,
   `xray mcp`, `XRAY_NO_TELEMETRY` / `DO_NOT_TRACK`; rules in `xray describe`.
+- Telemetry also off for commands whose default output is json (`xray
+  imports`, `xray describe`) unless `--format text|table|txt` is given: a
+  plain interactive `xray imports` no longer records under the scanned root.
 
 - Harness hooks (`hooks/harness/`) only trust a graph the user's own
   `lib/save-graph.sh` wrote. A cloned repo could ship a crafted

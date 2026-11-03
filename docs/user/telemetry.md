@@ -51,6 +51,7 @@ Telemetry only records when a person runs xray at a terminal. Any of these turns
 | `DO_NOT_TRACK` set ([consoledonottrack.com](https://consoledonottrack.com)), same values | `DO_NOT_TRACK=1 xray map` |
 | stdout is not a TTY (subprocess, pipe, redirect, hook) | `xray query x \| jq`, a tool running xray |
 | machine-readable format, any command | `--format json\|yaml\|csv\|xml`, `--json`, `--csv`, `--xml` |
+| command whose default output is machine-readable, unless `--format text\|table\|txt` | `xray imports`, `xray describe` |
 | CI environment | `CI`, `GITHUB_ACTIONS`, `GITLAB_CI`, `BUILDKITE`, ... |
 | `xray mcp` (MCP server) | always off |
 

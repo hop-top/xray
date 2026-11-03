@@ -123,7 +123,9 @@ Checks if user has already made a decision (config exists with `telemetry` setti
 
 Single decision point for forced-off runs, ahead of any saved decision:
 `flag`, `env` (`XRAY_NO_TELEMETRY` / `DO_NOT_TRACK`), `mcp`, `ci`,
-`machine-format` (`--format json|yaml|csv|xml`, `--json`, `--csv`, `--xml`),
+`machine-format` (`--format json|yaml|csv|xml`, `--json`, `--csv`, `--xml`,
+or a `MACHINE_DEFAULT_COMMANDS` command such as `imports` / `describe`
+without `--format text|table|txt`),
 `non-tty` (stdout). `TelemetryPlugin` checks it too, so no recorder
 (CLI tracker, `Xray` auto-registered plugin, library use) bypasses it.
 `xray describe` publishes `TELEMETRY_POLICY`.
