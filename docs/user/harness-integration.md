@@ -292,6 +292,12 @@ So a cloned repository cannot ship a crafted `.xray/graph.json` that
 puts text into your agent's context. Hooks run with your user's
 permissions and only run `xray`, `git`, `jq` and standard POSIX utilities.
 
+Hook and subprocess runs never record telemetry: xray turns it off when
+stdout is not a TTY, for machine-readable formats and for `xray mcp`,
+even if you once consented. See
+[Telemetry](telemetry.md#when-telemetry-is-off); `xray describe` lists the
+rules under `telemetry`.
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |

@@ -12,6 +12,7 @@ import {
   saveConfig,
 } from './config';
 import type { XrayConfig } from '../types/xray-config';
+import { TELEMETRY_POLICY, telemetryOffReason } from './telemetry-policy';
 
 /**
  * Recorded telemetry decision, or undefined when none exists.
@@ -44,7 +45,7 @@ export function hasConsentDecision(configPath?: string): boolean {
  * Check if user has explicitly disabled telemetry via flag
  */
 export function isTelemetryDisabledByFlag(argv: string[]): boolean {
-  return argv.includes('--no-telemetry');
+  return argv.includes(TELEMETRY_POLICY.flag);
 }
 
 /**
@@ -129,9 +130,12 @@ export function saveConsentDecision(enabled: boolean): void {
  * Returns true if telemetry should be enabled
  */
 export async function handleFirstRunConsent(argv: string[], configPath?: string): Promise<boolean> {
-  // Skip if --no-telemetry flag is present
-  if (isTelemetryDisabledByFlag(argv)) {
-    Logger.debug('Telemetry disabled by --no-telemetry flag');
+  // Forced off (flag, env, subprocess / pipe, CI, MCP, machine format):
+  // wins over any saved decision; nothing is prompted or persisted, so a
+  // later interactive run still uses (or asks for) the saved decision.
+  const off = telemetryOffReason({ argv });
+  if (off !== null) {
+    Logger.debug(`Telemetry off for this run (${off})`);
     return false;
   }
 
@@ -142,11 +146,9 @@ export async function handleFirstRunConsent(argv: string[], configPath?: string)
     return decided;
   }
 
-  // Skip prompts in non-interactive mode (CI/CD, piped output, etc.)
-  if (!isInteractive()) {
-    Logger.debug('Non-interactive mode detected, skipping telemetry prompt');
-    // Disabled for this run only; nothing persisted so a later interactive
-    // run still asks.
+  // Cannot prompt without a terminal on stdin
+  if (!process.stdin.isTTY) {
+    Logger.debug('stdin is not a TTY, skipping telemetry prompt');
     return false;
   }
 
@@ -158,37 +160,6 @@ export async function handleFirstRunConsent(argv: string[], configPath?: string)
   saveConsentDecision(consent);
 
   return consent;
-}
-
-/**
- * Check if we're in an interactive terminal
- */
-function isInteractive(): boolean {
-  // Check if stdin and stdout are TTYs
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    return false;
-  }
-
-  // Check for common CI environment variables
-  const ciEnvVars = [
-    'CI',
-    'CONTINUOUS_INTEGRATION',
-    'GITHUB_ACTIONS',
-    'GITLAB_CI',
-    'CIRCLECI',
-    'TRAVIS',
-    'JENKINS_URL',
-    'BUILDKITE',
-    'TEAMCITY_VERSION'
-  ];
-
-  for (const envVar of ciEnvVars) {
-    if (process.env[envVar]) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 /**

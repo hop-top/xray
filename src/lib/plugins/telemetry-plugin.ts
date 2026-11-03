@@ -5,6 +5,7 @@ import { XrayPlugin } from '../events/plugin';
 import { AsyncEventEmitter } from '../events/async-emitter';
 import { XrayEvents } from '../events/types';
 import { Logger } from '../logger';
+import { telemetryOffReason } from '../telemetry-policy';
 
 export interface TelemetryConfig {
   enabled?: boolean;
@@ -87,6 +88,14 @@ export class TelemetryPlugin implements XrayPlugin {
   }
 
   private isEnabled(config: TelemetryConfig): boolean {
+    // Forced off (subprocess, pipe, CI, MCP, machine format, flag, env)
+    // beats config and consent: no recorder can bypass it.
+    const off = telemetryOffReason();
+    if (off !== null) {
+      Logger.debug(`Telemetry off for this run (${off})`);
+      return false;
+    }
+
     // Explicit config takes precedence
     if (config.enabled !== undefined) {
       return config.enabled;

@@ -40,15 +40,29 @@ or per project via "telemetry" in .xrayrc.json.
 Enable telemetry? [Y/n]:
 ```
 
-### Skipping the Prompt
+### When Telemetry Is Off
 
-To skip the interactive prompt, use the `--no-telemetry` flag:
+Telemetry only records when a person runs xray at a terminal. Any of these turns it off for the run, **whatever consent was saved** (global or project config, `XRAY_TELEMETRY_ENABLED`):
 
-```bash
-xray map --no-telemetry
+| Rule | Example |
+|------|---------|
+| `--no-telemetry` flag | `xray map --no-telemetry` |
+| `XRAY_NO_TELEMETRY` set (any value but empty, `0`, `false`) | `XRAY_NO_TELEMETRY=1 xray map` |
+| `DO_NOT_TRACK` set ([consoledonottrack.com](https://consoledonottrack.com)), same values | `DO_NOT_TRACK=1 xray map` |
+| stdout is not a TTY (subprocess, pipe, redirect, hook) | `xray query x \| jq`, a tool running xray |
+| machine-readable format, any command | `--format json\|yaml\|csv\|xml`, `--json`, `--csv`, `--xml` |
+| CI environment | `CI`, `GITHUB_ACTIONS`, `GITLAB_CI`, `BUILDKITE`, ... |
+| `xray mcp` (MCP server) | always off |
+
+No prompt is shown and nothing is stored on those runs, so the saved decision still applies to your next interactive run (and an unanswered prompt is still asked then). `xray describe` publishes these rules under `telemetry` so a tool driving xray can check them:
+
+```json
+"telemetry": {
+  "defaultOff": ["non-tty", "machine-format", "ci", "mcp"],
+  "env": ["XRAY_NO_TELEMETRY", "DO_NOT_TRACK"],
+  "flag": "--no-telemetry"
+}
 ```
-
-Or in non-interactive environments (CI/CD), the prompt is skipped and telemetry is disabled for that run. Nothing is stored, so the first interactive run still asks.
 
 ## Enabling Telemetry
 
@@ -274,9 +288,12 @@ cat .xray/telemetry.json | jq 'del(.attributes["error.context"])' > sanitized.js
 ### Temporary Disable
 
 ```bash
-unset XRAY_TELEMETRY_ENABLED
-xray map
+xray map --no-telemetry
+# or, for every run in this shell
+export XRAY_NO_TELEMETRY=1   # or DO_NOT_TRACK=1
 ```
+
+See [When Telemetry Is Off](#when-telemetry-is-off) for the runs that never record.
 
 ### Permanent Disable
 

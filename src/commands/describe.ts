@@ -13,6 +13,7 @@
 import { Command, Option } from 'commander';
 import { Logger } from '../lib/logger';
 import { UsageError } from '../lib/error/types';
+import { TELEMETRY_POLICY } from '../lib/telemetry-policy';
 
 const SCHEMA_URL = 'https://hop-top.dev/schemas/cli-capabilities/v1.json';
 const SPEC = '12fc/v1';
@@ -109,12 +110,22 @@ interface CommandDoc {
   exitCodes: number[];
 }
 
+// Telemetry policy, so a consumer can verify a subprocess run records
+// nothing: `defaultOff` lists the run kinds forced off whatever consent
+// was saved; `env` / `flag` force it off on any run.
+interface TelemetryDoc {
+  defaultOff: string[];
+  env: string[];
+  flag: string;
+}
+
 interface DescribeDoc {
   $schema: string;
   tool: string;
   version: string;
   spec: string;
   exitCodes: Record<string, string>;
+  telemetry: TelemetryDoc;
   commands: CommandDoc[];
 }
 
@@ -208,6 +219,11 @@ export function buildDescribeDoc(
     version,
     spec: SPEC,
     exitCodes: EXIT_CODES,
+    telemetry: {
+      defaultOff: [...TELEMETRY_POLICY.defaultOff],
+      env: [...TELEMETRY_POLICY.env],
+      flag: TELEMETRY_POLICY.flag,
+    },
     commands: (root.commands || []).map((cmd) => walk(cmd)),
   };
 }

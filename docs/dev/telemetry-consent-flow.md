@@ -21,10 +21,15 @@ Xray implements a privacy-first telemetry consent system that prompts users on f
            │
            ▼
 ┌─────────────────────────────┐
-│  Check --no-telemetry flag  │
+│  Forced off? (telemetry-    │
+│  policy: --no-telemetry,    │
+│  XRAY_NO_TELEMETRY /        │
+│  DO_NOT_TRACK, mcp, CI,     │
+│  machine format, non-TTY    │
+│  stdout)                    │
 └──────────┬──────────────────┘
            │
-           ├─ Yes ──▶ Disable telemetry, continue
+           ├─ Yes ──▶ Disable telemetry (saved decision ignored), continue
            │
            ▼ No
 ┌─────────────────────────────┐
@@ -37,8 +42,8 @@ Xray implements a privacy-first telemetry consent system that prompts users on f
            │
            ▼ No
 ┌─────────────────────────────┐
-│  Check if interactive       │
-│  (TTY + not CI/CD)          │
+│  Check stdin is a TTY       │
+│  (can prompt)               │
 └──────────┬──────────────────┘
            │
            ├─ No ──▶ Disable telemetry (nothing saved), continue
@@ -104,9 +109,9 @@ async function main() {
 Main entry point for consent flow. Returns `true` if telemetry should be enabled.
 
 **Logic:**
-1. Check `--no-telemetry` flag → return `false`
+1. `telemetryOffReason()` (`src/lib/telemetry-policy.ts`) non-null → return `false`, nothing saved
 2. Check existing decision → return saved value
-3. Check if interactive → if not, save `false` and return
+3. stdin not a TTY → return `false`, nothing saved
 4. Prompt user → return answer
 5. Save decision → persist to config
 
@@ -114,12 +119,14 @@ Main entry point for consent flow. Returns `true` if telemetry should be enabled
 
 Checks if user has already made a decision (config exists with `telemetry` setting).
 
-**`isInteractive(): boolean`**
+**`telemetryOffReason(): TelemetryOffReason | null`** (`src/lib/telemetry-policy.ts`)
 
-Determines if we're in an interactive terminal:
-- Checks `process.stdin.isTTY` and `process.stdout.isTTY`
-- Checks for CI environment variables
-- Returns `false` if in CI/CD or piped I/O
+Single decision point for forced-off runs, ahead of any saved decision:
+`flag`, `env` (`XRAY_NO_TELEMETRY` / `DO_NOT_TRACK`), `mcp`, `ci`,
+`machine-format` (`--format json|yaml|csv|xml`, `--json`, `--csv`, `--xml`),
+`non-tty` (stdout). `TelemetryPlugin` checks it too, so no recorder
+(CLI tracker, `Xray` auto-registered plugin, library use) bypasses it.
+`xray describe` publishes `TELEMETRY_POLICY`.
 
 **`promptForConsent(): Promise<boolean>`**
 
@@ -197,13 +204,8 @@ If any are set, the prompt is skipped.
 
 ### TTY Detection
 
-Checks both stdin and stdout:
-
-```typescript
-if (!process.stdin.isTTY || !process.stdout.isTTY) {
-  return false; // Non-interactive
-}
-```
+stdout not a TTY forces telemetry off (`telemetryOffReason` → `non-tty`),
+even with saved consent; stdin not a TTY only skips the prompt.
 
 This catches:
 - Piped input: `echo "xray map" | bash`
@@ -215,8 +217,8 @@ This catches:
 
 In non-interactive mode:
 - Consent prompt is **skipped**
-- Telemetry is **disabled by default**
-- Decision is **saved to config** (so next run knows)
+- Telemetry is **off for the run**, even with saved consent
+- Nothing is **saved** (the next interactive run uses or asks for the decision)
 
 This ensures:
 - CI/CD builds don't hang waiting for input

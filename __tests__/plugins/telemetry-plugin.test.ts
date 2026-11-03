@@ -5,6 +5,31 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
+// Recording needs an interactive run (see telemetry-policy): simulate a
+// TTY stdout and clear the env that forces telemetry off.
+const OFF_ENV = [
+  'XRAY_NO_TELEMETRY', 'DO_NOT_TRACK', 'CI', 'CONTINUOUS_INTEGRATION', 'GITHUB_ACTIONS',
+  'GITLAB_CI', 'CIRCLECI', 'TRAVIS', 'JENKINS_URL', 'BUILDKITE', 'TEAMCITY_VERSION',
+];
+let savedTTY: boolean | undefined;
+let savedEnv: Record<string, string | undefined> = {};
+beforeEach(() => {
+  savedTTY = process.stdout.isTTY;
+  (process.stdout as { isTTY?: boolean }).isTTY = true;
+  savedEnv = {};
+  for (const k of OFF_ENV) {
+    savedEnv[k] = process.env[k];
+    delete process.env[k];
+  }
+});
+afterEach(() => {
+  (process.stdout as { isTTY?: boolean }).isTTY = savedTTY;
+  for (const k of OFF_ENV) {
+    if (savedEnv[k] === undefined) delete process.env[k];
+    else process.env[k] = savedEnv[k];
+  }
+});
+
 describe('TelemetryPlugin', () => {
   let tmpDir: string;
   let plugin: TelemetryPlugin;
@@ -298,6 +323,34 @@ describe('TelemetryPlugin', () => {
         'service.name': 'xray-cli',
         'service.version': expect.any(String)
       });
+    });
+  });
+
+  describe('forced off beats enabled: true', () => {
+    const record = async () => {
+      plugin = new TelemetryPlugin({ enabled: true, projectRoot: tmpDir });
+      plugin.apply(emitter);
+      await emitter.emit('command:start', {
+        command: 'map', options: {}, timestamp: Date.now(), traceId: 't',
+      });
+      plugin.trackStat('files', 1);
+      plugin.shutdown();
+      return fs.existsSync(path.join(tmpDir, '.xray', 'telemetry.json'));
+    };
+
+    it('records on an interactive run (control)', async () => {
+      expect(await record()).toBe(true);
+    });
+
+    it('stdout not a TTY', async () => {
+      (process.stdout as { isTTY?: boolean }).isTTY = false;
+      expect(await record()).toBe(false);
+      expect(fs.existsSync(path.join(tmpDir, '.xray'))).toBe(false);
+    });
+
+    it.each([['XRAY_NO_TELEMETRY'], ['DO_NOT_TRACK'], ['CI']])('%s=1', async (k) => {
+      process.env[k] = '1';
+      expect(await record()).toBe(false);
     });
   });
 });

@@ -38,6 +38,13 @@ describe('TelemetryConsent', () => {
   let savedXdg: string | undefined;
   let savedHome: string | undefined;
   const globalFile = () => path.join(xdgHome, 'xray', 'config.json');
+  // Env that forces telemetry off; cleared per test so the host (CI, a
+  // DO_NOT_TRACK shell) cannot leak into interactive cases.
+  const OFF_ENV = [
+    'XRAY_NO_TELEMETRY', 'DO_NOT_TRACK', 'CI', 'CONTINUOUS_INTEGRATION', 'GITHUB_ACTIONS',
+    'GITLAB_CI', 'CIRCLECI', 'TRAVIS', 'JENKINS_URL', 'BUILDKITE', 'TEAMCITY_VERSION',
+  ];
+  let savedEnv: Record<string, string | undefined>;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-consent-test-'));
@@ -46,6 +53,11 @@ describe('TelemetryConsent', () => {
     savedXdg = process.env.XDG_CONFIG_HOME;
     savedHome = process.env.HOME;
     process.env.XDG_CONFIG_HOME = xdgHome;
+    savedEnv = {};
+    for (const k of OFF_ENV) {
+      savedEnv[k] = process.env[k];
+      delete process.env[k];
+    }
     process.env.HOME = path.join(tmpDir, 'home');
     fs.mkdirSync(process.env.HOME, { recursive: true });
     tmpDir = path.join(tmpDir, 'proj');
@@ -81,8 +93,10 @@ describe('TelemetryConsent', () => {
     process.stdin.isTTY = originalStdin;
     process.stdout.isTTY = originalStdout;
 
-    // Clear any CI env vars set during tests
-    delete process.env.CI;
+    for (const k of OFF_ENV) {
+      if (savedEnv[k] === undefined) delete process.env[k];
+      else process.env[k] = savedEnv[k];
+    }
   });
 
   describe('hasConsentDecision', () => {
@@ -360,6 +374,88 @@ describe('TelemetryConsent', () => {
       const result = await handleFirstRunConsent(argv);
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('forced off despite saved consent', () => {
+    const saveConsent = () => {
+      fs.mkdirSync(path.dirname(globalFile()), { recursive: true });
+      fs.writeFileSync(globalFile(), JSON.stringify({ telemetry: { enabled: true } }));
+    };
+    const map = ['node', 'xray', 'map'];
+
+    beforeEach(saveConsent);
+
+    it('interactive TTY run keeps the saved consent', async () => {
+      expect(await handleFirstRunConsent(map)).toBe(true);
+      expect(mockQuestion).not.toHaveBeenCalled();
+    });
+
+    it('stdout not a TTY (subprocess, pipe)', async () => {
+      process.stdout.isTTY = false;
+      expect(await handleFirstRunConsent(map)).toBe(false);
+    });
+
+    it.each([
+      [['--format', 'json']],
+      [['--format=json']],
+      [['--format', 'yaml']],
+      [['--format', 'csv']],
+      [['--format', 'XML']],
+      [['--json']],
+      [['--csv']],
+      [['--xml']],
+    ])('machine format %j on a TTY', async (flags) => {
+      expect(await handleFirstRunConsent(['node', 'xray', 'query', 'x', ...flags])).toBe(false);
+    });
+
+    it('human format on a TTY keeps consent', async () => {
+      expect(await handleFirstRunConsent([...map, '--format', 'txt'])).toBe(true);
+    });
+
+    it('format tokens after -- are not flags', async () => {
+      expect(await handleFirstRunConsent([...map, '--', '--json'])).toBe(true);
+    });
+
+    it.each([['1'], ['true'], ['yes']])('XRAY_NO_TELEMETRY=%s', async (v) => {
+      process.env.XRAY_NO_TELEMETRY = v;
+      expect(await handleFirstRunConsent(map)).toBe(false);
+    });
+
+    it.each([['0'], ['false'], ['']])('XRAY_NO_TELEMETRY=%j does not force off', async (v) => {
+      process.env.XRAY_NO_TELEMETRY = v;
+      expect(await handleFirstRunConsent(map)).toBe(true);
+    });
+
+    it('DO_NOT_TRACK=1', async () => {
+      process.env.DO_NOT_TRACK = '1';
+      expect(await handleFirstRunConsent(map)).toBe(false);
+    });
+
+    it('DO_NOT_TRACK=0 does not force off', async () => {
+      process.env.DO_NOT_TRACK = '0';
+      expect(await handleFirstRunConsent(map)).toBe(true);
+    });
+
+    it.each([['CI'], ['GITHUB_ACTIONS'], ['BUILDKITE']])('CI env %s', async (v) => {
+      process.env[v] = 'true';
+      expect(await handleFirstRunConsent(map)).toBe(false);
+    });
+
+    it('xray mcp, even on a TTY', async () => {
+      expect(await handleFirstRunConsent(['node', 'xray', '-C', '/tmp', 'mcp'])).toBe(false);
+    });
+
+    it('project config consent is overridden too', async () => {
+      fs.writeFileSync(path.join(tmpDir, '.xrayrc.json'), JSON.stringify({ telemetry: { enabled: true } }));
+      process.stdout.isTTY = false;
+      expect(await handleFirstRunConsent(map)).toBe(false);
+    });
+
+    it('never rewrites the saved consent', async () => {
+      process.stdout.isTTY = false;
+      await handleFirstRunConsent(map);
+      expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8'))).toEqual({ telemetry: { enabled: true } });
     });
   });
 });

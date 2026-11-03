@@ -53,6 +53,14 @@ describe('xray describe', () => {
     expect(doc.commands.length).toBeGreaterThan(0);
   });
 
+  it('publishes the telemetry policy (forced-off runs, env, flag)', () => {
+    expect(doc.telemetry).toEqual({
+      defaultOff: ['non-tty', 'machine-format', 'ci', 'mcp'],
+      env: ['XRAY_NO_TELEMETRY', 'DO_NOT_TRACK'],
+      flag: '--no-telemetry',
+    });
+  });
+
   it('serializes to valid JSON', () => {
     const serialized = JSON.stringify(doc);
     expect(() => JSON.parse(serialized)).not.toThrow();

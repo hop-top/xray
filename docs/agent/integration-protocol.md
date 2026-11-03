@@ -455,6 +455,13 @@ How to read it:
 
 Workflow: [Impact Analysis](workflows/impact-analysis.md).
 
+**Telemetry.** Runs from a hook, a subprocess or the MCP server never
+record telemetry (stdout not a TTY, `--format json`, `xray mcp`, CI), even
+when the user consented. Check `telemetry.defaultOff` in `xray describe`;
+set `XRAY_NO_TELEMETRY=1` (or `DO_NOT_TRACK=1`) or pass `--no-telemetry`
+to force it off everywhere. Details:
+[Telemetry](../user/telemetry.md#when-telemetry-is-off).
+
 ## Integration Checklist
 
 Before integrating xray into agent workflow:

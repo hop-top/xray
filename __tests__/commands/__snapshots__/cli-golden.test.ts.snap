@@ -3843,6 +3843,19 @@ exports[`cli golden: introspection describe 1`] = `
     "4": "unauthorized / permission denied",
     "5": "conflict (resource collision)"
   },
+  "telemetry": {
+    "defaultOff": [
+      "non-tty",
+      "machine-format",
+      "ci",
+      "mcp"
+    ],
+    "env": [
+      "XRAY_NO_TELEMETRY",
+      "DO_NOT_TRACK"
+    ],
+    "flag": "--no-telemetry"
+  },
   "commands": [
     {
       "name": "help",

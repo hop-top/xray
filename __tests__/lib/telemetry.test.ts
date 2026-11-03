@@ -3,6 +3,31 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
+// Recording needs an interactive run (see telemetry-policy): simulate a
+// TTY stdout and clear the env that forces telemetry off.
+const OFF_ENV = [
+  'XRAY_NO_TELEMETRY', 'DO_NOT_TRACK', 'CI', 'CONTINUOUS_INTEGRATION', 'GITHUB_ACTIONS',
+  'GITLAB_CI', 'CIRCLECI', 'TRAVIS', 'JENKINS_URL', 'BUILDKITE', 'TEAMCITY_VERSION',
+];
+let savedTTY: boolean | undefined;
+let savedEnv: Record<string, string | undefined> = {};
+beforeEach(() => {
+  savedTTY = process.stdout.isTTY;
+  (process.stdout as { isTTY?: boolean }).isTTY = true;
+  savedEnv = {};
+  for (const k of OFF_ENV) {
+    savedEnv[k] = process.env[k];
+    delete process.env[k];
+  }
+});
+afterEach(() => {
+  (process.stdout as { isTTY?: boolean }).isTTY = savedTTY;
+  for (const k of OFF_ENV) {
+    if (savedEnv[k] === undefined) delete process.env[k];
+    else process.env[k] = savedEnv[k];
+  }
+});
+
 describe('TelemetryTracker', () => {
   let tmpDir: string;
   let tracker: TelemetryTracker;
