@@ -58,8 +58,6 @@ jobs:
           ref: ${{ github.head_ref }}
 
       - uses: xray-codes/xray@xray/v0.1.0-rc.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### 3. Pre-commit Hook (Local Development)
@@ -183,13 +181,22 @@ xray map -l 4000
 
 | Input | Description | Default |
 |-------|-------------|---------|
-| `github-token` | GitHub token for committing | `${{ github.token }}` |
 | `config-path` | Custom config file path | Auto-detect |
 | `xray-version` | xray version to install: `latest` or an exact version such as `1.2.3` or `1.2.3-rc.0`; ranges and dist-tags are rejected | `latest` |
 | `commit-message` | Custom commit message | `chore: regenerate xray maps` |
 | `skip-if-no-changes` | When regeneration changes nothing: `true` succeeds without committing, `false` fails the step. Changed maps are always committed. | `true` |
 | `scope` | Run one scope from the config file (`xray map --scope <name>`); takes precedence over `all-scopes` | (none) |
 | `all-scopes` | Run every scope defined in the config file (`xray map --all-scopes`) | `true` |
+
+### What the action commits
+
+The action commits only the files `xray map` created or changed during its
+run. It records the working tree before and after `xray map` and stages the
+difference, so this holds for any `output` path, per-scope output or default
+format. Files already modified or untracked before the run (build output, a
+leftover `.env`) and anything already staged are left out of the commit. The
+push uses the credentials of the preceding `actions/checkout` step; the action
+takes no token of its own.
 
 ### Advanced Examples
 
@@ -198,7 +205,6 @@ xray map -l 4000
 ```yaml
 - uses: xray-codes/xray@xray/v0.1.0-rc.0
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
     config-path: './config/xray.json'
 ```
 
@@ -207,7 +213,6 @@ xray map -l 4000
 ```yaml
 - uses: xray-codes/xray@xray/v0.1.0-rc.0
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
     commit-message: |
       docs: update xray visualizations
 

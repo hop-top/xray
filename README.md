@@ -241,8 +241,6 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
       - uses: xray-codes/xray@xray/v0.1.0-rc.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 **Pre-commit Hook:**

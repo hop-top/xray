@@ -45,5 +45,3 @@ jobs:
 
       - name: Regenerate xray maps
         uses: xray-codes/xray@xray/v0.1.0-rc.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -78,6 +78,7 @@ const run = (name: string, ctx: Ctx): Run => {
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_NOSYSTEM: '1',
       GITHUB_OUTPUT: ghOut,
+      RUNNER_TEMP: dir,
       GITHUB_STEP_SUMMARY: ghSum,
       ...env,
     },
@@ -307,11 +308,117 @@ describe('action.yaml shell safety', () => {
   });
 
   describe('Commit and push changes', () => {
+    const gitIn = (...a: string[]) =>
+      spawnSync('git', a, { cwd: work, encoding: 'utf8', env: { ...process.env, HOME: dir, XDG_CONFIG_HOME: dir, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } })
+        .stdout;
+    const regen = () =>
+      run('Regenerate xray maps', {
+        'steps.check-config.outputs.config_path': '',
+        'inputs.scope': '',
+        'inputs.all-scopes': 'true',
+      });
+    const commit = (msg = 'chore: maps') => run('Commit and push changes', { 'inputs.commit-message': msg });
+    const generated = () => {
+      const f = path.join(dir, 'xray-generated.list');
+      return fs.existsSync(f) ? readArgs(f).sort() : [];
+    };
+    const seedRepo = () => {
+      fs.writeFileSync(path.join(work, 'tracked.ts'), 'a\n');
+      fs.writeFileSync(path.join(work, '.xray_root.md'), 'old map\n');
+      gitIn('add', 'tracked.ts', '.xray_root.md');
+      gitIn('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'seed');
+    };
+    const committedFiles = () => gitIn('show', '-z', '--name-only', '--format=', 'HEAD').split('\0').filter(Boolean).sort();
+
     test('commit message is data', () => {
-      stub('git', '');
-      const r = run('Commit and push changes', { 'inputs.commit-message': 'x"; touch PWNED; "' });
+      seedRepo();
+      stub('xray', 'echo new > .xray_src.md');
+      regen();
+      const r = commit('x"; touch PWNED; "');
       expect(r.status).toBe(0);
       expect(marker()).toBe(false);
+      expect(gitIn('log', '-1', '--format=%s').trim()).toBe('x"; touch PWNED; "');
     });
+
+    test('records and commits what xray wrote, not a leftover secret', () => {
+      seedRepo();
+      fs.writeFileSync(path.join(work, 'secret.env'), 'TOKEN=hunter2\n');
+      fs.mkdirSync(path.join(work, 'build'));
+      fs.writeFileSync(path.join(work, 'build', 'out.js'), 'x\n');
+      fs.writeFileSync(path.join(work, 'tracked.ts'), 'edited by an earlier step\n');
+      stub('xray', 'echo changed > .xray_root.md; mkdir -p docs; echo m > docs/map.txt; echo j > .xray.json');
+      const r = regen();
+      expect(r.outputs).toEqual({ changes_detected: 'true' });
+      expect(generated()).toEqual(['.xray.json', '.xray_root.md', 'docs/map.txt']);
+      expect(commit().status).toBe(0);
+      expect(committedFiles()).toEqual(['.xray.json', '.xray_root.md', 'docs/map.txt']);
+      const left = gitIn('status', '--porcelain', '--untracked-files=all');
+      expect(left).toContain('?? secret.env');
+      expect(left).toContain('?? build/out.js');
+      expect(left).toContain(' M tracked.ts');
+    });
+
+    test('a leftover alone is not a change', () => {
+      seedRepo();
+      fs.writeFileSync(path.join(work, 'secret.env'), 'TOKEN=hunter2\n');
+      stub('xray', 'exit 0');
+      const r = regen();
+      expect(r.outputs).toEqual({ changes_detected: 'false' });
+      expect(generated()).toEqual([]);
+    });
+
+    test('a file xray rewrites with identical content is not a change', () => {
+      seedRepo();
+      fs.writeFileSync(path.join(work, 'secret.env'), 'a\n');
+      stub('xray', 'echo a > secret.env');
+      expect(regen().outputs).toEqual({ changes_detected: 'false' });
+    });
+
+    test('a map xray deletes is committed as a deletion', () => {
+      seedRepo();
+      stub('xray', 'rm .xray_root.md');
+      expect(regen().outputs).toEqual({ changes_detected: 'true' });
+      expect(commit().status).toBe(0);
+      expect(gitIn('show', '--name-status', '--format=', 'HEAD').trim()).toBe('D\t.xray_root.md');
+    });
+
+    test('something an earlier step already staged stays out of the commit', () => {
+      seedRepo();
+      fs.writeFileSync(path.join(work, 'staged-secret.env'), 's\n');
+      gitIn('add', 'staged-secret.env');
+      stub('xray', 'echo new > .xray_src.md');
+      regen();
+      expect(commit().status).toBe(0);
+      expect(committedFiles()).toEqual(['.xray_src.md']);
+      expect(gitIn('status', '--porcelain')).toContain('A  staged-secret.env');
+    });
+
+    test.each(['my map.txt', ':(top)x.txt', '*.glob', '-dash.txt', "q'uote.txt", 'new\nline.txt'])(
+      'output path %j is matched literally',
+      name => {
+        seedRepo();
+        fs.writeFileSync(path.join(work, 'other.txt'), 'o\n');
+        fs.writeFileSync(path.join(work, 'x.txt'), 'o\n');
+        fs.writeFileSync(path.join(dir, 'outname'), name);
+        stub('xray', `IFS= read -r -d '' n < "${dir}/outname"; printf m > "$n"`);
+        regen();
+        expect(generated()).toEqual([name]);
+        expect(commit().status).toBe(0);
+        expect(committedFiles()).toEqual([name]);
+      },
+    );
+  });
+});
+
+describe('action.yaml supply chain', () => {
+  test('no github-token input: nothing in the action uses one', () => {
+    expect(Object.keys((yaml.load(RAW) as { inputs: object }).inputs)).not.toContain('github-token');
+    expect(RAW).not.toMatch(/github[-_.]token/i);
+  });
+
+  test('every external action is pinned to a full commit SHA with a version comment', () => {
+    const uses = [...RAW.matchAll(/^\s*(?:-\s*)?uses:\s*(\S+)(?:\s*#\s*(\S+))?/gm)];
+    expect(uses.length).toBeGreaterThan(0);
+    for (const m of uses) expect([m[1], m[2] !== undefined]).toEqual([expect.stringMatching(/^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/), true]);
   });
 });

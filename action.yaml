@@ -18,10 +18,6 @@ inputs:
     description: 'Commit message for xray updates'
     required: false
     default: 'chore: regenerate xray maps'
-  github-token:
-    description: 'GitHub token for committing changes'
-    required: false
-    default: ${{ github.token }}
   skip-if-no-changes:
     description: 'When regeneration changes nothing: true = succeed without committing; false = fail the step (default: true). Changed maps are always committed.'
     required: false
@@ -39,7 +35,7 @@ runs:
   using: 'composite'
   steps:
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
       with:
         node-version: '22'
 
@@ -107,6 +103,23 @@ runs:
         SCOPE: ${{ inputs.scope }}
         ALL_SCOPES: ${{ inputs.all-scopes }}
       run: |
+        # snapshot: one NUL-terminated "<hash> <path>" record per path that
+        # differs from the index (modified, deleted, untracked, not ignored).
+        snapshot() {
+          local f h
+          git ls-files -z --modified --deleted --others --exclude-standard | sort -zu |
+            while IFS= read -r -d '' f; do
+              if [ -L "$f" ]; then
+                h=$(readlink -- "$f" | git hash-object --stdin)
+              elif [ -f "$f" ]; then
+                h=$(git hash-object -- "$f")
+              else
+                h=deleted
+              fi
+              printf '%s %s\0' "$h" "$f"
+            done
+        }
+
         case "$SCOPE" in
           *$'\n'* | *$'\r'*)
             echo "::error::scope must not contain line breaks"
@@ -133,13 +146,25 @@ runs:
           echo "Running all configured scopes"
         fi
 
+        # What xray wrote = paths whose state differs from before it ran.
+        # Anything already dirty (a leftover secret, build output) is not xray's.
+        export GIT_LITERAL_PATHSPECS=1
+        before="$RUNNER_TEMP/xray-before.snapshot"
+        generated="$RUNNER_TEMP/xray-generated.list"
+        snapshot > "$before"
+
         "${CMD[@]}"
 
-        # Check if any files were created or modified
-        if [ -n "$(git status --porcelain)" ]; then
+        : > "$generated"
+        snapshot | while IFS= read -r -d '' rec; do
+          grep -qzFx -- "$rec" "$before" || printf '%s\0' "${rec#* }" >> "$generated"
+        done
+        rm -f "$before"
+
+        if [ -s "$generated" ]; then
           echo "changes_detected=true" >> "$GITHUB_OUTPUT"
           echo "✓ Xray maps were updated"
-          git status --short
+          tr '\0' '\n' < "$generated" | while IFS= read -r f; do printf '  %q\n' "$f"; done
         else
           echo "changes_detected=false" >> "$GITHUB_OUTPUT"
           echo "✓ Xray maps are already up to date"
@@ -153,8 +178,12 @@ runs:
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git add .
-        git commit -m "$COMMIT_MSG" || echo "No changes to commit"
+        # Stage and commit only what the regenerate step recorded; anything
+        # else in the checkout or already in the index stays out of the commit.
+        export GIT_LITERAL_PATHSPECS=1
+        generated="$RUNNER_TEMP/xray-generated.list"
+        git add --pathspec-from-file="$generated" --pathspec-file-nul
+        git commit -m "$COMMIT_MSG" --pathspec-from-file="$generated" --pathspec-file-nul || echo "No changes to commit"
         git push || echo "Failed to push changes"
 
     - name: Fail when nothing changed
