@@ -127,12 +127,12 @@ const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
   query: scoped({ graph: 'path', 'list-adapters': 'value', format: 'value' }, 'graph'),
   // Parses only (no config); positional paths held inside the server root.
   imports: {
-    ...scoped({ path: 'path', lang: 'value', format: 'value' }),
+    ...scoped({ path: 'path', lang: 'value', format: 'value', 'no-ignore': 'value' }),
     positionals: { paths: 'path' },
     description:
       'Per-file imports as the xray.imports/v1 JSON document (schemas/xray.imports.v1.json): 1-based line/column, ' +
       'normalized module, package, locality, parse errors and unsupported constructs (complete: false). ' +
-      'paths: files/dirs inside root to narrow to; lang: python, go, rust, typescript|ts, javascript|js, php.',
+      'paths: files/dirs inside root to narrow to; lang: python, go, rust, typescript|ts, javascript|js, php. no-ignore: list git-ignored files, nested repos and node_modules too (.git skipped).',
   },
   // Builds its graph in process like map (config walks up from --path);
   // --graph not offered: the graph always comes from the call root.

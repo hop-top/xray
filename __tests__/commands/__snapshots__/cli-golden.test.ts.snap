@@ -1153,6 +1153,8 @@ FLAGS:
   --lang <list>        Languages to include, comma-separated: python, go, rust,
                        typescript|ts, javascript|js, php (repeatable) (default:
                        [])
+  --no-ignore          List every source under the root, git-ignored files,
+                       nested repos and node_modules included (.git skipped)
   --no-cache           Parse every file; do not read or write the per-file cache
   --cols <cols...>     Restrict columns to this comma-separated list
                        (repeatable) (default: [])
@@ -1177,6 +1179,14 @@ read from a per-file cache in xray's cache directory (\`xray paths\`,
 cache-dir/imports), never under the root; output is identical with or
 without it. --no-cache parses every file and writes no cache. Cache
 hits/misses show at --verbose (stderr).
+
+--no-ignore lists every source under the root instead: git-ignored files,
+nested repos and vendored dirs (node_modules, dist, build) included; only
+.git is skipped. Directory symlinks are not followed. Sources in a language
+outside the contract are listed with status unsupported-language, those
+without an installed grammar with grammar-missing. package.json files under
+node_modules are not read for resolution. The cache is keyed per file, so
+both modes share it safely.
 
 Exit 0 whenever a document is produced: parse errors and unsupported
 constructs are data (\`complete: false\` on the file), not failures.
@@ -5299,6 +5309,14 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": [],
           "description": "Languages to include, comma-separated: python, go, rust, typescript|ts, javascript|js, php (repeatable)"
+        },
+        {
+          "name": "--no-ignore",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "List every source under the root, git-ignored files, nested repos and node_modules included (.git skipped)"
         },
         {
           "name": "--no-cache",

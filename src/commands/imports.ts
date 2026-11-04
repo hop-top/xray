@@ -25,6 +25,8 @@ export interface ImportsCommandOptions {
   format?: string;
   /** false with --no-cache; the per-file cache is on otherwise. */
   cache?: boolean;
+  /** false with --no-ignore: list git-ignored files and nested repos too. */
+  ignore?: boolean;
 }
 
 /** Table/csv columns (and the `--cols` vocabulary): one row per import record. */
@@ -93,7 +95,7 @@ const importsRegistry = buildRegistry();
 /** Build the document (no rendering). */
 export function handleImportsAction(paths: readonly string[], options: ImportsCommandOptions): ImportsDoc {
   const root = options.path ?? '.';
-  const files = collectImportFiles(root, { paths, languages: options.lang ?? [] });
+  const files = collectImportFiles(root, { paths, languages: options.lang ?? [], includeIgnored: options.ignore === false });
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { version } = require('../../package.json') as { version: string };
   const cache = options.cache === false ? undefined : openImportsCache(root);
@@ -135,6 +137,14 @@ cache-dir/imports), never under the root; output is identical with or
 without it. --no-cache parses every file and writes no cache. Cache
 hits/misses show at --verbose (stderr).
 
+--no-ignore lists every source under the root instead: git-ignored files,
+nested repos and vendored dirs (node_modules, dist, build) included; only
+.git is skipped. Directory symlinks are not followed. Sources in a language
+outside the contract are listed with status unsupported-language, those
+without an installed grammar with grammar-missing. package.json files under
+node_modules are not read for resolution. The cache is keyed per file, so
+both modes share it safely.
+
 Exit 0 whenever a document is produced: parse errors and unsupported
 constructs are data (\`complete: false\` on the file), not failures.
 Exit 2 on usage errors (unknown --lang, a path outside the root), 3 when
@@ -159,6 +169,7 @@ export function registerImportsCommand(program: Command): Command {
     .option('-p, --path <root>', 'Root directory (file paths are relative to it) [default: current directory]')
     .option('--lang <list>', 'Languages to include, comma-separated: python, go, rust, typescript|ts, javascript|js, php (repeatable)',
       (value: string, previous: string[]) => previous.concat(value.split(',').map(s => s.trim()).filter(Boolean)), [])
+    .option('--no-ignore', 'List every source under the root, git-ignored files, nested repos and node_modules included (.git skipped)')
     .option('--no-cache', 'Parse every file; do not read or write the per-file cache');
   addOutputFlags(cmd, importsRegistry, {
     defaultFormat: 'json',

@@ -221,7 +221,7 @@ describe('xray mcp over stdio', () => {
   it('lists imports: paths positional, path/lang/format, root', async () => {
     const r = await client.request('tools/list');
     const imports = (r.result.tools as Array<{ name: string; description?: string; inputSchema: any }>).find((t) => t.name === 'imports')!;
-    expect(Object.keys(imports.inputSchema.properties).sort()).toEqual(['format', 'lang', 'path', 'paths', 'root']);
+    expect(Object.keys(imports.inputSchema.properties).sort()).toEqual(['format', 'lang', 'no-ignore', 'path', 'paths', 'root']);
     expect(imports.inputSchema.properties.paths).toMatchObject({ type: 'array', items: { type: 'string' } });
     expect(imports.description).toMatch(/xray\.imports\/v1/);
   });

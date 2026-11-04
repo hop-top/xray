@@ -252,7 +252,7 @@ follow (`complete: false` on the file). For tools that use imports as
 evidence; parses only (no graph, no strategies).
 
 ```bash
-xray imports [paths...] [-p <root>] [--lang <list>] [--format <fmt>] [--cols <list>] [-o <file>] [--no-cache]
+xray imports [paths...] [-p <root>] [--lang <list>] [--format <fmt>] [--cols <list>] [-o <file>] [--no-ignore] [--no-cache]
 ```
 
 | Option | Meaning |
@@ -261,7 +261,8 @@ xray imports [paths...] [-p <root>] [--lang <list>] [--format <fmt>] [--cols <li
 | `-p, --path <root>` | Root; every `path` in the document is relative to it, and `root` echoes it as given. Default: current directory. One root per document |
 | `--lang <list>` | Contract languages to include: `python`, `go`, `rust`, `typescript` (`ts`), `javascript` (`js`), `php`; comma-separated, repeatable |
 | `--format` | `json` (default) or `yaml`: the whole document. `table`, `csv`: one row per import (`file`, `line`, `column`, `kind`, `form`, `module`, `normalized`, `locality`; `--cols` adds `language`, `endLine`, `endColumn`, `package`, `alias`, `typeOnly`, `confidence`, `evidence`). `text`: per-file summary |
-| `--no-cache` | Parse every file; neither read nor write the per-file cache |
+| `--no-ignore` | List every source under the root: git-ignored files, nested repos and vendored dirs (`node_modules`, `dist`, `build`) included; only `.git` is skipped, directory symlinks are not followed. Languages outside the contract show as `unsupported-language`. `package.json` files under `node_modules` are not read for resolution |
+| `--no-cache` | Parse every file; neither read nor write the per-file cache. The cache is keyed per file, so runs with and without `--no-ignore` share it safely |
 
 Files are listed as `xray scan` lists them (`git ls-files`, else the
 root's `.gitignore`), plus `.mjs`/`.cjs`/`.mts`/`.cts`. `--lang` and

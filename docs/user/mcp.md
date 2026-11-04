@@ -90,7 +90,7 @@ exposed.
 and `root`; its graph is always built over the call root, so `--graph`
 (and `--path`, `--lang`) are not exposed.
 
-`imports` takes `paths`, `path`, `lang`, `format` and `root`. Every entry
+`imports` takes `paths`, `path`, `lang`, `format`, `no-ignore` and `root`. Every entry
 of `paths` is a path argument: resolved against `root` and held inside
 the server root like `path`; `--output` is not exposed.
 

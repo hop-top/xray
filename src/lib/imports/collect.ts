@@ -32,6 +32,12 @@ export interface CollectImportsOptions {
   languages?: readonly string[];
   /** Base for relative `root` and `paths`; default process.cwd(). */
   cwd?: string;
+  /**
+   * List every source under the root: git-ignored files, nested repos and
+   * vendored dirs (node_modules, dist, build) included; only `.git` is
+   * skipped. Default: the scanner's listing.
+   */
+  includeIgnored?: boolean;
 }
 
 /** `--lang` values -> registry keys (sorted, unique); unknown -> UsageError. */
@@ -73,6 +79,51 @@ function narrowPrefixes(rootReal: string, paths: readonly string[], cwd: string)
   });
 }
 
+/**
+ * Every file under `rootReal` (posix, root-relative) whatever git or
+ * .gitignore say; only `.git` entries are skipped. Directory symlinks are
+ * not followed (no cycles, nothing outside the root); a file symlink counts
+ * when its target is a file inside the root.
+ */
+function walkAll(rootReal: string, wanted: ReadonlySet<string>): string[] {
+  const out: string[] = [];
+  const rootPrefix = rootReal.endsWith(path.sep) ? rootReal : rootReal + path.sep;
+  const visit = (dir: string, rel: string): void => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.name === '.git') continue;
+      const childRel = rel === '' ? e.name : `${rel}/${e.name}`;
+      const abs = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        visit(abs, childRel);
+      } else if (wanted.has(path.extname(e.name))) {
+        if (e.isSymbolicLink()) {
+          const target = realpath(abs);
+          if (!target.startsWith(rootPrefix)) continue;
+          try {
+            if (!fs.statSync(target).isFile()) continue;
+          } catch {
+            continue;
+          }
+        } else if (!e.isFile()) {
+          continue;
+        }
+        out.push(childRel);
+      }
+    }
+  };
+  visit(rootReal, '');
+  return out;
+}
+
+/** Resolution must not mistake vendored package manifests for workspace packages. */
+const isVendoredManifest = (rel: string) => rel.split('/').includes('node_modules');
+
 const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
@@ -101,10 +152,13 @@ export function collectImportFiles(root: string, opts: CollectImportsOptions = {
   };
 
   const out: ImportsSourceFile[] = [];
-  for (const f of new FileScanner(rootReal).scan(listed)) {
+  const candidates = opts.includeIgnored ? walkAll(rootReal, listed) : new FileScanner(rootReal).scan(listed);
+  for (const f of candidates) {
     const rel = toPosix(f);
     // Manifests are resolution inputs: kept whatever paths / --lang narrow to.
-    const keep = manifests.has(path.posix.basename(rel)) || (sources.has(path.posix.extname(rel)) && inScope(rel));
+    const isManifest = manifests.has(path.posix.basename(rel));
+    if (isManifest && opts.includeIgnored && isVendoredManifest(rel)) continue;
+    const keep = isManifest || (sources.has(path.posix.extname(rel)) && inScope(rel));
     if (!keep) continue;
     let content: Buffer;
     try {

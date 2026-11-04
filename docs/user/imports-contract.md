@@ -24,7 +24,7 @@ honest coverage take priority over breadth.
 ## Usage
 
 ```bash
-xray imports [paths...] [-p <root>] [--lang <list>] [--format json|yaml|table|csv|text] [-o <file>] [--no-cache]
+xray imports [paths...] [-p <root>] [--lang <list>] [--format json|yaml|table|csv|text] [-o <file>] [--no-ignore] [--no-cache]
 ```
 
 `json` (default) and `yaml` print this document; `table`/`csv`/`text`

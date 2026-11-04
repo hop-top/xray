@@ -68,6 +68,7 @@ function tree(): Command {
     .option('-p, --path <root>', 'Root directory')
     .option('--lang <list>', 'Languages', repeat, [])
     .option('-o, --output <path>', 'Output file')
+    .option('--no-ignore', 'List git-ignored files too')
     .option('--format <fmt>', 'Format');
   root.command('alias').command('set');
   return root;
@@ -137,9 +138,10 @@ describe('shapeLeaf', () => {
     expect(def.policy).toMatchObject({ root: 'path', configFromPath: true, detectOnRoot: false });
   });
 
-  it('exposes imports: paths positional (array), path/lang/format, root; no output', () => {
+  it('exposes imports: paths positional (array), path/lang/format/no-ignore, root; no output', () => {
     const { leaf, def } = shaped(root, ['imports']);
-    expect(Object.keys(leaf.properties).sort()).toEqual(['format', 'lang', 'path', 'paths', 'root']);
+    expect(Object.keys(leaf.properties).sort()).toEqual(['format', 'lang', 'no-ignore', 'path', 'paths', 'root']);
+    expect(leaf.properties['no-ignore'].type).toBe('boolean');
     expect(leaf.properties.paths).toMatchObject({ type: 'array', items: { type: 'string' } });
     expect(leaf.properties.lang.type).toBe('array');
     expect(leaf.required).toBeUndefined();
@@ -317,6 +319,8 @@ describe('root containment', () => {
     expect(buildArgv(d, c, { paths: ['sub', 'sub/x.py'], lang: ['go'] }, scope).argv).toEqual([
       'imports', '--lang=go', '--', path.join(serverRoot, 'sub'), path.join(serverRoot, 'sub/x.py'),
     ]);
+    expect(buildArgv(d, c, { 'no-ignore': true }, scope).argv).toEqual(['imports', '--no-ignore']);
+    expect(buildArgv(d, c, { 'no-ignore': false }, scope).argv).toEqual(['imports']);
     // explore's [query] is a value: never resolved as a path.
     const e = findCommand(r, ['explore'])!;
     expect(buildArgv(shaped(r, ['explore']).def, e, { query: '../other' }, scope).argv).toEqual(['explore', '--', '../other']);

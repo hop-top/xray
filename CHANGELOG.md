@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `xray imports --no-ignore` (and MCP `no-ignore`): list every source under
+  the root, git-ignored files, nested repos and `node_modules` included;
+  only `.git` skipped. Default listing unchanged.
 - `xray.imports/v1` coverage: `unsupported[]` per file (Go cgo/plugin/linkname,
   Rust include macros + build scripts, PHP eval/dynamic include/new/calls,
   TS/JS non-literal require/import(), eval, createRequire, Python dynamic
