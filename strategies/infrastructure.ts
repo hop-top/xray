@@ -17,6 +17,24 @@ export default class InfrastructureStrategy implements Strategy {
     kubernetesTool
   ];
 
+  /**
+   * Assign each file to the first tool (in priority order) whose detect()
+   * claims it. Detectors overlap (any .yaml matches kubernetes, templates
+   * match cloudformation); analyze() already stores one result per file under
+   * the first match, so listing must use the same owner or the file's
+   * resources are emitted once per overlapping tool.
+   */
+  private claimFiles(files: string[]): Map<InfrastructureTool, string[] | null> {
+    const claimed = new Set<string>();
+    const owned = new Map<InfrastructureTool, string[] | null>();
+    for (const tool of this.tools) {
+      const mine = (tool.detect(files) ?? []).filter(f => !claimed.has(f));
+      mine.forEach(f => claimed.add(f));
+      owned.set(tool, mine.length > 0 ? mine : null);
+    }
+    return owned;
+  }
+
   async detect(ctx: StrategyContext): Promise<boolean> {
     const files = ctx.globFiles('**/*');
     return this.tools.some(tool => tool.detect(files) !== null);
@@ -83,9 +101,10 @@ export default class InfrastructureStrategy implements Strategy {
       handler: async (ctx: StrategyContext, opts?: any) => {
         const results: any[] = [];
         const files = ctx.globFiles('**/*');
+        const owned = this.claimFiles(files);
 
         for (const tool of this.tools) {
-          const infraFiles = tool.detect(files);
+          const infraFiles = owned.get(tool);
           if (infraFiles) {
             for (const file of infraFiles) {
               const metadata = ctx.getMetadata(file, 'infrastructure');
@@ -132,9 +151,10 @@ export default class InfrastructureStrategy implements Strategy {
       handler: async (ctx: StrategyContext) => {
         const providerMap = new Map<string, Set<string>>();
         const files = ctx.globFiles('**/*');
+        const owned = this.claimFiles(files);
 
         for (const tool of this.tools) {
-          const infraFiles = tool.detect(files);
+          const infraFiles = owned.get(tool);
           if (infraFiles) {
             for (const file of infraFiles) {
               const metadata = ctx.getMetadata(file, 'infrastructure');
@@ -172,9 +192,10 @@ export default class InfrastructureStrategy implements Strategy {
         const nodes: any[] = [];
         const edges: any[] = [];
         const files = ctx.globFiles('**/*');
+        const owned = this.claimFiles(files);
 
         for (const tool of this.tools) {
-          const infraFiles = tool.detect(files);
+          const infraFiles = owned.get(tool);
           if (infraFiles) {
             for (const file of infraFiles) {
               const metadata = ctx.getMetadata(file, 'infrastructure');
@@ -219,9 +240,10 @@ export default class InfrastructureStrategy implements Strategy {
         let totalResources = 0;
         const byTool: Record<string, number> = {};
         const files = ctx.globFiles('**/*');
+        const owned = this.claimFiles(files);
 
         for (const tool of this.tools) {
-          const infraFiles = tool.detect(files);
+          const infraFiles = owned.get(tool);
           if (infraFiles) {
             for (const file of infraFiles) {
               const metadata = ctx.getMetadata(file, 'infrastructure');
@@ -247,11 +269,12 @@ export default class InfrastructureStrategy implements Strategy {
       handler: async (ctx: StrategyContext) => {
         const issues: any[] = [];
         const files = ctx.globFiles('**/*');
+        const owned = this.claimFiles(files);
         const resourceMap = new Map<string, any>();
 
         // Collect all resources
         for (const tool of this.tools) {
-          const infraFiles = tool.detect(files);
+          const infraFiles = owned.get(tool);
           if (infraFiles) {
             for (const file of infraFiles) {
               const metadata = ctx.getMetadata(file, 'infrastructure');
