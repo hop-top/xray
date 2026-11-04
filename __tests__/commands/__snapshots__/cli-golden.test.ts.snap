@@ -2712,40 +2712,41 @@ exports[`cli golden: excess arguments xray explore q extra 1`] = `
 "
 `;
 
-exports[`cli golden: excess arguments xray paths extra 1`] = `
-"exit: 0
+exports[`cli golden: excess arguments xray paths extra is a usage error 1`] = `
+"exit: 2
 --- stdout ---
-project-root:    <CWD>
-project-config:  (none)
-global-config:   (none)
-cache-db:        <CWD>/.xray_cache.db (not yet created)
-config-dir:      <TMP>/home/.config/xray
-data-dir:        <TMP>/home/.local/share/xray
-cache-dir:       <TMP>/home/.cache/xray
-state-dir:       <TMP>/home/.local/state/xray
 
 --- stderr ---
+✖ too many arguments for 'paths'. Expected 0 arguments but got 1: extra.
+
+Usage: xray paths [options]
+
+Show xray's active config, cache DB, and project root
+
+FLAGS:
+  -p, --path <path>  Project path to inspect (default:
+                     "<CWD>")
+  --format <fmt>     Output format: text, json, yaml, table, csv (default:
+                     "text")
+  -h, --help         Display help
+
 "
 `;
 
-exports[`cli golden: excess arguments xray strategy info express extra 1`] = `
-"exit: 0
+exports[`cli golden: excess arguments xray strategy info express extra is a usage error 1`] = `
+"exit: 2
 --- stdout ---
-Version: 0.1.0
-
-File Types: .js, .ts, .jsx, .tsx
-
-Commands:
-  - express:routes - List all Express routes
-  - express:routers - List all Express Router instances
-  - express:middleware - List all Express middleware
-  - express:error-handlers - List all Express error handlers
-
-Detected in current project: No
 
 --- stderr ---
-ℹ 
-Strategy: express
+✖ too many arguments for 'info'. Expected 1 argument but got 2: express, extra.
+
+Usage: xray strategy info [options] <name>
+
+Show detailed information about a strategy
+
+FLAGS:
+  -h, --help  Display help
+
 "
 `;
 

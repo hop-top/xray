@@ -249,9 +249,15 @@ describe('root --config scan agrees with commander', () => {
   });
 
   it('nothing after -- is read as a root option', () => {
-    const r = run(['paths', '--format', 'json', '--', `--config=${decoy}`]);
-    expect(r.status).toBe(0);
-    expect(JSON.parse(r.stdout).projectConfig).toBe(path.join(root, '.xrayrc.json'));
+    // A config naming an unknown language fails any run that loads it.
+    const bad = write(path.join(tmp, 'bad.json'), { languages: ['cobol'] });
+    const control = run(['scan', `--config=${bad}`, '.']);
+    expect(control.status).toBe(2);
+    expect(control.stderr).toContain('cobol');
+    // After --, the token is a (missing) path operand, not a config.
+    const r = run(['scan', '.', '--', `--config=${bad}`]);
+    expect(r.stderr).not.toContain('cobol');
+    expect(r.stderr).toContain('Path does not exist');
   });
 
   describe('rootConfigFromArgv', () => {

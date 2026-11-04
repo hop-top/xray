@@ -209,20 +209,31 @@ describe('cli golden: --help', () => {
   );
 });
 
-// Surplus positionals are ignored, not rejected (commander >=13 rejects by
-// default; the CLI opts back in to tolerant parsing).
-const EXCESS_ARG_CASES: string[][] = [
+// Surplus positionals are a usage error (exit 2), except on the default
+// command, whose [query] takes free-form words.
+const EXCESS_ARG_ACCEPTED: string[][] = [
   ['explore', 'q', 'extra'], // default command with optional [query]
+];
+const EXCESS_ARG_REJECTED: string[][] = [
   ['strategy', 'info', 'express', 'extra'], // required arg + surplus
   ['paths', 'extra'], // no-arg command
 ];
 
 describe('cli golden: excess arguments', () => {
-  it.each(EXCESS_ARG_CASES.map((c) => [c.join(' '), c]))(
+  it.each(EXCESS_ARG_ACCEPTED.map((c) => [c.join(' '), c]))(
     'xray %s',
     async (_label, args) => {
       const r = await run(args as string[]);
       expect(r.status).toBe(0);
+      expect(golden(r)).toMatchSnapshot();
+    }
+  );
+
+  it.each(EXCESS_ARG_REJECTED.map((c) => [c.join(' '), c]))(
+    'xray %s is a usage error',
+    async (_label, args) => {
+      const r = await run(args as string[]);
+      expect(r.status).toBe(2);
       expect(golden(r)).toMatchSnapshot();
     }
   );

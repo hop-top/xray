@@ -244,21 +244,29 @@ export async function main() {
   // Convert commander parse/usage errors → exit 2 instead of commander's default exit 1.
   // exitOverride must be applied to subcommands too — commander does not
   // propagate it implicitly.
-  // allowExcessArguments keeps pre-commander-13 parsing: surplus positionals
-  // (and unknown options on allowUnknownOption commands such as aliases) are
-  // ignored instead of rejected.
+  // Surplus positionals are a usage error on every command except the two
+  // opted in after this walk.
   // Subtrees built standalone and attached via addCommand() do not inherit
   // the root's help/output configuration; copy it down so every level
   // renders with the kit help layout.
   const applyParseSettings = (cmd: any) => {
     if (cmd.parent) cmd.copyInheritedSettings(cmd.parent);
     cmd.exitOverride();
-    cmd.allowExcessArguments();
     if (Array.isArray(cmd.commands)) {
       for (const sub of cmd.commands) applyParseSettings(sub);
     }
   };
   applyParseSettings(program);
+
+  // The default command takes a free-form query: `xray foo bar` and an
+  // unloaded strategy's `xray <strategy> <noun>` arrive as extra operands,
+  // the first being the query. Set after applyParseSettings, since
+  // copyInheritedSettings overwrites the flag from the parent.
+  program.commands.find((c) => c.name() === 'explore')?.allowExcessArguments();
+
+  // `completion <shell>`: kit's command takes the shell as an operand that
+  // its action reads to report an unsupported one.
+  program.commands.find((c) => c.name() === 'completion')?.allowExcessArguments();
 
   // Surface "Did you mean?" hints on unknown commands.
   program.showSuggestionAfterError(true);
