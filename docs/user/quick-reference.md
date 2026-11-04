@@ -265,7 +265,7 @@ See [Configuration Guide](configuration.md) for more.
 |---------|----------|
 | Stale results | `xray clear-cache` |
 | Command not found | `npx xray` instead of `xray` |
-| Installation failed | `CXXFLAGS="-std=c++20" npm install --legacy-peer-deps` |
+| Installation failed | `CXXFLAGS="-std=c++20" npm install` |
 | No output | `xray map -p ./src` (specify path) |
 | Too much output | `xray map --limit 2000` (reduce limit) |
 | Too little output | `xray map --limit 16000` (increase limit) |

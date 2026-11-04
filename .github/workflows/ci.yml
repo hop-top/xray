@@ -22,8 +22,9 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      # --legacy-peer-deps: tree-sitter-kotlin peer-depends on tree-sitter ^0.21
-      - run: npm ci --legacy-peer-deps
+      - name: Guard plain install (no peer-dep flags)
+        run: scripts/check-plain-install.sh
+      - run: npm ci
       - run: npm run build
       # ts-jest is transpile-only (isolatedModules); test files are type-checked here
       - run: npm run typecheck:tests
@@ -118,7 +119,7 @@ jobs:
           EOF
           sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns
           bwrap --ro-bind / / --unshare-net --unshare-pid true
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci
       - run: npm run build
       - name: Run test suites
         run: npm test 2>&1 | tee "$RUNNER_TEMP/test.log"; exit "${PIPESTATUS[0]}"

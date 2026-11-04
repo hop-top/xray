@@ -19,14 +19,12 @@ test-coverage:
 
 check: test
 
-# --legacy-peer-deps: optional grammar peers (e.g. tree-sitter-kotlin) declare
-# peer ranges npm's strict resolver rejects.
 setup:
-	npm install --legacy-peer-deps
+	npm install
 
 # Lockfile-exact install (clean node_modules), for CI / reproducible setups.
 setup-ci:
-	npm ci --legacy-peer-deps
+	npm ci
 
 clean:
 	rm -rf dist coverage

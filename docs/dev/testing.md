@@ -77,7 +77,7 @@ strategy is not detected.
 
 To reproduce locally on a Linux container: use Ubuntu 24.04 with Node, Go, `git`, `perl`,
 `procps`, `time`, `bubblewrap`; copy the tree (not host `node_modules`), then
-`npm ci --legacy-peer-deps && npm run build && XRAY_TEST_NO_LOCK=1 npm test`. Docker masks
+`npm ci && npm run build && XRAY_TEST_NO_LOCK=1 npm test`. Docker masks
 `/proc`, so the bwrap suites need `--security-opt systempaths=unconfined`
 (plus `seccomp=unconfined`, `apparmor=unconfined`) and `--init` (otherwise the runner reports reaped bwrap children as `<defunct>` leaks). That is a container limit, not
 product behavior.

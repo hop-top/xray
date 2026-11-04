@@ -17,7 +17,7 @@ Done! Move to the next section.
 ```bash
 git clone https://github.com/IdeaCraftersLabs/oss-xray-codes.git xray
 cd xray
-npm install --legacy-peer-deps
+npm ci
 npm run build
 npm link
 ```
@@ -26,7 +26,7 @@ npm link
 
 **C++ troubleshooting**:
 ```bash
-CXXFLAGS="-std=c++20" npm install --legacy-peer-deps
+CXXFLAGS="-std=c++20" npm install
 ```
 
 ### Verify Installation
@@ -260,7 +260,7 @@ npx xray map
 
 ```bash
 # Set C++ version explicitly
-CXXFLAGS="-std=c++20" npm install --legacy-peer-deps
+CXXFLAGS="-std=c++20" npm install
 
 # On macOS, ensure Xcode tools installed
 xcode-select --install

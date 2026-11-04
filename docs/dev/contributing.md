@@ -21,8 +21,7 @@ git clone https://github.com/IdeaCraftersLabs/oss-xray-codes.git
 cd oss-xray-codes
 
 # Install dependencies
-# Note: --legacy-peer-deps is required due to tree-sitter peer dependency constraints
-npm install --legacy-peer-deps
+npm ci
 
 # Build the project
 npm run build

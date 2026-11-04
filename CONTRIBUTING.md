@@ -47,7 +47,7 @@ git clone https://github.com/YOUR-USERNAME/xray.git
 cd xray
 
 # Install dependencies
-npm install --legacy-peer-deps
+npm ci
 
 # Build the project
 npm run build

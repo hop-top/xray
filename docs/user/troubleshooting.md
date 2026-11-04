@@ -11,7 +11,7 @@ Solutions to common issues and problems with xray.
 **Solution:**
 ```bash
 # Set C++ standard explicitly
-CXXFLAGS="-std=c++20" npm install --legacy-peer-deps
+CXXFLAGS="-std=c++20" npm install
 
 # On macOS, ensure Xcode Command Line Tools installed
 xcode-select --install
@@ -26,8 +26,9 @@ sudo apt-get install build-essential
 
 **Solution:**
 ```bash
-# Use --legacy-peer-deps flag
-npm install --legacy-peer-deps
+# Plain install must succeed: the root package.json overrides the grammars'
+# stale tree-sitter peer range, so no peer-dependency flag is needed.
+rm -rf node_modules && npm ci
 ```
 
 ### Missing tree-sitter Parsers
@@ -41,7 +42,7 @@ The tree-sitter parsers are included as dependencies. If you encounter missing p
 1. Clear node_modules and reinstall:
 ```bash
 rm -rf node_modules package-lock.json
-npm install --legacy-peer-deps
+npm install
 ```
 
 2. Check [supported languages](../../README.md#supported-languages) - Dart and Lua are currently unsupported due to version incompatibility.

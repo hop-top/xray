@@ -297,6 +297,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Retry backoff skipped the wait before the first retry (delays ran
   0, base, 2×base instead of base, 2×base, 4×base); retries now back off
   from the first one.
+- Plain `npm ci` works on a fresh clone: scoped `overrides` entry aligns the
+  grammars' `tree-sitter` peer with the root version; `--legacy-peer-deps`
+  no longer needed.
 
 ### Changed
 

@@ -410,18 +410,19 @@ xray lang add go typescript   # choose your language packs
 ```bash
 git clone https://github.com/xray-codes/xray.git
 cd xray
-npm install --legacy-peer-deps
+npm ci
 npm run build
 npm link
 ```
 
 **Requirements:**
 - Node.js 22.12+
-- C++ build tools (build-essential on Linux, Xcode on macOS)
+- Plain `npm ci`, no flags (`package.json` `overrides` reconciles the grammars' stale `tree-sitter` peer ranges)
+- Grammars ship prebuilt native binaries for common platforms; C++ build tools (build-essential on Linux, Xcode on macOS) are only needed where no prebuild matches
 
 **Troubleshooting:**
 ```bash
-CXXFLAGS="-std=c++20" npm install --legacy-peer-deps
+CXXFLAGS="-std=c++20" npm install
 ```
 
 [Full installation guide →](docs/user/getting-started.md)
