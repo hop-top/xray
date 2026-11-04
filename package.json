@@ -1,6 +1,6 @@
 {
   "name": "@hop-top/xray",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.0",
   "description": "X-ray your codebase - Generate AST, CFG, and DFG visualizations",
   "main": "dist/index.js",
   "bin": {

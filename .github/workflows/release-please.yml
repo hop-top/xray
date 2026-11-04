@@ -1,0 +1,102 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+      version: ${{ steps.rp.outputs.version }}
+    steps:
+      # Short-lived GitHub App installation token: release PRs open as the
+      # app (not GITHUB_TOKEN, whose PRs trigger no workflows) and CI runs on
+      # them. Repo secrets; the app must be installed on this repo.
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: rp
+        with:
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+          token: ${{ steps.app-token.outputs.token }}
+
+  # Runs only on the push that merged a release PR (tag + GitHub release
+  # just created). No test step: CI already ran the full suite on the
+  # release PR. Holds no secrets; install scripts stay off, so dependency
+  # code cannot run here at all.
+  build:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - run: npm run build
+
+      - name: Check tag matches package.json
+        env:
+          TAG_VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          if [ "$pkg" != "$TAG_VERSION" ]; then
+            echo "::error::package.json $pkg != release $TAG_VERSION"
+            exit 1
+          fi
+
+      - run: npm pack --ignore-scripts
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: package
+          path: '*.tgz'
+          if-no-files-found: error
+
+  # Only job with the npm token. No checkout, no install: it publishes the
+  # tarball the build job packed, so no repo or dependency code runs here.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: package
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+
+      # npm refuses a prerelease without an explicit --tag. `latest` matches
+      # how @hop-top/kit publishes its prereleases, and keeps `npm i -g
+      # @hop-top/xray` and action.yaml's default `latest` resolvable.
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_REGISTRY_TOKEN }}
+        run: npm publish ./*.tgz --access public --tag latest --ignore-scripts
