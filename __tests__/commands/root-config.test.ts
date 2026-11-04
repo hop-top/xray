@@ -176,25 +176,92 @@ describe('root --config in other commands', () => {
 describe('rootConfigFromArgv', () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { rootConfigFromArgv } = require('../../src/commands/root-options') as typeof import('../../src/commands/root-options');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { program } = require('../../src/commands/root-program') as typeof import('../../src/commands/root-program');
   const argv = (...a: string[]) => ['node', 'xray', ...a];
 
   it('absent -> undefined; empty -> undefined', () => {
-    expect(rootConfigFromArgv(argv('map'), '/w')).toBeUndefined();
-    expect(rootConfigFromArgv(argv('--config=', 'map'), '/w')).toBeUndefined();
+    expect(rootConfigFromArgv(program, argv('map'), '/w')).toBeUndefined();
+    expect(rootConfigFromArgv(program, argv('--config=', 'map'), '/w')).toBeUndefined();
   });
 
   it('both forms, before or after the subcommand; last wins', () => {
-    expect(rootConfigFromArgv(argv('--config', 'a.json', 'map'), '/w')).toBe('/w/a.json');
-    expect(rootConfigFromArgv(argv('map', '--config=/abs/b.json'), '/w')).toBe('/abs/b.json');
-    expect(rootConfigFromArgv(argv('--config', 'a.json', 'map', '--config', 'b.json'), '/w')).toBe('/w/b.json');
+    expect(rootConfigFromArgv(program, argv('--config', 'a.json', 'map'), '/w')).toBe('/w/a.json');
+    expect(rootConfigFromArgv(program, argv('map', '--config=/abs/b.json'), '/w')).toBe('/abs/b.json');
+    expect(rootConfigFromArgv(program, argv('--config', 'a.json', 'map', '--config', 'b.json'), '/w')).toBe('/w/b.json');
   });
 
   it('relative value resolves against -C/--chdir', () => {
-    expect(rootConfigFromArgv(argv('-C', 'proj', '--config', 'x.json', 'map'), '/w')).toBe('/w/proj/x.json');
-    expect(rootConfigFromArgv(argv('--config', 'x.json', '--chdir=/p', 'map'), '/w')).toBe('/p/x.json');
+    expect(rootConfigFromArgv(program, argv('-C', 'proj', '--config', 'x.json', 'map'), '/w')).toBe('/w/proj/x.json');
+    expect(rootConfigFromArgv(program, argv('--config', 'x.json', '--chdir=/p', 'map'), '/w')).toBe('/p/x.json');
   });
 
   it('stops at --', () => {
-    expect(rootConfigFromArgv(argv('explore', '--', '--config', 'x.json'), '/w')).toBeUndefined();
+    expect(rootConfigFromArgv(program, argv('explore', '--', '--config', 'x.json'), '/w')).toBeUndefined();
+  });
+});
+
+describe('root --config scan agrees with commander', () => {
+  let evil: string;
+  beforeEach(() => {
+    evil = path.join(tmp, 'evil.js');
+    write(evil, `require('fs').writeFileSync(${JSON.stringify(marker)}, 'ran');\nmodule.exports = {};\n`);
+  });
+
+  // commander gives these tokens to the preceding option as its value,
+  // so no config is selected and the JS file must not run.
+  it('--log-level takes the next token as its value', () => {
+    const r = run(['--log-level', `--config=${evil}`, 'paths']);
+    expect(fs.existsSync(marker)).toBe(false);
+    expect(r.status).not.toBe(0);
+  });
+
+  it('--config takes the next token as its value', () => {
+    run(['--config', `--config=${evil}`, 'paths']);
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  it('-C takes the next token as its value', () => {
+    const r = run(['-C', `--config=${evil}`, 'paths']);
+    expect(fs.existsSync(marker)).toBe(false);
+    expect(r.status).not.toBe(0);
+  });
+
+  it('--config=<js> still runs the file when it is the real root option', () => {
+    run(['--config', evil, 'paths']);
+    expect(fs.existsSync(marker)).toBe(true);
+    fs.rmSync(marker);
+    run([`--config=${evil}`, 'paths']);
+    expect(fs.existsSync(marker)).toBe(true);
+  });
+
+  it('nothing after -- is read as a root option', () => {
+    run(['explore', '--', `--config=${evil}`]);
+    expect(fs.existsSync(marker)).toBe(false);
+  });
+
+  describe('rootConfigFromArgv', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { rootConfigFromArgv } = require('../../src/commands/root-options') as typeof import('../../src/commands/root-options');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { program } = require('../../src/commands/root-program') as typeof import('../../src/commands/root-program');
+    const argv = (...a: string[]) => ['node', 'xray', ...a];
+
+    it('a value-taking root option consumes a flag-shaped value', () => {
+      expect(rootConfigFromArgv(program, argv('--log-level', '--config=x.js', 'map'), '/w')).toBeUndefined();
+      expect(rootConfigFromArgv(program, argv('--config', '--config=x.js', 'map'), '/w')).toBe('/w/--config=x.js');
+      expect(rootConfigFromArgv(program, argv('-C', '--config=x.js', 'map'), '/w')).toBeUndefined();
+      expect(rootConfigFromArgv(program, argv('--config', 'a.json', '-C', '--chdir=/p'), '/w')).toBe('/w/--chdir=/p/a.json');
+    });
+
+    it('attached short form and value-less trailing option', () => {
+      expect(rootConfigFromArgv(program, argv('-Cproj', '--config', 'x.json'), '/w')).toBe('/w/proj/x.json');
+      expect(rootConfigFromArgv(program, argv('map', '--config'), '/w')).toBeUndefined();
+    });
+
+    it('unknown options are skipped, root options after them still read', () => {
+      expect(rootConfigFromArgv(program, argv('map', '--scope', '--config=x.json'), '/w')).toBe('/w/x.json');
+      expect(rootConfigFromArgv(program, argv('map', '--scope=--config=x.json'), '/w')).toBeUndefined();
+    });
   });
 });

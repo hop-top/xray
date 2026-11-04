@@ -20,7 +20,7 @@
  * exercised in isolation.
  */
 import * as path from 'path';
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { Logger } from '../lib/logger';
 import { UsageError } from '../lib/error/types';
 import { disableColor, setTheme } from '../lib/tui';
@@ -79,22 +79,36 @@ export function resolveLogLevel(rootOpts: Record<string, unknown>): string | und
  * for config loads that run before commander parses (alias
  * registration, telemetry consent). Relative values resolve against
  * `-C/--chdir` (itself relative to `cwd`), matching where the parsed
- * value resolves once the preAction hook has changed directory. Last
- * occurrence wins; scanning stops at `--`.
+ * value resolves once the preAction hook has changed directory.
+ *
+ * Tokens are classified by commander itself, using the root program's
+ * own option definitions, so the early read cannot disagree with the
+ * real parse: a value-taking option (`--log-level`, `--config`, `-C`)
+ * consumes the next token whatever it looks like, `--` ends parsing,
+ * and unknown options are skipped. Argv commander would reject (a
+ * missing option value) yields undefined; the real parse reports it.
  */
-export function rootConfigFromArgv(argv: readonly string[], cwd: string = process.cwd()): string | undefined {
-  let config: string | undefined;
-  let chdir: string | undefined;
-  for (let i = 2; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--') break;
-    if (a.startsWith('--config=')) config = a.slice('--config='.length);
-    else if (a === '--config' && i + 1 < argv.length) config = argv[++i];
-    else if (a.startsWith('--chdir=')) chdir = a.slice('--chdir='.length);
-    else if ((a === '-C' || a === '--chdir') && i + 1 < argv.length) chdir = argv[++i];
+export function rootConfigFromArgv(
+  program: Command,
+  argv: readonly string[],
+  cwd: string = process.cwd()
+): string | undefined {
+  // Fresh Options carry flags only: kit's version/help listeners (which
+  // exit the process) and the preAction hook stay on the real program.
+  const scan = new Command()
+    .allowUnknownOption()
+    .allowExcessArguments()
+    .exitOverride()
+    .configureOutput({ writeOut: () => {}, writeErr: () => {}, outputError: () => {} });
+  for (const o of program.options) scan.addOption(new Option(o.flags));
+  try {
+    scan.parseOptions(argv.slice(2));
+  } catch {
+    return undefined;
   }
-  if (config === undefined || config === '') return undefined;
-  const base = chdir ? path.resolve(cwd, chdir) : cwd;
+  const { config, chdir } = scan.opts<{ config?: string; chdir?: string }>();
+  if (typeof config !== 'string' || config === '') return undefined;
+  const base = typeof chdir === 'string' && chdir !== '' ? path.resolve(cwd, chdir) : cwd;
   return path.resolve(base, config);
 }
 

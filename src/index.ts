@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { registerCommands } from './commands';
+import { program as rootProgram } from './commands/root-program';
 import { initializeTelemetry, shutdownTelemetry } from './lib/telemetry';
 import { loadConfig } from './lib/config';
 import { handleFirstRunConsent } from './lib/telemetry-consent';
@@ -137,7 +138,7 @@ export async function main() {
 
   // Root --config replaces config discovery for every load in the run,
   // including the ones below that happen before commander parses.
-  const rootConfig = rootConfigFromArgv(argv);
+  const rootConfig = rootConfigFromArgv(rootProgram, argv);
 
   // Handle first-run telemetry consent
   const telemetryEnabled = mcpRequest ? false : await handleFirstRunConsent(argv, rootConfig);
