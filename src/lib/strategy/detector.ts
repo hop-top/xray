@@ -66,7 +66,12 @@ export class StrategyDetector {
       );
     } catch (err: any) {
       // Log warning but don't fail - detection cache is optional
-      Logger.warn(`Could not write strategy detection cache: ${err.message}`);
+      Logger.warn(
+        err?.code === 'ENOTDIR' || (fs.existsSync(xrayDir) && !fs.statSync(xrayDir).isDirectory())
+          ? `.xray is a file, but xray keeps its cache in a .xray directory: ${xrayDir}. ` +
+            `The detection cache was not written; remove or rename the file to enable it.`
+          : `Could not write strategy detection cache: ${err.message}`
+      );
     }
 
     return detected;
