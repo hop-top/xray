@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as grammars from '../../src/lib/parser/grammars';
-import { checkGrammar, installPacks } from '../../src/lib/parser/lang-install';
+import { checkGrammar, installCommand, removeCommand, installPacks } from '../../src/lib/parser/lang-install';
 
 // tree-sitter's native state breaks when different grammar packages parse in
 // one jest process (see scripts/test-sequential.sh), so every real parse here
@@ -59,5 +59,27 @@ describe('post-install grammar check', () => {
     const out = installPacks([ts()], ok);
     expect(out.statuses[0].reason).toBe('blocked');
     expect(out.statuses[0].check).toBeUndefined();
+  });
+});
+
+describe('npm commands', () => {
+  const pack = (module: string, range: string) => ({ name: 'x', module, range, extensions: ['.x'], query: 'x.scm' } as any);
+
+  it('install saves exact versions and keeps --legacy-peer-deps', () => {
+    const argv = installCommand([pack('tree-sitter-c-sharp', '0.23.1')]);
+    expect(argv).toContain('--save-exact');
+    expect(argv).toContain('--legacy-peer-deps');
+    expect(argv.slice(-1)).toEqual(['tree-sitter-c-sharp@0.23.1']);
+  });
+
+  it('install keeps the catalog range as the npm spec for range packs', () => {
+    expect(installCommand([pack('tree-sitter-go', '^0.25.0')]).slice(-1)).toEqual(['tree-sitter-go@^0.25.0']);
+  });
+
+  it('remove does not carry install-only flags', () => {
+    const argv = removeCommand([pack('tree-sitter-go', '^0.25.0')]);
+    expect(argv).not.toContain('--save-exact');
+    expect(argv).toContain('--legacy-peer-deps');
+    expect(argv.slice(-1)).toEqual(['tree-sitter-go']);
   });
 });

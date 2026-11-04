@@ -32,8 +32,11 @@ function ensureManagedProject(dir: string): void {
 // tree-sitter; xray supplies tree-sitter itself, so the peer must not be resolved here.
 const NPM_FLAGS = ['--legacy-peer-deps', '--no-audit', '--no-fund', '--prefer-offline'];
 
+// --save-exact: without it npm rewrites the catalog range to a caret (`^x.y.z`)
+// in the managed package.json, so a lost lockfile re-resolves to a newer,
+// possibly broken release instead of the pinned one.
 export function installCommand(packs: LanguagePack[]): string[] {
-  return ['install', ...NPM_FLAGS, ...packs.map(p => `${p.module}@${p.range}`)];
+  return ['install', '--save-exact', ...NPM_FLAGS, ...packs.map(p => `${p.module}@${p.range}`)];
 }
 
 export function removeCommand(packs: LanguagePack[]): string[] {
