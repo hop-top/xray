@@ -366,7 +366,7 @@ Start here, then pick your next path based on what you want to do.
 1. Check [Quick Reference](quick-reference.md) for common commands
 2. Look at [Cookbook](cookbook.md) for similar examples
 3. Read [Troubleshooting](troubleshooting.md) if something broke
-4. Ask on [GitHub Issues](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues)
+4. Ask on [GitHub Issues](https://github.com/xray-codes/xray/issues)
 
 ---
 

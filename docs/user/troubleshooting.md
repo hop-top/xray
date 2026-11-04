@@ -347,7 +347,7 @@ ls -la /path/to/directory
 
 **Explanation:**
 
-Dart and Lua are not currently supported due to tree-sitter version incompatibility. See [issue #6](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues/6) for details.
+Dart and Lua are not currently supported due to tree-sitter version incompatibility. See [issue #6](https://github.com/xray-codes/xray/issues/6) for details.
 
 **Workaround:**
 
@@ -370,9 +370,9 @@ This is a known limitation. The AST parser handles most cases, but extremely com
 
 If you're still experiencing issues:
 
-1. Check [GitHub Issues](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues) for similar problems
-2. Search [closed issues](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues?q=is%3Aissue+is%3Aclosed) for solutions
-3. Create a [new issue](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues/new) with:
+1. Check [GitHub Issues](https://github.com/xray-codes/xray/issues) for similar problems
+2. Search [closed issues](https://github.com/xray-codes/xray/issues?q=is%3Aissue+is%3Aclosed) for solutions
+3. Create a [new issue](https://github.com/xray-codes/xray/issues/new) with:
    - xray version (`xray --version`)
    - Operating system
    - Node.js version

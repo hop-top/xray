@@ -81,9 +81,9 @@ docs/
 
 ## Getting Help
 
-- **Questions**: [GitHub Discussions](https://github.com/IdeaCraftersLabs/oss-xray-codes/discussions)
-- **Bugs**: [GitHub Issues](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues)
-- **Documentation Issues**: Report in [GitHub Issues](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues) with `documentation` label
+- **Questions**: [GitHub Discussions](https://github.com/xray-codes/xray/discussions)
+- **Bugs**: [GitHub Issues](https://github.com/xray-codes/xray/issues)
+- **Documentation Issues**: Report in [GitHub Issues](https://github.com/xray-codes/xray/issues) with `documentation` label
 
 ## Contributing to Documentation
 

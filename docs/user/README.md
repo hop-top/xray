@@ -256,7 +256,7 @@ cat .xray | xclip  # or copy to clipboard
 ## Still Have Questions?
 
 - Check [Troubleshooting Guide](troubleshooting.md) for common issues
-- Visit [GitHub Issues](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues)
+- Visit [GitHub Issues](https://github.com/xray-codes/xray/issues)
 - Search existing issues for solutions
 
 ## Core Insight

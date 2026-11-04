@@ -851,4 +851,4 @@ xray react components | awk '{print $1}'
 
 ---
 
-For questions or issues, please visit: https://github.com/IdeaCraftersLabs/oss-xray-codes/issues
+For questions or issues, please visit: https://github.com/xray-codes/xray/issues

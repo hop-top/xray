@@ -17,8 +17,8 @@ Thank you for your interest in contributing to xray! This guide will help you ge
 
 ```bash
 # Clone the repository
-git clone https://github.com/IdeaCraftersLabs/oss-xray-codes.git
-cd oss-xray-codes
+git clone https://github.com/xray-codes/xray.git
+cd xray
 
 # Install dependencies
 npm ci
@@ -35,7 +35,7 @@ npm link
 Following Node.js/TypeScript best practices, the project is organized as:
 
 ```
-oss-xray-codes/
+xray/
 ├── src/                    # Source code
 │   ├── index.ts           # CLI bootstrap entry point
 │   ├── commands/          # CLI command definitions
@@ -589,8 +589,8 @@ Do not edit `package.json` `version`, `.github/.release-please-manifest.json` or
 
 ## Getting Help
 
-- **Questions**: [GitHub Discussions](https://github.com/IdeaCraftersLabs/oss-xray-codes/discussions)
-- **Bugs**: [GitHub Issues](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues)
+- **Questions**: [GitHub Discussions](https://github.com/xray-codes/xray/discussions)
+- **Bugs**: [GitHub Issues](https://github.com/xray-codes/xray/issues)
 
 ## Code of Conduct
 

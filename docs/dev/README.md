@@ -63,7 +63,7 @@ Technical documentation for xray developers, maintainers, and contributors.
 ## Project Structure
 
 ```
-oss-xray-codes/
+xray/
 ├── src/
 │   ├── index.ts                    # CLI bootstrap
 │   ├── commands/                   # Command definitions

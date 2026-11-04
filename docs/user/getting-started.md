@@ -15,7 +15,7 @@ Done! Move to the next section.
 ### Option 2: From Source
 
 ```bash
-git clone https://github.com/IdeaCraftersLabs/oss-xray-codes.git xray
+git clone https://github.com/xray-codes/xray.git xray
 cd xray
 npm ci
 npm run build
@@ -236,7 +236,7 @@ Now you can type `xray m<TAB>` and it autocompletes!
 ### If You're Stuck
 
 - **Issues**: [Troubleshooting Guide](troubleshooting.md)
-- **GitHub Issues**: [Report Problems](https://github.com/IdeaCraftersLabs/oss-xray-codes/issues)
+- **GitHub Issues**: [Report Problems](https://github.com/xray-codes/xray/issues)
 
 ---
 

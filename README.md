@@ -240,7 +240,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-      - uses: IdeaCraftersLabs/oss-xray-codes@v1
+      - uses: xray-codes/xray@xray/v0.1.0-rc.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```

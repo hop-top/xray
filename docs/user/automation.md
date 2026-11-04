@@ -57,7 +57,7 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      - uses: IdeaCraftersLabs/oss-xray-codes@v1
+      - uses: xray-codes/xray@xray/v0.1.0-rc.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -198,7 +198,7 @@ xray map -l 4000
 #### Custom Config Path
 
 ```yaml
-- uses: IdeaCraftersLabs/oss-xray-codes@v1
+- uses: xray-codes/xray@xray/v0.1.0-rc.0
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     config-path: './config/xray.json'
@@ -207,7 +207,7 @@ xray map -l 4000
 #### Custom Commit Message
 
 ```yaml
-- uses: IdeaCraftersLabs/oss-xray-codes@v1
+- uses: xray-codes/xray@xray/v0.1.0-rc.0
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     commit-message: |
@@ -497,7 +497,7 @@ xray map --all-scopes
 5. **Use both hooks**: GitHub Action for CI, pre-commit for local development
 6. **Ignore sensitive files**: Use `.match` patterns to exclude config/secrets
 7. **Set appropriate limits**: Balance detail vs. token usage (4000-16000 range)
-8. **Version your action**: Use `@v1` instead of `@main` for stability
+8. **Pin your action**: Use an exact tag such as `@xray/v0.1.0-rc.0` instead of `@main`; bump it by hand
 
 ## See Also
 
@@ -508,4 +508,4 @@ xray map --all-scopes
 
 ---
 
-For questions or issues, please visit: https://github.com/IdeaCraftersLabs/oss-xray-codes/issues
+For questions or issues, please visit: https://github.com/xray-codes/xray/issues

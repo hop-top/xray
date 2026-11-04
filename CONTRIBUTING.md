@@ -24,7 +24,7 @@ This project adheres to a code of conduct that all contributors are expected to 
 
 Before contributing, please:
 
-1. Check existing [issues](https://github.com/IdeaCraftersLabs/xray/issues) to see if your contribution is already being discussed
+1. Check existing [issues](https://github.com/xray-codes/xray/issues) to see if your contribution is already being discussed
 2. For major changes, open an issue first to discuss what you would like to change
 3. Fork the repository and create a feature branch
 
@@ -104,7 +104,7 @@ xray/
 
 **What's in this repo:**
 - **CLI tool**: \`npm install -g xray\`
-- **GitHub Action**: \`uses: IdeaCraftersLabs/xray@v1\`
+- **GitHub Action**: \`uses: xray-codes/xray@xray/v0.1.0-rc.0\`
 - **Git Hooks**: Pre-commit hook
 
 ## Development Workflow
