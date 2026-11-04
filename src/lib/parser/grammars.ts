@@ -42,7 +42,7 @@ export const LANGUAGE_PACKS: LanguagePack[] = [
   { name: 'javascript', module: 'tree-sitter-javascript', range: '^0.25.0', extensions: ['.js', '.jsx'], query: 'javascript.scm', aliases: ['js'] },
   { name: 'python', module: 'tree-sitter-python', range: '^0.25.0', extensions: ['.py'], query: 'python.scm', aliases: ['py'] },
   { name: 'java', module: 'tree-sitter-java', range: '^0.23.5', extensions: ['.java'], query: 'java.scm' },
-  { name: 'csharp', module: 'tree-sitter-c-sharp', range: '~0.23.1', extensions: ['.cs'], query: 'c_sharp.scm', aliases: ['c-sharp', 'cs'] },
+  { name: 'csharp', module: 'tree-sitter-c-sharp', range: '0.23.1', extensions: ['.cs'], query: 'c_sharp.scm', aliases: ['c-sharp', 'cs'] },
   { name: 'cpp', module: 'tree-sitter-cpp', range: '^0.23.4', extensions: ['.cpp', '.hpp'], query: 'cpp.scm', aliases: ['c++'] },
   { name: 'c', module: 'tree-sitter-c', range: '^0.24.1', extensions: ['.c', '.h'], query: 'c.scm' },
   { name: 'go', module: 'tree-sitter-go', range: '^0.25.0', extensions: ['.go'], query: 'go.scm', aliases: ['golang'] },

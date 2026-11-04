@@ -32,6 +32,15 @@ describe('language pack catalog', () => {
     }
   });
 
+  it('pins the C# grammar to exactly 0.23.1 in catalog and package.json', () => {
+    // 0.23.5 is ESM-only with top-level await and cannot be require()d, so a
+    // range that admits it breaks fresh installs. The lockfile hides this.
+    const cs = LANGUAGE_PACKS.find(p => p.module === 'tree-sitter-c-sharp');
+    expect(cs?.range).toBe('0.23.1');
+    expect(pkg.peerDependencies['tree-sitter-c-sharp']).toBe('0.23.1');
+    expect(pkg.devDependencies['tree-sitter-c-sharp']).toBe('0.23.1');
+  });
+
   it('core runtime depends on tree-sitter only (no grammar in dependencies)', () => {
     expect(pkg.dependencies['tree-sitter']).toBeDefined();
     expect(Object.keys(pkg.dependencies).filter(k => k.startsWith('tree-sitter-'))).toEqual([]);

@@ -166,6 +166,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tree-sitter for each grammar it installs, not just a `require`. A grammar that
   loads but is rejected (e.g. generated for a newer tree-sitter ABI) is reported
   per language with the tree-sitter version, a remedy, and exit 1.
+- C# language pack pinned to `tree-sitter-c-sharp` 0.23.1 (was `~0.23.1`).
+  0.23.5 is ESM-only with top-level await and cannot be `require()`d, so a
+  fresh `xray lang add csharp` installed a grammar reported as broken and
+  `.cs` files were skipped.
 - Imports: `new require('m')` (and `(require)('m')`, `(0, require)('m')`)
   yield a record; PHP names end at `?>`; Go and JS module strings decoded
   into `normalized` (`module` stays as written; a rejected escape gives
