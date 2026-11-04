@@ -38,7 +38,7 @@ Documentation for contributing and extending xray:
 
 Historical and planning documents:
 
-- [Changelog](../CHANGELOG.md) - Release notes
+- [Releases](https://github.com/xray-codes/xray/releases) - Release notes
 
 ## Quick Links
 

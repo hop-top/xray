@@ -81,7 +81,6 @@ xray map --path ./src
 - [ ] New and existing unit tests pass locally with my changes
 - [ ] I have run `npm run build` successfully
 - [ ] I have followed the [conventional commit](https://www.conventionalcommits.org/) format in my commit messages
-- [ ] I have updated CHANGELOG.md (if applicable)
 
 ## Breaking Changes
 

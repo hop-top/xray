@@ -60,14 +60,6 @@ Technical documentation for xray developers, maintainers, and contributors.
   - [REST API Strategy](strategies/rest-api.md) - Cross-framework endpoint analysis
   - [Go CLI Strategy](strategies/go-cli.md) - Go CLI application analysis
 
-### Documentation
-- **[Documentation Updates](../../CHANGELOG.md)** - Summary of recent documentation changes
-  - Overview of updates reflecting codebase changes
-  - Files updated and new files created
-  - Feature coverage documentation
-  - How to use these docs
-  - Maintenance notes
-
 ## Project Structure
 
 ```
@@ -305,9 +297,6 @@ npm publish
 - New command structure documentation
 - New chunked output architecture guide
 - Contributing guide updated with new workflows
-- Documentation updates index created
-
-**Read more:** [Documentation Updates](../../CHANGELOG.md)
 
 ## Getting Help
 
