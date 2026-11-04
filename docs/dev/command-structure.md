@@ -188,8 +188,7 @@ xray cache clear    # Clear the AST cache (`xray clear-cache` is a hidden legacy
 Shell completion for bash, zsh, fish and powershell via kit's dynamic
 completion: generated scripts call back into the hidden `xray __complete`
 command on each tab. The completion path never executes project-local code:
-cwd strategy dirs and JS project config (`.xrayrc.js`, `xray.config.js`) are
-skipped; data configs (`.xrayrc`, `.xrayrc.json`, `package.json`) are still read.
+cwd strategy dirs are skipped; data configs (`.xrayrc`, `.xrayrc.json`, `package.json`) are still read.
 
 **Command Definition:**
 ```
@@ -272,7 +271,7 @@ Configuration sources are merged in priority order:
 
 1. **CLI flags** (highest priority)
 2. **Custom config file** (--config)
-3. **Project config files** (.xrayrc.json, .xrayrc.js, etc.)
+3. **Project config files** (.xrayrc, .xrayrc.json, xray.config.json, package.json)
 4. **Default values** (lowest priority)
 
 **Merging Strategy:**

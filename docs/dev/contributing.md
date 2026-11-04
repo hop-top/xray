@@ -337,7 +337,7 @@ npm install tree-sitter-<language> --save-dev
 
 2. **Update language registry:**
 ```typescript
-// src/parser/language-registry.ts
+// src/lib/parser/language-registry.ts
 import LanguageParser from 'tree-sitter-<language>';
 
 export const languages = {
@@ -352,7 +352,7 @@ export const languages = {
 
 3. **Create query file:**
 ```scheme
-; src/parser/queries/<language>.scm
+; src/lib/parser/queries/<language>.scm
 (function_definition
   name: (identifier) @name.definition.function) @definition.function
 ```

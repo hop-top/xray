@@ -65,8 +65,8 @@ xray clear-cache && xray map
 
 ### 10. Generate for AI
 ```bash
-xray map --anchor src/main.ts --with incs --with vars --limit 4000
-cat .xray | xclip
+xray map --anchor src/main.ts --with incs --with vars --limit 4000 --no-chunk
+cat .xray.txt | xclip
 ```
 
 **That's it. These 10 commands solve 90% of use cases.**
@@ -717,7 +717,7 @@ limits: [Use case: impact analysis](use-cases.md#use-case-impact-analysis).
 
 ## Troubleshooting These Recipes
 
-**"Command not found"** → Use `npx xray` instead of `xray`
+**"Command not found"** → Use `npx @hop-top/xray` instead of `xray`
 
 **"No results"** → Add path: `xray express routes -p ./src`
 

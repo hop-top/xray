@@ -71,11 +71,11 @@ Discovers and filters files based on patterns and ignore rules.
 - Exclusion patterns (node_modules, .git, etc.)
 
 **Key Files:**
-- `src/scanner.ts` - File scanning implementation
+- `src/lib/scanner.ts` - File scanning implementation
 - Pattern matching logic
 - Ignore rule processing
 
-### 3. AST Parser (`src/parser/`)
+### 3. AST Parser (`src/lib/parser/`)
 
 Parses source files into Abstract Syntax Trees using tree-sitter.
 
@@ -86,8 +86,8 @@ Parses source files into Abstract Syntax Trees using tree-sitter.
 - Error recovery
 
 **Key Files:**
-- `src/parser/language-registry.ts` - Language configuration
-- `src/parser/queries/` - Tree-sitter query files (.scm)
+- `src/lib/parser/language-registry.ts` - Language configuration
+- `src/lib/parser/queries/` - Tree-sitter query files (.scm)
 - Parser initialization and execution
 
 **Supported Elements:**
@@ -127,7 +127,7 @@ Scores code elements by importance using PageRank + heuristics.
 **Personalized PageRank:**
 When `--anchor` is specified, the algorithm biases scores toward elements related to the anchor file.
 
-### 6. Strategy System (`src/strategy/`)
+### 6. Strategy System (`src/lib/strategy/`)
 
 Framework-specific analysis and exploration capabilities.
 
@@ -145,12 +145,12 @@ Framework-specific analysis and exploration capabilities.
 ```
 
 **Components:**
-- `src/strategy/types.ts` - Strategy interface definitions
-- `src/strategy/registry.ts` - Strategy registration and lookup
-- `src/strategy/loader.ts` - Auto-loading from `strategies/` directory
-- `src/strategy/detector.ts` - Project type detection
-- `src/strategy/runner.ts` - Strategy execution
-- `src/strategy/context.ts` - Context API for strategies
+- `src/lib/strategy/types.ts` - Strategy interface definitions
+- `src/lib/strategy/registry.ts` - Strategy registration and lookup
+- `src/lib/strategy/loader.ts` - Loading from built-in, user and project strategy locations
+- `src/lib/strategy/detector.ts` - Project type detection
+- `src/lib/strategy/runner.ts` - Strategy execution
+- `src/lib/strategy/context.ts` - Context API for strategies
 
 **Strategy Lifecycle:**
 1. **Detection**: Check if strategy applies to project
@@ -158,7 +158,7 @@ Framework-specific analysis and exploration capabilities.
 3. **Tagging**: Mark files with strategy-specific tags
 4. **Command Execution**: Run strategy commands using cached metadata
 
-### 7. Cache System (`src/cache/`)
+### 7. Cache System (`src/lib/cache/`)
 
 SQLite-based caching for parsed ASTs and analysis results.
 
@@ -169,7 +169,7 @@ SQLite-based caching for parsed ASTs and analysis results.
 - AST parse result caching
 
 **Key Files:**
-- `src/cache/sqlite-cache.ts` - Cache implementation
+- `src/lib/cache/sqlite-cache.ts` - Cache implementation
 
 **Cache Location:**
 - `.xray_cache.db` in project root (SQLite database)
@@ -411,8 +411,8 @@ Deep merge strategy:
 ### 1. Adding New Languages
 
 1. Add tree-sitter parser dependency: `npm install tree-sitter-<language>`
-2. Update `src/parser/language-registry.ts`
-3. Create query file: `src/parser/queries/<language>.scm`
+2. Update `src/lib/parser/language-registry.ts`
+3. Create query file: `src/lib/parser/queries/<language>.scm`
 4. Test with sample files
 
 ### 2. Creating Custom Strategies

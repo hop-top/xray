@@ -221,7 +221,7 @@ Emitted before checking cache for a file.
 }
 ```
 
-**Emitted from:** `src/lib/cache/cache-manager.ts`
+**Emitted from:** `src/lib/xray.ts`
 ```typescript
 await this.emitter.emitAsyncParallel('cache:check', { file, mtime });
 ```
@@ -251,7 +251,7 @@ Emitted when cache entry is found. Listeners can modify cached data before use.
 }
 ```
 
-**Emitted from:** `src/lib/cache/cache-manager.ts`
+**Emitted from:** `src/lib/xray.ts`
 ```typescript
 const event = { file, tags, imports };
 await this.emitter.emitAsync('cache:hit', event);
@@ -284,7 +284,7 @@ Emitted when cache entry is not found or stale.
 }
 ```
 
-**Emitted from:** `src/lib/cache/cache-manager.ts`
+**Emitted from:** `src/lib/xray.ts`
 ```typescript
 await this.emitter.emitAsyncParallel('cache:miss', { file });
 ```
@@ -314,7 +314,7 @@ Emitted before writing parsed data to cache. Listeners can modify data before ca
 }
 ```
 
-**Emitted from:** `src/lib/cache/cache-manager.ts`
+**Emitted from:** `src/lib/xray.ts`
 ```typescript
 const event = { file, tags, imports };
 await this.emitter.emitAsync('cache:write', event);
@@ -349,7 +349,7 @@ Emitted before parsing file content. Listeners can modify content or skip parsin
 }
 ```
 
-**Emitted from:** `src/lib/parser/parser.ts`
+**Emitted from:** `src/lib/xray.ts`
 ```typescript
 const event = { file, content, skip: false };
 await this.emitter.emitAsync('parse:before', event);
@@ -400,7 +400,7 @@ Emitted after parsing completes. Listeners can transform extracted tags and impo
 }
 ```
 
-**Emitted from:** `src/lib/parser/parser.ts`
+**Emitted from:** `src/lib/xray.ts`
 ```typescript
 const event = { file, tags, imports };
 await this.emitter.emitAsync('parse:after', event);
@@ -445,7 +445,7 @@ Emitted when parsing fails.
 }
 ```
 
-**Emitted from:** `src/lib/parser/parser.ts`
+**Emitted from:** `src/lib/xray.ts`
 ```typescript
 try {
   await this.parseContent(content);
@@ -642,7 +642,7 @@ Emitted when ranking begins.
 }
 ```
 
-**Emitted from:** `src/lib/ranker/ranker.ts`
+**Emitted from:** `src/lib/xray.ts`
 ```typescript
 await this.emitter.emitAsyncParallel('rank:start', { graph, anchor });
 ```
@@ -670,7 +670,7 @@ Emitted when ranking completes. Listeners can modify rankings.
 }
 ```
 
-**Emitted from:** `src/lib/ranker/ranker.ts`
+**Emitted from:** `src/lib/xray.ts`
 ```typescript
 const event = { rankedNodes };
 await this.emitter.emitAsync('rank:complete', event);
@@ -711,7 +711,7 @@ Emitted when rendering begins.
 }
 ```
 
-**Emitted from:** `src/lib/renderer/chunked-renderer.ts` or `map-renderer.ts`
+**Emitted from:** `src/lib/xray.ts`
 ```typescript
 await this.emitter.emitAsyncParallel('render:start', {
   format: this.options.format,

@@ -18,13 +18,14 @@ xray generates **intelligent, ranked, context-aware code maps** that fit within 
 ```bash
 # Install
 npm install -g @hop-top/xray
+xray lang add go typescript   # grammars are opt-in; pick your languages
 
 # Generate your first code map
 cd /path/to/your/project
 xray map
 
-# View the output
-cat .xray
+# View the output (xray prints the root chunk path)
+cat .xray_root.md
 ```
 
 **That's it!** You now have a structured overview of your codebase.
@@ -126,7 +127,7 @@ xray strategy detect
 - **Markdown** - Table of contents and structure analysis
 - **Package Manager** - npm, pip, Go modules dependency analysis
 
-Strategy commands are **dynamically discovered** - new strategies auto-register without code changes.
+Built-in strategy commands register automatically. Strategies in a project (`.xray/strategies/`, `xray-strategy-*` packages) load only if declarative YAML, or if you set `XRAY_ALLOW_PROJECT_STRATEGIES=1` for code you trust.
 
 [See all strategies →](docs/user/strategies.md)
 
@@ -180,7 +181,7 @@ json|tree|table` for machines; also available as the `impact` tool of
 
 ```bash
 # Generate a focused map for your AI assistant
-xray map --anchor src/api/routes.ts --with incs --output context.txt
+xray map --anchor src/api/routes.ts --with incs --no-chunk --output context.txt
 
 # Share context.txt with Claude/GPT
 # AI now understands your codebase structure and can provide accurate suggestions

@@ -8,6 +8,7 @@ Welcome! Let's get you up and running.
 
 ```bash
 npm install -g @hop-top/xray
+xray lang add go typescript   # grammars are opt-in; pick your languages
 ```
 
 Done! Move to the next section.
@@ -22,7 +23,7 @@ npm run build
 npm link
 ```
 
-**Note**: Requires Node.js 22.12+ and C++ build tools (build-essential on Linux, Xcode on macOS).
+**Note**: Requires Node.js 22.12+. Grammars ship prebuilt native binaries for common platforms; C++ build tools (build-essential on Linux, Xcode on macOS) are only needed where no prebuild matches.
 
 **C++ troubleshooting**:
 ```bash
@@ -48,8 +49,8 @@ cd /path/to/your/project
 # 2. Run xray
 xray map
 
-# 3. View the output
-cat .xray
+# 3. View the output (xray prints the root chunk path)
+cat .xray_root.md
 ```
 
 That's it! You now have a hierarchical map of your codebase.
@@ -61,7 +62,7 @@ That's it! You now have a hierarchical map of your codebase.
 - **`.xray_src_lib.md`** - Detailed view of src/lib/
 - etc.
 
-(If your project is small, you might get just `.xray`)
+(A project with no files at its top level has no `.xray_root.md`; the first directory's chunk is the root.)
 
 These files have **navigation links** so you can browse like a document.
 
@@ -146,9 +147,9 @@ This gives a focused, detailed view of your entry point limited to 4000 tokens.
 
 ```bash
 # Generate and copy
-xray map --anchor src/main.ts --with incs
-cat .xray | xclip  # Linux
-cat .xray | pbcopy  # macOS
+xray map --anchor src/main.ts --with incs --no-chunk
+cat .xray.txt | xclip  # Linux
+cat .xray.txt | pbcopy  # macOS
 
 # Paste into Claude, GPT, etc. with your question
 ```
@@ -157,7 +158,7 @@ cat .xray | pbcopy  # macOS
 
 ```bash
 # Save to documentation
-xray map --output docs/codebase-map.txt
+xray map --no-chunk --output docs/codebase-map.txt
 git add docs/codebase-map.txt
 git commit -m "docs: add codebase map"
 ```
@@ -246,14 +247,14 @@ Now you can type `xray m<TAB>` and it autocompletes!
 
 ```bash
 # Make sure npm's global bin is in your PATH
-npm bin -g
+npm prefix -g   # binaries live in <prefix>/bin
 
 # If not in PATH, add it:
-echo 'export PATH="$(npm bin -g):$PATH"' >> ~/.bashrc
+echo 'export PATH="$(npm prefix -g)/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
 # Or just use npx instead
-npx xray map
+npx @hop-top/xray map
 ```
 
 ### Installation fails with C++ errors
@@ -279,7 +280,7 @@ pwd
 ls -la
 
 # Try specifying output explicitly
-xray map --output ./my-map.txt
+xray map --no-chunk --output ./my-map.txt
 cat my-map.txt
 ```
 
@@ -317,7 +318,7 @@ xray map
 A: 2K-16K tokens typical. Configured by `--limit` flag. Perfect for AI context windows.
 
 **Q: Will it work with my language?**
-A: Probably! Supports 19+ languages. See [Supported Languages](../../README.md#supported-languages).
+A: Probably! Supports 17 languages. See [Supported Languages](../../README.md#supported-languages).
 
 **Q: Can I use this in CI/CD?**
 A: Yes! GitHub Actions and pre-commit hooks included. See [Automation](automation.md).

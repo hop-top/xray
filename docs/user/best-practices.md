@@ -223,21 +223,23 @@ See [complete API map](./api-routes.txt) for full details.
 **With team members**:
 ```bash
 # Commit to git
+xray map --no-chunk --output docs/codebase-map.txt
 git add docs/codebase-map.txt
 git commit -m "docs: update codebase map"
 
 # Or as attachment
-xray map --output team-context.txt
+xray map --no-chunk --output team-context.txt
 # Share team-context.txt in Slack/email
 ```
 
 **With AI assistants**:
 ```bash
 # Copy to clipboard and paste into Claude/GPT
-cat .xray | xclip
+xray map --no-chunk
+cat .xray.txt | xclip
 
 # Or save and upload
-xray map --output claude-context.txt
+xray map --no-chunk --output claude-context.txt
 ```
 
 ---
@@ -250,13 +252,13 @@ Patterns for working with AI assistants.
 
 1. **Generate focused map**:
    ```bash
-   xray map --anchor src/problemArea.ts --with incs --with vars
+   xray map --anchor src/problemArea.ts --with incs --with vars --no-chunk
    ```
 
 2. **Copy output to clipboard**:
    ```bash
-   cat .xray | xclip  # Linux
-   cat .xray | pbcopy  # macOS
+   cat .xray.txt | xclip  # Linux
+   cat .xray.txt | pbcopy  # macOS
    ```
 
 3. **Paste into AI chat**

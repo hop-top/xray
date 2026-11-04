@@ -310,10 +310,11 @@ xray map --anchor src/myComplexFunction.ts \
   --with incs \
   --with vars \
   --with docs \
-  --limit 4000
+  --limit 4000 \
+  --no-chunk
 
 # Copy to clipboard or share with AI
-cat .xray | xclip
+cat .xray.txt | xclip
 ```
 
 Tell the AI:

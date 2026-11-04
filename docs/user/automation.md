@@ -479,7 +479,7 @@ xray map --all-scopes
 
 **"Xray not installed"**
 - Install globally: `npm install -g @hop-top/xray`
-- Or use npx: modify hook to use `npx xray map`
+- Or use npx: modify hook to use `npx @hop-top/xray map`
 
 **"Hook not running"**
 - Check file exists: `ls -la .git/hooks/pre-commit`

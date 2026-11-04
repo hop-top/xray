@@ -155,8 +155,8 @@ When enabled (default), xray detects applicable strategies and automatically con
 ### Adding a New Language
 
 1. Install tree-sitter parser: `npm install tree-sitter-<lang>`
-2. Update `src/parser/language-registry.ts`
-3. Create query file in `src/parser/queries/`
+2. Update `src/lib/parser/language-registry.ts`
+3. Create query file in `src/lib/parser/queries/`
 4. Test with sample files
 5. Follow: [Contributing Guide](contributing.md) → Adding New Features → Adding a New Language
 

@@ -78,8 +78,8 @@ Do you want to...
 │  └─> xray impact functionName
 │
 ├─ Share with AI?
-│  └─> xray map --anchor src/main --with incs --limit 4000
-│      cat .xray | xclip
+│  └─> xray map --anchor src/main --with incs --limit 4000 --no-chunk
+│      cat .xray.txt | xclip
 │
 ├─ Understand just one subsystem?
 │  └─> xray map --path ./src/api --depth 2
@@ -184,8 +184,8 @@ xray map --anchor src/yourfile.ts --with incs --with vars
 
 ### "I need this for Claude"
 ```bash
-xray map --anchor src/main.ts --with incs --with vars --limit 4000
-cat .xray | xclip
+xray map --anchor src/main.ts --with incs --with vars --limit 4000 --no-chunk
+cat .xray.txt | xclip
 ```
 
 ### "Show me just React components"
@@ -220,22 +220,22 @@ xray clear-cache && xray map
 
 ```bash
 # Find specific functions
-xray map | grep "function"
+xray map --no-chunk && grep "function" .xray.txt
 
 # Find imports of a library
-xray map --with incs | grep axios
+xray map --with incs --no-chunk && grep axios .xray.txt
 
 # Count components
 xray react components | wc -l
 
 # Find error handlers
-xray map --catch "*Error" | head -20
+xray map --catch "*Error" --no-chunk && head -20 .xray.txt
 
 # Find who calls a function
 xray impact myFunction --depth 1
 
 # Save output and share
-xray map > my-map.txt
+xray map --no-chunk --output my-map.txt
 cat my-map.txt | xclip
 ```
 
@@ -264,7 +264,7 @@ See [Configuration Guide](configuration.md) for more.
 | Problem | Solution |
 |---------|----------|
 | Stale results | `xray clear-cache` |
-| Command not found | `npx xray` instead of `xray` |
+| Command not found | `npx @hop-top/xray` instead of `xray` |
 | Installation failed | `CXXFLAGS="-std=c++20" npm install` |
 | No output | `xray map -p ./src` (specify path) |
 | Too much output | `xray map --limit 2000` (reduce limit) |
@@ -290,9 +290,11 @@ Default output files:
 - `.xray_src_lib.md` - src/lib/ directory
 - etc.
 
+Single file (`--no-chunk`): `.xray.txt`; `--format json|xml` write `.xray.json` / `.xray.xml`.
+
 Custom naming:
 ```bash
-xray map -o mymap  # Creates .xray_mymap_root.md, etc.
+xray map -o mymap.txt  # Creates mymap_root.txt, mymap_src.txt, etc.
 ```
 
 ---

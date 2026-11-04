@@ -56,14 +56,14 @@ npm install
 **Solution:**
 ```bash
 # Ensure global install path is in PATH
-npm bin -g
+npm prefix -g   # binaries live in <prefix>/bin
 
 # Add to PATH if needed (example for bash)
-echo 'export PATH="$(npm bin -g):$PATH"' >> ~/.bashrc
+echo 'export PATH="$(npm prefix -g)/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
 # Or use npx
-npx xray map
+npx @hop-top/xray map
 ```
 
 ### Cache Issues
@@ -231,7 +231,7 @@ npm install -g @hop-top/xray
 # Edit .git/hooks/pre-commit and change:
 # xray map
 # to:
-# npx xray map
+# npx @hop-top/xray map
 ```
 
 ### Pre-commit Hook: Not Running

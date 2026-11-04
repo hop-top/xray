@@ -27,8 +27,7 @@ xray searches for project configuration by **walking up the directory tree** fro
 The search stops at the first config file found or at the filesystem root.
 
 Config is data: xray only parses JSON and never runs a config file as code.
-A `.xrayrc.js` or `xray.config.js` is not looked for, and `--config` refuses
-a `.js`, `.cjs` or `.mjs` path.
+`--config` refuses a `.js`, `.cjs` or `.mjs` path.
 
 ### Global Configuration
 

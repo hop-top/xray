@@ -228,17 +228,17 @@ In an agent session the same answer can arrive by hook: [Use cases](use-cases.md
 ### "I need to document this for AI"
 ```bash
 # Generate map focused on public API
-xray map --anchor src/api/index.ts --with incs --with docs
+xray map --anchor src/api/index.ts --with incs --with docs --no-chunk
 
 # Share the output file with Claude/GPT
-cat .xray | xclip  # or copy to clipboard
+cat .xray.txt | xclip  # or copy to clipboard
 ```
 
 ## Next Steps
 
 1. **Install**: `npm install -g @hop-top/xray`
 2. **Run**: `xray map` in your project
-3. **View**: `cat .xray` or open in editor
+3. **View**: `cat .xray_root.md` or open in editor
 4. **Learn**: Pick a guide from above based on your need
 
 ## Resources
