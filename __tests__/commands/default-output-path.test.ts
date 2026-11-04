@@ -1,6 +1,6 @@
 /**
  * Without -o, every output format must land at a path that does not collide
- * with the `.xray/` directory strategy detection keeps in the project root:
+ * with a `.xray/` directory, which `strategy detect` and project strategies use:
  * graph formats write `.xray.<ext>` (csv: `.xray.{nodes,edges}.csv`), a
  * single-file text map writes `.xray.txt`, chunked text keeps `.xray_*.md`.
  * Built CLI in a subprocess, fresh temp project per case.
@@ -33,7 +33,7 @@ function run(args: string[]) {
 }
 
 const names = () => fs.readdirSync(proj);
-const isDir = (p: string) => fs.statSync(path.join(proj, p)).isDirectory();
+const noFileAt = (p: string) => !fs.existsSync(path.join(proj, p)) || fs.statSync(path.join(proj, p)).isDirectory();
 
 describe('default output path (no -o)', () => {
   beforeEach(() => {
@@ -50,12 +50,12 @@ describe('default output path (no -o)', () => {
     it.each([
       ['json', '.xray.json'],
       ['xml', '.xray.xml'],
-    ])('--format %s writes %s and keeps .xray/ a directory', (format, file) => {
+    ])('--format %s writes %s and leaves no .xray file', (format, file) => {
       const r = run([cmd, '--format', format]);
       expect(r.stderr).not.toMatch(/FileWriteError/);
       expect(r.status).toBe(0);
-      expect(isDir('.xray')).toBe(true);
-      expect(fs.statSync(path.join(proj, '.xray', 'detected-strategies.json')).isFile()).toBe(true);
+      expect(noFileAt('.xray')).toBe(true);
+      expect(fs.existsSync(path.join(proj, '.xray', 'detected-strategies.json'))).toBe(false);
       const body = fs.readFileSync(path.join(proj, file), 'utf-8');
       if (format === 'json') {
         const g = JSON.parse(body);
@@ -69,7 +69,7 @@ describe('default output path (no -o)', () => {
     it('--format csv writes .xray.nodes.csv and .xray.edges.csv', () => {
       const r = run([cmd, '--format', 'csv']);
       expect(r.status).toBe(0);
-      expect(isDir('.xray')).toBe(true);
+      expect(noFileAt('.xray')).toBe(true);
       expect(names()).toEqual(expect.arrayContaining(['.xray.nodes.csv', '.xray.edges.csv']));
     });
 
@@ -85,15 +85,15 @@ describe('default output path (no -o)', () => {
   it('map --format json then default text map: both succeed side by side', () => {
     expect(run(['map', '--format', 'json']).status).toBe(0);
     expect(run(['map']).status).toBe(0);
-    expect(isDir('.xray')).toBe(true);
+    expect(noFileAt('.xray')).toBe(true);
     expect(names()).toEqual(expect.arrayContaining(['.xray.json', '.xray_root.md']));
   });
 
-  it('map --no-chunk (text) writes .xray.txt and keeps .xray/ a directory', () => {
+  it('map --no-chunk (text) writes .xray.txt and leaves no .xray file', () => {
     const r = run(['map', '--no-chunk']);
     expect(r.stderr).not.toMatch(/FileWriteError/);
     expect(r.status).toBe(0);
-    expect(isDir('.xray')).toBe(true);
+    expect(noFileAt('.xray')).toBe(true);
     expect(fs.readFileSync(path.join(proj, '.xray.txt'), 'utf-8')).toContain('a.ts');
   });
 
@@ -101,7 +101,7 @@ describe('default output path (no -o)', () => {
     const r = run(['map']);
     expect(r.status).toBe(0);
     expect(names()).toContain('.xray_root.md');
-    expect(isDir('.xray')).toBe(true);
+    expect(noFileAt('.xray')).toBe(true);
   });
 
   it('explicit -o is untouched', () => {

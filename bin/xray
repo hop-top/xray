@@ -1,3 +1,3 @@
 #!/usr/bin/env node
-const { main, handleFatalError } = require("../dist/index.js");
-main().catch(handleFatalError);
+const { main, handleFatalError, exitWhenSettled } = require("../dist/index.js");
+main().then(exitWhenSettled).catch(handleFatalError);

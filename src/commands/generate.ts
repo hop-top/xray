@@ -85,7 +85,9 @@ const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<
     extensions.map(extension => [extension.name, extension])
   );
 
-  const detected = await detector.runDetection(extensions);
+  // Detect in memory: persisting here writes `.xray/` into the project,
+  // which is also the default graph output file.
+  const detected = await detector.detectExtensions(extensions);
 
   if (detected.length === 0) {
     return { match, catch: catchPatterns, detectedStrategies };

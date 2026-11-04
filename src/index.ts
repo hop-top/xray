@@ -134,6 +134,41 @@ function applyEarlyVerbosity(argv: string[]): void {
   }
 }
 
+/** In-flight startup upgrade check, if this run started one. */
+let pendingUpgradeCheck: Promise<void> | null = null;
+
+/** How long a finished command waits for the upgrade notice before leaving it. */
+export const UPGRADE_CHECK_GRACE_MS = 500;
+
+const drained = (stream: NodeJS.WriteStream): Promise<void> =>
+  new Promise((resolve) => {
+    try {
+      stream.write('', () => resolve());
+    } catch {
+      resolve();
+    }
+  });
+
+/**
+ * Call once `main()` has resolved. The upgrade check is best-effort; its
+ * socket must not keep a finished command alive (a dead network would hold
+ * it for the request timeout). Give it a short grace so a prompt answer
+ * still prints its notice, then, only if it is still pending, flush stdout
+ * and stderr and exit with the code already set. When the check has
+ * settled, or none ran, the process ends on its own.
+ */
+export async function exitWhenSettled(): Promise<void> {
+  const check = pendingUpgradeCheck;
+  if (!check) return;
+  let settled = false;
+  const done = check.then(() => { settled = true; });
+  const grace = new Promise<void>((resolve) => setTimeout(resolve, UPGRADE_CHECK_GRACE_MS).unref());
+  await Promise.race([done, grace]);
+  if (settled) return;
+  await Promise.all([drained(process.stdout), drained(process.stderr)]);
+  process.exit(process.exitCode ?? 0);
+}
+
 // Initialize and register all commands (async for alias registration)
 export async function main() {
   // Apply verbosity first: config loading (consent, registration) emits
@@ -201,7 +236,7 @@ export async function main() {
   // Startup update notification (async, non-blocking); --offline means
   // no network access.
   if (!mcpRequest && !argv.includes('--offline')) {
-    createXrayUpgradeChecker().notifyIfAvailable(process.stderr).catch(() => {});
+    pendingUpgradeCheck = createXrayUpgradeChecker().notifyIfAvailable(process.stderr).catch(() => {});
   }
 
   const program = await registerCommands({}, rootConfig);
@@ -284,7 +319,7 @@ export function handleFatalError(error: unknown): never {
 
 // Run when executed directly (`node dist/index.js`); bin/xray calls main().
 if (require.main === module) {
-  main().catch(handleFatalError);
+  main().then(exitWhenSettled).catch(handleFatalError);
 }
 
 // Export for testing
