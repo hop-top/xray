@@ -52,8 +52,9 @@ export type RootScope = 'path' | 'graph' | 'none';
 export interface ToolPolicy {
   options: Readonly<Record<string, ParamKind>>;
   /**
-   * Kind per positional argument (commander name). Unlisted positionals
-   * are `value`; a `path` positional is contained like a `path` option.
+   * Kind per positional argument (commander name). Like options, only
+   * listed positionals are exposed; a `path` positional is contained like
+   * a `path` option.
    */
   positionals?: Readonly<Record<string, 'value' | 'path'>>;
   root: RootScope;
@@ -120,11 +121,17 @@ const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
   map: ANALYSIS,
   scan: ANALYSIS,
   graph: ANALYSIS,
-  explore: scoped({
-    path: 'path', match: 'value', search: 'value', type: 'value',
-    stats: 'value', 'list-strategies': 'value', format: 'value',
-  }),
-  query: scoped({ graph: 'path', 'list-adapters': 'value', format: 'value' }, 'graph'),
+  explore: {
+    ...scoped({
+      path: 'path', match: 'value', search: 'value', type: 'value',
+      stats: 'value', 'list-strategies': 'value', format: 'value',
+    }),
+    positionals: { query: 'value' },
+  },
+  query: {
+    ...scoped({ graph: 'path', 'list-adapters': 'value', format: 'value' }, 'graph'),
+    positionals: { query: 'value' },
+  },
   // Parses only (no config); positional paths held inside the server root.
   imports: {
     ...scoped({ path: 'path', lang: 'value', format: 'value', 'no-ignore': 'value' }),
@@ -138,6 +145,7 @@ const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
   // --graph not offered: the graph always comes from the call root.
   impact: {
     options: { depth: 'value', strict: 'value', format: 'value', lens: 'value', scope: 'value' },
+    positionals: { symbol: 'value' },
     root: 'path',
     configFromPath: true,
     detectOnRoot: false,
@@ -245,6 +253,12 @@ function allowed(policy: ToolPolicy, key: string): boolean {
  * allowlisted options, widen repeatable options to arrays, add
  * positional arguments and (when the tool has a project scope) `root`.
  */
+function exposedArguments(cmd: Command, policy: ToolPolicy): readonly Argument[] {
+  const listed = policy.positionals ?? {};
+  return (cmd.registeredArguments as readonly Argument[])
+    .filter(arg => Object.prototype.hasOwnProperty.call(listed, arg.name()));
+}
+
 export function shapeLeaf(leaf: Leaf, cmd: Command, policy: ToolPolicy): { leaf: Leaf; def: ToolDef } {
   const properties: Record<string, FlagSchema> = {};
   const required: string[] = [];
@@ -266,7 +280,7 @@ export function shapeLeaf(leaf: Leaf, cmd: Command, policy: ToolPolicy): { leaf:
   }
 
   const positionals: string[] = [];
-  for (const arg of cmd.registeredArguments as readonly Argument[]) {
+  for (const arg of exposedArguments(cmd, policy)) {
     let key = arg.name();
     if (key in properties || key === ROOT_PARAM) key = `${key}-arg`;
     properties[key] = arg.variadic
@@ -433,14 +447,12 @@ export function buildArgv(
     if (policy.detectOnRoot && given.detect === undefined && given['skip-detect'] !== true) opts.push('--detect');
   }
 
-  const declared = cmd.registeredArguments as readonly Argument[];
+  const declared = exposedArguments(cmd, policy);
   def.positionals.forEach((key, i) => {
     const v = given[key];
     if (v === undefined || v === null) return;
     const name = declared[i]?.name() ?? key;
-    const kind = policy.positionals && Object.prototype.hasOwnProperty.call(policy.positionals, name)
-      ? policy.positionals[name]
-      : 'value';
+    const kind = policy.positionals?.[name];
     for (const val of values(key, v)) {
       positionals.push(kind === 'path' ? containedPath(key, val, scope.dir, scope) : val);
     }

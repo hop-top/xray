@@ -218,6 +218,13 @@ describe('xray mcp over stdio', () => {
     expect(text(r)).toMatch(/unknown argument "graph"/);
   });
 
+  it.each(['map', 'scan', 'graph'])('%s offers no positional paths: only the contained path option', async name => {
+    const r = await client.request('tools/list');
+    const tool = (r.result.tools as Array<{ name: string; inputSchema: any }>).find(t => t.name === name)!;
+    expect(tool.inputSchema.properties.paths).toBeUndefined();
+    expect(tool.inputSchema.properties.path).toBeDefined();
+  });
+
   it('lists imports: paths positional, path/lang/format, root', async () => {
     const r = await client.request('tools/list');
     const imports = (r.result.tools as Array<{ name: string; description?: string; inputSchema: any }>).find((t) => t.name === 'imports')!;

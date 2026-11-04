@@ -163,6 +163,16 @@ describe('buildArgv', () => {
   const id: PathScope = { dir: '/srv', explicit: false, contain: (v) => `<${v}>` };
   const argv = (d = def, c = cmd, args: Record<string, unknown>, scope = id) => buildArgv(d, c, args, scope).argv;
 
+  it('does not expose or forward a positional its policy does not list', () => {
+    const r = tree();
+    const m = findCommand(r, ['map'])!;
+    m.argument('[paths...]', 'Roots');
+    const d = shaped(r, ['map']);
+    expect(d.leaf.properties.paths).toBeUndefined();
+    expect(d.def.positionals).toEqual([]);
+    expect(() => argv(d.def, m, { paths: ['/etc', '../..'] })).toThrow(/unknown argument "paths"/);
+  });
+
   it('maps options, booleans, arrays and positionals after --', () => {
     expect(argv(def, cmd, { query: '-x', stats: true, path: ['a', 'b'] })).toEqual([
       'explore', '--path=<a>', '--path=<b>', '--stats', '--', '-x',

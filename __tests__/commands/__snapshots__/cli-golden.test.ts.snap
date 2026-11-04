@@ -8,9 +8,9 @@ Usage: xray [options] [command]
 X-ray your codebase - Generate AST, CFG, and DFG visualizations
 
 ANALYZE:
-  map [--flags]              Generate visual map of codebase
-  scan [--flags]             Scan and discover files in codebase
-  graph [--flags]            Generate control flow (CFG) and data flow (DFG)
+  map [paths] [--flags]      Generate visual map of codebase
+  scan [paths] [--flags]     Scan and discover files in codebase
+  graph [paths] [--flags]    Generate control flow (CFG) and data flow (DFG)
                              graphs
   query [query] [--flags]    Query call graph using function-based syntax
   impact <symbol> [--flags]  Show transitive callers of a symbol, by area
@@ -905,9 +905,13 @@ FLAGS:
 exports[`cli golden: --help xray generate --help 1`] = `
 "exit: 0
 --- stdout ---
-Usage: xray generate [options]
+Usage: xray generate [options] [paths...]
 
 Generate code analysis visualization [alias: map]
+
+ARGUMENTS:
+  paths                               Root directories to analyze (same as
+                                      --path; not combinable with it)
 
 FLAGS:
   -p, --path <path>                   Root directory to analyze (repeatable;
@@ -1043,9 +1047,13 @@ FLAGS:
 exports[`cli golden: --help xray graph --help 1`] = `
 "exit: 0
 --- stdout ---
-Usage: xray graph [options]
+Usage: xray graph [options] [paths...]
 
 Generate control flow (CFG) and data flow (DFG) graphs
+
+ARGUMENTS:
+  paths                               Root directories to analyze (same as
+                                      --path; not combinable with it)
 
 FLAGS:
   -p, --path <path>                   Root directory to analyze (repeatable;
@@ -1471,9 +1479,13 @@ FLAGS:
 exports[`cli golden: --help xray map --help 1`] = `
 "exit: 0
 --- stdout ---
-Usage: xray map [options]
+Usage: xray map [options] [paths...]
 
 Generate visual map of codebase
+
+ARGUMENTS:
+  paths                               Root directories to analyze (same as
+                                      --path; not combinable with it)
 
 FLAGS:
   -p, --path <path>                   Root directory to analyze (repeatable;
@@ -2152,9 +2164,13 @@ FLAGS:
 exports[`cli golden: --help xray scan --help 1`] = `
 "exit: 0
 --- stdout ---
-Usage: xray scan [options]
+Usage: xray scan [options] [paths...]
 
 Scan and discover files in codebase
+
+ARGUMENTS:
+  paths                               Root directories to analyze (same as
+                                      --path; not combinable with it)
 
 FLAGS:
   -p, --path <path>                   Root directory to analyze (repeatable;
@@ -2460,9 +2476,9 @@ Usage: xray [options] [command]
 X-ray your codebase - Generate AST, CFG, and DFG visualizations
 
 ANALYZE:
-  map [--flags]              Generate visual map of codebase
-  scan [--flags]             Scan and discover files in codebase
-  graph [--flags]            Generate control flow (CFG) and data flow (DFG)
+  map [paths] [--flags]      Generate visual map of codebase
+  scan [paths] [--flags]     Scan and discover files in codebase
+  graph [paths] [--flags]    Generate control flow (CFG) and data flow (DFG)
                              graphs
   query [query] [--flags]    Query call graph using function-based syntax
   impact <symbol> [--flags]  Show transitive callers of a symbol, by area
@@ -2543,9 +2559,13 @@ exports[`cli golden: error paths xray map --bogus 1`] = `
 --- stderr ---
 ✖ unknown option '--bogus'
 
-Usage: xray map [options]
+Usage: xray map [options] [paths...]
 
 Generate visual map of codebase
+
+ARGUMENTS:
+  paths                               Root directories to analyze (same as
+                                      --path; not combinable with it)
 
 FLAGS:
   -p, --path <path>                   Root directory to analyze (repeatable;
@@ -3960,7 +3980,14 @@ exports[`cli golden: introspection describe 1`] = `
       "qualifiedName": "map",
       "description": "Generate visual map of codebase",
       "hidden": false,
-      "arguments": [],
+      "arguments": [
+        {
+          "name": "paths",
+          "required": false,
+          "variadic": true,
+          "description": "Root directories to analyze (same as --path; not combinable with it)"
+        }
+      ],
       "options": [
         {
           "name": "--path",
@@ -4233,7 +4260,14 @@ exports[`cli golden: introspection describe 1`] = `
       "qualifiedName": "scan",
       "description": "Scan and discover files in codebase",
       "hidden": false,
-      "arguments": [],
+      "arguments": [
+        {
+          "name": "paths",
+          "required": false,
+          "variadic": true,
+          "description": "Root directories to analyze (same as --path; not combinable with it)"
+        }
+      ],
       "options": [
         {
           "name": "--path",
@@ -4506,7 +4540,14 @@ exports[`cli golden: introspection describe 1`] = `
       "qualifiedName": "graph",
       "description": "Generate control flow (CFG) and data flow (DFG) graphs",
       "hidden": false,
-      "arguments": [],
+      "arguments": [
+        {
+          "name": "paths",
+          "required": false,
+          "variadic": true,
+          "description": "Root directories to analyze (same as --path; not combinable with it)"
+        }
+      ],
       "options": [
         {
           "name": "--path",
@@ -4779,7 +4820,14 @@ exports[`cli golden: introspection describe 1`] = `
       "qualifiedName": "generate",
       "description": "Generate code analysis visualization [alias: map]",
       "hidden": true,
-      "arguments": [],
+      "arguments": [
+        {
+          "name": "paths",
+          "required": false,
+          "variadic": true,
+          "description": "Root directories to analyze (same as --path; not combinable with it)"
+        }
+      ],
       "options": [
         {
           "name": "--path",

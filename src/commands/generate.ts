@@ -693,6 +693,27 @@ export const resolveRunOptions = (
   return { mergedOptions: mergeConfig(config, normalizedOptions, normalizedOptions.lens) };
 };
 
+/**
+ * Commander action for `map|scan|graph [paths...]`: positional roots are
+ * `--path` roots, so config discovery from the first root, the existence
+ * check and multi-root merging all see one input shape. Both forms
+ * together are ambiguous: usage error.
+ */
+export const handleGenerateCommand = async (
+  paths: string[] | undefined,
+  options: CommonAnalysisOptions
+) => {
+  if (paths && paths.length > 0) {
+    if (options.path && options.path.length > 0) {
+      throw new UsageError(
+        'positional path and --path are exclusive: give roots one way or the other'
+      );
+    }
+    options = { ...options, path: [...paths] };
+  }
+  return handleGenerateAction(options);
+};
+
 // Shared action handler for all generation commands
 export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
   try {

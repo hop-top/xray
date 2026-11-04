@@ -27,8 +27,13 @@ Complete guide to every xray command and option. Start with the decision tree to
 Generate a visual map of your codebase structure and dependencies.
 
 ```bash
-xray map [options]
+xray map [paths...] [options]
 ```
+
+`[paths...]` are root directories, exactly like `--path`: `xray map src` is
+`xray map --path src`. Giving both is a usage error (exit 2); a root that
+does not exist fails as a missing `--path` does. The same applies to
+`xray scan` and `xray graph`.
 
 **Examples:**
 ```bash
@@ -50,7 +55,7 @@ xray map --path ./src --path ./lib --depth 3 --output analysis.txt
 Scan and discover files in your codebase.
 
 ```bash
-xray scan [options]
+xray scan [paths...] [options]
 ```
 
 **Examples:**
@@ -67,7 +72,7 @@ xray scan --path ./src --match "*.ts" --match "!*.test.ts"
 Generate control flow (CFG) and data flow graphs (DFG).
 
 ```bash
-xray graph [options]
+xray graph [paths...] [options]
 ```
 
 **Examples:**

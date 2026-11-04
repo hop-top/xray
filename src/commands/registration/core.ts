@@ -1,7 +1,7 @@
 // src/commands/registration/core.ts
 import { Command } from 'commander';
 import { addCommonOptions } from '../common';
-import { handleGenerateAction } from '../generate';
+import { handleGenerateCommand } from '../generate';
 import { handleClearCacheAction } from '../clear-cache';
 import { bindFlag, registerCompletionCommand, staticValues } from '../completion';
 import { addQueryOutputFlags, runQueryCommand } from '../query';
@@ -34,28 +34,30 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   completion: 'management',
 };
 
+const POSITIONAL_ROOTS = 'Root directories to analyze (same as --path; not combinable with it)';
+
 /**
  * Register all static core commands
  * These are built-in commands that don't depend on strategy discovery
  */
 export function registerCoreCommands(program: Command): void {
   // Analysis commands
-  addCommonOptions(program.command('map'))
+  addCommonOptions(program.command('map').argument('[paths...]', POSITIONAL_ROOTS))
     .description('Generate visual map of codebase')
-    .action(handleGenerateAction);
+    .action(handleGenerateCommand);
 
-  addCommonOptions(program.command('scan'))
+  addCommonOptions(program.command('scan').argument('[paths...]', POSITIONAL_ROOTS))
     .description('Scan and discover files in codebase')
-    .action(handleGenerateAction);
+    .action(handleGenerateCommand);
 
-  addCommonOptions(program.command('graph'))
+  addCommonOptions(program.command('graph').argument('[paths...]', POSITIONAL_ROOTS))
     .description('Generate control flow (CFG) and data flow (DFG) graphs')
-    .action(handleGenerateAction);
+    .action(handleGenerateCommand);
 
   // Generate command (kept for backwards compatibility; hidden alias of `map`)
-  addCommonOptions(program.command('generate', { hidden: true }))
+  addCommonOptions(program.command('generate', { hidden: true }).argument('[paths...]', POSITIONAL_ROOTS))
     .description('Generate code analysis visualization [alias: map]')
-    .action(handleGenerateAction);
+    .action(handleGenerateCommand);
 
   // Query command - call graph queries
   addQueryOutputFlags(
