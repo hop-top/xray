@@ -32,8 +32,8 @@ describe('upgrade wiring', () => {
     const opts = createChecker.mock.calls[0][0] as Record<string, unknown>;
     expect(opts).toMatchObject({
       name: 'xray',
-      owner: 'ideacrafterslabs',
-      repo: 'oss-xray-codes',
+      owner: 'xray-codes',
+      repo: 'xray',
     });
     expect(typeof opts.currentVersion).toBe('string');
     expect((opts.currentVersion as string).length).toBeGreaterThan(0);

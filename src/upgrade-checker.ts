@@ -30,7 +30,7 @@ export function createXrayUpgradeChecker() {
   return createChecker({
     name: 'xray',
     currentVersion: XRAY_VERSION,
-    owner: 'ideacrafterslabs',
-    repo: 'oss-xray-codes',
+    owner: 'xray-codes',
+    repo: 'xray',
   });
 }
