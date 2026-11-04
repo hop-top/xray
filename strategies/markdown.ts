@@ -77,6 +77,29 @@ function runMdq(args: string[]): Promise<{ status: number; stdout: string; stder
   });
 }
 
+/** An inline-code mention that looks like a file path: no spaces, globs, or URL schemes. */
+function isPathShaped(ref: string): boolean {
+  return /^[\w@.\-/]+$/.test(ref) && !ref.endsWith('/');
+}
+
+/** Nearest ancestor of `from` (inclusive) holding a `.git` entry; else `from`. */
+function findRepoRoot(from: string): string {
+  let dir = path.resolve(from);
+  for (;;) {
+    if (fs.existsSync(path.join(dir, '.git'))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) return path.resolve(from);
+    dir = parent;
+  }
+}
+
+/** True if a mentioned path exists relative to the doc's dir, the scan root, or the repo root. */
+function resolveCodeRef(ref: string, docFile: string, scanRoot: string, repoRoot: string): boolean {
+  const bases = [path.dirname(docFile), scanRoot, repoRoot];
+  const candidates = path.isAbsolute(ref) ? [ref] : bases.map(b => path.join(b, ref));
+  return candidates.some(c => fs.existsSync(c));
+}
+
 export default class MarkdownStrategy implements Strategy {
   name = 'markdown';
   version = '0.1.0';
@@ -276,7 +299,8 @@ export default class MarkdownStrategy implements Strategy {
 
     while ((match = codeRefRegex.exec(content)) !== null) {
       const [_, ref] = match;
-      const [codePath, lineNum] = ref.split(':');
+      const lineMatch = ref.match(/^(.*?)(?::(\d+))?$/)!;
+      const [, codePath, lineNum] = lineMatch;
 
       metadata.codeReferences.push({
         path: codePath,
@@ -501,6 +525,7 @@ export default class MarkdownStrategy implements Strategy {
         const docFiles = await ctx.findFiles({ extension: '.md' });
         const projectRoot = ctx.getProjectRoot();
         const stale: any[] = [];
+        const repoRoot = findRepoRoot(projectRoot);
 
         for (const doc of docFiles) {
           const metadata = ctx.getMetadata(doc, 'markdown');
@@ -532,16 +557,14 @@ export default class MarkdownStrategy implements Strategy {
           // Check code references
           if (metadata?.codeReferences) {
             for (const ref of metadata.codeReferences) {
-              const codePath = path.isAbsolute(ref.path)
-                ? ref.path
-                : path.join(projectRoot, ref.path);
+              if (!isPathShaped(ref.path)) continue;
 
-              if (!fs.existsSync(codePath)) {
+              if (!resolveCodeRef(ref.path, path.resolve(projectRoot, doc), projectRoot, repoRoot)) {
                 stale.push({
                   doc,
                   reference: ref.path,
-                  reason: 'code_file_not_found',
-                  type: 'code_reference'
+                  reason: 'code_path_not_found',
+                  type: 'code_path_reference'
                 });
               } else if (ref.line) {
                 // TODO: Check if line/symbol exists in file

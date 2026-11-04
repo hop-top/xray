@@ -388,11 +388,60 @@ describe('MarkdownStrategy', () => {
         const result = await strategy.commands!.stale.handler(ctx);
 
         expect(result.stale.length).toBeGreaterThan(0);
-        const codeRef = result.stale.find((s: any) => s.type === 'code_reference');
+        const codeRef = result.stale.find((s: any) => s.type === 'code_path_reference');
         expect(codeRef).toBeDefined();
-        expect(codeRef.reason).toBe('code_file_not_found');
+        expect(codeRef.reference).toBe('missing-file.ts');
+        expect(codeRef.reason).toBe('code_path_not_found');
+        // never mixed into link items
+        expect(result.stale.filter((s: any) => s.type === 'markdown_link')).toHaveLength(0);
 
         fs.rmSync(tempDir, { recursive: true, force: true });
+      });
+
+      describe('inline-code path mentions', () => {
+        async function staleFor(root: string, scan: string, files: Record<string, string>, docs: string[]) {
+          for (const [rel, body] of Object.entries(files)) {
+            fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+            fs.writeFileSync(path.join(root, rel), body);
+          }
+          const ctx = new StrategyContextImpl(path.join(root, scan));
+          for (const d of docs) await analyzeInto(ctx, d);
+          return strategy.commands!.stale.handler(ctx);
+        }
+        let root: string;
+        beforeEach(() => {
+          root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'test-code-paths-')));
+          fs.mkdirSync(path.join(root, '.git'));
+        });
+        afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+        it('resolves against doc dir, scan root, then repo root', async () => {
+          const result = await staleFor(root, 'docs', {
+            'docs/guide/a.md': 'See `helper.ts`, `lib/util.ts`, `src/core.ts`, `src/gone.ts`.',
+            'docs/guide/helper.ts': '',
+            'docs/lib/util.ts': '',
+            'src/core.ts': '',
+          }, ['guide/a.md']);
+          expect(result.stale.map((s: any) => s.reference)).toEqual(['src/gone.ts']);
+          expect(result.count).toBe(1);
+        });
+
+        it('skips mentions with spaces, globs, or that are not path-shaped', async () => {
+          const result = await staleFor(root, 'docs', {
+            'docs/a.md': 'Use `my file.ts`, `src/*.ts`, `src/{a,b}.ts`, `$HOME/x.ts`, `https://e.com/x.ts`, `a b/c.js`.',
+          }, ['a.md']);
+          expect(result.stale).toEqual([]);
+        });
+
+        it('reports under code_path_reference, never markdown_link', async () => {
+          const result = await staleFor(root, 'docs', {
+            'docs/a.md': 'See `nope/missing.ts` and [x](./other.md).',
+            'docs/other.md': '# Other\n',
+          }, ['a.md']);
+          expect(result.stale).toEqual([
+            { doc: expect.stringMatching(/a\.md$/), reference: 'nope/missing.ts', reason: 'code_path_not_found', type: 'code_path_reference' },
+          ]);
+        });
       });
 
       it('should not flag existing targets when files were analyzed by absolute path', async () => {

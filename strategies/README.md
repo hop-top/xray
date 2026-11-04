@@ -75,7 +75,7 @@ info-level hint with the right command for your platform.
 - `markdown orphans` - Find unlinked markdown files
 - `markdown code-refs` - Find code references in docs
 - `markdown coverage` - Source file documentation coverage
-- `markdown stale` - Find broken links and references
+- `markdown stale` - Find broken links (`markdown_link`) and inline-code path mentions that resolve nowhere (`code_path_reference`; looked up against the doc dir, scan root, repo root; mentions with spaces/globs are skipped)
 
 #### Go CLI Strategy (`go-cli.ts`)
 Detects Go command-line applications.
