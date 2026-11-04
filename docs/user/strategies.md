@@ -50,7 +50,7 @@ When you run a dynamic command, xray:
 
 **Key Benefits:**
 - 🎯 Framework-aware analysis (understands React, Express, etc.)
-- 🔍 Automatic detection (no configuration needed)
+- 🔍 Automatic detection (no configuration needed; project code strategies need an explicit opt-in)
 - ⚡ Smart caching (detection and analysis results cached in SQLite)
 - 🛠️ Custom commands (each strategy provides specialized queries)
 
@@ -715,6 +715,14 @@ xray go-cli flags >> CLI.md
 ```
 
 ## Troubleshooting
+
+### Your own strategy is not loaded
+
+**Problem**: a strategy in `.xray/strategies/` or an `xray-strategy-*` package in `node_modules` does not appear in `xray strategy list`.
+
+**Solutions**:
+1. `.js` and `.ts` strategies and packages run code, so xray loads them from the project only when you set `XRAY_ALLOW_PROJECT_STRATEGIES=1` in your own environment (never through repo config); use it only for repos you trust. `xray strategy list` names what was skipped.
+2. Declarative YAML strategies (`xray strategy create <name> --yaml`) load without it.
 
 ### Strategy not detected
 

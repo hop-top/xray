@@ -126,10 +126,13 @@ The server never exits on a failed call.
 
 ## Trust model
 
-Running xray in a directory trusts that directory: project strategies
-(`.xray/strategies`, strategies in `node_modules`) and the strategy cache
-are code, and xray loads them. Config files are JSON data and never run.
-`xray mcp` keeps that rule and fixes the trusted directory at startup:
+Project strategy code (`.xray/strategies/*.js|ts`, strategies in
+`node_modules`) loads only when you set `XRAY_ALLOW_PROJECT_STRATEGIES=1`
+in the environment of the server (and therefore of its calls); by default
+none runs, and `strategy_list` reports what was skipped. Declarative YAML
+strategies and built-ins always load. Config files are JSON data and never
+run. With the opt-in set, running xray in a directory trusts that
+directory, and `xray mcp` fixes the trusted directory at startup:
 
 - **Server root** = the directory the server starts in (working
   directory, or `-C <dir>`). You choose it when you configure the client.
@@ -139,7 +142,7 @@ are code, and xray loads them. Config files are JSON data and never run.
   `.xrayrc.json`, `xray.config.json` or `package.json` with an `xray` key
   found walking up from the server root.
 - Every call's child process runs with the server root as its working
-  directory, so project strategies, aliases and config load from the
+  directory, so project strategies (when opted in), aliases and config load from the
   server root only, exactly as for `xray` run there. With a server
   config, children also get `-C <server root> --config <server config>`:
   every config load in the call reads that file.

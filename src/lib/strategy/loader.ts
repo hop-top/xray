@@ -14,6 +14,53 @@ import { Logger } from '../logger';
 import { isGrammarAvailable } from '../parser/grammars';
 
 const warnedStrategies = new Set<string>();
+const warnedProjectCode = new Set<string>();
+
+/** Environment variable that lets code living in the project load as strategies. */
+export const PROJECT_STRATEGIES_ENV = 'XRAY_ALLOW_PROJECT_STRATEGIES';
+
+const CODE_EXTENSIONS = new Set(['.js', '.ts']);
+
+/** The only project strategy format that runs no code; anything else counts as code. */
+const isDeclarative = (file: string): boolean => /\.ya?ml$/.test(file);
+
+/**
+ * Whether the user opted in to running strategy code from the project.
+ *
+ * SECURITY: a scanned repo ships `.xray/strategies/*.js`, `node_modules`
+ * packages and the like; running them hands the repo the user's
+ * privileges. Only the user's own environment can enable it: never a
+ * config file, `package.json` or anything else the repo controls.
+ */
+export function projectStrategiesAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env[PROJECT_STRATEGIES_ENV] === '1';
+}
+
+/**
+ * Text for strategy code found in the project but not loaded; names the
+ * variable that opts in.
+ */
+export function skippedProjectCodeMessage(skipped: string[]): string {
+  const noun = skipped.length === 1 ? 'strategy' : 'strategies';
+  return `${skipped.length} project ${noun} not loaded (they run code): ${skipped.join(', ')}. ` +
+    `Set ${PROJECT_STRATEGIES_ENV}=1 to load them, only for a repo you trust.`;
+}
+
+/**
+ * Say that project strategy code was found but not loaded, naming the
+ * variable that opts in. `warn` for commands about strategies or where the
+ * user named one; `debug` everywhere else. Silent when nothing was skipped.
+ */
+export function reportSkippedProjectCode(
+  level: 'warn' | 'debug',
+  options: CodeLoadingOptions = {}
+): void {
+  const skipped = new StrategyLoader(options).skippedProjectCode();
+  if (skipped.length === 0) return;
+  const message = skippedProjectCodeMessage(skipped);
+  if (level === 'warn') Logger.warn(message);
+  else Logger.debug(message);
+}
 
 /**
  * Whether code living in the current project may be loaded.
@@ -25,15 +72,75 @@ const warnedStrategies = new Set<string>();
  * the working directory does.
  */
 export interface CodeLoadingOptions {
-  /** Load strategies from the working directory. Default true. */
+  /**
+   * Consult the working directory for strategies at all. Default true;
+   * false for implicit invocations (shell completion).
+   */
   projectCode?: boolean;
+  /**
+   * Run code found in the working directory (`.xray/strategies/*.js|ts`,
+   * `node_modules` strategies). Default: the user's
+   * XRAY_ALLOW_PROJECT_STRATEGIES=1. Declarative YAML strategies from the
+   * working directory load either way.
+   */
+  allowProjectCode?: boolean;
 }
 
 export class StrategyLoader {
   private readonly projectCode: boolean;
+  private readonly allowProjectCode: boolean;
 
   constructor(options: CodeLoadingOptions = {}) {
     this.projectCode = options.projectCode ?? true;
+    this.allowProjectCode = this.projectCode && (options.allowProjectCode ?? projectStrategiesAllowed());
+  }
+
+  /** Directories resolved from the working directory. */
+  private projectDirs(): string[] {
+    if (!this.projectCode) return [];
+    return [
+      path.join(process.cwd(), '.xray/strategies'),
+      path.join(process.cwd(), 'node_modules'),
+    ];
+  }
+
+  /**
+   * Project strategy code that is present but will not load, as paths
+   * relative to the working directory. Lists names only; nothing is read
+   * or executed. Empty when project code is allowed.
+   */
+  skippedProjectCode(): string[] {
+    if (!this.projectCode || this.allowProjectCode) return [];
+    const skipped: string[] = [];
+    const cwd = process.cwd();
+    for (const dir of this.projectDirs()) {
+      let names: string[];
+      try {
+        names = fs.readdirSync(dir).sort();
+      } catch {
+        continue;
+      }
+      for (const name of names) {
+        const file = path.join(dir, name);
+        // Discovery treats every `xray-strategy-*` entry as a package.
+        const skip = name.startsWith('xray-strategy-')
+          ? this.packageEntryIsCode(file)
+          : CODE_EXTENSIONS.has(path.extname(name));
+        if (skip) skipped.push(path.relative(cwd, file));
+      }
+    }
+    return skipped;
+  }
+
+  /** A strategy package declaring a code entry; a YAML entry runs no code. */
+  private packageEntryIsCode(dir: string): boolean {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8'));
+      const entry = pkg?.['xray-strategy']?.entry;
+      return typeof entry === 'string' && !isDeclarative(entry);
+    } catch {
+      return false;
+    }
   }
 
   getStrategyPaths(): string[] {
@@ -59,7 +166,7 @@ export class StrategyLoader {
       : this.getDefaultDataHome();
     paths.push(path.join(xdgDataHome, 'xray/strategies'));
 
-    // 4. NPM packages (will scan node_modules)
+    // 4. NPM packages (will scan node_modules); code there loads only when opted in
     if (this.projectCode) {
       paths.push(path.join(process.cwd(), 'node_modules'));
     }
@@ -232,6 +339,18 @@ export class StrategyLoader {
     const strategies: Strategy[] = [];
     const paths = this.getStrategyPaths();
     const seen = new Set<string>();
+    const projectDirs = new Set(this.projectDirs());
+
+    // Code from the working directory loads only on opt-in; YAML always does.
+    const loadable = (searchPath: string, entry: string): boolean => {
+      if (!projectDirs.has(searchPath) || isDeclarative(entry)) return true;
+      if (!this.allowProjectCode) return false;
+      if (!warnedProjectCode.has(entry)) {
+        warnedProjectCode.add(entry);
+        Logger.warn(`loading strategy code from project path ${entry} (${PROJECT_STRATEGIES_ENV}=1)`);
+      }
+      return true;
+    };
 
     for (const searchPath of paths) {
       if (!fs.existsSync(searchPath)) continue;
@@ -253,7 +372,7 @@ export class StrategyLoader {
                 const pkg = JSON.parse(content);
                 if (pkg['xray-strategy']) {
                   const entryPath = path.join(filePath, pkg['xray-strategy'].entry);
-                  if (!seen.has(pkg['xray-strategy'].name)) {
+                  if (!seen.has(pkg['xray-strategy'].name) && loadable(searchPath, entryPath)) {
                     const strategy = await this.loadStrategy(entryPath);
                     strategies.push(strategy);
                     seen.add(strategy.name);
@@ -268,6 +387,7 @@ export class StrategyLoader {
           // Handle direct strategy files
           else if (file.endsWith('.yml') || file.endsWith('.yaml') ||
                    file.endsWith('.ts') || file.endsWith('.js')) {
+            if (!loadable(searchPath, filePath)) continue;
             const strategy = await this.loadStrategy(filePath);
             if (!seen.has(strategy.name)) {
               strategies.push(strategy);

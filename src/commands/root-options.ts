@@ -113,6 +113,29 @@ export function rootConfigFromArgv(
 }
 
 /**
+ * First operand (command word or query) in argv after the root options,
+ * classified by commander like `rootConfigFromArgv`, so
+ * `xray --offline name go` and `xray name go` agree. Undefined when argv
+ * has none or commander would reject it.
+ */
+export function firstOperandFromArgv(
+  program: Command,
+  argv: readonly string[]
+): string | undefined {
+  const scan = new Command()
+    .allowUnknownOption()
+    .allowExcessArguments()
+    .exitOverride()
+    .configureOutput({ writeOut: () => {}, writeErr: () => {}, outputError: () => {} });
+  for (const o of program.options) scan.addOption(new Option(o.flags));
+  try {
+    return scan.parseOptions(argv.slice(2)).operands[0];
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Build the kit root program and attach xray's root flags + hooks.
  */
 export function createRootProgram(version: string): CLIResult {

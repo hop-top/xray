@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import {
   aliasTargetErrors, circularAliases, kitAlias, reservedAliasNames, splitAliasTarget, usableAliases,
 } from '../../lib/alias-resolver';
-import { CodeLoadingOptions, StrategyLoader } from '../../lib/strategy/loader';
+import { CodeLoadingOptions, StrategyLoader, reportSkippedProjectCode } from '../../lib/strategy/loader';
 import { Logger } from '../../lib/logger';
 import { loadConfig } from '../../lib/config';
 import { AliasCommandOptions } from '../../types/command-options';
@@ -25,6 +25,8 @@ export async function registerAliases(
   if (errors.length > 0) {
     Logger.warn('Alias validation errors:');
     errors.forEach(err => Logger.warn(`  - ${err}`));
+    // An alias may target a command of a strategy that was not loaded.
+    reportSkippedProjectCode('warn', options);
   }
 
   const circular = circularAliases(aliases);

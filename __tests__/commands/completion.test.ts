@@ -120,8 +120,8 @@ describe('completion: value completers (in-process)', () => {
 let sandbox: string;
 let env: NodeJS.ProcessEnv;
 
-function xray(args: string[], cwd = sandbox) {
-  return spawnSync(BIN, args, { cwd, env, encoding: 'utf8', timeout: 30_000 });
+function xray(args: string[], cwd = sandbox, extraEnv: NodeJS.ProcessEnv = {}) {
+  return spawnSync(BIN, args, { cwd, env: { ...env, ...extraEnv }, encoding: 'utf8', timeout: 30_000 });
 }
 
 function values(stdout: string): string[] {
@@ -331,9 +331,15 @@ describe('completion: never executes project code', () => {
     expect(values(xray(['__complete', 'strategy', 'info', 're'], cwd).stdout)).toEqual(['react', 'rest-api']);
   });
 
-  it('explicit runs still load project strategies (intended), but never JS config', () => {
+  it('explicit runs do not load project strategies without the opt-in', () => {
     const cwd = untrustedProject('.xrayrc.js');
     xray(['strategy', 'list'], cwd);
+    expect(fs.readdirSync(marks)).toEqual([]);
+  });
+
+  it('explicit runs load project strategies with the opt-in, but never JS config', () => {
+    const cwd = untrustedProject('.xrayrc.js');
+    xray(['strategy', 'list'], cwd, { XRAY_ALLOW_PROJECT_STRATEGIES: '1' });
     const ran = fs.readdirSync(marks);
     expect(ran).toEqual(expect.arrayContaining(['local-strategy', 'npm-strategy']));
     expect(ran).not.toContain('.xrayrc.js');

@@ -157,11 +157,25 @@ describe('VueStrategy', () => {
 
 ## Strategy Auto-loading
 
-Strategies are automatically loaded from the `strategies/` directory when xray starts. The loader:
+Built-in strategies are loaded from the `strategies/` directory when xray starts. The loader:
 
 1. Scans the `strategies/` directory for `.ts` and `.js` files
 2. Imports each strategy module's default export
 3. Validates the strategy implements the `Strategy` interface
 4. Registers validated strategies in the registry
 
-No configuration is needed - just drop your strategy file in `strategies/` and it will be loaded automatically.
+No configuration is needed for built-ins: drop the file in xray's own `strategies/` directory.
+
+### Strategies in a project
+
+A strategy file is code, and loading it runs it. From the working
+directory (`.xray/strategies/`, `node_modules/xray-strategy-*`), xray
+therefore loads only declarative YAML strategies unless you set
+`XRAY_ALLOW_PROJECT_STRATEGIES=1` in your environment. Repo config
+(`.xrayrc.json`, `package.json`, `.env`) cannot set it. With it set, xray
+warns with the path of each project file it loads. Without it, project
+`.js`/`.ts` strategies and packages are listed by `xray strategy list` and
+named, with the variable, but never imported. While developing a code
+strategy, export the variable in your shell. Strategies in
+`XRAY_STRATEGIES_PATH` and `$XDG_DATA_HOME/xray/strategies` are yours and
+need no opt-in. Shell completion never loads project code.

@@ -1,6 +1,6 @@
 // src/commands/registration/strategies.ts
 import { Command } from 'commander';
-import { CodeLoadingOptions, StrategyLoader } from '../../lib/strategy/loader';
+import { CodeLoadingOptions, StrategyLoader, reportSkippedProjectCode } from '../../lib/strategy/loader';
 import { StrategyContextImpl } from '../../lib/strategy/context';
 import {
   Extension,
@@ -42,6 +42,10 @@ export async function registerExtensionCommands(
   const loader = new StrategyLoader(options);
   const projectCode = options.projectCode ?? true;
   const cacheManager = new StrategyCacheManager();
+
+  // Every command passes here: quiet unless debugging. Commands that are
+  // about strategies, or name one, say it at warn level themselves.
+  reportSkippedProjectCode('debug', options);
 
   try {
     // Try to use cached strategies first. The cache lives in the user cache

@@ -3,7 +3,7 @@ import * as path from 'path';
 import { styles } from '../lib/tui';
 import { Command } from 'commander';
 import { Logger } from '../lib/logger';
-import { StrategyLoader } from '../lib/strategy/loader';
+import { StrategyLoader, PROJECT_STRATEGIES_ENV, projectStrategiesAllowed, reportSkippedProjectCode } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { normalizeDetectedStrategy } from '../lib/strategy/types';
@@ -35,6 +35,7 @@ export function registerStrategyCommand(): Command {
     assertFormat(cmd, strategyListRegistry);
     const loader = new StrategyLoader();
     const strategies = await loader.discoverStrategies();
+    reportSkippedProjectCode('warn');
 
     Logger.info('Available Strategies:\n');
     const rows: StrategyRow[] = strategies.map((s) => ({
@@ -69,6 +70,7 @@ export function registerStrategyCommand(): Command {
       const context = new StrategyContextImpl(projectPath);
       const detector = new StrategyDetector(loader, context);
 
+      reportSkippedProjectCode('warn');
       Logger.info(`Detecting strategies for: ${projectPath}\n`);
       const detected = await detector.runDetection();
 
@@ -91,6 +93,7 @@ export function registerStrategyCommand(): Command {
       const strategy = strategies.find(s => s.name === name);
 
       if (!strategy) {
+        reportSkippedProjectCode('warn');
         Logger.info('\nAvailable strategies:');
         strategies.forEach(s => console.log(`  - ${s.name}`));
         throw new NotFoundError(`Strategy "${name}" not found.`);
@@ -199,6 +202,12 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         } catch (err: any) {
           throw new FileWriteError(filePath, err);
         }
+        if (!projectStrategiesAllowed()) {
+          Logger.warn(
+            `TypeScript strategies run code and are not loaded from a project unless ${PROJECT_STRATEGIES_ENV}=1 is set; ` +
+            `use --yaml for a declarative strategy that always loads.`
+          );
+        }
         Logger.output(`  1. Edit the strategy file to implement detection and analysis logic`);
         Logger.output(`  2. Run 'xray strategy detect' to verify it works`);
         Logger.output(`  3. Test with 'xray ${name}:info'`);
@@ -250,6 +259,15 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
           strategyPath = path.join(process.cwd(), 'node_modules', source);
         }
 
+        // Loading a strategy runs its code; only YAML is read without opt-in.
+        const isYaml = /\.ya?ml$/.test(strategyPath);
+        if (!isYaml && !projectStrategiesAllowed()) {
+          Logger.warn(
+            `${strategyPath} runs code and was not loaded: set ${PROJECT_STRATEGIES_ENV}=1 to load it ` +
+            `(only for code you trust). Declarative YAML strategies need no opt-in.`
+          );
+          return;
+        }
         const strategy = await loader.loadStrategy(strategyPath);
         Logger.success(`\nStrategy installed: ${strategy.name} v${strategy.version}`);
       } catch (error: any) {
@@ -268,6 +286,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       const strategy = strategies.find(s => s.name === name);
 
       if (!strategy) {
+        reportSkippedProjectCode('warn');
         throw new NotFoundError(`Strategy "${name}" not found.`);
       }
 
@@ -305,6 +324,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       const strategy = strategies.find(s => s.name === name);
 
       if (!strategy) {
+        reportSkippedProjectCode('warn');
         throw new NotFoundError(`Strategy "${name}" not found.`);
       }
 
@@ -336,6 +356,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
     .action(() => {
       const loader = new StrategyLoader();
       const paths = loader.getStrategyPaths();
+      reportSkippedProjectCode('warn');
 
       Logger.info('\nStrategy Search Paths:\n');
       paths.forEach((p, i) => {

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { styles } from '../lib/tui';
 import { Logger } from '../lib/logger';
-import { StrategyLoader } from '../lib/strategy/loader';
+import { StrategyLoader, reportSkippedProjectCode } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { StrategyRunner } from '../lib/strategy/runner';
@@ -16,6 +16,7 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
   if (commandName === 'list') {
     const loader = new StrategyLoader();
     const strategies = await loader.discoverStrategies();
+    reportSkippedProjectCode('warn');
 
     Logger.info('Available Strategies:\n');
     strategies.forEach(strategy => {
@@ -41,6 +42,7 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
     const context = new StrategyContextImpl(projectPath!);
     const detector = new StrategyDetector(loader, context);
 
+    reportSkippedProjectCode('warn');
     Logger.info(`Detecting strategies for: ${projectPath}\n`);
     const detected = await detector.runDetection();
 
@@ -90,6 +92,7 @@ export const handleStrategyCommand = async (query: string, options: StrategyComm
   const strategy = strategies.find(s => s.name === strategyName);
 
   if (!strategy) {
+    reportSkippedProjectCode('warn');
     Logger.info(`\nAvailable strategies:`);
     strategies.forEach(s => Logger.output(`  - ${s.name}`));
     throw new NotFoundError(`Strategy "${strategyName}" not found.`);

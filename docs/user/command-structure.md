@@ -147,12 +147,35 @@ Strategy commands are **discovered at runtime**:
 1. `XRAY_STRATEGIES_PATH` environment variable
 2. `.xray/strategies/` in current project
 3. `$XDG_DATA_HOME/xray/strategies/` (or platform equivalent)
-4. NPM packages with `xray-strategy-` prefix
+4. NPM packages with `xray-strategy-` prefix in the project's `node_modules`
 5. Built-in strategies
+
+**Project code is opt-in.** A strategy is a program: loading one runs it.
+From the current project (locations 2 and 4), xray loads only declarative
+YAML strategies by default. `.js` and `.ts` strategies and
+`xray-strategy-*` packages in the project are listed but not run, on every
+command, including `--version` and `--help`. To load them, set
+`XRAY_ALLOW_PROJECT_STRATEGIES=1` in your own environment, only for a repo
+you trust. Repo files (`.xrayrc.json`, `package.json`, `.env`) cannot set
+it. xray warns with the path of each project file it then loads. Built-in
+strategies and the user-level locations (1 and 3) need no opt-in.
+
+When the project has code strategies that did not load, `xray strategy
+list`, `detect`, `info`, `validate`, `path`, and a command word that
+matches no command say so and name the variable; other commands mention it
+only with `--log-level debug`.
 
 ### Adding New Strategies
 
-New strategies auto-register without code changes:
+New strategies register without changes to xray. A declarative YAML
+strategy loads with no opt-in:
+
+```bash
+xray strategy create my-rules --yaml   # writes .xray/strategies/my-rules.yml
+```
+
+A code strategy (`.ts`, `.js`, an npm package) also needs
+`XRAY_ALLOW_PROJECT_STRATEGIES=1`:
 
 ```bash
 # Install via NPM
@@ -185,8 +208,8 @@ export default class CustomStrategy {
 }
 EOF
 
-# Immediately available
-xray custom analyze
+# Available once you opt in
+XRAY_ALLOW_PROJECT_STRATEGIES=1 xray custom analyze
 ```
 
 ## Shell Completion
@@ -267,8 +290,10 @@ npm link  # if installed from source
 **Problem:** `error: unknown command 'mystrategy'`
 
 **Solutions:**
-1. Check available strategies: `xray strategy list`
-2. Install missing strategy: `npm install xray-strategy-mystrategy`
+1. Check available strategies: `xray strategy list` (it names project
+   code strategies that were not loaded)
+2. Install missing strategy: `npm install xray-strategy-mystrategy`, then
+   set `XRAY_ALLOW_PROJECT_STRATEGIES=1` to load it from the project
 3. Verify strategy detection: `xray strategy detect`
 
 ### Completion Not Working

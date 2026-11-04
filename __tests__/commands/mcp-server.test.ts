@@ -79,8 +79,8 @@ let sandbox: string;
 let repo: string;
 let env: NodeJS.ProcessEnv;
 
-function startServer(cwd: string, extra: string[] = []): StdioClient {
-  const proc = spawn(process.execPath, [BIN, ...extra, 'mcp'], { cwd, env, stdio: 'pipe' });
+function startServer(cwd: string, extra: string[] = [], serverEnv: NodeJS.ProcessEnv = {}): StdioClient {
+  const proc = spawn(process.execPath, [BIN, ...extra, 'mcp'], { cwd, env: { ...env, ...serverEnv }, stdio: 'pipe' });
   return new StdioClient(proc);
 }
 
@@ -329,6 +329,10 @@ describe('xray mcp trust boundary', () => {
   const hits: string[] = [];
 
   const marks = () => fs.readdirSync(markers).sort();
+  // With the opt-in set, every child warns which project code it loaded; the
+  // tool text carries stderr after stdout. Drop those lines to read the JSON.
+  const jsonText = (m: Msg) =>
+    text(m).split('\n').filter((l) => !l.includes('loading strategy code from project path')).join('\n');
   const clearMarks = () => {
     for (const f of fs.readdirSync(markers)) fs.rmSync(path.join(markers, f));
   };
@@ -385,7 +389,9 @@ describe('xray mcp trust boundary', () => {
     await new Promise<void>((r) => httpServer.listen(0, '127.0.0.1', () => r()));
     port = (httpServer.address() as { port: number }).port;
 
-    client = startServer(proj);
+    // The user's own opt-in, set on the server; children inherit it. The
+    // boundary under test is which directory's code it reaches.
+    client = startServer(proj, [], { XRAY_ALLOW_PROJECT_STRATEGIES: '1' });
     await client.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 't', version: '0' } });
     client.notify('notifications/initialized');
   }, 60_000);
@@ -397,10 +403,25 @@ describe('xray mcp trust boundary', () => {
 
   beforeEach(clearMarks);
 
+  it('without the opt-in on the server, no project code runs and strategy_list says so', async () => {
+    const bare = startServer(proj);
+    try {
+      await bare.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 't', version: '0' } });
+      bare.notify('notifications/initialized');
+      const r = await bare.call('strategy_list', { format: 'json' });
+      expect(r.result.isError).toBe(false);
+      expect(text(r)).toContain('XRAY_ALLOW_PROJECT_STRATEGIES=1');
+      expect(text(r)).toContain('.xray/strategies/trusted.js');
+      expect(marks()).toEqual([]);
+    } finally {
+      await bare.close();
+    }
+  }, 60_000);
+
   it('loads the server root\'s own project strategies', async () => {
     const r = await client.call('strategy_list', { format: 'json' });
     expect(r.result.isError).toBe(false);
-    const names = JSON.parse(text(r)).map((s: any) => s.name);
+    const names = JSON.parse(jsonText(r)).map((s: any) => s.name);
     expect(names).toContain('trusted');
     expect(names).not.toContain('evil');
     expect(names).not.toContain('evilpkg');
@@ -420,7 +441,7 @@ describe('xray mcp trust boundary', () => {
 
   it('scopes explore to the call root via --path', async () => {
     const r = await client.call('explore', { root: 'vendor', search: ['vendored'], format: 'json' });
-    expect(JSON.parse(text(r)).map((x: any) => x.file)).toEqual([path.join(proj, 'vendor', 'v.ts')]);
+    expect(JSON.parse(jsonText(r)).map((x: any) => x.file)).toEqual([path.join(proj, 'vendor', 'v.ts')]);
   }, 60_000);
 
   it.each([[{ root: 'vendor' }], [{ path: ['vendor'] }]])(
