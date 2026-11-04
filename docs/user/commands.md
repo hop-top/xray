@@ -426,11 +426,11 @@ omits descriptions. A missing or unknown shell exits 2.
 | Flag | Description | Default |
 |------|-------------|---------|
 | `-p, --path <paths...>` | Root directories to analyze (repeatable) | current directory |
-| `-o, --output <path>` | Output file path | `.xray` |
+| `-o, --output <path>` | Output file path | `.xray` (see below) |
 | `-l, --limit <number>` | Token limit for output | 4096 |
 
 **Output File Behavior:**
-- **No output specified**: Writes to `.xray` in current directory
+- **No output specified**: Writes to the current directory. `.xray/` is a directory (strategy detection state), so single files never use that bare name: text chunks `.xray_*.md`; `--no-chunk` text `.xray.txt`; `--format json` `.xray.json`; `--format xml` `.xray.xml`; `--format csv` `.xray.nodes.csv` + `.xray.edges.csv`
 - **Output with dot prefix** (e.g., `.myoutput`): Used as-is, no extension added
 - **Output with extension** (e.g., `analysis.txt`): Used as-is
 - **Output without extension** (e.g., `mymap`): Auto-appends format extension

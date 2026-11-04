@@ -17,11 +17,22 @@ export const resolvePath = (p: string | undefined): string | undefined => {
   return require('path').isAbsolute(p) ? p : require('path').resolve(process.cwd(), p);
 };
 
-// Helper to determine output path with smart extension handling
-export const resolveOutputPath = (outputOption: string | undefined, format: 'txt' | 'csv' | 'xml' | 'json'): string | undefined => {
+// Helper to determine output path with smart extension handling.
+// Default (no -o): `.xray` is a DIRECTORY (strategy detection state), so no
+// single-file default may use that bare name. Graph formats and single-file
+// text write `.xray.<ext>`; csv takes `.xray` as the base of
+// `.xray.{nodes,edges}.csv`; chunked text takes it as the chunk prefix
+// (`.xray_*.md`).
+export const resolveOutputPath = (
+  outputOption: string | undefined,
+  format: 'txt' | 'csv' | 'xml' | 'json',
+  chunked = true
+): string | undefined => {
   if (!outputOption) {
-    // No output specified - use default .xray
-    return require('path').resolve(process.cwd(), '.xray');
+    const base = require('path').resolve(process.cwd(), '.xray');
+    if (format === 'json' || format === 'xml') return `${base}.${format}`;
+    if (format === 'txt' && !chunked) return `${base}.txt`;
+    return base;
   }
 
   const path = require('path');

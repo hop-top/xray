@@ -378,7 +378,7 @@ export const runSingleXray = async (
      mergedOptions.csv ? 'csv' :
      mergedOptions.xml ? 'xml' : 'txt');
 
-  const outputPath = resolveOutputPath(mergedOptions.output, format);
+  const outputPath = resolveOutputPath(mergedOptions.output, format, mergedOptions.chunked !== false);
   const shareOption = mergedOptions.share;
   const shareRequested = shareOption !== undefined && shareOption !== false;
   const commandUsed = getCommandString();
