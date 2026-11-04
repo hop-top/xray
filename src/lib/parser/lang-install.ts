@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
-import { LanguagePack, managedDir, resetGrammarCache, getGrammar, GrammarStatus } from './grammars';
+import { LanguagePack, managedDir, resetGrammarCache, getGrammar, getPack, GrammarStatus } from './grammars';
 
 export interface NpmRunResult {
   status: number | null;
@@ -46,12 +46,42 @@ export interface InstallOutcome {
   dir: string;
 }
 
-/** Install packs into the managed dir, then verify each actually loads. */
+/**
+ * Does xray's own tree-sitter accept this loaded grammar? Runs `setLanguage`
+ * and a tiny parse for the default grammar and every per-extension variant
+ * (e.g. tsx). Never throws; a grammar generated for a newer tree-sitter ABI
+ * than xray's runtime supports loads fine but is rejected here.
+ */
+export function checkGrammar(status: GrammarStatus): GrammarStatus {
+  if (!status.ok) return status;
+  const pack = getPack(status.language);
+  const grammars = [status.grammar];
+  for (const key of Object.values(pack?.extensionExports ?? {})) grammars.push(status.moduleExports?.[key]);
+  let treeSitter: string | undefined;
+  try {
+    // Lazy: grammars.ts must stay free of tree-sitter at import time.
+    const Parser = require('tree-sitter');
+    try { treeSitter = require('tree-sitter/package.json').version; } catch { /* informational */ }
+    for (const g of grammars) {
+      if (!g) throw new Error('grammar export is empty');
+      const parser = new Parser();
+      parser.setLanguage(g);
+      const tree = parser.parse('x\n');
+      if (!tree?.rootNode?.type) throw new Error('parse produced no tree');
+    }
+  } catch (err: any) {
+    const error = String(err?.message ?? err).split('\n')[0];
+    return { ...status, ok: false, reason: 'broken', error, check: { ok: false, error, treeSitter } };
+  }
+  return { ...status, check: { ok: true, treeSitter } };
+}
+
+/** Install packs into the managed dir, then verify each loads and works with xray's tree-sitter. */
 export function installPacks(packs: LanguagePack[], run: NpmRunner = defaultNpmRunner, dir: string = managedDir()): InstallOutcome {
   ensureManagedProject(dir);
   const r = run(installCommand(packs), dir);
   resetGrammarCache();
-  const statuses = packs.map(p => getGrammar(p.name));
+  const statuses = packs.map(p => checkGrammar(getGrammar(p.name)));
   return { ok: r.status === 0 && !r.error && statuses.every(s => s.ok), statuses, dir };
 }
 

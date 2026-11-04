@@ -38,6 +38,14 @@ unchanged by skipped languages.
 | `xray lang add <names...> [--dry-run]` | Install languages or bundles into the xray-managed dir (npm; native build only if no prebuilt binary) |
 | `xray lang remove <names...>` | Remove packs from the managed dir (never touches grammars from other installs) |
 
+After installing, `xray lang add` checks each new grammar against xray's own
+tree-sitter (`setLanguage` plus a small parse). A grammar that installs and loads
+but is rejected (for example built for a newer tree-sitter ABI than xray supports)
+is reported per language, e.g. `go: installed but not usable with xray's tree-sitter
+0.25.1 (Incompatible language version. Compatible range: 13 - 15. Got: 16)`, and the
+command exits 1. The package stays in the managed dir; install another release there
+or run `xray lang remove <name>`.
+
 Languages: typescript, javascript, python, java, csharp, cpp, c, go, rust, php, ruby,
 bash, swift, kotlin, scala, elixir, haskell (aliases such as `ts`, `py`, `rb`, `rs`, `c-sharp` work).
 

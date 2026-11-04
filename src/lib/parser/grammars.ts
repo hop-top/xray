@@ -159,6 +159,13 @@ export interface GrammarStatus {
   /** missing = not installed; broken = installed but failed to load; blocked = XRAY_LANG_BLOCK. */
   reason?: 'missing' | 'broken' | 'blocked';
   error?: string;
+  /**
+   * Result of the post-install compatibility check (`xray lang add`): the
+   * grammar loaded, then `setLanguage` + a small parse ran against xray's own
+   * tree-sitter. Absent when no check ran. On failure `ok` is false and
+   * `reason` is 'broken'.
+   */
+  check?: { ok: boolean; error?: string; treeSitter?: string };
 }
 
 const cache = new Map<string, GrammarStatus>();

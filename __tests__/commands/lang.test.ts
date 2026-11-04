@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { registerLangCommand } from '../../src/commands/lang';
 import { Logger } from '../../src/lib/logger';
+import * as grammars from '../../src/lib/parser/grammars';
 import { resetGrammarCache } from '../../src/lib/parser/grammars';
 import { installCommand } from '../../src/lib/parser/lang-install';
 import { getPack } from '../../src/lib/parser/grammars';
@@ -67,6 +68,27 @@ describe('xray lang', () => {
     expect(fs.existsSync(path.join(managed, 'package.json'))).toBe(true);
     expect(lines.join('\n')).toContain('go: already installed');
     expect(process.exitCode).toBe(1); // kotlin blocked => still not loadable
+  });
+
+  it('add reports a grammar that loads but tree-sitter rejects, per language, and exits non-zero', async () => {
+    const lines = capture();
+    const real = grammars.getGrammar.bind(grammars);
+    let installed = false;
+    jest.spyOn(grammars, 'getGrammar').mockImplementation((l: string) => {
+      if (l !== 'kotlin') return real(l);
+      // not installed before `npm install`, loadable-but-invalid afterwards
+      return installed
+        ? { ...real('go'), language: 'kotlin', module: 'tree-sitter-kotlin', version: '0.3.8', grammar: {} }
+        : { language: 'kotlin', module: 'tree-sitter-kotlin', ok: false, reason: 'missing' };
+    });
+    const run = jest.fn().mockImplementation(() => { installed = true; return { status: 0 }; });
+    await registerLangCommand(run).parseAsync(['node', 'lang', 'add', 'kotlin', 'go']);
+    const out = lines.join('\n');
+    expect(out).toContain("kotlin: installed but not usable with xray's tree-sitter");
+    expect(out).toContain('tree-sitter-kotlin@0.3.8');
+    expect(out).toContain('xray lang remove kotlin');
+    expect(out).not.toMatch(/kotlin: installed$/m);
+    expect(process.exitCode).toBe(1);
   });
 
   it('rejects unknown languages with a non-zero exit', async () => {

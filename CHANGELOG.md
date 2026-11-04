@@ -161,6 +161,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+
+- `xray lang add` now runs `setLanguage` and a small parse against xray's own
+  tree-sitter for each grammar it installs, not just a `require`. A grammar that
+  loads but is rejected (e.g. generated for a newer tree-sitter ABI) is reported
+  per language with the tree-sitter version, a remedy, and exit 1.
 - Imports: `new require('m')` (and `(require)('m')`, `(0, require)('m')`)
   yield a record; PHP names end at `?>`; Go and JS module strings decoded
   into `normalized` (`module` stays as written; a rejected escape gives

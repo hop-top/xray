@@ -175,6 +175,11 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
       const out = installPacks(todo, run);
       for (const s of out.statuses) {
         if (s.ok) Logger.success(`${s.language}: installed`);
+        else if (s.check && !s.check.ok) {
+          const ts = s.check.treeSitter ? ` ${s.check.treeSitter}` : '';
+          Logger.error(`${s.language}: installed but not usable with xray's tree-sitter${ts} (${s.check.error})`);
+          Logger.info(`${s.language}: ${s.module}${s.version ? `@${s.version}` : ''} is not compatible with the tree-sitter bundled in xray; install another release in ${out.dir}, or run \`xray lang remove ${s.language}\``);
+        }
         else Logger.error(`${s.language}: ${s.reason === 'broken' ? `failed to load (${s.error})` : 'not installed'}`);
       }
       if (!out.ok) process.exitCode = 1;
