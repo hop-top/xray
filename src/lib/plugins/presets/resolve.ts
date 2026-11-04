@@ -23,16 +23,17 @@
  * and pick the first function. Rejection is loud — typed error with
  * the resolved module path.
  *
- * Windows portability: `import(absolutePath)` is NOT a valid module
- * specifier on Windows (Node expects a `file://` URL for absolute
- * paths). We convert every filesystem path — absolute or
- * cwd-resolved — to a `file://` URL via `pathToFileURL` before
- * calling `import()`. This is a no-op on POSIX and correct on
- * Windows.
+ * Loading: xray ships as CommonJS, where TypeScript compiles `import()`
+ * to `require()`. `require` takes filesystem paths and package names, not
+ * `file://` URLs, so presets are loaded with `require` directly. Package
+ * specs resolve from the working directory (not from xray's own install
+ * location). ESM presets (`.mjs`, `"type": "module"`) load through
+ * `require(esm)` (Node >= 22.12, the supported floor); an ESM preset with
+ * top-level `await` cannot be loaded this way.
  */
 
 import * as path from 'path';
-import { pathToFileURL } from 'url';
+import { createRequire } from 'module';
 import type { Preset } from './types';
 import { BUILTIN_PRESETS, BUILTIN_PRESET_NAMES } from './index';
 
@@ -64,6 +65,10 @@ function looksLikePackage(spec: string): boolean {
 }
 
 function extractPreset(mod: unknown, resolvedPath: string, spec: string): Preset {
+  // CJS `module.exports = fn`: the module itself is the preset.
+  if (typeof mod === 'function') {
+    return mod as Preset;
+  }
   if (mod === null || typeof mod !== 'object') {
     throw new PresetResolutionError(
       `Preset module "${spec}" at ${resolvedPath} exported no usable value. ` +
@@ -115,19 +120,14 @@ export async function resolvePreset(spec: string): Promise<Preset> {
     return BUILTIN_PRESETS[spec];
   }
 
-  // 2. Local path. Convert to a file:// URL so `import()` works on
-  // Windows (absolute paths are not valid specifiers there). POSIX
-  // is unaffected — pathToFileURL is a no-op for paths that already
-  // look like URLs and the resulting `file://` specifier loads
-  // identically on both platforms.
+  // 2. Local path, resolved against the working directory.
   if (looksLikePath(spec)) {
     const resolvedPath = path.isAbsolute(spec)
       ? spec
       : path.resolve(process.cwd(), spec);
-    const importSpecifier = pathToFileURL(resolvedPath).href;
     let mod: unknown;
     try {
-      mod = await import(importSpecifier);
+      mod = require(resolvedPath);
     } catch (err) {
       throw new PresetResolutionError(
         `Failed to load preset from "${spec}" (resolved to ${resolvedPath}): ` +
@@ -139,11 +139,11 @@ export async function resolvePreset(spec: string): Promise<Preset> {
     return extractPreset(mod, resolvedPath, spec);
   }
 
-  // 3. Package form.
+  // 3. Package form, resolved from the working directory.
   if (looksLikePackage(spec)) {
     let mod: unknown;
     try {
-      mod = await import(spec);
+      mod = createRequire(path.join(process.cwd(), 'noop.js'))(spec);
     } catch (err) {
       throw new PresetResolutionError(
         `Failed to load preset from npm package "${spec}": ${(err as Error).message}`,
