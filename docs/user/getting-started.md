@@ -7,7 +7,7 @@ Welcome! Let's get you up and running.
 ### Option 1: NPM (Easiest)
 
 ```bash
-npm install -g @xray-codes/xray
+npm install -g @hop-top/xray
 ```
 
 Done! Move to the next section.

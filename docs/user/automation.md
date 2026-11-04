@@ -233,7 +233,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install -g @xray-codes/xray
+      - run: npm install -g @hop-top/xray
       - run: xray map --lens ${{ matrix.lens }}
       - run: |
           git config --local user.email "actions@github.com"
@@ -279,7 +279,7 @@ fi
 
 # Check if xray is installed
 if ! command -v xray > /dev/null 2>&1; then
-  echo "⚠️  Xray not installed. Run: npm install -g @xray-codes/xray"
+  echo "⚠️  Xray not installed. Run: npm install -g @hop-top/xray"
   exit 0
 fi
 
@@ -475,7 +475,7 @@ xray map --all-scopes
 ### Pre-commit Hook Issues
 
 **"Xray not installed"**
-- Install globally: `npm install -g @xray-codes/xray`
+- Install globally: `npm install -g @hop-top/xray`
 - Or use npx: modify hook to use `npx xray map`
 
 **"Hook not running"**

@@ -604,7 +604,7 @@ GitHub: [link]
 ```
 Install:
 
-npm install -g xray-codes
+npm install -g @hop-top/xray
 
 Or:
 
@@ -849,7 +849,7 @@ Yes! Would love your feedback.
 
 GitHub: [link]
 
-npm install -g xray-codes
+npm install -g @hop-top/xray
 
 What language is your project? (Have TS/Python/Go, more coming)
 ```

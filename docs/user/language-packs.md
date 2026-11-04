@@ -7,7 +7,7 @@ only pay install / native-build cost for the languages you use.
 ## Quick start
 
 ```bash
-npm install -g @xray-codes/xray
+npm install -g @hop-top/xray
 xray lang list             # what is installed, what your repo needs
 xray lang add go typescript
 xray map

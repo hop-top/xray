@@ -65,7 +65,7 @@ describe('PackageManager Strategy Integration', () => {
       expect(metadata.tags).toContain('package-manager:npm');
       expect(metadata.tags).toContain('dependencies');
       expect(metadata.metadata?.packageManager).toBe('npm');
-      expect(metadata.metadata?.packageName).toBe('@xray-codes/xray');
+      expect(metadata.metadata?.packageName).toBe('@hop-top/xray');
       expect(metadata.metadata?.dependencies).toBeDefined();
       expect(metadata.metadata?.devDependencies).toBeDefined();
       expect(metadata.metadata?.totalDependencies).toBeGreaterThan(0);

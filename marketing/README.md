@@ -710,7 +710,7 @@ Caches results; subsequent runs: ~0.1s
 
 ```bash
 # Install
-npm install -g xray-codes
+npm install -g @hop-top/xray
 # or
 brew install xray
 

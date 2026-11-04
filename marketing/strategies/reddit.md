@@ -739,7 +739,7 @@ So I built this: `xray map .`
 - AI follows existing patterns instead of inventing new ones
 
 **GitHub**: [link]
-**Installation**: `npm install -g xray-codes`
+**Installation**: `npm install -g @hop-top/xray`
 
 It's open source. I use it every day. Would love feedback from this community.
 

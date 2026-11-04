@@ -663,7 +663,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install -g @xray-codes/xray
+      - run: npm install -g @hop-top/xray
       - run: |
           echo "# API Reference" > API.md
           echo "" >> API.md

@@ -1,5 +1,5 @@
 {
-  "name": "@xray-codes/xray",
+  "name": "@hop-top/xray",
   "version": "0.1.0",
   "description": "X-ray your codebase - Generate AST, CFG, and DFG visualizations",
   "main": "dist/index.js",

@@ -47,9 +47,9 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.xray-version }}" = "latest" ]; then
-          npm install -g @xray-codes/xray@latest
+          npm install -g @hop-top/xray@latest
         else
-          npm install -g "@xray-codes/xray@${{ inputs.xray-version }}"
+          npm install -g "@hop-top/xray@${{ inputs.xray-version }}"
         fi
         echo "✓ Installed xray $(xray --version)"
 

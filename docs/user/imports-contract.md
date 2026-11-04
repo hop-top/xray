@@ -15,7 +15,7 @@ honest coverage take priority over breadth.
 ## Schema
 
 - JSON Schema 2020-12: `schemas/xray.imports.v1.json`, shipped in the npm
-  package (`node_modules/@xray-codes/xray/schemas/xray.imports.v1.json`).
+  package (`node_modules/@hop-top/xray/schemas/xray.imports.v1.json`).
 - Every document carries `"schema": "xray.imports/v1"`; pin on it.
 - Consumers MUST ignore unknown fields. The schema leaves objects open
   (no `additionalProperties: false`), so a v1 validator keeps accepting

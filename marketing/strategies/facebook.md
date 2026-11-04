@@ -464,7 +464,7 @@ xray map . --max-tokens 8000
 
 **Example output**: [gist link]
 **GitHub**: [link]
-**Install**: `npm install -g xray-codes`
+**Install**: `npm install -g @hop-top/xray`
 
 It's open source. I use it every day. Would love feedback:
 - Is the ranking algorithm useful?

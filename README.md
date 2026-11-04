@@ -2,7 +2,7 @@
 
 > X-ray your codebase - Generate intelligent, AI-optimized code maps for deep understanding
 
-[![npm version](https://img.shields.io/npm/v/@xray-codes/xray.svg)](https://www.npmjs.com/package/@xray-codes/xray)
+[![npm version](https://img.shields.io/npm/v/@hop-top/xray.svg)](https://www.npmjs.com/package/@hop-top/xray)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## What is xray?
@@ -17,7 +17,7 @@ xray generates **intelligent, ranked, context-aware code maps** that fit within 
 
 ```bash
 # Install
-npm install -g @xray-codes/xray
+npm install -g @hop-top/xray
 
 # Generate your first code map
 cd /path/to/your/project
@@ -279,8 +279,8 @@ Now just run `xray map` - no flags needed!
 ### Using Plugins
 
 ```typescript
-import { Xray } from '@xray-codes/xray';
-import { ProgressLoggerPlugin, FilterPrivatePlugin } from '@xray-codes/xray/plugins';
+import { Xray } from '@hop-top/xray';
+import { ProgressLoggerPlugin, FilterPrivatePlugin } from '@hop-top/xray/plugins';
 
 const xray = new Xray({ path: './src' });
 
@@ -303,7 +303,7 @@ await xray.run();
 ### Creating Custom Plugins
 
 ```typescript
-import { XrayPlugin } from '@xray-codes/xray';
+import { XrayPlugin } from '@hop-top/xray';
 
 export class MyPlugin implements XrayPlugin {
   name = 'my-plugin';
@@ -401,7 +401,7 @@ Pin languages with `"languages": ["go", "typescript"]` in `.xrayrc.json`.
 ### NPM (Recommended)
 
 ```bash
-npm install -g @xray-codes/xray
+npm install -g @hop-top/xray
 xray lang add go typescript   # choose your language packs
 ```
 
@@ -581,7 +581,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - **GitHub:** https://github.com/xray-codes/xray
 - **Issues:** https://github.com/xray-codes/xray/issues
-- **NPM:** https://www.npmjs.com/package/@xray-codes/xray
+- **NPM:** https://www.npmjs.com/package/@hop-top/xray
 
 ---
 

@@ -25,7 +25,7 @@ fi
 # Check if xray is installed
 if ! command -v xray > /dev/null 2>&1; then
   echo "⚠️  Xray is not installed. Skipping xray regeneration."
-  echo "   Install it with: npm install -g @xray-codes/xray"
+  echo "   Install it with: npm install -g @hop-top/xray"
   exit 0
 fi
 
