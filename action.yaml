@@ -45,34 +45,56 @@ runs:
 
     - name: Install xray
       shell: bash
+      env:
+        XRAY_VERSION: ${{ inputs.xray-version }}
       run: |
-        if [ "${{ inputs.xray-version }}" = "latest" ]; then
+        # Inputs reach the shell only through env vars, never through
+        # expression substitution, so their content is data, not shell syntax.
+        semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+        if [ "$XRAY_VERSION" != "latest" ] && ! [[ "$XRAY_VERSION" =~ $semver ]]; then
+          printf '::error::xray-version must be "latest" or a semver version such as 1.2.3 or 1.2.3-beta.1, got %q\n' "$XRAY_VERSION"
+          exit 1
+        fi
+
+        if [ "$XRAY_VERSION" = "latest" ]; then
           npm install -g @hop-top/xray@latest
         else
-          npm install -g "@hop-top/xray@${{ inputs.xray-version }}"
+          npm install -g "@hop-top/xray@$XRAY_VERSION"
         fi
         echo "✓ Installed xray $(xray --version)"
 
     - name: Check for xray config
       id: check-config
       shell: bash
+      env:
+        CONFIG_PATH: ${{ inputs.config-path }}
       run: |
-        if [ -n "${{ inputs.config-path }}" ]; then
-          if [ -f "${{ inputs.config-path }}" ]; then
-            echo "config_exists=true" >> $GITHUB_OUTPUT
-            echo "config_path=${{ inputs.config-path }}" >> $GITHUB_OUTPUT
-            echo "✓ Using config file: ${{ inputs.config-path }}"
+        # A newline would start a new line in $GITHUB_OUTPUT (output injection)
+        # or in the log (workflow-command injection): refuse it up front. Logged
+        # values go through printf %q so ##[...] cannot act as a log command.
+        case "$CONFIG_PATH" in
+          *$'\n'* | *$'\r'*)
+            echo "::error::config-path must not contain line breaks"
+            exit 1
+            ;;
+        esac
+
+        if [ -n "$CONFIG_PATH" ]; then
+          if [ -f "$CONFIG_PATH" ]; then
+            echo "config_exists=true" >> "$GITHUB_OUTPUT"
+            echo "config_path=$CONFIG_PATH" >> "$GITHUB_OUTPUT"
+            printf '✓ Using config file: %q\n' "$CONFIG_PATH"
           else
-            echo "config_exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️  Config file not found: ${{ inputs.config-path }}"
+            echo "config_exists=false" >> "$GITHUB_OUTPUT"
+            printf '⚠️  Config file not found: %q\n' "$CONFIG_PATH"
             exit 1
           fi
         elif [ -f ".xrayrc" ] || [ -f ".xrayrc.json" ] || [ -f "xray.config.json" ] || [ -f "xray.config.js" ]; then
-          echo "config_exists=true" >> $GITHUB_OUTPUT
-          echo "config_path=" >> $GITHUB_OUTPUT
+          echo "config_exists=true" >> "$GITHUB_OUTPUT"
+          echo "config_path=" >> "$GITHUB_OUTPUT"
           echo "✓ Found xray configuration file"
         else
-          echo "config_exists=false" >> $GITHUB_OUTPUT
+          echo "config_exists=false" >> "$GITHUB_OUTPUT"
           echo "⚠️  No xray configuration file found. Skipping regeneration."
         fi
 
@@ -80,34 +102,46 @@ runs:
       if: steps.check-config.outputs.config_exists == 'true'
       id: regenerate
       shell: bash
+      env:
+        CONFIG_PATH: ${{ steps.check-config.outputs.config_path }}
+        SCOPE: ${{ inputs.scope }}
+        ALL_SCOPES: ${{ inputs.all-scopes }}
       run: |
+        case "$SCOPE" in
+          *$'\n'* | *$'\r'*)
+            echo "::error::scope must not contain line breaks"
+            exit 1
+            ;;
+        esac
+
         echo "🔍 Regenerating xray maps..."
 
-        # Build xray command
-        CMD="xray map"
+        # Build xray command as an argument array: every value stays one argument.
+        # Values are bound with = so one can never be read as a separate flag.
+        CMD=(xray map)
 
-        if [ -n "${{ steps.check-config.outputs.config_path }}" ]; then
-          CMD="$CMD --config \"${{ steps.check-config.outputs.config_path }}\""
+        if [ -n "$CONFIG_PATH" ]; then
+          CMD+=("--config=$CONFIG_PATH")
         fi
 
         # Handle scope options
-        if [ -n "${{ inputs.scope }}" ]; then
-          CMD="$CMD --scope ${{ inputs.scope }}"
-          echo "Running scope: ${{ inputs.scope }}"
-        elif [ "${{ inputs.all-scopes }}" = "true" ]; then
-          CMD="$CMD --all-scopes"
+        if [ -n "$SCOPE" ]; then
+          CMD+=("--scope=$SCOPE")
+          printf 'Running scope: %q\n' "$SCOPE"
+        elif [ "$ALL_SCOPES" = "true" ]; then
+          CMD+=(--all-scopes)
           echo "Running all configured scopes"
         fi
 
-        eval $CMD
+        "${CMD[@]}"
 
         # Check if any files were created or modified
         if [ -n "$(git status --porcelain)" ]; then
-          echo "changes_detected=true" >> $GITHUB_OUTPUT
+          echo "changes_detected=true" >> "$GITHUB_OUTPUT"
           echo "✓ Xray maps were updated"
           git status --short
         else
-          echo "changes_detected=false" >> $GITHUB_OUTPUT
+          echo "changes_detected=false" >> "$GITHUB_OUTPUT"
           echo "✓ Xray maps are already up to date"
         fi
 
@@ -132,11 +166,13 @@ runs:
 
     - name: Summary
       shell: bash
+      env:
+        CHANGES_DETECTED: ${{ steps.regenerate.outputs.changes_detected }}
       run: |
-        echo "## Xray Regeneration Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        if [ "${{ steps.regenerate.outputs.changes_detected }}" == "true" ]; then
-          echo "✅ Xray maps were updated and committed" >> $GITHUB_STEP_SUMMARY
+        echo "## Xray Regeneration Summary" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        if [ "$CHANGES_DETECTED" == "true" ]; then
+          echo "✅ Xray maps were updated and committed" >> "$GITHUB_STEP_SUMMARY"
         else
-          echo "✅ Xray maps are already up to date" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Xray maps are already up to date" >> "$GITHUB_STEP_SUMMARY"
         fi

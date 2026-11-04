@@ -187,7 +187,7 @@ xray map -l 4000
 |-------|-------------|---------|
 | `github-token` | GitHub token for committing | `${{ github.token }}` |
 | `config-path` | Custom config file path | Auto-detect |
-| `xray-version` | xray version to install | `latest` |
+| `xray-version` | xray version to install: `latest` or an exact version such as `1.2.3` or `1.2.3-rc.0`; ranges and dist-tags are rejected | `latest` |
 | `commit-message` | Custom commit message | `chore: regenerate xray maps` |
 | `skip-if-no-changes` | When regeneration changes nothing: `true` succeeds without committing, `false` fails the step. Changed maps are always committed. | `true` |
 | `scope` | Run one scope from the config file (`xray map --scope <name>`); takes precedence over `all-scopes` | (none) |
