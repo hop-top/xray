@@ -198,6 +198,30 @@ describe('what the user is told', () => {
     expect(r.stderr).toContain('not loaded');
   });
 
+  describe('a bare query word', () => {
+    it.each([['foo'], ['calls(main)']])('%s is not a strategy command: no notice', (word) => {
+      const r = run([word], repo);
+      expect(r.stderr).not.toContain(VAR);
+    });
+
+    it.each([
+      ['a skipped file name', 'vecxrayjs'],
+      ['a skipped file name with a different extension', 'vecxrayts'],
+      ['a skipped package directory suffix', 'vec'],
+      ['a skipped package name', 'vecnmpkg'],
+      ['a skipped bare node_modules file', 'vecdirect'],
+    ])('%s gets the notice', (_label, word) => {
+      const r = run([word], repo);
+      expect(r.stderr).toContain(`${VAR}=1`);
+      expect(ran()).toEqual([]);
+    });
+
+    it('a two-word form gets the notice even when the word matches no file name', () => {
+      const r = run(['zz', 'go'], repo);
+      expect(r.stderr).toContain(`${VAR}=1`);
+    });
+  });
+
   it('a skipped strategy named in strategy info fails, with the hint', () => {
     const r = run(['strategy', 'info', 'vecxrayjs'], repo);
     expect(r.status).not.toBe(0);

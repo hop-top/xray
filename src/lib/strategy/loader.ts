@@ -132,6 +132,34 @@ export class StrategyLoader {
     return skipped;
   }
 
+  /**
+   * Whether `word` could be naming a skipped strategy, judged from file
+   * and package names alone (the strategy's own name lives in code that
+   * is not run): the file name without extension, the package directory
+   * with or without `xray-strategy-`, and the package.json `name` and
+   * `xray-strategy.name`.
+   */
+  skippedProjectCodeMayBeNamed(word: string): boolean {
+    const cwd = process.cwd();
+    for (const rel of this.skippedProjectCode()) {
+      const base = path.basename(rel);
+      const names = new Set<string>([base, path.basename(base, path.extname(base))]);
+      if (base.startsWith('xray-strategy-')) {
+        names.add(base.slice('xray-strategy-'.length));
+        try {
+          const pkg = JSON.parse(fs.readFileSync(path.join(cwd, rel, 'package.json'), 'utf-8'));
+          for (const n of [pkg?.name, pkg?.['xray-strategy']?.name]) {
+            if (typeof n === 'string') names.add(n);
+          }
+        } catch {
+          // unreadable package.json: the directory name still counts
+        }
+      }
+      if (names.has(word)) return true;
+    }
+    return false;
+  }
+
   /** A strategy package declaring a code entry; a YAML entry runs no code. */
   private packageEntryIsCode(dir: string): boolean {
     try {

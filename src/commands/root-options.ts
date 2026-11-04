@@ -113,15 +113,15 @@ export function rootConfigFromArgv(
 }
 
 /**
- * First operand (command word or query) in argv after the root options,
- * classified by commander like `rootConfigFromArgv`, so
- * `xray --offline name go` and `xray name go` agree. Undefined when argv
- * has none or commander would reject it.
+ * Operands (command word or query, then its arguments) in argv after the
+ * root options, classified by commander like `rootConfigFromArgv`, so
+ * `xray --offline name go` and `xray name go` agree. Empty when argv has
+ * none or commander would reject it.
  */
-export function firstOperandFromArgv(
+export function operandsFromArgv(
   program: Command,
   argv: readonly string[]
-): string | undefined {
+): string[] {
   const scan = new Command()
     .allowUnknownOption()
     .allowExcessArguments()
@@ -129,9 +129,9 @@ export function firstOperandFromArgv(
     .configureOutput({ writeOut: () => {}, writeErr: () => {}, outputError: () => {} });
   for (const o of program.options) scan.addOption(new Option(o.flags));
   try {
-    return scan.parseOptions(argv.slice(2)).operands[0];
+    return scan.parseOptions(argv.slice(2)).operands;
   } catch {
-    return undefined;
+    return [];
   }
 }
 

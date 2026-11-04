@@ -7,8 +7,8 @@ import { handleFirstRunConsent } from './lib/telemetry-consent';
 import { createXrayUpgradeChecker } from './upgrade-checker';
 import { CodedError, UsageError, EXIT_USAGE, EXIT_GENERIC } from './lib/error/types';
 import { Logger } from './lib/logger';
-import { reportSkippedProjectCode } from './lib/strategy/loader';
-import { firstOperandFromArgv, resolveLogLevel, rootConfigFromArgv } from './commands/root-options';
+import { StrategyLoader, reportSkippedProjectCode } from './lib/strategy/loader';
+import { operandsFromArgv, resolveLogLevel, rootConfigFromArgv } from './commands/root-options';
 import { isCompletionRequest } from './commands/completion';
 import { applyMcpChdir, parseMcpRequest } from './commands/mcp';
 
@@ -60,15 +60,21 @@ function rejectUnknownSubcommand(program: any, argv: string[]): void {
 /**
  * An unknown command word may name a command of a strategy that was not
  * loaded (project code is opt-in): say so rather than let it fall through
- * to explore as a query.
+ * to explore as a query. A bare query word is only worth the notice when
+ * it matches a skipped strategy's file or package name, or when more
+ * words follow (`xray name command`); the strategy's own name lives in
+ * code that is not run, so the file and package names are all there is.
  */
 function noteSkippedForUnknownCommand(program: any, argv: string[]): void {
-  const word = firstOperandFromArgv(program, argv);
+  const [word, ...rest] = operandsFromArgv(program, argv);
   if (!word || !/^[a-zA-Z][a-zA-Z0-9_-]{0,29}$/.test(word)) return;
   const known = (program.commands as any[]).some(
     (cmd) => cmd.name() === word || (cmd.aliases?.() ?? []).includes(word)
   );
-  if (!known) reportSkippedProjectCode('warn');
+  if (known) return;
+  if (rest.length > 0 || new StrategyLoader().skippedProjectCodeMayBeNamed(word)) {
+    reportSkippedProjectCode('warn');
+  }
 }
 
 /** Levenshtein-1 nearest neighbour for did-you-mean. Cheap and good enough. */
