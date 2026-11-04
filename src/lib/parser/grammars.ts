@@ -11,6 +11,7 @@
  * This module must stay import-side-effect free: it never loads a grammar
  * (or `tree-sitter`) at import time.
  */
+import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { createRequire } from 'module';
@@ -182,6 +183,20 @@ function blockedLanguages(): Set<string> {
 }
 
 /**
+ * Require from the managed dir. Never issues a bare-specifier lookup for a
+ * package that is not on disk: Node (>= 24) remembers a failed lookup under an
+ * existing node_modules, so a grammar installed later in the same process
+ * (`xray lang add` probes, installs, probes again) would stay unresolvable.
+ */
+function loadManaged(spec: string): any {
+  const dir = managedDir();
+  if (!fs.existsSync(path.join(dir, 'node_modules', ...spec.split('/').slice(0, spec.startsWith('@') ? 2 : 1)))) {
+    throw Object.assign(new Error(`Cannot find module '${spec}'`), { code: 'MODULE_NOT_FOUND' });
+  }
+  return createRequire(path.join(dir, 'noop.js'))(spec);
+}
+
+/**
  * Resolution roots. SECURITY: the scanned repo's node_modules is an untrusted
  * search path (loading a grammar executes native/JS code), so it is consulted
  * only when the user opts in via the XRAY_ALLOW_PROJECT_GRAMMARS env var -
@@ -191,7 +206,7 @@ function blockedLanguages(): Set<string> {
 function candidates(mod: string): Array<{ source: GrammarSource; load: (spec?: string) => any }> {
   const list: Array<{ source: GrammarSource; load: (spec?: string) => any }> = [
     { source: 'xray', load: (spec = mod) => require(spec) },
-    { source: 'managed', load: (spec = mod) => createRequire(path.join(managedDir(), 'noop.js'))(spec) },
+    { source: 'managed', load: (spec = mod) => loadManaged(spec) },
   ];
   if (process.env.XRAY_ALLOW_PROJECT_GRAMMARS === '1') {
     list.push({
