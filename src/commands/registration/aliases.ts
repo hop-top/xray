@@ -12,7 +12,7 @@ export async function registerAliases(
   options: CodeLoadingOptions = {},
   configPath?: string
 ): Promise<void> {
-  const config = loadConfig(configPath, undefined, options);
+  const config = loadConfig(configPath);
   if (!config || !config.aliases || Object.keys(config.aliases).length === 0) {
     Logger.debug('No aliases configured');
     return;

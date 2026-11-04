@@ -107,9 +107,9 @@ async function withOutputDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 /**
  * Run one tool call; argument errors throw (kit renders them as tool
  * errors). The child's cwd is always the server root: project
- * strategies, `node_modules` strategies, `.xrayrc.js` and the strategy
- * cache load from the trusted root only; with a server config, it is
- * passed as `--config`, so no config walk-up from `--path` happens. The per-call `root` reaches the
+ * strategies, `node_modules` strategies and the strategy cache load from
+ * the trusted root only; with a server config, it is passed as
+ * `--config`, so no config walk-up from `--path` happens. The per-call `root` reaches the
  * command as its project path (`--path`), never as cwd.
  */
 async function runTool(

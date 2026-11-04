@@ -191,15 +191,18 @@ describe('TelemetryConsent', () => {
       expect(hasConsentDecision()).toBe(true);
     });
 
-    it('skips a non-writable (JS) global config instead of shadowing it', () => {
+    it('ignores a JS global config: neither run nor rewritten, the decision goes to config.json', () => {
       const js = path.join(xdgHome, 'xray', 'config.js');
+      const marker = path.join(tmpDir, 'RAN');
+      const code = `require('fs').writeFileSync(${JSON.stringify(marker)}, 'x');module.exports = {};\n`;
       fs.mkdirSync(path.dirname(js), { recursive: true });
-      fs.writeFileSync(js, 'module.exports = {};\n');
+      fs.writeFileSync(js, code);
 
       saveConsentDecision(true);
 
-      expect(fs.existsSync(globalFile())).toBe(false);
-      expect(fs.readFileSync(js, 'utf-8')).toBe('module.exports = {};\n');
+      expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8')).telemetry).toEqual({ enabled: true });
+      expect(fs.readFileSync(js, 'utf-8')).toBe(code);
+      expect(fs.existsSync(marker)).toBe(false);
     });
   });
 

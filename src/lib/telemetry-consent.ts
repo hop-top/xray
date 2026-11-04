@@ -6,7 +6,6 @@ import { Logger } from './logger';
 import {
   findGlobalConfigPath,
   globalConfigDirs,
-  isWritableConfigFile,
   loadConfig,
   loadGlobalConfig,
   saveConfig,
@@ -102,15 +101,11 @@ export async function promptForConsent(): Promise<boolean> {
  * asked once per user rather than once per project. Never writes into the
  * cwd, project config, or the root `--config` file. Updates the existing
  * global config when it is plain JSON, else creates `config.json` in the
- * kit XDG config dir. A JS global config is left alone (not rewritable).
+ * kit XDG config dir.
  */
 export function saveConsentDecision(enabled: boolean): void {
   try {
     const existing = findGlobalConfigPath();
-    if (existing !== null && !isWritableConfigFile(existing)) {
-      Logger.debug(`Telemetry consent not saved: ${existing} is not a JSON config file`);
-      return;
-    }
     const target = existing ?? path.join(globalConfigDirs()[0], 'config.json');
     const config = (existing !== null ? loadGlobalConfig() : null) ?? ({} as XrayConfig);
     config.telemetry = { enabled };

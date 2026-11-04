@@ -3,7 +3,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { findConfigPath, findGlobalConfigPath, loadConfig } from '../../src/lib/config';
+import { findConfigPath, findGlobalConfigPath, loadConfig, loadGlobalConfig } from '../../src/lib/config';
 
 const mockHomedir = jest.fn();
 jest.mock('os', () => ({
@@ -44,16 +44,34 @@ describe('config precedence (characterization)', () => {
       expect(findConfigPath(proj)).toBeNull();
     });
 
-    it('filename order: .xrayrc > .xrayrc.json > .xrayrc.js > xray.config.js > xray.config.json > package.json', () => {
+    it('filename order: .xrayrc > .xrayrc.json > xray.config.json > package.json', () => {
       const proj = path.join(home, 'p');
       write(path.join(proj, 'package.json'), { xray: { limit: 1 } });
       expect(findConfigPath(proj)).toBe(path.join(proj, 'package.json'));
-      const order = ['xray.config.json', 'xray.config.js', '.xrayrc.js', '.xrayrc.json', '.xrayrc'];
+      const order = ['xray.config.json', '.xrayrc.json', '.xrayrc'];
       for (const name of order) {
         write(path.join(proj, name), '{}');
         expect(findConfigPath(proj)).toBe(path.join(proj, name));
       }
     });
+
+    it.each(['.xrayrc.js', 'xray.config.js', '.xrayrc.cjs', 'xray.config.cjs', '.xrayrc.mjs', 'xray.config.mjs'])(
+      'does not discover %s, nor run it',
+      (name) => {
+        const proj = path.join(home, 'p');
+        const marker = path.join(home, 'RAN');
+        write(path.join(proj, name), `require('fs').writeFileSync(${JSON.stringify(marker)}, 'x');module.exports = { limit: 9 };`);
+        expect(findConfigPath(proj)).toBeNull();
+        process.chdir(proj);
+        expect(loadConfig()).toBeNull();
+        expect(fs.existsSync(marker)).toBe(false);
+        // A data config beside it is the one found.
+        write(path.join(proj, 'xray.config.json'), { limit: 3 });
+        expect(findConfigPath(proj)).toBe(path.join(proj, 'xray.config.json'));
+        expect(loadConfig()?.limit).toBe(3);
+        expect(fs.existsSync(marker)).toBe(false);
+      }
+    );
 
     it('ignores package.json without an xray key', () => {
       const proj = path.join(home, 'p');
@@ -63,14 +81,17 @@ describe('config precedence (characterization)', () => {
   });
 
   describe('global discovery', () => {
-    it('order: <xdg>/xray/config.json > config.js > ~/.xrayrc.json > ~/.xrayrc', () => {
+    it('order: <xdg>/xray/config.json > ~/.xrayrc.json > ~/.xrayrc; config.js is not a global config', () => {
       const xdg = path.join(home, '.config', 'xray');
       write(path.join(home, '.xrayrc'), '{}');
       expect(findGlobalConfigPath()).toBe(path.join(home, '.xrayrc'));
       write(path.join(home, '.xrayrc.json'), '{}');
       expect(findGlobalConfigPath()).toBe(path.join(home, '.xrayrc.json'));
-      write(path.join(xdg, 'config.js'), 'module.exports = {};');
-      expect(findGlobalConfigPath()).toBe(path.join(xdg, 'config.js'));
+      const marker = path.join(home, 'RAN');
+      write(path.join(xdg, 'config.js'), `require('fs').writeFileSync(${JSON.stringify(marker)}, 'x');module.exports = {};`);
+      expect(findGlobalConfigPath()).toBe(path.join(home, '.xrayrc.json'));
+      expect(loadGlobalConfig()).toEqual({});
+      expect(fs.existsSync(marker)).toBe(false);
       write(path.join(xdg, 'config.json'), '{}');
       expect(findGlobalConfigPath()).toBe(path.join(xdg, 'config.json'));
     });
@@ -107,15 +128,15 @@ describe('config precedence (characterization)', () => {
       expect(loadConfig()?.limit).toBe(77);
     });
 
-    it('loads .js configs via require (module.exports and default export)', () => {
-      const proj = path.join(home, 'p');
-      write(path.join(proj, '.xrayrc.js'), 'module.exports = { limit: 11 };');
-      process.chdir(proj);
-      expect(loadConfig()?.limit).toBe(11);
-      const proj2 = path.join(home, 'p2');
-      write(path.join(proj2, '.xrayrc.js'), 'module.exports = { default: { limit: 12 } };');
-      process.chdir(proj2);
-      expect(loadConfig()?.limit).toBe(12);
+    it.each(['.js', '.cjs', '.mjs'])('an explicit %s config is refused, not run', (ext) => {
+      const marker = path.join(home, 'RAN');
+      const file = write(path.join(home, `c${ext}`), `require('fs').writeFileSync(${JSON.stringify(marker)}, 'x');module.exports = { limit: 11 };`);
+      expect(() => loadConfig(file)).toThrow(/JavaScript.*\.xrayrc\.json/);
+      expect(fs.existsSync(marker)).toBe(false);
+    });
+
+    it('an explicit JS config is refused even when the file is missing', () => {
+      expect(() => loadConfig(path.join(home, 'nope.js'))).toThrow(/\.xrayrc\.json/);
     });
 
     it('package.json source yields the whole manifest, not just the xray key', () => {

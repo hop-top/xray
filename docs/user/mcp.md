@@ -127,17 +127,17 @@ The server never exits on a failed call.
 ## Trust model
 
 Running xray in a directory trusts that directory: project strategies
-(`.xray/strategies`, strategies in `node_modules`), the strategy cache
-and a JS project config (`.xrayrc.js`) are code, and xray loads them.
+(`.xray/strategies`, strategies in `node_modules`) and the strategy cache
+are code, and xray loads them. Config files are JSON data and never run.
 `xray mcp` keeps that rule and fixes the trusted directory at startup:
 
 - **Server root** = the directory the server starts in (working
   directory, or `-C <dir>`). You choose it when you configure the client.
 - **Server config** = the config file `xray` run in the server root
   would use, resolved once at startup: `xray mcp --config <file>` when
-  given (a missing file fails startup), else the first `.xrayrc`,
-  `.xrayrc.json`, `.xrayrc.js`, `xray.config.js`, `xray.config.json` or
-  `package.json` with an `xray` key found walking up from the server root.
+  given (a missing or JavaScript file fails startup), else the first `.xrayrc`,
+  `.xrayrc.json`, `xray.config.json` or `package.json` with an `xray` key
+  found walking up from the server root.
 - Every call's child process runs with the server root as its working
   directory, so project strategies, aliases and config load from the
   server root only, exactly as for `xray` run there. With a server
@@ -150,7 +150,7 @@ and a JS project config (`.xrayrc.js`) are code, and xray loads them.
   graph, explore, impact, imports, strategy detect, `<strategy>_<noun>`), and `query`
   builds its graph over it. `strategy_list` has no project scope and
   takes no `root`. Relative path arguments resolve against `root`.
-- Sub-roots with their own config (`.xrayrc*`, `xray.config.*`, a
+- Sub-roots with their own config (`.xrayrc`, `.xrayrc.json`, `xray.config.json`, a
   `package.json` `xray` key), such as monorepo packages:
 
   | Server config | Sub-root config | map / scan / graph / query / impact on it |
@@ -162,7 +162,7 @@ and a JS project config (`.xrayrc.js`) are code, and xray loads them.
 
   Without `--config`, map, scan, graph and impact look for config by walking up
   from their `--path`, so with no server config to pin, a sub-root's
-  own file (and `.xrayrc.js` is code) would load; that case is refused.
+  own file would load in place of the server's; that case is refused.
   Add a config file to the server root, or start the server with
   `--config <file>`, to scope such sub-roots.
 - Every path-valued argument is held inside the server root: `path`,

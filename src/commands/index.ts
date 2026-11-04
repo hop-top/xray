@@ -13,7 +13,7 @@ import type { CodeLoadingOptions } from '../lib/strategy/loader';
 
 /**
  * Register all commands (static core + dynamic strategies + aliases).
- * `projectCode: false` keeps strategy and config code in the working
+ * `projectCode: false` keeps strategy code in the working
  * directory from loading (shell completion). `configPath` (root
  * `--config`) is the config aliases come from instead of discovery.
  */

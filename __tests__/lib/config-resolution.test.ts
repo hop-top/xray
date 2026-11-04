@@ -364,7 +364,7 @@ describe('Config Resolution', () => {
   });
 });
 
-describe('loadConfig projectCode: false', () => {
+describe('loadConfig never runs project code', () => {
   let home: string;
   let project: string;
   let marker: string;
@@ -402,7 +402,7 @@ describe('loadConfig projectCode: false', () => {
       JSON.stringify({ aliases: { g: 'react hooks' } })
     );
 
-    const config = loadConfig(undefined, project, { projectCode: false });
+    const config = loadConfig(undefined, project);
     expect(fs.existsSync(marker)).toBe(false);
     expect(config?.aliases).toEqual({ g: 'react hooks' });
   });
@@ -412,13 +412,13 @@ describe('loadConfig projectCode: false', () => {
       path.join(project, '.xrayrc.json'),
       JSON.stringify({ aliases: { rc: 'react components' } })
     );
-    const config = loadConfig(undefined, project, { projectCode: false });
+    const config = loadConfig(undefined, project);
     expect(config?.aliases).toEqual({ rc: 'react components' });
   });
 
-  it('executes project JS config by default (explicit runs)', () => {
+  it('refuses an explicit JS config without running it', () => {
     writeJsConfig('.xrayrc.js');
-    loadConfig(undefined, project);
-    expect(fs.existsSync(marker)).toBe(true);
+    expect(() => loadConfig(path.join(project, '.xrayrc.js'))).toThrow(/JavaScript.*\.xrayrc\.json/);
+    expect(fs.existsSync(marker)).toBe(false);
   });
 });

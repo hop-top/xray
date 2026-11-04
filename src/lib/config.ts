@@ -19,10 +19,37 @@ let configPathLogged = false;
 const CONFIG_FILENAMES = [
   '.xrayrc',
   '.xrayrc.json',
-  '.xrayrc.js',
-  'xray.config.js',
   'xray.config.json',
 ];
+
+/** Config that is code, not data: never discovered, never loaded. */
+const CODE_CONFIG_EXTENSIONS = new Set(['.js', '.cjs', '.mjs']);
+
+/** Legacy code configs a directory walk skips; noted once each at debug level. */
+const IGNORED_CODE_CONFIGS = ['.xrayrc.js', 'xray.config.js'];
+const notedCodeConfigs = new Set<string>();
+
+/**
+ * Reject a config path that would be executed rather than parsed. Config
+ * is JSON only; the file is not opened.
+ */
+export function assertDataConfig(filepath: string): void {
+  if (CODE_CONFIG_EXTENSIONS.has(path.extname(filepath).toLowerCase())) {
+    throw new UsageError(
+      `config file ${filepath} is JavaScript, which xray does not load; use .xrayrc.json`
+    );
+  }
+}
+
+function noteIgnoredCodeConfigs(dir: string): void {
+  for (const filename of IGNORED_CODE_CONFIGS) {
+    const filepath = path.join(dir, filename);
+    if (!notedCodeConfigs.has(filepath) && fs.existsSync(filepath)) {
+      notedCodeConfigs.add(filepath);
+      Logger.debug(`Ignoring ${filepath}: JavaScript config is not loaded; use .xrayrc.json`);
+    }
+  }
+}
 
 /**
  * Find config file by walking up the directory tree
@@ -50,6 +77,7 @@ export function findConfigPath(startDir?: string): string | null {
           return filepath;
         }
       }
+      noteIgnoredCodeConfigs(currentDir);
 
       // Check package.json
       const packageJsonPath = path.join(currentDir, 'package.json');
@@ -86,7 +114,7 @@ export function findConfigPath(startDir?: string): string | null {
 }
 
 /**
- * Directories searched for a global `config.json` / `config.js`, highest
+ * Directories searched for a global `config.json`, highest
  * priority first: the kit XDG config dir, then the legacy
  * `$XDG_CONFIG_HOME|~/.config/xray` location (differs from the kit dir on
  * macOS/Windows when XDG_CONFIG_HOME is unset), so pre-existing user config
@@ -103,7 +131,7 @@ export function globalConfigDirs(): string[] {
 
 /**
  * Find global config file.
- * Order: <kit config dir>/config.{json,js}, legacy ~/.config/xray/config.{json,js},
+ * Order: <kit config dir>/config.json, legacy ~/.config/xray/config.json,
  * then ~/.xrayrc.json, ~/.xrayrc.
  * Returns the absolute path to the global config, or null if not found
  */
@@ -111,11 +139,9 @@ export function findGlobalConfigPath(): string | null {
   const homeDir = os.homedir();
 
   for (const dir of globalConfigDirs()) {
-    for (const filename of ['config.json', 'config.js']) {
-      const filepath = path.join(dir, filename);
-      if (fs.existsSync(filepath)) {
-        return filepath;
-      }
+    const filepath = path.join(dir, 'config.json');
+    if (fs.existsSync(filepath)) {
+      return filepath;
     }
   }
 
@@ -287,14 +313,14 @@ export function resolveConfigPaths(config: XrayConfig, filepath: string): XrayCo
 export function loadConfig(
   configPath?: string,
   searchPath?: string,
-  options: { projectCode?: boolean; resolvePaths?: boolean } = {}
+  options: { resolvePaths?: boolean } = {}
 ): XrayConfig | null {
-  const projectCode = options.projectCode ?? true;
   const load = (file: string): XrayConfig =>
     options.resolvePaths ? resolveConfigPaths(loadConfigFile(file), file) : loadConfigFile(file);
 
   // If explicit path provided, use it (no merging)
   if (configPath) {
+    assertDataConfig(configPath);
     const absPath = path.isAbsolute(configPath) ? configPath : path.resolve(process.cwd(), configPath);
     if (fs.existsSync(absPath)) {
       return load(absPath);
@@ -309,12 +335,7 @@ export function loadConfig(
   const globalConfig = globalConfigPath ? load(globalConfigPath) : null;
 
   // Find project config by walking up directory tree
-  let projectConfigPath = findConfigPath(searchPath);
-  if (projectConfigPath && !projectCode && path.extname(projectConfigPath) === '.js') {
-    // JS config is code; without project code only data configs load.
-    Logger.debug(`Skipping JS project config: ${projectConfigPath}`);
-    projectConfigPath = null;
-  }
+  const projectConfigPath = findConfigPath(searchPath);
   const projectConfig = projectConfigPath ? load(projectConfigPath) : null;
 
   if (projectConfigPath && !searchPath && !configPathLogged) {
@@ -332,24 +353,16 @@ export function loadConfig(
  * Load and parse a configuration file
  */
 function loadConfigFile(filepath: string): XrayConfig {
-  const ext = path.extname(filepath);
+  assertDataConfig(filepath);
 
   try {
-    if (ext === '.js') {
-      // For .js files, use dynamic import (CommonJS)
-      delete require.cache[require.resolve(filepath)];
-      const config = require(filepath);
-      return config.default || config;
-    } else {
-      // For .json files and others, parse as JSON
-      let content: string;
-      try {
-        content = fs.readFileSync(filepath, 'utf-8');
-      } catch (err: any) {
-        throw new FileReadError(filepath, err);
-      }
-      return JSON.parse(content) as XrayConfig;
+    let content: string;
+    try {
+      content = fs.readFileSync(filepath, 'utf-8');
+    } catch (err: any) {
+      throw new FileReadError(filepath, err);
     }
+    return JSON.parse(content) as XrayConfig;
   } catch (error) {
     Logger.error(`Failed to load config file: ${filepath}`, error);
     throw error;
@@ -403,7 +416,7 @@ export function mergeScopeWithBase(baseConfig: XrayConfig, scopeConfig: XrayScop
 
 /**
  * Whether `filepath` holds plain JSON config that `saveConfig` can
- * rewrite: not JS (code) and not package.json (a manifest).
+ * rewrite: not package.json (a manifest) and not a non-JSON file.
  */
 export function isWritableConfigFile(filepath: string): boolean {
   const base = path.basename(filepath);
@@ -442,14 +455,14 @@ function isDirectory(p: string): boolean {
 /**
  * Config file that supplied the scan roots: root `--config`, else the
  * discovered project config when it sets `paths`/`scopes` (project
- * overrides global), else the global config. JS/unreadable project
+ * overrides global), else the global config. An unreadable project
  * config is assumed to be the source.
  */
 function findPathsConfigFile(configPath?: string): string | null {
   if (configPath) return path.resolve(configPath);
   const project = findConfigPath();
   const global = findGlobalConfigPath();
-  if (!project || !global || path.extname(project) === '.js') return project ?? global;
+  if (!project || !global) return project ?? global;
   try {
     // Same parse as loadConfigFile.
     const cfg = JSON.parse(fs.readFileSync(project, 'utf-8'));

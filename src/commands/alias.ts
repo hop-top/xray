@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { isWritableConfigFile, loadConfig, saveConfig } from '../lib/config';
+import { assertDataConfig, isWritableConfigFile, loadConfig, saveConfig } from '../lib/config';
 import { isAliasTarget, kitAlias, reservedAliasNames, rootCommand, usableAliases } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
 import { NotFoundError, UsageError } from '../lib/error/types';
@@ -25,10 +25,11 @@ const rootConfig = (cmd: Command): string | undefined => cmd.opts().config;
 
 /**
  * Config file alias changes write to: the root `--config` file, which
- * must be JSON (checked before it loads), else `./.xrayrc.json`.
+ * must be a JSON config (checked before it loads), else `./.xrayrc.json`.
  */
 function aliasWriteTarget(cmd: Command): string | undefined {
   const configPath = rootConfig(cmd);
+  if (configPath !== undefined) assertDataConfig(configPath);
   if (configPath !== undefined && !isWritableConfigFile(configPath)) {
     throw new UsageError(`--config ${configPath} is not a JSON config file; alias changes need one`);
   }

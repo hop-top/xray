@@ -77,10 +77,8 @@ xray searches for configuration files in this order:
 
 1. `.xrayrc` (JSON)
 2. `.xrayrc.json`
-3. `.xrayrc.js` (CommonJS module)
-4. `xray.config.json`
-5. `xray.config.js` (CommonJS module)
-6. `package.json` (under `"xray"` field)
+3. `xray.config.json`
+4. `package.json` (under `"xray"` field)
 
 You can also specify `--config <path>` to use a custom location.
 

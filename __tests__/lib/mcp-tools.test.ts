@@ -338,7 +338,7 @@ describe('root containment', () => {
   it('without a server config, refuses sub-roots with their own config; with one, accepts all', () => {
     fs.mkdirSync(path.join(serverRoot, 'plain'), { recursive: true });
     fs.mkdirSync(path.join(serverRoot, 'own'), { recursive: true });
-    fs.writeFileSync(path.join(serverRoot, 'own', '.xrayrc.js'), 'module.exports = {};');
+    fs.writeFileSync(path.join(serverRoot, 'own', '.xrayrc.json'), '{}');
     expect(resolveServerConfig(serverRoot)).toBeNull();
     expect(() => assertConfigPinned(null, path.join(serverRoot, 'plain'))).not.toThrow();
     expect(() => assertConfigPinned(null, path.join(serverRoot, 'own'))).toThrow(/has its own xray config/);
@@ -348,6 +348,13 @@ describe('root containment', () => {
     expect(() => assertConfigPinned(pinned, path.join(serverRoot, 'plain'))).not.toThrow();
     expect(() => assertConfigPinned(pinned, path.join(serverRoot, 'own'))).not.toThrow();
     fs.rmSync(path.join(serverRoot, '.xrayrc.json'));
+  });
+
+  it('refuses a JS server config without running it', () => {
+    const marker = path.join(serverRoot, 'RAN');
+    fs.writeFileSync(path.join(serverRoot, 'cfg.js'), `require('fs').writeFileSync(${JSON.stringify(marker)}, 'x');`);
+    expect(() => resolveServerConfig(serverRoot, 'cfg.js')).toThrow(/JavaScript.*\.xrayrc\.json/);
+    expect(fs.existsSync(marker)).toBe(false);
   });
 
   it('resolves an explicit server config against the server root; missing is a usage error', () => {

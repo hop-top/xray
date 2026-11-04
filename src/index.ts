@@ -123,7 +123,7 @@ export async function main() {
   // Shell completion (`xray __complete ...`, run on every tab): answered
   // from the command tree only. No consent write, telemetry or network,
   // and no code from the working directory: tab in an untrusted checkout
-  // must not run its strategies or JS config.
+  // must not run its strategies.
   if (isCompletionRequest(argv)) {
     const program = await registerCommands({ projectCode: false });
     await program.parseAsync(argv);

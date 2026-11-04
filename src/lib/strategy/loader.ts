@@ -25,7 +25,7 @@ const warnedStrategies = new Set<string>();
  * the working directory does.
  */
 export interface CodeLoadingOptions {
-  /** Load strategies/config code from the working directory. Default true. */
+  /** Load strategies from the working directory. Default true. */
   projectCode?: boolean;
 }
 

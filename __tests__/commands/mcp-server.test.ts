@@ -349,7 +349,8 @@ describe('xray mcp trust boundary', () => {
     fs.mkdirSync(path.join(proj, '.xray', 'strategies'), { recursive: true });
     fs.writeFileSync(path.join(proj, '.xray', 'strategies', 'trusted.js'), strategy('trusted'));
 
-    // Untrusted subtree: strategies, a node_modules strategy package, JS config.
+    // Untrusted subtree: strategies, a node_modules strategy package, a
+    // data config, and a JS config (ignored: never discovered, never run).
     const vendor = path.join(proj, 'vendor');
     fs.mkdirSync(path.join(vendor, '.xray', 'strategies'), { recursive: true });
     fs.writeFileSync(path.join(vendor, '.xray', 'strategies', 'evil.js'), strategy('evil'));
@@ -359,9 +360,17 @@ describe('xray mcp trust boundary', () => {
       name: 'xray-strategy-evilpkg', 'xray-strategy': { name: 'evilpkg', entry: 'index.js' },
     }));
     fs.writeFileSync(path.join(pkg, 'index.js'), strategy('evilpkg'));
+    fs.writeFileSync(path.join(vendor, '.xrayrc.json'), '{}');
     fs.writeFileSync(path.join(vendor, '.xrayrc.js'),
       `require('fs').writeFileSync(${JSON.stringify(markers)} + '/rcjs', '1');\nmodule.exports = {};\n`);
     fs.writeFileSync(path.join(vendor, 'v.ts'), 'export function vendored(): number {\n  return 1;\n}\n');
+
+    // Subtree whose only config is JS: no config to refuse, and it never runs.
+    const jsOnly = path.join(proj, 'jsonly');
+    fs.mkdirSync(jsOnly);
+    fs.writeFileSync(path.join(jsOnly, '.xrayrc.js'),
+      `require('fs').writeFileSync(${JSON.stringify(markers)} + '/rcjs', '1');\nmodule.exports = {};\n`);
+    fs.writeFileSync(path.join(jsOnly, 'j.ts'), 'export function jsonly(): number {\n  return 2;\n}\n');
 
     // Plain subdirectory: no config, no strategies.
     fs.mkdirSync(path.join(proj, 'clean'));
@@ -415,7 +424,7 @@ describe('xray mcp trust boundary', () => {
   }, 60_000);
 
   it.each([[{ root: 'vendor' }], [{ path: ['vendor'] }]])(
-    'map refuses %j: the subtree has its own config, which is code',
+    'map refuses %j: the subtree has its own config',
     async (args) => {
       const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, ...args });
       expect(r.result.isError).toBe(true);
@@ -423,6 +432,17 @@ describe('xray mcp trust boundary', () => {
       expect(marks()).toEqual([]);
     },
     60_000
+  );
+
+  it.each([[{ root: 'jsonly' }], [{ path: ['jsonly'] }]])(
+    'map %j: a sub-root whose only config is .xrayrc.js is not refused and never runs it',
+    async (args) => {
+      const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, ...args });
+      expect(r.result.isError).toBe(false);
+      expect(text(r)).toContain('jsonly');
+      expect(marks()).toEqual(['trusted']);
+    },
+    120_000
   );
 
   it('maps a plain sub-root', async () => {
@@ -496,10 +516,11 @@ describe('xray mcp with a server root config', () => {
     markers = path.join(sandbox, 'pinned-markers');
     fs.mkdirSync(markers);
 
-    // Discovered: server root's own .xrayrc.js (trusted code) marks each load.
+    // Discovered: the server root's own .xrayrc.json. `json: true` makes
+    // map output JSON, which shows this config (not a sub-root's) applied.
     pinned = path.join(sandbox, 'pinned');
     fs.cpSync(FIXTURE, pinned, { recursive: true });
-    fs.writeFileSync(path.join(pinned, '.xrayrc.js'), markerJs('rootcfg'));
+    fs.writeFileSync(path.join(pinned, '.xrayrc.json'), JSON.stringify({ json: true }));
     subProjects(pinned);
 
     // Explicit: no discoverable root config; `xray mcp --config <file>`.
@@ -527,8 +548,8 @@ describe('xray mcp with a server root config', () => {
       const r = await client.call(tool, { root: 'pkg', 'skip-detect': true, 'no-chunk': true });
       expect(text(r)).not.toMatch(/cobol/);
       expect(r.result.isError).toBe(false);
-      expect(marks()).toContain('rootcfg');
       if (tool === 'map') {
+        expect(() => JSON.parse(text(r))).not.toThrow();
         expect(text(r)).toContain('epsilon');
         expect(text(r)).not.toContain('alpha');
       }
@@ -537,12 +558,12 @@ describe('xray mcp with a server root config', () => {
   );
 
   it.each([[{ root: 'pkgjs' }], [{ path: ['pkgjs'] }]])(
-    'map %j: a sub .xrayrc.js never runs',
+    'map %j: a sub .xrayrc.js never runs and its languages are not applied',
     async (args) => {
       const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, ...args });
       expect(r.result.isError).toBe(false);
       expect(text(r)).toContain('zeta');
-      expect(marks()).toEqual(['rootcfg']);
+      expect(marks()).toEqual([]);
     },
     120_000
   );

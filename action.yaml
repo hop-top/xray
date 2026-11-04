@@ -7,7 +7,7 @@ branding:
 
 inputs:
   config-path:
-    description: 'Path to xray configuration file (default: auto-detect .xrayrc, .xrayrc.json, xray.config.json, xray.config.js)'
+    description: 'Path to xray configuration file (default: auto-detect .xrayrc, .xrayrc.json, xray.config.json)'
     required: false
     default: ''
   xray-version:
@@ -89,7 +89,7 @@ runs:
             printf '⚠️  Config file not found: %q\n' "$CONFIG_PATH"
             exit 1
           fi
-        elif [ -f ".xrayrc" ] || [ -f ".xrayrc.json" ] || [ -f "xray.config.json" ] || [ -f "xray.config.js" ]; then
+        elif [ -f ".xrayrc" ] || [ -f ".xrayrc.json" ] || [ -f "xray.config.json" ]; then
           echo "config_exists=true" >> "$GITHUB_OUTPUT"
           echo "config_path=" >> "$GITHUB_OUTPUT"
           echo "✓ Found xray configuration file"

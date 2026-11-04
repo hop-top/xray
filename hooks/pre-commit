@@ -13,7 +13,7 @@
 
 # Check if xray config exists
 CONFIG_EXISTS=false
-if [ -f ".xrayrc" ] || [ -f ".xrayrc.json" ] || [ -f "xray.config.json" ] || [ -f "xray.config.js" ]; then
+if [ -f ".xrayrc" ] || [ -f ".xrayrc.json" ] || [ -f "xray.config.json" ]; then
   CONFIG_EXISTS=true
 fi
 

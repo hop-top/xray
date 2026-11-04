@@ -154,11 +154,14 @@ describe('root --config in other commands', () => {
     expect(JSON.parse(fs.readFileSync(path.join(root, '.xrayrc.json'), 'utf-8')).aliases.added).toBeUndefined();
   });
 
-  it('alias set refuses a JS --config (not writable as data)', () => {
-    const js = write(path.join(tmp, 'cfg', 'x.js'), 'module.exports = {};\n');
+  it('alias set refuses a JS --config: not run, not rewritten', () => {
+    const code = `require('fs').writeFileSync(${JSON.stringify(marker)}, 'ran');\nmodule.exports = {};\n`;
+    const js = write(path.join(tmp, 'cfg', 'x.js'), code);
     const r = run(['--config', js, 'alias', 'set', 'added', 'markdown refs']);
     expect(r.status).toBe(2);
-    expect(fs.readFileSync(js, 'utf-8')).toBe('module.exports = {};\n');
+    expect(r.stderr).toContain('.xrayrc.json');
+    expect(fs.readFileSync(js, 'utf-8')).toBe(code);
+    expect(fs.existsSync(marker)).toBe(false);
   });
 
   it('telemetry consent never writes into --config or cwd (non-interactive: nothing persisted)', () => {
@@ -202,42 +205,53 @@ describe('rootConfigFromArgv', () => {
 });
 
 describe('root --config scan agrees with commander', () => {
-  let evil: string;
+  // Data configs that differ observably: a decoy that registers a
+  // `decoyalias` command, against the discovered root config's `discovered`.
+  // The scan must pick the same config commander does, so the right
+  // alias set shows in `--help` (aliases register from the selected config).
+  let decoy: string;
   beforeEach(() => {
-    evil = path.join(tmp, 'evil.js');
-    write(evil, `require('fs').writeFileSync(${JSON.stringify(marker)}, 'ran');\nmodule.exports = {};\n`);
+    decoy = write(path.join(tmp, 'decoy.json'), { aliases: { decoyalias: 'markdown toc' } });
   });
 
   // commander gives these tokens to the preceding option as its value,
-  // so no config is selected and the JS file must not run.
+  // so no config is selected: discovery applies, the decoy does not.
   it('--log-level takes the next token as its value', () => {
-    const r = run(['--log-level', `--config=${evil}`, 'paths']);
-    expect(fs.existsSync(marker)).toBe(false);
-    expect(r.status).not.toBe(0);
+    const r = run(['--log-level', `--config=${decoy}`, '--help']);
+    expect(r.stdout).toContain('discovered');
+    expect(r.stdout).not.toContain('decoyalias');
+    const bad = run(['--log-level', `--config=${decoy}`, 'paths']);
+    expect(bad.status).not.toBe(0);
+    expect(bad.stdout + bad.stderr).not.toContain('decoyalias');
   });
 
   it('--config takes the next token as its value', () => {
-    run(['--config', `--config=${evil}`, 'paths']);
-    expect(fs.existsSync(marker)).toBe(false);
+    const r = run(['--config', `--config=${decoy}`, '--help']);
+    // The value is a (missing) file named "--config=<decoy>": nothing loads.
+    expect(r.stderr).toContain('Config file not found');
+    expect(r.stdout).not.toContain('decoyalias');
+    expect(r.stdout).not.toContain('discovered');
   });
 
   it('-C takes the next token as its value', () => {
-    const r = run(['-C', `--config=${evil}`, 'paths']);
-    expect(fs.existsSync(marker)).toBe(false);
+    const r = run(['-C', `--config=${decoy}`, 'paths']);
     expect(r.status).not.toBe(0);
+    expect(r.stdout + r.stderr).not.toContain('decoyalias');
   });
 
-  it('--config=<js> still runs the file when it is the real root option', () => {
-    run(['--config', evil, 'paths']);
-    expect(fs.existsSync(marker)).toBe(true);
-    fs.rmSync(marker);
-    run([`--config=${evil}`, 'paths']);
-    expect(fs.existsSync(marker)).toBe(true);
+  it('--config=<file> is read when it is the real root option', () => {
+    for (const args of [['--config', decoy], [`--config=${decoy}`]]) {
+      const r = run([...args, '--help']);
+      expect(r.status).toBe(0);
+      expect(r.stdout).toContain('decoyalias');
+      expect(r.stdout).not.toContain('discovered');
+    }
   });
 
   it('nothing after -- is read as a root option', () => {
-    run(['explore', '--', `--config=${evil}`]);
-    expect(fs.existsSync(marker)).toBe(false);
+    const r = run(['paths', '--format', 'json', '--', `--config=${decoy}`]);
+    expect(r.status).toBe(0);
+    expect(JSON.parse(r.stdout).projectConfig).toBe(path.join(root, '.xrayrc.json'));
   });
 
   describe('rootConfigFromArgv', () => {
@@ -248,9 +262,9 @@ describe('root --config scan agrees with commander', () => {
     const argv = (...a: string[]) => ['node', 'xray', ...a];
 
     it('a value-taking root option consumes a flag-shaped value', () => {
-      expect(rootConfigFromArgv(program, argv('--log-level', '--config=x.js', 'map'), '/w')).toBeUndefined();
-      expect(rootConfigFromArgv(program, argv('--config', '--config=x.js', 'map'), '/w')).toBe('/w/--config=x.js');
-      expect(rootConfigFromArgv(program, argv('-C', '--config=x.js', 'map'), '/w')).toBeUndefined();
+      expect(rootConfigFromArgv(program, argv('--log-level', '--config=x.json', 'map'), '/w')).toBeUndefined();
+      expect(rootConfigFromArgv(program, argv('--config', '--config=x.json', 'map'), '/w')).toBe('/w/--config=x.json');
+      expect(rootConfigFromArgv(program, argv('-C', '--config=x.json', 'map'), '/w')).toBeUndefined();
       expect(rootConfigFromArgv(program, argv('--config', 'a.json', '-C', '--chdir=/p'), '/w')).toBe('/w/--chdir=/p/a.json');
     });
 

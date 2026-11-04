@@ -20,7 +20,7 @@ import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { findConfigPath } from '../config';
+import { assertDataConfig, findConfigPath } from '../config';
 import { UsageError } from '../error/types';
 import { ToolArgumentError } from './tools';
 
@@ -98,6 +98,7 @@ export function resolveCallRoot(serverRoot: string, root: unknown): string {
  */
 export function resolveServerConfig(serverRoot: string, explicit?: string): string | null {
   if (explicit !== undefined && explicit !== '') {
+    assertDataConfig(explicit);
     const abs = path.resolve(serverRoot, explicit);
     if (!fs.existsSync(abs)) throw new UsageError(`--config: file not found: ${explicit}`);
     return fs.realpathSync(abs);
@@ -115,8 +116,8 @@ export function pinnedConfigArgs(serverRoot: string, serverConfig: string | null
  * Guard for map, scan and graph when the server root has no config to
  * pin. They look for config by walking up from their `--path`, so a
  * directory inside the server root with its own `.xrayrc*` (or a
- * package.json `xray` key) would load that file, and `.xrayrc.js` is
- * code. With a server config, children run with `--config` and the
+ * package.json `xray` key) would load that file in place of the server's
+ * config (its `paths`, `languages`, aliases). With a server config, children run with `--config` and the
  * sub-root's config never loads, so any sub-root is accepted.
  */
 export function assertConfigPinned(serverConfig: string | null, dir: string): void {

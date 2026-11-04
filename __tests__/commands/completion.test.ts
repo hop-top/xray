@@ -256,8 +256,9 @@ describe('completion: xray __complete', () => {
 /**
  * Tab runs `xray __complete` in whatever directory the shell is in, e.g. a
  * freshly cloned repo. Nothing from that directory may execute: project
- * strategies (`.xray/strategies`, `node_modules/xray-strategy-*`) and JS
- * config (`.xrayrc.js`, `xray.config.js`) each write a marker when loaded.
+ * strategies (`.xray/strategies`, `node_modules/xray-strategy-*`) write a
+ * marker when loaded; JS config (`.xrayrc.js`, `xray.config.js`) is never
+ * loaded at all, by completion or by any other run.
  */
 describe('completion: never executes project code', () => {
   let marks: string;
@@ -330,12 +331,12 @@ describe('completion: never executes project code', () => {
     expect(values(xray(['__complete', 'strategy', 'info', 're'], cwd).stdout)).toEqual(['react', 'rest-api']);
   });
 
-  it('explicit runs still load project strategies (intended)', () => {
+  it('explicit runs still load project strategies (intended), but never JS config', () => {
     const cwd = untrustedProject('.xrayrc.js');
     xray(['strategy', 'list'], cwd);
-    expect(fs.readdirSync(marks)).toEqual(
-      expect.arrayContaining(['local-strategy', 'npm-strategy', '.xrayrc.js'])
-    );
+    const ran = fs.readdirSync(marks);
+    expect(ran).toEqual(expect.arrayContaining(['local-strategy', 'npm-strategy']));
+    expect(ran).not.toContain('.xrayrc.js');
   });
 });
 

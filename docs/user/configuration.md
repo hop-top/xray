@@ -21,23 +21,25 @@ xray searches for project configuration by **walking up the directory tree** fro
 
 1. `.xrayrc` (JSON)
 2. `.xrayrc.json`
-3. `.xrayrc.js` (CommonJS module)
-4. `xray.config.json`
-5. `xray.config.js` (CommonJS module)
-6. `package.json` (under `"xray"` field)
+3. `xray.config.json`
+4. `package.json` (under `"xray"` field)
 
 The search stops at the first config file found or at the filesystem root.
+
+Config is data: xray only parses JSON and never runs a config file as code.
+A `.xrayrc.js` or `xray.config.js` is not looked for, and `--config` refuses
+a `.js`, `.cjs` or `.mjs` path.
 
 ### Global Configuration
 
 You can create a global configuration that applies to all projects. xray follows the **XDG Base Directory specification** and searches these locations:
 
-1. `<config-dir>/config.json`, then `<config-dir>/config.js`, where
+1. `<config-dir>/config.json`, where
    `<config-dir>` is `$XDG_CONFIG_HOME/xray` when `XDG_CONFIG_HOME` is set,
    else the platform default (`~/.config/xray` on Linux,
    `~/Library/Preferences/xray` on macOS, `%APPDATA%\xray` on Windows).
    `xray paths` prints the resolved `config-dir`.
-2. `~/.config/xray/config.{json,js}` (legacy location; still read on macOS
+2. `~/.config/xray/config.json` (legacy location; still read on macOS
    and Windows so existing configs keep working)
 3. `~/.xrayrc.json` (fallback)
 4. `~/.xrayrc` (fallback)
@@ -134,34 +136,34 @@ command line stays relative to the current directory.
 }
 ```
 
-### JavaScript Example (xray.config.js)
+### Lenses Example (.xrayrc.json)
 
-```javascript
-module.exports = {
-  paths: ['./src'],
-  output: 'docs/codebase-map.txt',
-  limit: 8000,
-  features: {
-    vars: true,
-    incs: true,
+```json
+{
+  "paths": ["./src"],
+  "output": "docs/codebase-map.txt",
+  "limit": 8000,
+  "features": {
+    "vars": true,
+    "incs": true
   },
-  lenses: {
-    quick: {
-      limit: 4000,
-      depth: 3,
+  "lenses": {
+    "quick": {
+      "limit": 4000,
+      "depth": 3
     },
-    detailed: {
-      limit: 16000,
-      features: {
-        vars: true,
-        incs: true,
-        docs: true,
-        cf: true,
-        df: true,
-      },
-    },
-  },
-};
+    "detailed": {
+      "limit": 16000,
+      "features": {
+        "vars": true,
+        "incs": true,
+        "docs": true,
+        "cf": true,
+        "df": true
+      }
+    }
+  }
+}
 ```
 
 ## Configuration Options
