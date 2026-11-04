@@ -17,8 +17,8 @@
  * scoped_type_identifier chains (expressions, patterns, types, impl headers,
  * qualified types, macro and attribute paths), plus a token scan of
  * token_trees (attribute and macro arguments, macro_rules bodies), which the
- * grammar leaves unparsed: an identifier followed by `::` and not preceded
- * by `::` or `.`. Skipped: crate/self/super/Self/`$crate`/metavariable
+ * grammar leaves unparsed: an identifier followed by `::` and another
+ * identifier, not preceded by `::` or `.`. Skipped: crate/self/super/Self/`$crate`/metavariable
  * roots, CamelCase roots (types, enum variants), primitive types (`u32::MAX`)
  * and roots bound in the file by a `use` leaf, `extern crate`, `mod` or a
  * named item. A leading `::` root names a crate whatever the bindings and is

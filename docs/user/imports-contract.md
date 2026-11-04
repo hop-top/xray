@@ -280,8 +280,9 @@ Rust references (`path-root`): the root of each path used in code outside
 `use` / `extern crate` — expressions, patterns, types, impl headers,
 qualified types (`<T as tokio::io::AsyncRead>`), macro and attribute paths
 (`log::info!`, `#[tokio::main]`) — plus a token scan of attribute and macro
-arguments and `macro_rules` bodies (an identifier followed by `::`, not
-preceded by `::` or `.`). Skipped: `crate`/`self`/`super`/`Self`/`$crate`
+arguments and `macro_rules` bodies (an identifier followed by `::` and
+another identifier, not preceded by `::` or `.`, so a turbofish such as
+`a::<T>()` gives no root). Skipped: `crate`/`self`/`super`/`Self`/`$crate`
 and metavariable roots, CamelCase roots (types, enum variants), primitive
 types (`u32::MAX`), and roots bound in the file by a `use` leaf (its alias
 or last segment), `extern crate` (alias or name), `mod` or a named item.

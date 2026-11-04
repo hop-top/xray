@@ -50,6 +50,24 @@ describe('Rust path-root references', () => {
     expect(rs).toEqual([]);
   });
 
+  it('turbofish: a single-segment generic path is not a crate root; crates inside the arguments are', () => {
+    // `a::<T>()` calls fn `a`; `e::<T>::g()` names a type: modules take no generic arguments.
+    const src = [
+      'fn f() {',
+      '  a::<serde::X>();',
+      '  Vec::<tokio::Y>::new();',
+      '  e::<T>::g();',
+      '  b::c::<T>();',
+      '  <i::T as j::U>::f();',
+      '  n::<o::P<q::R>>::s();',
+      '}',
+    ].join('\n');
+    const f = extractImports([{ path: 'a.rs', content: src }], { root: '.', xrayVersion: 'test' }).files[0];
+    expect(f.complete).toBe(true);
+    expect(f.imports.map(r => r.module)).toEqual(['serde', 'tokio', 'b', 'i', 'j', 'o', 'q']);
+    expect(refs('a.rs', 'fn f() { m!(h::<tokio::Z>(), v::w::<T>()); }').map(r => r.module)).toEqual(['tokio', 'v']);
+  });
+
   it('skips roots bound by use, extern crate, mod and local items', () => {
     const rs = refs('a.rs', [
       'use std::collections::hash_map;',
