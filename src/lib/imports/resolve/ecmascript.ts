@@ -17,6 +17,7 @@
  */
 
 import { resolveTsSpecifier, isPathSpecifier } from '../../graph/ts-specifier';
+import { decodeEcmaScriptString } from '../escapes';
 import { specifierPackage } from '../lang/ecmascript';
 import type { ImportRecord } from '../types';
 import { dirOf, join, type FileSet, type Resolution } from './context';
@@ -65,7 +66,10 @@ export function ecmascriptResolver(files: FileSet): (r: ImportRecord, file: stri
   };
 
   return (r, file) => {
-    const spec = r.module;
+    // `module` is as written: decode it (`node:` kept). No `normalized` = a bad escape, nothing to resolve.
+    if (r.normalized === null) return undefined;
+    const spec = decodeEcmaScriptString(r.module);
+    if (spec === undefined) return undefined;
     const builtin = nodeBuiltin(spec);
     if (builtin !== undefined) return { normalized: builtin, package: builtin.split('/')[0], locality: 'stdlib' };
     if (isPathSpecifier(spec)) {

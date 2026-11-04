@@ -37,6 +37,8 @@ export const UNSUPPORTED_CONSTRUCTS = [
   'dynamic-call',
   // All languages, additive: a module string longer than MODULE_MAX, truncated
   'oversized-module',
+  // TS/JS and Go, additive: a module string with an escape the language rejects (`normalized` null)
+  'invalid-escape',
 ] as const;
 export type UnsupportedConstruct = (typeof UNSUPPORTED_CONSTRUCTS)[number];
 

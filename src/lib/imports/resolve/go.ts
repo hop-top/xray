@@ -75,8 +75,9 @@ export function goResolver(files: FileSet, stats?: GoResolveStats): (r: ImportRe
   const goDirs = new Set([...files.paths()].filter(p => p.endsWith('.go')).map(dirOf));
 
   return (r, file) => {
-    const ip = r.module;
-    if (ip === '') return undefined;
+    // `module` is as written; `normalized` the decoded path (null: a bad escape).
+    const ip = r.normalized;
+    if (ip === null || ip === '') return undefined;
     const mods = modulesFor(dirOf(file));
     const mod = mods.modules.find(m => ip === m.modulePath || ip.startsWith(m.modulePath + '/'));
     if (mod) {

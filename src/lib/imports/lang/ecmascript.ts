@@ -11,7 +11,8 @@
  * import / `export * as ns` / import-equals -> `alias`; named -> `names`.
  *
  * Call forms, literal argument only (literalArg), at any depth:
- * `require('m')` (kind `require`), `import('m')` (kind `dynamic`, form
+ * `require('m')` (kind `require`; also `new require('m')`, and the callee
+ * in parentheses or a comma list: `(require)('m')`, `(0, require)('m')`), `import('m')` (kind `dynamic`, form
  * `import()`), and TS type-position `import('m').T` (kind `static`, form
  * `import-type`, typeOnly: erased at compile time, no runtime load). A
  * `require` call counts only while `require` is the unbound global: any
@@ -20,6 +21,11 @@
  * file-wide. Calls that yield no record (non-literal argument, shadowed
  * `require`) are returned as `deferred` by scanEcmaScript for the
  * unsupported pass.
+ *
+ * Module strings: `module` is the text as written, `normalized` the decoded
+ * value (`import '\x41'` -> `A`). A string with an escape the language
+ * rejects keeps `module`, has `normalized: null` and an `invalid-escape`
+ * unsupported record.
  *
  * Unsupported: deferred calls (dynamic-require, dynamic-import, detail =
  * the reason); `createRequire(...)` / `x.createRequire(...)`
@@ -30,7 +36,8 @@
 
 import type Parser from 'tree-sitter';
 import type { ImportName, ImportRecord, UnsupportedRecord } from '../types';
-import { joinChildren, moduleText, name, record, traverse, type ExtractContext } from '../record';
+import { decodeEcmaScriptString } from '../escapes';
+import { joinChildren, MODULE_WINDOW, moduleText, name, record, traverse, type ExtractContext } from '../record';
 import { unsupportedAt } from '../unsupported';
 
 const STATEMENTS = new Set(['import_statement', 'export_statement']);
@@ -66,12 +73,35 @@ export function specifierPackage(spec: string): string | undefined {
   return parts[0];
 }
 
-function moduleFields(spec: string): Pick<ImportRecord, 'module' | 'normalized' | 'package' | 'locality'> {
-  if (spec.startsWith('node:') && spec.length > 5) {
-    const normalized = spec.slice(5);
-    return { module: spec, normalized, package: normalized.split('/')[0], locality: 'stdlib' };
+/**
+ * Fields for a module string: `module` as written (escapes undecoded),
+ * `normalized` the decoded value. A string the language rejects has none:
+ * `normalized` null, no package, and an `invalid-escape` record in `bad`.
+ */
+function moduleFields(
+  written: string,
+  at: Parser.SyntaxNode,
+  bad: UnsupportedRecord[],
+  template = false,
+): Pick<ImportRecord, 'module' | 'normalized' | 'package' | 'locality'> {
+  const decoded = decodeSpecifier(written, template);
+  if (decoded === undefined) {
+    bad.push(unsupportedAt(at, 'invalid-escape', 'module string has an escape sequence the language rejects'));
+    return { module: written, normalized: null, locality: 'unknown' };
   }
-  return { module: spec, normalized: spec, package: specifierPackage(spec), locality: 'unknown' };
+  if (decoded.startsWith('node:') && decoded.length > 5) {
+    const normalized = decoded.slice(5);
+    return { module: written, normalized, package: normalized.split('/')[0], locality: 'stdlib' };
+  }
+  return { module: written, normalized: decoded, package: specifierPackage(decoded), locality: 'unknown' };
+}
+
+/**
+ * Decoded value of a module string's written text. A read cut at the
+ * module window is left as written: the record is oversized and capped.
+ */
+function decodeSpecifier(written: string, template = false): string | undefined {
+  return written.length >= MODULE_WINDOW ? written : decodeEcmaScriptString(written, template);
 }
 
 function specifiers(list: Parser.SyntaxNode, type: string): ImportName[] {
@@ -84,14 +114,14 @@ function specifiers(list: Parser.SyntaxNode, type: string): ImportName[] {
     });
 }
 
-function importStatement(stmt: Parser.SyntaxNode): ImportRecord | undefined {
+function importStatement(stmt: Parser.SyntaxNode, bad: UnsupportedRecord[]): ImportRecord | undefined {
   const typeOnly = hasToken(stmt, 'type');
   const req = stmt.namedChildren.find(c => c.type === 'import_require_clause');
   if (req) {
     const src = req.childForFieldName('source');
     if (!src) return undefined;
     const alias = req.namedChildren.find(c => c.type === 'identifier');
-    return record({ at: stmt, kind: 'static', form: 'import-equals', ...moduleFields(specifier(src)), alias: alias?.text, typeOnly });
+    return record({ at: stmt, kind: 'static', form: 'import-equals', ...moduleFields(specifier(src), stmt, bad), alias: alias?.text, typeOnly });
   }
   const src = stmt.childForFieldName('source');
   if (!src) return undefined;
@@ -103,10 +133,10 @@ function importStatement(stmt: Parser.SyntaxNode): ImportRecord | undefined {
     else if (c.type === 'namespace_import') alias = c.namedChildren.find(x => x.type === 'identifier')?.text;
     else if (c.type === 'named_imports') names.push(...specifiers(c, 'import_specifier'));
   }
-  return record({ at: stmt, kind: 'static', form: 'import', ...moduleFields(specifier(src)), alias, names, typeOnly });
+  return record({ at: stmt, kind: 'static', form: 'import', ...moduleFields(specifier(src), stmt, bad), alias, names, typeOnly });
 }
 
-function exportFrom(stmt: Parser.SyntaxNode): ImportRecord | undefined {
+function exportFrom(stmt: Parser.SyntaxNode, bad: UnsupportedRecord[]): ImportRecord | undefined {
   const src = stmt.childForFieldName('source');
   if (!src) return undefined;
   const ns = stmt.namedChildren.find(c => c.type === 'namespace_export');
@@ -116,7 +146,7 @@ function exportFrom(stmt: Parser.SyntaxNode): ImportRecord | undefined {
     at: stmt,
     kind: 'static',
     form: 'export-from',
-    ...moduleFields(specifier(src)),
+    ...moduleFields(specifier(src), stmt, bad),
     alias: nsName ? unquote(nsName) : undefined,
     names: clause ? specifiers(clause, 'export_specifier') : undefined,
     wildcard: !ns && !clause && hasToken(stmt, '*'),
@@ -167,16 +197,23 @@ function callSite(n: Parser.SyntaxNode, fn: Parser.SyntaxNode | null): Unsupport
   return undefined;
 }
 
+/** A literal call argument: its text as written and its decoded value (undefined = an escape the language rejects). */
+export interface LiteralSpec { written: string; decoded: string | undefined }
+
 /**
- * Literal value of a call argument: a string or a template string without
- * substitutions; undefined otherwise. Escape sequences are not decoded, so
- * an argument with one is not treated as literal.
+ * Literal argument of a call: a string or a template string without
+ * substitutions; undefined otherwise. Escape sequences are decoded like
+ * those of a static `import` specifier.
  */
-export function literalArg(n: Parser.SyntaxNode | undefined): string | undefined {
+export function literalSpec(n: Parser.SyntaxNode | undefined): LiteralSpec | undefined {
   if (!n || (n.type !== 'string' && n.type !== 'template_string')) return undefined;
-  if (n.namedChildren.some(c => c.type !== 'string_fragment')) return undefined;
-  return joinChildren(n, '');
+  if (n.namedChildren.some(c => c.type !== 'string_fragment' && c.type !== 'escape_sequence')) return undefined;
+  const written = joinChildren(n, '');
+  return { written, decoded: decodeSpecifier(written, n.type === 'template_string') };
 }
+
+/** Decoded value of a literal call argument; undefined when not literal or not decodable. */
+export const literalArg = (n: Parser.SyntaxNode | undefined): string | undefined => literalSpec(n)?.decoded;
 
 /** Parents whose `name` field binds; other binding positions by field below. */
 const NAME_BINDERS = new Set([
@@ -235,6 +272,18 @@ function binds(parent: Frame | undefined, field: string | null): boolean {
   return false;
 }
 
+/** What a call or `new` applies: grouping parentheses and a comma list's last operand are looked through (`(require)(m)`, `(0, require)(m)`). */
+function callee(n: Parser.SyntaxNode | null): Parser.SyntaxNode | null {
+  for (;;) {
+    if (n?.type === 'sequence_expression') n = n.namedChildren.filter(c => c.type !== 'comment').pop() ?? null;
+    else if (n?.type === 'parenthesized_expression') {
+      const inner = n.namedChildren.filter(c => c.type !== 'comment');
+      if (inner.length !== 1) return n;
+      n = inner[0];
+    } else return n;
+  }
+}
+
 const firstArgument = (call: Parser.SyntaxNode) => call.childForFieldName('arguments')?.namedChildren.find(c => c.type !== 'comment');
 
 /** One walk: statements, call sites, and bindings of `require`. */
@@ -278,40 +327,43 @@ export function scanEcmaScript(root: Parser.SyntaxNode): EcmaScriptScan {
     }
     const n = c.currentNode;
     if (type === 'new_expression') {
-      const ctor = n.childForFieldName('constructor');
+      const ctor = callee(n.childForFieldName('constructor'));
       if (ctor?.type === 'identifier' && ctor.text === 'Function') unsupported.push(unsupportedAt(n, 'eval', 'Function constructor compiles code'));
+      // `new require('m')` still calls require; the new object is discarded for a non-constructor.
+      else if (ctor?.type === 'identifier' && ctor.text === 'require' && firstArgument(n)) requires.push(n);
       return;
     }
     if (type === 'call_expression') {
-      const fn = n.childForFieldName('function');
+      const fn = callee(n.childForFieldName('function'));
       const site = callSite(n, fn);
       if (site) unsupported.push(site);
       if (fn?.type === 'import') {
         const arg = firstArgument(n);
-        const spec = literalArg(arg);
+        const spec = literalSpec(arg);
         if (spec === undefined) {
           if (arg && !typePos) deferred.push({ node: n, construct: 'dynamic-import', reason: 'non-literal' });
         } else if (typePos) {
-          imports.push(record({ at: n, kind: 'static', form: 'import-type', ...moduleFields(spec), typeOnly: true }));
+          imports.push(record({ at: n, kind: 'static', form: 'import-type', ...moduleFields(spec.written, n, unsupported, arg!.type === 'template_string'), typeOnly: true }));
         } else {
-          imports.push(record({ at: n, kind: 'dynamic', form: 'import()', ...moduleFields(spec) }));
+          imports.push(record({ at: n, kind: 'dynamic', form: 'import()', ...moduleFields(spec.written, n, unsupported, arg!.type === 'template_string') }));
         }
       } else if (fn?.type === 'identifier' && fn.text === 'require' && firstArgument(n)) {
         requires.push(n);
       }
       return;
     }
-    const r = type === 'import_statement' ? importStatement(n) : exportFrom(n);
+    const r = type === 'import_statement' ? importStatement(n, unsupported) : exportFrom(n, unsupported);
     if (r) imports.push(r);
   }, () => {
     const f = stack.pop()!;
     if (f.specifierName && !f.specifierAlias) shadowed = true;
   });
   for (const n of requires) {
-    const spec = literalArg(firstArgument(n));
+    const arg = firstArgument(n);
+    const spec = literalSpec(arg);
     if (shadowed) deferred.push({ node: n, construct: 'dynamic-require', reason: 'shadowed' });
     else if (spec === undefined) deferred.push({ node: n, construct: 'dynamic-require', reason: 'non-literal' });
-    else imports.push(record({ at: n, kind: 'require', form: 'require', ...moduleFields(spec) }));
+    else imports.push(record({ at: n, kind: 'require', form: 'require', ...moduleFields(spec.written, n, unsupported, arg!.type === 'template_string') }));
   }
   deferred.sort((a, b) => a.node.startIndex - b.node.startIndex);
   return { imports, deferred, unsupported };

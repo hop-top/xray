@@ -48,15 +48,24 @@ import { unsupportedAt } from '../unsupported';
 const STATEMENTS = new Set(['import_statement', 'import_from_statement', 'future_import_statement']);
 const SCAN = new Set([...STATEMENTS, 'call', 'identifier', 'assignment', 'augmented_assignment']);
 
-/** `a . b` -> `a.b` (dotted_name identifiers joined), for imported names. */
+const isIdentifier = (type: string) => type === 'identifier';
+
+/**
+ * `a . b` -> `a.b` (dotted_name identifiers joined), for imported names.
+ * Only identifiers: a `\` line continuation inside the name is a named
+ * child too, and is not part of it.
+ */
 function dottedName(n: Parser.SyntaxNode): string {
-  return n.type === 'dotted_name' ? n.namedChildren.map(c => c.text).join('.') : n.text;
+  return n.type === 'dotted_name' ? n.namedChildren.filter(c => c.type === 'identifier').map(c => c.text).join('.') : n.text;
 }
 
 /** dottedName for a module: bounded reads (joinChildren / moduleText). */
 function dotted(n: Parser.SyntaxNode): string {
-  return n.type === 'dotted_name' ? joinChildren(n, '.') : moduleText(n);
+  return n.type === 'dotted_name' ? joinChildren(n, '.', isIdentifier) : moduleText(n);
 }
+
+/** Python reads identifiers NFKC-normalized (PEP 3131): the name an import binds or loads. */
+const nfkc = (s: string) => s.normalize('NFKC');
 
 /** `.` tokens of an import_prefix (`. .` is level 2), without reading its text. */
 function prefixLevel(prefix: Parser.SyntaxNode): number {
@@ -66,8 +75,13 @@ function prefixLevel(prefix: Parser.SyntaxNode): number {
   return level;
 }
 
-function absolute(module: string): Pick<ImportRecord, 'module' | 'normalized' | 'package' | 'locality'> {
-  return { module, normalized: module, package: module.split('.')[0], locality: 'unknown' };
+/**
+ * `identifiers`: `module` was written as source identifiers, so `normalized`
+ * is NFKC; a string argument (`__import__('x')`) is used as given.
+ */
+function absolute(module: string, identifiers = true): Pick<ImportRecord, 'module' | 'normalized' | 'package' | 'locality'> {
+  const normalized = identifiers ? nfkc(module) : module;
+  return { module, normalized, package: normalized.split('.')[0], locality: 'unknown' };
 }
 
 function importStatement(stmt: Parser.SyntaxNode): ImportRecord[] {
@@ -101,7 +115,7 @@ function fromStatement(stmt: Parser.SyntaxNode): ImportRecord | undefined {
   const prefix = mod.namedChildren.find(c => c.type === 'import_prefix');
   const level = prefix ? prefixLevel(prefix) : 0;
   const sub = mod.namedChildren.find(c => c.type === 'dotted_name');
-  const relative: RelativeRef = sub ? { level, module: dotted(sub) } : { level };
+  const relative: RelativeRef = sub ? { level, module: nfkc(dotted(sub)) } : { level };
   return record({
     at: stmt,
     kind: 'static',
@@ -178,7 +192,7 @@ function collectLoaders(stmt: Parser.SyntaxNode, b: LoaderBindings): void {
     for (const c of stmt.childrenForFieldName('name')) {
       const target = c.type === 'aliased_import' ? c.childForFieldName('name') : c;
       if (!target) continue;
-      const mod = dotted(target);
+      const mod = nfkc(dotted(target));
       if (mod !== 'importlib' && !mod.startsWith('importlib.')) continue;
       const alias = c.type === 'aliased_import' ? c.childForFieldName('alias')?.text : undefined;
       // `import importlib.util` binds `importlib`; `import importlib.util as u` binds `u` to the submodule.
@@ -188,7 +202,7 @@ function collectLoaders(stmt: Parser.SyntaxNode, b: LoaderBindings): void {
   } else if (stmt.type === 'import_from_statement') {
     const mod = stmt.childForFieldName('module_name');
     if (!mod || mod.type === 'relative_import') return;
-    const from = dotted(mod);
+    const from = nfkc(dotted(mod));
     if (from !== 'importlib' && !IMPORTLIB_LOADERS.has(from)) return;
     for (const n of importedNames(stmt)) {
       const qualified = `${from}.${n.name}`;
@@ -328,14 +342,14 @@ function collectImportlib(stmt: Parser.SyntaxNode, b: ImportlibBindings): void {
       if (c.type === 'aliased_import') {
         const n = c.childForFieldName('name');
         const a = c.childForFieldName('alias');
-        if (n && a && dotted(n) === 'importlib') b.modules.add(a.text);
-      } else if (dotted(c).split('.')[0] === 'importlib') {
+        if (n && a && nfkc(dotted(n)) === 'importlib') b.modules.add(a.text);
+      } else if (nfkc(dotted(c)).split('.')[0] === 'importlib') {
         b.modules.add('importlib');
       }
     }
   } else if (stmt.type === 'import_from_statement') {
     const mod = stmt.childForFieldName('module_name');
-    if (!mod || dotted(mod) !== 'importlib') return;
+    if (!mod || nfkc(dotted(mod)) !== 'importlib') return;
     for (const n of importedNames(stmt)) if (n.name === 'import_module') b.functions.add(n.alias ?? n.name);
   }
 }
@@ -359,7 +373,7 @@ function callArgs(call: Parser.SyntaxNode): CallArgs {
 const arg = (a: CallArgs, index: number, keyword: string) => a.positional[index] ?? a.keyword.get(keyword);
 
 function absoluteCall(call: Parser.SyntaxNode, form: string, module: string): ImportRecord {
-  return record({ at: call, kind: 'dynamic', form, ...absolute(module) });
+  return record({ at: call, kind: 'dynamic', form, ...absolute(module, false) });
 }
 
 function relativeCall(call: Parser.SyntaxNode, form: string, module: string, relative: RelativeRef): ImportRecord {

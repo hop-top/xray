@@ -38,7 +38,8 @@
         "dynamic-require", "dynamic-import", "create-require",
         "exec", "sys-path",
         "dynamic-call",
-        "oversized-module"
+        "oversized-module",
+        "invalid-escape"
       ]
     },
     "parseErrorKind": { "enum": ["error", "missing"] },

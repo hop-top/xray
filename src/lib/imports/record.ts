@@ -79,6 +79,11 @@ function moduleRange(tree: Parser.Tree, start: number, end: number, squeeze: boo
   return { text, cut: at < end };
 }
 
+/** Module-string source of `[start, end)` in `tree` (see moduleRange). */
+export function moduleSlice(tree: Parser.Tree, start: number, end: number, squeeze = false): string {
+  return moduleRange(tree, start, end, squeeze).text;
+}
+
 /** Module-string source of `n` (see moduleRange). */
 export function moduleSource(n: SyntaxNode, squeeze = false): { text: string; cut: boolean } {
   return moduleRange(n.tree, n.startIndex, n.endIndex, squeeze);

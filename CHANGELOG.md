@@ -161,6 +161,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graph's, sorted deterministically. Shapes: `docs/user/commands.md`.
 
 ### Fixed
+- Imports: `new require('m')` (and `(require)('m')`, `(0, require)('m')`)
+  yield a record; PHP names end at `?>`; Go and JS module strings decoded
+  into `normalized` (`module` stays as written; a rejected escape gives
+  `normalized: null` + new `invalid-escape` construct); Python identifiers
+  NFKC-normalized and `\` continuations dropped from dotted names; Rust
+  `r#` stripped from `normalized`. Extractor 0.6.0.
 - Imports: module strings capped at 4096 UTF-16 units (truncated + `…`,
   `normalized: null`, unresolved, new `oversized-module` construct); at most
   8192 source units read per module string. Extractor 0.5.0.

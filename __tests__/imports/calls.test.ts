@@ -39,8 +39,11 @@ describe('ecmascript literalArg', () => {
     ["f('')", ''],
     ['f(`./${x}.js`)', undefined],
     ["f('a' + 'b')", undefined],
-    ["f('a\\x2e')", undefined],
-    ['f(`a\\n`)', undefined],
+    ["f('a\\x2e')", 'a.'],
+    ['f(`a\\n`)', 'a\n'],
+    ["f('\\x41\\u0042\\u{43}')", 'ABC'],
+    ["f('\\x4')", undefined],
+    ['f(`\\1`)', undefined],
     ['f(x)', undefined],
   ])('%s -> %s', (src, want) => {
     expect(jsLiteral(firstArg(JavaScript, src, 'call_expression'))).toBe(want);
@@ -207,7 +210,6 @@ describe('deferred call sites in the golden fixtures (seam for the unsupported p
     expect(js('javascript/require-dynamic/depth.js')).toEqual([
       ['non-literal', 'require(`./${load.name}.js`)'],
       ['non-literal', "import('./a' + '.js')"],
-      ['non-literal', "require('./b\\x2ejs')"],
     ]);
     expect(js('javascript/require-dynamic/shadow/amd.js')).toEqual([['shadowed', "require('amd-dep')"]]);
   });

@@ -38,6 +38,9 @@ import { joinModule, moduleText, nodeEvidence, record, type LanguageExtractor, t
 
 const LOCAL_ROOTS = new Set(['crate', 'self', 'super']);
 
+/** Identifier without the raw prefix: `r#serde` and `serde` are one name. */
+export const rawIdent = (s: string): string => (s.startsWith('r#') ? s.slice(2) : s);
+
 interface Path { segments: string[]; leadingColons: boolean }
 
 interface Leaf {
@@ -133,7 +136,8 @@ function leafPath(prefix: Path, n: SyntaxNode): Path {
   return join(prefix, pathOf(n));
 }
 
-function useForm(segments: string[], leadingColons: boolean): Pick<ImportRecord, 'normalized' | 'package' | 'locality'> {
+function useForm(written: string[], leadingColons: boolean): Pick<ImportRecord, 'normalized' | 'package' | 'locality'> {
+  const segments = written.map(rawIdent);
   const first = segments[0];
   if (first !== undefined && LOCAL_ROOTS.has(first)) {
     return { normalized: first === 'crate' ? joinModule(segments, '::') : null, package: 'crate', locality: 'local' };
@@ -161,10 +165,11 @@ function externCrate(decl: SyntaxNode, out: ImportRecord[]): void {
   if (!name) return;
   const alias = decl.childForFieldName('alias');
   const crate = moduleText(name);
-  const self = crate === 'self';
+  const real = rawIdent(crate);
+  const self = real === 'self';
   out.push(record({
     at: decl, kind: 'static', form: 'extern-crate', module: crate,
-    normalized: self ? null : crate, package: self ? 'crate' : crate, locality: self ? 'local' : 'unknown',
+    normalized: self ? null : real, package: self ? 'crate' : real, locality: self ? 'local' : 'unknown',
     alias: alias?.text,
   }));
 }
@@ -200,7 +205,7 @@ function useBindings(decl: SyntaxNode, out: Set<string>): void {
   for (const l of ls) {
     if (l.wildcard) continue;
     const name = l.alias ?? l.path.segments[l.path.segments.length - 1];
-    if (name !== undefined && name !== '_') out.add(name);
+    if (name !== undefined && rawIdent(name) !== '_') out.add(rawIdent(name));
   }
 }
 
@@ -333,15 +338,16 @@ function isCandidateRoot(root: string): boolean {
 function referenceRecords(occs: Occurrence[], bound: Set<string>, out: ImportRecord[]): void {
   const byRoot = new Map<string, { first: Occurrence; count: number }>();
   for (const o of occs) {
-    if (!isCandidateRoot(o.root) || (!o.leadingColons && bound.has(o.root))) continue;
-    const seen = byRoot.get(o.root);
+    const real = rawIdent(o.root);
+    if (!isCandidateRoot(real) || (!o.leadingColons && bound.has(real))) continue;
+    const seen = byRoot.get(real);
     if (seen) seen.count++;
-    else byRoot.set(o.root, { first: o, count: 1 });
+    else byRoot.set(real, { first: o, count: 1 });
   }
   for (const [root, { first, count }] of byRoot) {
     const r = record({
       at: first.at, end: first.end, kind: 'reference', form: 'path-root',
-      module: root, normalized: root, package: root, locality: STDLIB.has(root) ? 'stdlib' : 'unknown',
+      module: first.root, normalized: root, package: root, locality: STDLIB.has(root) ? 'stdlib' : 'unknown',
       confidence: first.leadingColons ? 'syntactic' : 'inferred', occurrences: count,
     });
     out.push(r);
@@ -368,7 +374,7 @@ export const extractRust: LanguageExtractor = (root, ctx) => {
         case 'extern_crate_declaration': {
           externCrate(n, out); enter = false;
           const name = n.childForFieldName('alias') ?? n.childForFieldName('name');
-          if (name) bound.add(moduleText(name));
+          if (name) bound.add(rawIdent(moduleText(name)));
           break;
         }
         case 'scoped_identifier': case 'scoped_type_identifier': {
@@ -388,7 +394,7 @@ export const extractRust: LanguageExtractor = (root, ctx) => {
           if (n.type === 'mod_item') modItem(n, out);
           if (NAMED_ITEMS.has(n.type)) {
             const name = n.childForFieldName('name');
-            if (name) bound.add(moduleText(name));
+            if (name) bound.add(rawIdent(moduleText(name)));
           }
       }
     }

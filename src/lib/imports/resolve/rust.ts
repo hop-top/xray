@@ -20,6 +20,7 @@
  *   external.
  */
 
+import { rawIdent } from '../lang/rust';
 import type { FileImports, ImportRecord } from '../types';
 import { dirOf, inRoot, join, type FileSet, type Resolution } from './context';
 
@@ -48,7 +49,7 @@ export function rustResolver(files: FileSet): (r: ImportRecord, f: FileImports) 
   const modsOf = (f: FileImports): Set<string> => {
     let s = declared.get(f);
     if (!s) {
-      s = new Set(f.imports.filter(m => m.form === 'mod' && m.kind === 'include').map(m => m.module));
+      s = new Set(f.imports.filter(m => m.form === 'mod' && m.kind === 'include').map(m => rawIdent(m.module)));
       declared.set(f, s);
     }
     return s;
@@ -56,7 +57,8 @@ export function rustResolver(files: FileSet): (r: ImportRecord, f: FileImports) 
 
   return (r, f) => {
     const mp = modulePath(f.path);
-    const segs = r.module.split('::');
+    const segs = r.module.split('::').map(rawIdent);
+    const name = rawIdent(r.module);
     const first = segs[0];
 
     if (r.form === 'mod' && r.kind === 'include') {
@@ -65,9 +67,9 @@ export function rustResolver(files: FileSet): (r: ImportRecord, f: FileImports) 
       const childDir = MOD_RS.has(base(f.path)) || (mp !== null && mp.length === 0) ? dir : join(dir, base(f.path).replace(/\.rs$/, ''));
       const candidates = attr !== undefined
         ? [inRoot(join(dir, attr.replace(/\\(.)/g, '$1')))]
-        : [join(childDir, `${r.module}.rs`), join(childDir, `${r.module}/mod.rs`)];
+        : [join(childDir, `${name}.rs`), join(childDir, `${name}/mod.rs`)];
       const target = candidates.find(c => c !== undefined && files.has(c));
-      return { normalized: absolute(mp, [r.module]), locality: 'local', resolved: target ? { file: target } : undefined };
+      return { normalized: absolute(mp, [name]), locality: 'local', resolved: target ? { file: target } : undefined };
     }
     if (first === 'crate') return { locality: 'local' };
     if (first === 'self' || first === 'super') {

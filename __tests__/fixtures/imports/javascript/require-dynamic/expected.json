@@ -67,6 +67,19 @@
           "evidence": "import(`@scope/pkg/sub`)"
         },
         {
+          "line": 12,
+          "column": 1,
+          "endLine": 12,
+          "endColumn": 21,
+          "kind": "require",
+          "form": "require",
+          "module": "./b\\x2ejs",
+          "normalized": "./b.js",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "require('./b\\x2ejs')"
+        },
+        {
           "line": 20,
           "column": 36,
           "endLine": 20,
@@ -95,13 +108,6 @@
           "construct": "dynamic-import",
           "detail": "import() with a non-literal argument",
           "evidence": "import('./a' + '.js')"
-        },
-        {
-          "line": 12,
-          "column": 1,
-          "construct": "dynamic-require",
-          "detail": "require with a non-literal argument",
-          "evidence": "require('./b\\x2ejs')"
         }
       ]
     },
@@ -189,8 +195,8 @@
   "summary": {
     "files": 3,
     "complete": 0,
-    "imports": 7,
-    "unsupported": 5,
+    "imports": 8,
+    "unsupported": 4,
     "parseErrors": 0
   }
 }

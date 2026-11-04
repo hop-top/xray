@@ -37,11 +37,45 @@
 
 import * as posix from 'path/posix';
 import type { ImportForm, ImportKind, ImportRecord, UnsupportedRecord } from '../types';
-import { moduleSource, moduleText, record, walk, type LanguageExtractor, type SyntaxNode } from '../record';
+import { moduleSlice, moduleSource, record, walk, type LanguageExtractor, type SyntaxNode } from '../record';
 import { unsupportedAt } from '../unsupported';
 
-/** Qualified name text without whitespace or a leading `\`; bounded read (moduleText). */
-const fqn = (n: SyntaxNode) => moduleText(n, true).replace(/^\\/, '');
+/**
+ * Texts of a name's PHP-mode stretches, whitespace squeezed. A close tag
+ * ends PHP mode and the text after it up to the next open tag is HTML, not
+ * part of any name, but the grammar keeps running names across it
+ * (`\A\B ?>html\C\D <?php \E\F` is one qualified_name holding a
+ * text_interpolation). Each stretch is its own name; a stretch with no name
+ * characters (`?>` straight after `\`) is dropped. Bounded reads (moduleSlice).
+ */
+function nameTexts(n: SyntaxNode): string[] {
+  const html: SyntaxNode[] = [];
+  const c = n.walk();
+  let descend = true;
+  for (;;) {
+    if (descend && c.nodeType === 'text_interpolation') { html.push(c.currentNode); descend = false; }
+    if (descend && c.gotoFirstChild()) continue;
+    if (c.gotoNextSibling()) { descend = true; continue; }
+    if (!c.gotoParent()) break;
+    descend = false;
+  }
+  return stretches(n, html);
+}
+
+function stretches(n: SyntaxNode, html: SyntaxNode[]): string[] {
+  if (html.length === 0) return [moduleSlice(n.tree, n.startIndex, n.endIndex, true)];
+  const out: string[] = [];
+  let from = n.startIndex;
+  for (const h of html) {
+    out.push(moduleSlice(n.tree, from, h.startIndex, true));
+    from = h.endIndex;
+  }
+  out.push(moduleSlice(n.tree, from, n.endIndex, true));
+  return out.filter(t => /[^\\]/.test(t));
+}
+
+/** Qualified name text without whitespace or a leading `\`, up to a close tag; bounded read. */
+const fqn = (n: SyntaxNode) => nameTexts(n)[0]?.replace(/^\\/, '') ?? '';
 
 function clauseType(n: SyntaxNode): string | undefined {
   return n.childForFieldName('type')?.text.toLowerCase();
@@ -177,8 +211,7 @@ export function regionLocator(spaces: PhpNamespace[]): (n: SyntaxNode) => number
 interface Ref { node: SyntaxNode; module: string; normalized: string }
 
 /** Resolved name of a qualified_name / relative_name, or undefined for an unqualified one. */
-function resolveName(n: SyntaxNode, ns: string, aliases: Map<string, string> | undefined): Ref | undefined {
-  const text = moduleText(n, true);
+function resolveName(n: SyntaxNode, text: string, ns: string, aliases: Map<string, string> | undefined): Ref | undefined {
   const within = (rest: string) => (ns ? `${ns}\\${rest}` : rest);
   if (n.type === 'relative_name') {
     const rest = text.replace(/^namespace\\/i, '');
@@ -298,8 +331,10 @@ export const extractPhp: LanguageExtractor = (root, ctx) => {
   const nameRegion = regionLocator(spaces);
   for (const n of names) {
     const region = nameRegion(n);
-    const r = resolveName(n, spaces[region]?.name ?? '', aliases.get(region));
-    if (r) refs.push(r);
+    for (const text of nameTexts(n)) {
+      const r = resolveName(n, text, spaces[region]?.name ?? '', aliases.get(region));
+      if (r) refs.push(r);
+    }
   }
   referenceRecords(refs, out);
   return out;

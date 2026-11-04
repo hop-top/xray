@@ -46,7 +46,7 @@ exist. Nothing is written into the scanned tree (see
   "schema": "xray.imports/v1",
   "xray": {
     "version": "0.1.0",
-    "extractor": "0.5.0"
+    "extractor": "0.6.0"
   },
   "grammars": {
     "go": {
@@ -188,6 +188,7 @@ present only when they apply; an absent boolean means `false`.
 | Rust | `build-script` (filename rule, below), `include-macro` (`include!`), `include-data` (`include_str!` / `include_bytes!`); as invocations, with a `std::`/`core::` path, or inside other macros' arguments; `detail` says whether the path is a string literal. |
 | PHP | `eval` (any argument), `dynamic-include` (`require`/`include*` whose path is not literal: variables, interpolation, `dirname(__FILE__) . ...`), `dynamic-new` (`new $v`, `new (expr)`, `new $o->p`; not names, `static`/`self`/`parent` or anonymous classes), `dynamic-static-call` (`$v::m()`), `dynamic-call` (variable functions `$f()` / `[$o, 'm']()`, `call_user_func` / `call_user_func_array` with a non-literal callable; immediately invoked closures excluded) |
 | TS/JS | `dynamic-require` (non-literal argument, or `require` rebound in the file: `detail` says which), `dynamic-import` (`import()` with a non-literal argument outside type positions), `create-require` (`createRequire(...)`, `x.createRequire(...)`), `eval` (`eval(...)`, `new Function(...)`, `Function(...)`; any argument) |
+| TS/JS, Go | `invalid-escape` (a module string with an escape the language rejects: `normalized` is null, `module` stays as written) |
 | All | `oversized-module` (a record whose `module`, `normalized` or `relative.module` is longer than 4096 UTF-16 units; the record is kept truncated, see [Coverage](#coverage)) |
 | Python | `dynamic-import` (`__import__` / `import_module` that yield no record: non-literal argument, `__import__` rebound, relative name without a package; plus calls into importlib's loader APIs through import bindings: `importlib.util.*`, `importlib.machinery.*`, `importlib.__import__`; not `reload`, `invalidate_caches`, `resources`, `metadata`, `abc`), `exec` / `eval` (any argument: the string is code xray does not read), `sys-path` (`sys.path.insert/append/extend`, assignment, augmented or slice assignment to `sys.path`, `site.addsitedir`) |
 
@@ -217,10 +218,10 @@ clause (grouped use expanded); Python and TS/JS one per statement, with
 
 | Lang | `module` | `normalized` | `package` | `locality` |
 |---|---|---|---|---|
-| Python | dotted, relative keeps dots | absolute dotted: relative resolved from the file's package (`__init__.py` chain); `null` if file not in a package | first segment of normalized | `stdlib` (vendored `sys.stdlib_module_names`), `local` (resolves in tree), else `unknown` |
-| Go | import path unquoted (raw or interpreted) | same | go.mod module path (local) or longest matching `require` path (external); stdlib: first element | `stdlib` (no dot in first element; `C` special), `local` (go.mod / go.work module), `external` (go.mod require), else `unknown` |
-| Rust | one leaf path per use-tree leaf, `::` joined, leading `::` stripped | `crate`/`self`/`super` rewritten to `crate::…` when the crate root is known (Cargo.toml + lib.rs/main.rs) | first segment (`crate` for local) | `stdlib` (std/core/alloc/proc_macro/test), `local` (crate/self/super, or root bound by a `mod`/local item), `external` otherwise |
-| TS/JS | specifier unquoted | `node:` stripped for builtins; else = module | `@scope/name` or `name`; none for relative | `stdlib` (Node builtin), `local` (relative/absolute), `external` (declared in nearest package.json), else `unknown` |
+| Python | dotted, relative keeps dots | absolute dotted, identifiers NFKC-normalized: relative resolved from the file's package (`__init__.py` chain); `null` if file not in a package | first segment of normalized | `stdlib` (vendored `sys.stdlib_module_names`), `local` (resolves in tree), else `unknown` |
+| Go | import path unquoted (raw or interpreted), escapes as written | escapes decoded; `null` for an escape Go rejects | go.mod module path (local) or longest matching `require` path (external); stdlib: first element | `stdlib` (no dot in first element; `C` special), `local` (go.mod / go.work module), `external` (go.mod require), else `unknown` |
+| Rust | one leaf path per use-tree leaf, `::` joined, leading `::` stripped | `r#` stripped; `crate`/`self`/`super` rewritten to `crate::…` when the crate root is known (Cargo.toml + lib.rs/main.rs) | first segment (`crate` for local) | `stdlib` (std/core/alloc/proc_macro/test), `local` (crate/self/super, or root bound by a `mod`/local item), `external` otherwise |
+| TS/JS | specifier unquoted, escapes as written | escapes decoded; `node:` stripped for builtins; `null` for an escape the language rejects | `@scope/name` or `name`; none for relative | `stdlib` (Node builtin), `local` (relative/absolute), `external` (declared in nearest package.json), else `unknown` |
 | PHP | FQN without leading `\`; include path literal | `use`: as written; FQN references: resolved via namespace + use aliases (PHP name-resolution rules); include: `__DIR__ . 'x'` folded | first namespace segment | `local` for resolved include files; else `unknown` (no psr-4 in v1) |
 
 Path aliases (tsconfig `paths`/`baseUrl`) are not applied: such specifiers
@@ -287,7 +288,7 @@ or last segment), `extern crate` (alias or name), `mod` or a named item.
 `::x` always names a crate: `confidence: syntactic`, never shadowed by a
 binding; other roots are `inferred`. Locality per Resolution
 (`std`/`core`/`alloc`/`proc_macro`/`test` = `stdlib`, else `external`).
-`module` = `normalized` = `package` = the root.
+`module` = `normalized` = `package` = the root (`module` keeps a raw `r#`).
 
 PHP: one record per `use` clause, grouped use expanded with its prefix,
 FQN without leading `\`, `package` = first namespace segment. `require` /
@@ -453,6 +454,10 @@ Breaking (requires `xray.imports/v2`):
 - adding, removing or changing a `kind`, `locality` or `confidence` value;
 - changing the `positions` conventions;
 - changing the normalization of an existing form.
+
+A fix that makes `normalized` the real module name where it was wrong
+(undecoded escapes, `r#`, un-normalized identifiers) stays within v1: the
+rules for each form are unchanged in intent, and `extractor` changes.
 
 The `extractor` version changes whenever output changes for the same input,
 even within these rules; record it with results if you diff runs.
