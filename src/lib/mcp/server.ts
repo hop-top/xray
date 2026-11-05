@@ -123,6 +123,13 @@ async function runTool(
     dir: callRoot,
     explicit: callRoot !== o.serverRoot,
     contain: (value, base, label) => containPath(o.serverRoot, base, value, label),
+    isDirectory: (abs) => {
+      try {
+        return fs.statSync(abs).isDirectory();
+      } catch {
+        return false;
+      }
+    },
   };
   const { argv, projectDirs } = buildArgv(def, cmd, args, scope);
   if (def.policy.configFromPath) {

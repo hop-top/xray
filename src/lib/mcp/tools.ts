@@ -31,13 +31,15 @@ export const ROOT_PARAM = 'root';
  * - `value`: passed through (flag, name, pattern, number).
  * - `path`: filesystem path; resolved against the call root and held
  *   inside the server root (symlinks resolved). URLs are refused.
+ * - `dir`: like `path`, and it must be an existing directory: a file here
+ *   would be read directly, past the scanner's ignore and extension rules.
  * - `query-source`: map's `--query` (`path`, `.ext:path`, comma lists);
  *   every path part is contained like `path`. URLs are refused (the CLI
  *   would fetch them).
  * - `project-file`: a file the command joins onto its project path
  *   (`config keys --file`); contained, then passed project-relative.
  */
-export type ParamKind = 'value' | 'path' | 'query-source' | 'project-file';
+export type ParamKind = 'value' | 'path' | 'dir' | 'query-source' | 'project-file';
 
 /**
  * How the per-call `root` reaches a command. Children always run in the
@@ -122,7 +124,7 @@ const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
   graph: ANALYSIS,
   explore: {
     ...scoped({
-      path: 'path', match: 'value', search: 'value', type: 'value',
+      path: 'dir', match: 'value', search: 'value', type: 'value',
       stats: 'value', 'list-strategies': 'value', format: 'value',
     }),
   },
@@ -343,6 +345,8 @@ export interface PathScope {
   /** Whether the call selected `dir` with `root` (vs the default). */
   explicit: boolean;
   contain(value: string, base: string, label: string): string;
+  /** True when `abs` is an existing directory; unset in unit tests that fake paths. */
+  isDirectory?(abs: string): boolean;
 }
 
 /** Argv for one call plus the project directories passed as `--path`. */
@@ -420,6 +424,13 @@ export function buildArgv(
       switch (policy.options[key]) {
         case 'path':
           out = containedPath(key, val, scope.dir, scope);
+          if (key === 'path') projectDirs.push(out);
+          break;
+        case 'dir':
+          out = containedPath(key, val, scope.dir, scope);
+          if (scope.isDirectory && !scope.isDirectory(out)) {
+            throw new ToolArgumentError(`argument "${key}" "${val}" must be an existing directory, not a file`);
+          }
           if (key === 'path') projectDirs.push(out);
           break;
         case 'query-source':

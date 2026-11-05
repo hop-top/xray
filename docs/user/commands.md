@@ -61,7 +61,11 @@ xray explore [options]
 
 `explore` takes no query: use `--match` to find files and `--search` to
 search code (`xray explore foo` is a usage error, exit 2). The default
-command, bare `xray <existing-path>`, scans that path as the root.
+command, bare `xray <existing-path>`, scans that path as the root. A file as
+the path (`xray src/a.ts`, `--path <file>`) is that one file, if the
+scanner would list it: a supported extension, not git-ignored, never under
+`.git`. Otherwise it is skipped with a warning saying why. `--search` needs
+a non-empty keyword. Over MCP, `explore`'s `path` must be a directory.
 
 | Option | Description |
 |--------|-------------|

@@ -137,6 +137,24 @@ describe('xray <path>', () => {
     expect(r.stdout + r.stderr).not.toContain('b.py');
   });
 
+  it('an existing file is scanned as that one file', () => {
+    const r = run(['d1/a.py']);
+    expect(r.status).toBe(0);
+    expect(r.stdout + r.stderr).toContain('a.py');
+    expect(r.stdout + r.stderr).not.toContain('b.py');
+    expect(r.stdout + r.stderr).toContain('Found 1 file');
+  });
+
+  it('explore --path <file>: same, with --search and --match by name', () => {
+    const s = run(['explore', '--path', 'd1/a.py', '--search', 'return']);
+    expect(s.stdout).toContain('a.py');
+    expect(s.stdout).toContain('return 1');
+    expect(s.stdout).not.toContain('b.py');
+    const m = run(['explore', '--path', 'd1/a.py', '--match', 'a.*']);
+    expect(m.stdout).toContain('a.py');
+    expect(run(['explore', '--path', 'd1/a.py', '--match', 'b.*']).stdout).not.toContain('a.py');
+  });
+
   it('combines with --match relative to that path', () => {
     const r = run(['d2', '--match', '*.py']);
     expect(r.stdout + r.stderr).toContain('b.py');

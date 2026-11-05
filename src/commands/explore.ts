@@ -118,6 +118,7 @@ export const handleExploreAction = async (
 
     // One mode per run; combining --search with --stats would drop one.
     const keywords = options.search ?? [];
+    if (keywords.some((k) => k === '')) throw new UsageError('--search needs a non-empty keyword');
     const searching = keywords.length > 0;
     if (searching && options.stats) throw new UsageError('--search and --stats are exclusive: pick one');
 
@@ -135,6 +136,14 @@ export const handleExploreAction = async (
     // Scan all paths and collect files, keeping each one's path under its root
     const scanned: { abs: string; rel: string }[] = [];
     for (const p of paths) {
+      // A file as the path is that one file (matched by its name), if the
+      // scanner would have listed it: never `.git`, ignored or unsupported files.
+      if (fs.statSync(p).isFile()) {
+        const why = FileScanner.skipReason(p);
+        if (why) Logger.warn(`skipped ${p}: it ${why}; explore only reads files the scanner lists`);
+        else scanned.push({ abs: p, rel: path.basename(p) });
+        continue;
+      }
       const scanner = new FileScanner(p);
       for (const f of scanner.scan()) scanned.push({ abs: path.join(p, f), rel: f.split(path.sep).join('/') });
     }

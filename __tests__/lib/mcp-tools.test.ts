@@ -180,6 +180,12 @@ describe('buildArgv', () => {
     expect(argv(shaped(root, ['impact']).def, ic, { symbol: '-x' })).toEqual(['impact', '--', '-x']);
   });
 
+  it('explore path is directory-only: a file is a tool error', () => {
+    const scope: PathScope = { dir: '/srv', explicit: false, contain: (v) => `<${v}>`, isDirectory: (abs) => abs === '<d>' };
+    expect(argv(def, cmd, { path: ['d'] }, scope)).toEqual(['explore', '--path=<d>']);
+    expect(() => argv(def, cmd, { path: ['f.ts'] }, scope)).toThrow(/must be an existing directory/);
+  });
+
   it('omits false booleans and absent positionals', () => {
     expect(argv(def, cmd, { stats: false })).toEqual(['explore']);
   });
