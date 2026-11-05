@@ -9,6 +9,7 @@ import {
   projectStrategiesAllowed,
   StrategyPackage,
   readStrategyPackage,
+  listEntries,
 } from '../lib/strategy/loader';
 
 const FILE_STRATEGY = /\.(ts|js|yml|yaml)$/;
@@ -150,10 +151,72 @@ export async function installStrategy(source: string, loader: StrategyLoader): P
       `(only for code you trust).`
     );
   }
-  if (!path.basename(name).startsWith('xray-strategy-') || name.startsWith('@')) {
+  if (!path.basename(name).startsWith('xray-strategy-')) {
     Logger.warn(
-      `xray finds code strategy packages only as top-level node_modules/xray-strategy-*; ` +
+      `xray discovers packages named xray-strategy-* (or @scope/xray-strategy-*) in node_modules; ` +
       `${name} will not be discovered.`
     );
+  }
+}
+
+const PACKAGE_NAME = /^(@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/;
+
+/** A strategy package installed in `node_modules`, read from package.json only. */
+export interface InstalledStrategyPackage {
+  /** Directory name under node_modules, which is what `npm uninstall` takes */
+  name: string;
+  pkg: StrategyPackage;
+}
+
+/**
+ * Find the installed strategy package `word` names, by package name or by
+ * `xray-strategy.name`. Reads package.json files only; no code runs.
+ * `refused` is set when `word` is an installed package that is not a
+ * strategy package (it must be left alone).
+ */
+export function findInstalledStrategyPackage(
+  word: string,
+  cwd: string = process.cwd()
+): { found: InstalledStrategyPackage[]; refused?: string } {
+  const modules = path.join(cwd, 'node_modules');
+  const found: InstalledStrategyPackage[] = [];
+  let refused: string | undefined;
+
+  if (PACKAGE_NAME.test(word)) {
+    const dir = path.join(modules, ...word.split('/'));
+    if (fs.existsSync(path.join(dir, 'package.json'))) {
+      try {
+        found.push({ name: word, pkg: readStrategyPackage(dir) });
+        return { found };
+      } catch (err: any) {
+        refused = `${word} is installed but is not a strategy package (${err.message})`;
+      }
+    }
+  }
+
+  let entries: string[] = [];
+  try {
+    entries = listEntries(modules);
+  } catch {
+    // no node_modules
+  }
+  for (const entry of entries) {
+    if (!path.basename(entry).startsWith('xray-strategy-')) continue;
+    try {
+      const pkg = readStrategyPackage(path.join(modules, entry));
+      if (pkg.strategyName === word) found.push({ name: entry, pkg });
+    } catch {
+      // not a valid strategy package: never a match
+    }
+  }
+  return { found, refused: found.length ? undefined : refused };
+}
+
+/** `npm uninstall` a package already validated as a strategy package. */
+export function uninstallStrategyPackage(name: string): void {
+  try {
+    npm(['uninstall', '--', name], 'inherit');
+  } catch {
+    throw new Error(`npm uninstall failed for ${name}`);
   }
 }

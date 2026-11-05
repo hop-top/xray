@@ -2254,18 +2254,17 @@ Usage: xray strategy [options] [command]
 Manage strategies (list, create, install, remove, enable, disable, info)
 
 COMMANDS:
-  list [--flags]              List all available strategies
-  detect [--flags]            Detect applicable strategies for the current
-                              project
-  info <name>                 Show detailed information about a strategy
-  create <name> [--flags]     Create a new strategy scaffold
-  install <source> [--flags]  Install a strategy from a path or npm package
-  remove <name>               Remove an installed strategy
-  validate <name>             Validate a strategy file
-  path                        Show strategy search paths
+  list [--flags]           List all available strategies
+  detect [--flags]         Detect applicable strategies for the current project
+  info <name>              Show detailed information about a strategy
+  create <name> [--flags]  Create a new strategy scaffold
+  install <source>         Install a strategy from a path or npm package
+  remove <name>            Remove an installed strategy
+  validate <name>          Validate a strategy file
+  path                     Show strategy search paths
 
 FLAGS:
-  -h, --help                  Display help
+  -h, --help               Display help
 
 
 --- stderr ---
@@ -2329,8 +2328,7 @@ Usage: xray strategy install [options] <source>
 Install a strategy from a path or npm package
 
 FLAGS:
-  -g, --global  Install globally (default: false)
-  -h, --help    Display help
+  -h, --help  Display help
 
 
 --- stderr ---
@@ -5640,16 +5638,7 @@ exports[`cli golden: introspection describe 1`] = `
               "description": ""
             }
           ],
-          "options": [
-            {
-              "name": "--global",
-              "short": "-g",
-              "type": "boolean",
-              "required": false,
-              "default": false,
-              "description": "Install globally"
-            }
-          ],
+          "options": [],
           "subcommands": [],
           "sideEffect": "read",
           "idempotent": "yes",

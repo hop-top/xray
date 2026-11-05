@@ -10,7 +10,7 @@ import {
   strategyToExtension,
 } from './types';
 import { FileReadError } from '../error/types';
-import { Logger } from '../logger';
+import { Logger, LogLevel } from '../logger';
 import { isGrammarAvailable } from '../parser/grammars';
 
 const warnedStrategies = new Set<string>();
@@ -20,6 +20,34 @@ const warnedProjectCode = new Set<string>();
 export const PROJECT_STRATEGIES_ENV = 'XRAY_ALLOW_PROJECT_STRATEGIES';
 
 const CODE_EXTENSIONS = new Set(['.js', '.ts']);
+
+const PACKAGE_PREFIX = 'xray-strategy-';
+
+/**
+ * Entry names to consider in a directory of packages. Besides the plain
+ * names, a `node_modules` directory also yields `@scope/xray-strategy-*`.
+ * The scan is bounded: one `readdir` per `@*` directory, one level deep,
+ * keeping only `xray-strategy-*` inside; nothing else is walked.
+ */
+export function listEntries(dir: string): string[] {
+  const names = fs.readdirSync(dir).sort();
+  if (path.basename(dir) !== 'node_modules') return names;
+  const out: string[] = [];
+  for (const name of names) {
+    out.push(name);
+    if (!name.startsWith('@')) continue;
+    let inner: string[];
+    try {
+      inner = fs.readdirSync(path.join(dir, name)).sort();
+    } catch {
+      continue;
+    }
+    for (const sub of inner) {
+      if (sub.startsWith(PACKAGE_PREFIX)) out.push(`${name}/${sub}`);
+    }
+  }
+  return out;
+}
 
 /** The only project strategy format that runs no code; anything else counts as code. */
 const isDeclarative = (file: string): boolean => /\.ya?ml$/.test(file);
@@ -55,6 +83,8 @@ export function reportSkippedProjectCode(
   level: 'warn' | 'debug',
   options: CodeLoadingOptions = {}
 ): void {
+  // Every command passes here at debug level: skip the scan when nobody listens.
+  if (level === 'debug' && Logger.getLevel() < LogLevel.DEBUG) return;
   const skipped = new StrategyLoader(options).skippedProjectCode();
   if (skipped.length === 0) return;
   const message = skippedProjectCodeMessage(skipped);
@@ -192,14 +222,14 @@ export class StrategyLoader {
     for (const dir of this.projectDirs()) {
       let names: string[];
       try {
-        names = fs.readdirSync(dir).sort();
+        names = listEntries(dir);
       } catch {
         continue;
       }
       for (const name of names) {
         const file = path.join(dir, name);
         // Discovery treats every `xray-strategy-*` entry as a package.
-        const skip = name.startsWith('xray-strategy-')
+        const skip = path.basename(name).startsWith(PACKAGE_PREFIX)
           ? this.packageEntryIsCode(file)
           : CODE_EXTENSIONS.has(path.extname(name));
         if (skip) skipped.push(path.relative(cwd, file));
@@ -462,13 +492,13 @@ export class StrategyLoader {
       const stat = fs.statSync(searchPath);
 
       if (stat.isDirectory()) {
-        const files = fs.readdirSync(searchPath);
+        const files = listEntries(searchPath);
 
         for (const file of files) {
           const filePath = path.join(searchPath, file);
 
           // Handle NPM packages
-          if (file.startsWith('xray-strategy-')) {
+          if (path.basename(file).startsWith(PACKAGE_PREFIX)) {
             const pkgPath = path.join(filePath, 'package.json');
             if (fs.existsSync(pkgPath)) {
               try {

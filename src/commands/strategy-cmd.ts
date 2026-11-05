@@ -4,11 +4,11 @@ import { styles } from '../lib/tui';
 import { Command } from 'commander';
 import { Logger } from '../lib/logger';
 import { StrategyLoader, PROJECT_STRATEGIES_ENV, projectStrategiesAllowed, reportSkippedProjectCode } from '../lib/strategy/loader';
-import { installStrategy } from './strategy-install';
+import { installStrategy, findInstalledStrategyPackage, uninstallStrategyPackage } from './strategy-install';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { normalizeDetectedStrategy } from '../lib/strategy/types';
-import { FileWriteError, NotFoundError } from '../lib/error/types';
+import { FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
@@ -218,18 +218,8 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
   program
     .command('install <source>')
     .description('Install a strategy from a path or npm package')
-    .option('-g, --global', 'Install globally', false)
-    .action(async (source, options) => {
+    .action(async (source) => {
       const loader = new StrategyLoader();
-
-      if (options.global) {
-        const xdgDataHome = process.env.XDG_DATA_HOME || path.join(process.env.HOME || '', '.local/share');
-        const globalPath = path.join(xdgDataHome, 'xray/strategies');
-        if (!fs.existsSync(globalPath)) {
-          fs.mkdirSync(globalPath, { recursive: true });
-        }
-        Logger.info(`Installing to global strategies: ${globalPath}`);
-      }
 
       try {
         await installStrategy(source, loader);
@@ -245,37 +235,60 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
     .description('Remove an installed strategy')
     .action(async (name) => {
       const loader = new StrategyLoader();
-      const strategies = await loader.discoverStrategies();
-      const strategy = strategies.find(s => s.name === name);
 
-      if (!strategy) {
-        reportSkippedProjectCode('warn');
-        throw new NotFoundError(`Strategy "${name}" not found.`);
-      }
-
-      const strategyPaths = loader.getStrategyPaths();
-      let removed = false;
-
-      for (const searchPath of strategyPaths) {
+      // Local file: <name>.{ts,js,yml,yaml} in a strategy directory.
+      let removedFile: string | undefined;
+      for (const searchPath of loader.getStrategyPaths()) {
         if (!fs.existsSync(searchPath)) continue;
-
-        const files = fs.readdirSync(searchPath);
-        const strategyFile = files.find(f =>
+        const strategyFile = fs.readdirSync(searchPath).find(f =>
           f === `${name}.ts` || f === `${name}.js` || f === `${name}.yml` || f === `${name}.yaml`
         );
-
         if (strategyFile) {
-          const filePath = path.join(searchPath, strategyFile);
-          fs.unlinkSync(filePath);
-          Logger.success(`Strategy removed: ${filePath}`);
-          removed = true;
+          removedFile = path.join(searchPath, strategyFile);
           break;
         }
       }
 
-      if (!removed) {
-        Logger.warn(`Could not find strategy file to remove for "${name}"`);
+      // Installed package: by package name or strategy name, from package.json only.
+      const { found, refused } = findInstalledStrategyPackage(name);
+
+      if (removedFile) {
+        fs.unlinkSync(removedFile);
+        Logger.success(`Strategy removed: ${removedFile}`);
+        if (found.length > 0) {
+          Logger.warn(
+            `The installed package ${found.map(f => f.name).join(', ')} was not removed; ` +
+            `run \`xray strategy remove ${found[0].name}\` to remove it.`
+          );
+        }
+        return;
       }
+
+      if (found.length > 1) {
+        throw new UsageError(
+          `"${name}" matches several installed packages: ${found.map(f => f.name).join(', ')}. ` +
+          `Name the package.`
+        );
+      }
+      if (found.length === 1) {
+        const target = found[0];
+        try {
+          uninstallStrategyPackage(target.name);
+        } catch (err: any) {
+          Logger.error(`Failed to remove strategy: ${err.message}`);
+          process.exit(1);
+        }
+        Logger.success(`Strategy package removed: ${target.pkg.strategyName} (${target.name})`);
+        return;
+      }
+
+      if (refused) {
+        throw new UsageError(`${refused}; nothing was removed.`);
+      }
+      reportSkippedProjectCode('warn');
+      throw new NotFoundError(
+        `Strategy "${name}" not found: no strategy file ${name}.{ts,js,yml,yaml} and no installed strategy package.`
+      );
     });
 
   program

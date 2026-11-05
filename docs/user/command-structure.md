@@ -147,7 +147,7 @@ Strategy commands are **discovered at runtime**:
 1. `XRAY_STRATEGIES_PATH` environment variable
 2. `.xray/strategies/` in current project
 3. `$XDG_DATA_HOME/xray/strategies/` (or platform equivalent)
-4. NPM packages with `xray-strategy-` prefix in the project's `node_modules`
+4. NPM packages named `xray-strategy-*` or `@scope/xray-strategy-*` in the project's `node_modules`
 5. Built-in strategies
 
 **Project code is opt-in.** A strategy is a program: loading one runs it.
@@ -251,18 +251,38 @@ a file inside the package:
   change, and no install script runs. A valid package at a different
   version than the installed one updates it, as `npm install` does.
 
-xray discovers code packages in the project only as top-level
-`node_modules/xray-strategy-*` directories; the command warns when the
-installed package has another name.
+xray discovers packages in the project as `node_modules/xray-strategy-*`
+and `node_modules/@scope/xray-strategy-*`, with the same rules for both
+(a code entry needs the opt-in, a YAML entry does not). The command warns
+when the installed package has another name, since xray will not find it.
+The command has no `--global` option: it always installs into the current
+directory.
 
 A local `.yml`, `.yaml`, `.js` or `.ts` file is read, not installed: the
 command prints its name and version and states that nothing was copied.
 Put the file in `.xray/strategies/` to use it. A `.js` or `.ts` file is
 read only with `XRAY_ALLOW_PROJECT_STRATEGIES=1`.
 
-`xray strategy remove` deletes strategy files named `<name>.yml`,
-`<name>.yaml`, `<name>.js` or `<name>.ts` from the strategy
-directories; it does not uninstall npm packages. Use `npm uninstall`.
+### Removing a Strategy
+
+`xray strategy remove <name>` (alias `uninstall`) takes a package name or
+a strategy name:
+
+```bash
+xray strategy remove @acme/xray-strategy-custom   # package name
+xray strategy remove custom                       # xray-strategy.name
+```
+
+- An installed strategy package is removed with `npm uninstall` in the
+  current directory (no shell). The package is identified from its
+  `package.json` alone, so a code strategy is removed without
+  `XRAY_ALLOW_PROJECT_STRATEGIES=1` and nothing is run.
+- A package that does not declare `xray-strategy` is refused and left
+  untouched, so `xray strategy remove lodash` removes nothing.
+- A file named `<name>.yml`, `<name>.yaml`, `<name>.js` or `<name>.ts` in
+  a strategy directory is deleted. If a package has the same name, only
+  the file goes; the command says the package remains.
+- A name that matches neither fails with a non-zero exit (3).
 
 ## Shell Completion
 
