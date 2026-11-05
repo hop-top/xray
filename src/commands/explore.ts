@@ -3,7 +3,7 @@ import * as path from 'path';
 import { Logger } from '../lib/logger';
 import { NotFoundError } from '../lib/error/types';
 import { FileScanner } from '../lib/scanner';
-import { compileMatchers } from '../lib/path-match';
+import { assertPatternLengths, compileMatchers } from '../lib/path-match';
 import { resolvePath } from './common';
 import { UsageError } from '../lib/error/types';
 import type { Command } from 'commander';
@@ -130,6 +130,7 @@ export const handleExploreAction = async (
     // --match narrows the file set; --search and --stats then work on that set.
     const matching = options.match && options.match.length > 0;
     if (matching) {
+      assertPatternLengths(options.match!, '--match');
       const matches = compileMatchers(options.match!);
       entries = entries.filter(e => matches(e.rel));
     }

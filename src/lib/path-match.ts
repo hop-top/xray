@@ -20,6 +20,42 @@
  * A class range written backwards (`[z-a]`) is empty rather than an error.
  */
 
+import { UsageError } from './error/types';
+
+/** Longest accepted `--match` / config `match` pattern, in characters. */
+export const MAX_PATTERN_LENGTH = 1024;
+
+/** Most patterns accepted at once; with the length cap this bounds total size and per-file work. */
+export const MAX_PATTERNS = 256;
+
+/**
+ * A pattern as it may appear in a message: truncated, JSON-quoted, with
+ * control characters (ESC, newline, DEL, C1) escaped. Patterns can come
+ * from a cloned repo's config and must not reach a terminal raw.
+ */
+export function quotePattern(p: string, max = 40): string {
+  const head = p.length > max ? `${p.slice(0, max)}...` : p;
+  return JSON.stringify(head).replace(/[\u007f-\u009f]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+}
+
+/**
+ * Reject more than MAX_PATTERNS patterns, or any longer than
+ * MAX_PATTERN_LENGTH, with a UsageError naming `source` (e.g. `--match`,
+ * or the config file the patterns came from).
+ */
+export function assertPatternLengths(patterns: readonly string[], source: string): void {
+  if (patterns.length > MAX_PATTERNS) {
+    throw new UsageError(`${source}: ${patterns.length} patterns, over the ${MAX_PATTERNS} limit`);
+  }
+  for (const p of patterns) {
+    if (typeof p === 'string' && p.length > MAX_PATTERN_LENGTH) {
+      throw new UsageError(
+        `${source}: pattern is ${p.length} characters, over the ${MAX_PATTERN_LENGTH} limit (starts with ${quotePattern(p)})`
+      );
+    }
+  }
+}
+
 type Range = readonly [number, number];
 
 type Token =
@@ -239,6 +275,7 @@ const compileAll = (patterns: string[]): Array<(relPath: string) => boolean> =>
  * Predicate over root-relative posix paths for the given `--match` values.
  */
 export function compileMatchers(patterns: readonly string[]): (relPath: string) => boolean {
+  assertPatternLengths(patterns, 'match pattern');
   const pos: string[] = [];
   const neg: string[] = [];
   for (const p of patterns) (p.startsWith('!') ? neg : pos).push(p.startsWith('!') ? p.slice(1) : p);

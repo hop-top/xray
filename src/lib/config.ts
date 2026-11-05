@@ -7,6 +7,7 @@ import {
   XrayConfig,
   XrayExtensionConfig,
 } from '../types/xray-config';
+import { assertPatternLengths, quotePattern } from './path-match';
 import { FileReadError, FileWriteError, NotFoundError, UsageError } from './error/types';
 
 // require(): tsconfig moduleResolution 'node' ignores the kit exports map.
@@ -535,6 +536,34 @@ function assertLensDefined(config: XrayConfig | null, lens: string, cliOptions: 
 }
 
 /**
+ * `match` in a config (top level, lens or scope) must be an array of
+ * strings; a bare string would be read character by character.
+ */
+function assertMatchShape(value: unknown, where: string, cliOptions: any): void {
+  if (value === undefined) return;
+  if (Array.isArray(value) && value.every((v) => typeof v === 'string')) return;
+  const files = consultedConfigFiles(cliOptions?.config, cliOptions?.path?.[0]);
+  const odd = Array.isArray(value) ? value.find((v) => typeof v !== 'string') : undefined;
+  const got = Array.isArray(value)
+    ? `an array holding ${odd === null ? 'null' : typeof odd}`
+    : value === null ? 'null' : typeof value;
+  throw new UsageError(
+    `${quotePattern(where, 120)} in ${files.length > 0 ? files.join(', ') : 'config'} must be an array of strings, got ${got}`
+  );
+}
+
+function assertConfigMatchShapes(config: XrayConfig, cliOptions: any): void {
+  assertMatchShape((config as any).match, 'match', cliOptions);
+  for (const kind of ['lenses', 'scopes'] as const) {
+    const group = (config as any)[kind];
+    if (!group || typeof group !== 'object') continue;
+    for (const [name, entry] of Object.entries<any>(group)) {
+      if (entry && typeof entry === 'object') assertMatchShape(entry.match, `${kind}.${name}.match`, cliOptions);
+    }
+  }
+}
+
+/**
  * Merge CLI options with config file, with CLI taking precedence.
  * Throws UsageError when `lens` is not defined in `config.lenses`.
  */
@@ -546,6 +575,8 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
   if (!config) {
     config = {} as XrayConfig;
   }
+
+  assertConfigMatchShapes(config, cliOptions);
 
   // If lens specified, use it as base. Deep-merge features so a lens
   // that sets only one feature does not wipe out base features set at
@@ -584,6 +615,14 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
       else if (feature === 'cf') features.cf = true;
       else if (feature === 'df') features.df = true;
     });
+  }
+
+  // Over-long patterns fail here, naming where they came from.
+  if (cliOptions.match && cliOptions.match.length > 0) {
+    assertPatternLengths(cliOptions.match, '--match');
+  } else if (baseConfig.match && baseConfig.match.length > 0) {
+    const files = consultedConfigFiles(cliOptions?.config, cliOptions?.path?.[0]);
+    assertPatternLengths(baseConfig.match, `"match" in ${files.length > 0 ? files.join(', ') : 'config'}`);
   }
 
   // Build final options with CLI taking precedence

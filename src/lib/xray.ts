@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { FileScanner } from './scanner';
-import { compileMatchers } from './path-match';
+import { compileMatchers, quotePattern } from './path-match';
 import { ParserManager } from './parser/manager';
 import { updateLanguageQuery } from './parser/language-registry';
 import { beginLanguageRun, reportSkippedLanguages, type SkippedSummary } from './parser/grammars';
@@ -298,7 +298,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     if (patterns.length > 0) {
       const matches = compileMatchers(patterns);
       files = files.filter(f => matches(f.split(path.sep).join('/')));
-      if (files.length === 0) Logger.warn(`No files match --match ${patterns.join(', ')}`);
+      if (files.length === 0) Logger.warn(`No files match --match ${patterns.map((p) => quotePattern(p)).join(', ')}`);
     }
     Logger.info(`Found ${files.length} files.`);
     Logger.debug(`File list:`, files.slice(0, 10));
