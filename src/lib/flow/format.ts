@@ -1,4 +1,5 @@
 import type { Cfg, Dfg } from './types';
+import { terminalSafe } from '../terminal-safe';
 
 /**
  * Compact text of a function's flow, one line per CFG node and per
@@ -28,12 +29,12 @@ function cfgLines(cfg: Cfg, indent: string, out: string[]): void {
   }
   out.push(`${indent}cfg${cfg.truncated ? ` (truncated: ${cfg.truncated.limit} of ${cfg.truncated.nodes}${cfg.truncated.partial ? '+' : ''} nodes)` : ''}`);
   for (const n of cfg.nodes) {
-    const label = n.kind === 'entry' || n.kind === 'exit' ? '' : ` ${n.label}`;
+    const label = n.kind === 'entry' || n.kind === 'exit' ? '' : ` ${terminalSafe(n.label)}`;
     const next = succ.get(n.id);
     out.push(`${indent}${indent}${n.id} ${n.kind} L${n.line + 1}${label}${next ? ` → ${next.join(' ')}` : ''}`);
   }
   for (const c of cfg.closures ?? []) {
-    out.push(`${indent}closure ${c.name} L${c.line + 1}`);
+    out.push(`${indent}closure ${terminalSafe(c.name)} L${c.line + 1}`);
     const inner: string[] = [];
     cfgLines(c, indent, inner);
     out.push(...inner.map(l => indent + l));
@@ -48,14 +49,14 @@ function dfgLines(dfg: Dfg, indent: string, out: string[], withSites: boolean): 
     uses.set(e.from, list);
   }
   out.push(`${indent}dfg${dfg.truncated ? ` (truncated: ${dfg.truncated.limit} of ${dfg.truncated.nodes}${dfg.truncated.partial ? '+' : ''} nodes)` : ''}`);
-  if (withSites) for (const s of dfg.sites) out.push(`${indent}${indent}${s.id} L${s.line + 1} ${s.label}`);
+  if (withSites) for (const s of dfg.sites) out.push(`${indent}${indent}${s.id} L${s.line + 1} ${terminalSafe(s.label)}`);
   for (const d of dfg.nodes) {
     const flags = `${d.weak ? ' weak' : ''}${d.captured ? ' captured' : ''}`;
     const reads = uses.get(d.id);
-    out.push(`${indent}${indent}${d.id} ${d.name} ${d.kind} L${d.line + 1}${flags}${reads ? ` → ${reads.join(' ')}` : ''}`);
+    out.push(`${indent}${indent}${d.id} ${terminalSafe(d.name)} ${d.kind} L${d.line + 1}${flags}${reads ? ` → ${reads.join(' ')}` : ''}`);
   }
   for (const c of dfg.closures ?? []) {
-    out.push(`${indent}closure ${c.name} L${c.line + 1}`);
+    out.push(`${indent}closure ${terminalSafe(c.name)} L${c.line + 1}`);
     const inner: string[] = [];
     dfgLines(c, indent, inner, withSites);
     out.push(...inner.map(l => indent + l));

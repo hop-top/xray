@@ -107,3 +107,22 @@ describe('flow in the serialized graph and XML', () => {
     expect(plain).toContain('<node id="a.ts::f" type="tag" label="f" kind="function" file="a.ts" line="0"/>');
   });
 });
+
+describe('flowLines terminal safety', () => {
+  const ESC = String.fromCharCode(27);
+  it('escapes control characters from source-derived labels and names', () => {
+    const cfg = {
+      nodes: [{ id: 'n2', kind: 'stmt', label: `log("${ESC}[2J")`, line: 0 }],
+      edges: [],
+      closures: [{ name: `f${ESC}]0;x`, line: 0, nodes: [], edges: [] }],
+    };
+    const dfg = {
+      nodes: [{ id: 'd0', name: `v${ESC}[1m`, kind: 'decl', line: 0, at: 'n2' }],
+      edges: [],
+      sites: [{ id: 'n2', line: 0, label: `s${ESC}[2J` }],
+    };
+    const out = [...flowLines({ cfg } as never), ...flowLines({ dfg } as never)].join('\n');
+    expect(out).not.toContain(ESC);
+    expect(out).toContain('\\x1b[2J');
+  });
+});
