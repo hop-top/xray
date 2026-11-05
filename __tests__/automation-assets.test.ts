@@ -48,8 +48,8 @@ describe('action.yaml', () => {
 
 describe('hooks/pre-commit', () => {
   const HOOK = path.join(ROOT, 'hooks/pre-commit');
-  // dash is /bin/sh on Debian/Ubuntu CI; it is where bashisms bite
-  const SH = ['/bin/dash', '/usr/bin/dash'].find(p => fs.existsSync(p)) ?? '/bin/sh';
+  // the hook declares bash (NUL-safe path handling needs it)
+  const SH = '/bin/bash';
   let repo: string;
   let bin: string;
 
@@ -70,13 +70,14 @@ describe('hooks/pre-commit', () => {
     git('config', 'user.name', 't');
     fs.writeFileSync(path.join(repo, '.xrayrc.json'), '{}\n');
     fs.writeFileSync(path.join(repo, 'a.ts'), 'export const a = 1;\n');
-    git('add', 'a.ts');
+    // config is read from the index, so it has to be staged (or tracked)
+    git('add', '.xrayrc.json', 'a.ts');
   });
 
   afterEach(() => fs.rmSync(repo, { recursive: true, force: true }));
 
-  test('script has no bash-only redirection', () => {
-    expect(fs.readFileSync(HOOK, 'utf8')).not.toMatch(/&>/);
+  test('declares the shell it needs', () => {
+    expect(fs.readFileSync(HOOK, 'utf8').split('\n')[0]).toBe('#!/usr/bin/env bash');
   });
 
   test('runs xray when it is on PATH', () => {

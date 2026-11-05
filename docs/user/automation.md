@@ -298,23 +298,25 @@ fi
 echo "🔍 Regenerating xray maps..."
 xray map
 
-# Stage any changes
-if [ -n "$(git status --porcelain)" ]; then
-  git add -A
-  echo "✓ Xray maps updated and staged"
-fi
+# Stage only the map files (match your config's "output")
+git add -- 'docs/codebase-map*'
+echo "✓ Xray maps updated and staged"
 
 exit 0
 ```
 
 Then: `chmod +x .git/hooks/pre-commit`
 
+This simple form maps your working tree and stages only the files matching the
+pattern, never your other changes. Method 1 (the shipped hook) maps exactly
+what is staged and leaves the working tree untouched; prefer it.
+
 #### Method 3: Using Husky
 
 ```bash
 npm install -D husky
 npx husky init
-echo "xray map && git add -A" > .husky/pre-commit
+echo "xray map && git add -- 'docs/codebase-map*'" > .husky/pre-commit
 ```
 
 #### Method 4: Using pre-commit Framework
@@ -327,7 +329,7 @@ repos:
     hooks:
       - id: xray-regenerate
         name: Regenerate xray maps
-        entry: bash -c 'xray map && git add -A'
+        entry: bash -c "xray map && git add -- 'docs/codebase-map*'"
         language: system
         pass_filenames: false
         files: \.(ts|tsx|js|jsx|py|java|go|rs)$
@@ -337,12 +339,19 @@ repos:
 
 The pre-commit hook:
 
-1. Checks if xray config exists (exits if not)
+1. Checks that an xray config is tracked or staged (skips, with a notice, if not)
 2. Checks if xray is installed (warns and exits if not)
 3. Checks for staged source files (exits if none)
-4. Runs `xray map` using your config
-5. Stages any generated/updated files
-6. Allows commit to proceed
+4. Exports the index (the staged content) to a scratch directory under `.git/xray-precommit/`
+5. Runs `xray map` there using your config
+6. Copies back and stages only the files `xray` changed; nothing else is staged
+7. Allows commit to proceed
+
+Your working tree is not stashed or modified apart from those files. A killed
+hook leaves nothing of yours behind; the scratch directory is emptied on the
+next run. If a generated file has unstaged edits that differ from the new map,
+the hook stops the commit and lists it: stage or discard those edits and commit
+again. If `xray map` fails, the commit is aborted.
 
 ### Skipping the Hook
 
@@ -484,10 +493,10 @@ xray map --all-scopes
 **"Hook not running"**
 - Check file exists: `ls -la .git/hooks/pre-commit`
 - Check executable: `chmod +x .git/hooks/pre-commit`
-- Verify config file exists
+- Verify the config file is tracked (or staged): the hook reads config from the index
 
 **"Maps not being staged"**
-- Hook automatically stages changes with `git add -A`
+- The hook stages only the files `xray` changed (outputs that git ignores are skipped)
 - Check output path in config is correct
 - Verify xray map command succeeds
 
