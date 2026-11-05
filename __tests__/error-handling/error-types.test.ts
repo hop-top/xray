@@ -448,20 +448,20 @@ describe('CodedError taxonomy', () => {
     expect(err.name).toBe('NotFoundError');
   });
 
-  it('ConflictError carries exit code 5 and code "CONFLICT" (12fc Factor 11)', () => {
+  it('ConflictError carries exit code 4 and code "CONFLICT" (kit)', () => {
     const err = new ConflictError('alias collides with built-in');
     expect(err).toBeInstanceOf(CodedError);
     expect(err.exitCode).toBe(EXIT_CONFLICT);
-    expect(err.exitCode).toBe(5);
+    expect(err.exitCode).toBe(4);
     expect(err.code).toBe('CONFLICT');
     expect(err.name).toBe('ConflictError');
   });
 
-  it('UnauthorizedError carries exit code 4 and code "UNAUTHORIZED" (12fc Factor 11)', () => {
+  it('UnauthorizedError carries exit code 5 and code "UNAUTHORIZED" (kit)', () => {
     const err = new UnauthorizedError('reserved');
     expect(err).toBeInstanceOf(CodedError);
     expect(err.exitCode).toBe(EXIT_UNAUTHORIZED);
-    expect(err.exitCode).toBe(4);
+    expect(err.exitCode).toBe(5);
     expect(err.code).toBe('UNAUTHORIZED');
     expect(err.name).toBe('UnauthorizedError');
   });

@@ -652,7 +652,13 @@ space form takes every following word as a column. Graph strategy commands
 | 0 | Success |
 | 1 | General error |
 | 2 | Invalid arguments |
-| 3 | Not found: a `--path` root or a `--graph` file does not exist |
+| 3 | Not found: a `--path` root, a `--graph` file, a strategy, an alias or a build target does not exist |
+| 4 | Conflict: the name or file already exists (`alias set` on a reserved name, `strategy create` over an existing file) |
+| 5 | Unauthorized / permission denied |
+| 6 | Transient failure; a retry may clear it |
+| 7 | Consent refused; re-run with `--confirm=yes` |
+
+Codes follow `@hop-top/kit`. `xray describe` lists, per command, the codes it can produce.
 
 ## Output Format
 

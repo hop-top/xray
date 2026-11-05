@@ -1,4 +1,5 @@
 import { execFileSync } from 'child_process';
+import { NotFoundError } from '../lib/error/types';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -98,7 +99,7 @@ export async function installStrategy(source: string, loader: StrategyLoader): P
   if (source.startsWith('/') || source.startsWith('./') || source.startsWith('../')) {
     const absolute = path.resolve(source);
     if (!fs.existsSync(absolute)) {
-      throw new Error(`Path does not exist: ${absolute}`);
+      throw new NotFoundError(`Path does not exist: ${absolute}`);
     }
     if (fs.statSync(absolute).isFile() && FILE_STRATEGY.test(absolute)) {
       return readLocalFile(loader, absolute);

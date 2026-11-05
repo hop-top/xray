@@ -17,7 +17,7 @@ import {
   createStrategyContext,
   normalizeExtensionOptions,
 } from '../common';
-import { UsageError } from '../../lib/error/types';
+import { CodedError, UsageError } from '../../lib/error/types';
 import { setCommandGroup } from '../kit-cli';
 import {
   OUTPUT_FLAG_NAMES, addOutputFlags, assertFormat, emit, outputRegistry, textFormatter,
@@ -394,6 +394,9 @@ async function handleStrategyCommandError(
   cmdName: string,
   projectPath: string
 ): Promise<never> {
+  // A coded failure (not found, usage, ...) keeps its exit code.
+  if (error instanceof CodedError) throw error;
+
   const { LogLevel } = await import('../../lib/logger');
 
   // Categorize and provide helpful error messages

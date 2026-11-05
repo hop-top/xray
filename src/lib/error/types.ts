@@ -217,25 +217,34 @@ export class UnknownError extends XrayError {
  * CLI Exit Code Taxonomy
  *
  * Maps error categories to POSIX-style exit codes so callers (humans, agents,
- * pipelines) can distinguish failure modes without parsing stderr.
+ * pipelines) can distinguish failure modes without parsing stderr. The
+ * numbers come from `@hop-top/kit` (12-Factor AI-CLI Apps, Factor 11); they
+ * are re-exported here, never redefined.
  *
  * - 0   success
  * - 1   generic unexpected error (default; non-CodedError throws)
  * - 2   usage error (bad flag, missing required arg, commander parse failure)
  * - 3   not-found (alias, config, strategy, file path)
- * - 4   unauthorized / permission denied (reserved; not currently instantiated)
- * - 5   conflict (alias collides with built-in; resource conflict)
- *
- * Codes 4/5 follow the 12-Factor AI-CLI Apps spec (Factor 11): 4=auth/
- * permission, 5=conflict. xray previously had these swapped — scripts that
- * branched on `$?==4` for conflicts must move to `$?==5`.
+ * - 4   conflict (name collision, resource already exists)
+ * - 5   unauthorized / permission denied
+ * - 6   transient (a retry may clear it)
+ * - 7   consent refused (re-invoke with --confirm=yes)
  */
-export const EXIT_SUCCESS = 0;
-export const EXIT_GENERIC = 1;
-export const EXIT_USAGE = 2;
-export const EXIT_NOT_FOUND = 3;
-export const EXIT_UNAUTHORIZED = 4;
-export const EXIT_CONFLICT = 5;
+// Legacy `node` module resolution ignores kit's `exports` map: types come
+// from dist, the runtime require goes through the exported subpath.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const kitExit = require('@hop-top/kit/output') as typeof import('@hop-top/kit/dist/output');
+
+export const EXIT_SUCCESS: number = kitExit.EXIT_OK;
+export const EXIT_GENERIC: number = kitExit.EXIT_GENERIC;
+export const EXIT_USAGE: number = kitExit.EXIT_USAGE;
+export const EXIT_NOT_FOUND: number = kitExit.EXIT_NOT_FOUND;
+export const EXIT_CONFLICT: number = kitExit.EXIT_CONFLICT;
+export const EXIT_UNAUTHORIZED: number = kitExit.EXIT_UNAUTHORIZED;
+export const EXIT_TRANSIENT: number = kitExit.EXIT_TRANSIENT;
+export const EXIT_CONSENT_REFUSED: number = kitExit.EXIT_CONSENT_REFUSED;
+
+const CODED_BRAND = Symbol.for('xray.CodedError');
 
 /**
  * Base class for CLI-level errors that carry a structured exit code.
@@ -245,6 +254,21 @@ export const EXIT_CONFLICT = 5;
  * CodedError and exits with err.exitCode; everything else exits 1.
  */
 export class CodedError extends Error {
+  /**
+   * Built-in strategies are compiled into a second copy of this module
+   * (dist/src/lib), so a plain prototype check misses their errors.
+   * `instanceof CodedError` matches the brand; subclasses keep the
+   * prototype check.
+   */
+  static [Symbol.hasInstance](value: unknown): boolean {
+    if (this === CodedError) {
+      return typeof value === 'object' && value !== null &&
+        (value as Record<symbol, unknown>)[CODED_BRAND] === true;
+    }
+    return Function.prototype[Symbol.hasInstance].call(this, value);
+  }
+
+  readonly [CODED_BRAND] = true;
   readonly exitCode: number;
   readonly code: string;
   cause?: Error;
@@ -285,7 +309,7 @@ export class NotFoundError extends CodedError {
 
 /**
  * Conflict error: name collision with built-in command or other resource.
- * Exit code 5 (12fc Factor 11).
+ * Exit code 4 (kit EXIT_CONFLICT).
  */
 export class ConflictError extends CodedError {
   constructor(message: string, cause?: Error) {
@@ -295,7 +319,7 @@ export class ConflictError extends CodedError {
 
 /**
  * Unauthorized error: authentication/permission failure (reserved).
- * Exit code 4 (12fc Factor 11).
+ * Exit code 5 (kit EXIT_UNAUTHORIZED).
  */
 export class UnauthorizedError extends CodedError {
   constructor(message: string, cause?: Error) {

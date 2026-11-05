@@ -12,7 +12,17 @@
 
 import { Command, Option } from 'commander';
 import { Logger } from '../lib/logger';
-import { UsageError } from '../lib/error/types';
+import {
+  EXIT_CONFLICT,
+  EXIT_CONSENT_REFUSED,
+  EXIT_GENERIC,
+  EXIT_NOT_FOUND,
+  EXIT_SUCCESS,
+  EXIT_TRANSIENT,
+  EXIT_UNAUTHORIZED,
+  EXIT_USAGE,
+  UsageError,
+} from '../lib/error/types';
 import { TELEMETRY_POLICY } from '../lib/telemetry-policy';
 
 const SCHEMA_URL = 'https://hop-top.dev/schemas/cli-capabilities/v1.json';
@@ -68,16 +78,22 @@ const IDEMPOTENT: Record<string, Idempotent> = {
   'alias.list': 'yes',
 };
 
-// Conservative exit-code listings — what the dispatcher / handler can
+// Conservative exit-code listings: what the dispatcher / handler can
 // demonstrably produce. Every command can hit 0 (success), 1 (generic),
-// 2 (usage). Specific commands add 3/4/5 where applicable.
+// 2 (usage). Specific commands add 3 (not found) / 4 (conflict) where a
+// handler throws them; a real-exit test pins each entry.
 const EXTRA_EXIT_CODES: Record<string, number[]> = {
-  'alias.remove': [3],
-  'strategy.remove': [3],
-  impact: [3],
-  imports: [3],
-  paths: [3],
-  'alias.set': [5],
+  'alias.remove': [EXIT_NOT_FOUND],
+  'strategy.remove': [EXIT_NOT_FOUND],
+  'strategy.detect': [EXIT_NOT_FOUND],
+  'strategy.info': [EXIT_NOT_FOUND],
+  'strategy.validate': [EXIT_NOT_FOUND],
+  'strategy.install': [EXIT_NOT_FOUND],
+  'strategy.create': [EXIT_CONFLICT],
+  'build.run': [EXIT_NOT_FOUND],
+  impact: [EXIT_NOT_FOUND],
+  imports: [EXIT_NOT_FOUND],
+  'alias.set': [EXIT_CONFLICT],
 };
 
 // Commands whose machine output is a versioned document: schema id (the
@@ -86,13 +102,16 @@ const OUTPUT_SCHEMAS: Record<string, OutputSchemaDoc> = {
   imports: { schema: 'xray.imports/v1', path: 'schemas/xray.imports.v1.json', formats: ['json', 'yaml'] },
 };
 
+// Numbers are kit's taxonomy (12-Factor AI-CLI Apps, Factor 11).
 const EXIT_CODES: Record<string, string> = {
-  '0': 'success',
-  '1': 'generic failure',
-  '2': 'usage error (bad flag, missing arg)',
-  '3': 'not found (alias, config, strategy, path)',
-  '4': 'unauthorized / permission denied',
-  '5': 'conflict (resource collision)',
+  [EXIT_SUCCESS]: 'success',
+  [EXIT_GENERIC]: 'generic failure',
+  [EXIT_USAGE]: 'usage error (bad flag, missing arg)',
+  [EXIT_NOT_FOUND]: 'not found (alias, config, strategy, path)',
+  [EXIT_CONFLICT]: 'conflict (resource collision, already exists)',
+  [EXIT_UNAUTHORIZED]: 'unauthorized / permission denied',
+  [EXIT_TRANSIENT]: 'transient failure (a retry may clear it)',
+  [EXIT_CONSENT_REFUSED]: 'consent refused (re-run with --confirm=yes)',
 };
 
 interface ArgumentDoc {
@@ -210,7 +229,7 @@ function classify(qualifiedName: string, cmd?: Command): {
       : SIDE_EFFECTS[qualifiedName] ?? 'read';
   const idempotent =
     IDEMPOTENT[qualifiedName] ?? (sideEffect === 'read' ? 'yes' : 'conditional');
-  const base = [0, 1, 2];
+  const base = [EXIT_SUCCESS, EXIT_GENERIC, EXIT_USAGE];
   const extras = EXTRA_EXIT_CODES[qualifiedName] ?? [];
   const exitCodes = Array.from(new Set([...base, ...extras])).sort((a, b) => a - b);
   return { sideEffect, idempotent, exitCodes };

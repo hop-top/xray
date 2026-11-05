@@ -1,4 +1,5 @@
 // strategies/build.ts
+import { NotFoundError, UsageError } from '../src/lib/error/types';
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import { BuildTool } from '../src/lib/strategy/build/types';
 import { makeTool } from '../src/lib/strategy/build/parsers/makefile';
@@ -169,7 +170,7 @@ export default class BuildStrategy implements Strategy {
       },
       handler: async (ctx: StrategyContext, opts?: any) => {
         if (!opts || !opts.target) {
-          return { error: 'No target specified. Use --target=<name>' };
+          throw new UsageError('No target specified. Use --target=<name>');
         }
 
         const targetName = opts.target;
@@ -213,7 +214,7 @@ export default class BuildStrategy implements Strategy {
           }
         }
 
-        return { error: `Target "${targetName}" not found in any build file` };
+        throw new NotFoundError(`Target "${targetName}" not found in any build file`);
       }
     }
   };

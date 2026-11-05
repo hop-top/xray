@@ -9,7 +9,7 @@ import { installStrategy, findInstalledStrategyPackage, uninstallStrategyPackage
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { normalizeDetectedStrategy } from '../lib/strategy/types';
-import { FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
+import { CodedError, ConflictError, FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
@@ -64,8 +64,7 @@ export function registerStrategyCommand(): Command {
       const projectPath = options.path && options.path.length > 0 ? options.path[0] : process.cwd();
 
       if (!fs.existsSync(projectPath)) {
-        Logger.error(`Path does not exist: ${projectPath}`);
-        process.exit(1);
+        throw new NotFoundError(`Path does not exist: ${projectPath}`);
       }
 
       const loader = new StrategyLoader();
@@ -142,8 +141,7 @@ export function registerStrategyCommand(): Command {
       const filePath = path.join(dir, `${fileName}${fileExt}`);
 
       if (fs.existsSync(filePath)) {
-        Logger.error(`Strategy file already exists: ${filePath}`);
-        process.exit(1);
+        throw new ConflictError(`Strategy file already exists: ${filePath}`);
       }
 
       if (isYaml) {
@@ -225,8 +223,10 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       try {
         await installStrategy(source, loader);
       } catch (error: any) {
-        Logger.error(`Failed to install strategy: ${error.message}`);
-        process.exit(1);
+        if (error instanceof CodedError) throw error;
+        const failure = new Error(`Failed to install strategy: ${error.message}`);
+        (failure as Error & { cause?: unknown }).cause = error;
+        throw failure;
       }
     });
 

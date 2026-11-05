@@ -3934,8 +3934,10 @@ exports[`cli golden: introspection describe 1`] = `
     "1": "generic failure",
     "2": "usage error (bad flag, missing arg)",
     "3": "not found (alias, config, strategy, path)",
-    "4": "unauthorized / permission denied",
-    "5": "conflict (resource collision)"
+    "4": "conflict (resource collision, already exists)",
+    "5": "unauthorized / permission denied",
+    "6": "transient failure (a retry may clear it)",
+    "7": "consent refused (re-run with --confirm=yes)"
   },
   "telemetry": {
     "defaultOff": [
@@ -5551,7 +5553,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -5574,7 +5577,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -5622,7 +5626,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            4
           ]
         },
         {
@@ -5645,7 +5650,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -5692,7 +5698,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -5828,7 +5835,7 @@ exports[`cli golden: introspection describe 1`] = `
             0,
             1,
             2,
-            5
+            4
           ]
         },
         {
@@ -6104,8 +6111,7 @@ exports[`cli golden: introspection describe 1`] = `
       "exitCodes": [
         0,
         1,
-        2,
-        3
+        2
       ]
     },
     {
@@ -6675,7 +6681,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],

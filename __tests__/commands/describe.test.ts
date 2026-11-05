@@ -76,7 +76,7 @@ describe('xray describe', () => {
     expect(() => JSON.parse(serialized)).not.toThrow();
   });
 
-  it('declares the full exit-code taxonomy (0/1/2/3/4/5)', () => {
+  it('declares the full exit-code taxonomy (0-7, kit)', () => {
     expect(doc.exitCodes).toMatchObject({
       '0': expect.any(String),
       '1': expect.any(String),
@@ -84,10 +84,14 @@ describe('xray describe', () => {
       '3': expect.any(String),
       '4': expect.any(String),
       '5': expect.any(String),
+      '6': expect.any(String),
+      '7': expect.any(String),
     });
-    // 12fc Factor 11: 4=auth, 5=conflict.
-    expect(doc.exitCodes['4']).toMatch(/unauthorized|permission|auth/i);
-    expect(doc.exitCodes['5']).toMatch(/conflict/i);
+    // kit: 4=conflict, 5=unauthorized, 6=transient, 7=consent refused.
+    expect(doc.exitCodes['4']).toMatch(/conflict/i);
+    expect(doc.exitCodes['5']).toMatch(/unauthorized|permission|auth/i);
+    expect(doc.exitCodes['6']).toMatch(/transient|retry/i);
+    expect(doc.exitCodes['7']).toMatch(/consent/i);
   });
 
   it('classifies scan as read / idempotent yes', () => {

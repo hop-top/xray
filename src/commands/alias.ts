@@ -3,7 +3,7 @@ import { declareManagedWrite } from './side-effect';
 import { assertDataConfig, isWritableConfigFile, loadConfig, saveConfig } from '../lib/config';
 import { isAliasTarget, kitAlias, reservedAliasNames, rootCommand, usableAliases } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
-import { NotFoundError, UsageError } from '../lib/error/types';
+import { ConflictError, NotFoundError, UsageError } from '../lib/error/types';
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
@@ -103,7 +103,7 @@ export function registerAliasCommand(): Command {
       } catch (err) {
         if (!(err instanceof kitAlias.AliasNameError)) throw err;
         if (err.kind === 'builtin') {
-          throw new UsageError(
+          throw new ConflictError(
             `Cannot create alias "${name}" - conflicts with an existing command; choose another name`
           );
         }

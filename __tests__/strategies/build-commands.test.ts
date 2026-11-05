@@ -309,17 +309,19 @@ describe('Build Strategy Commands', () => {
         ]
       });
 
-      const result = await strategy.commands.run.handler(mockContext, { target: 'nonexistent' });
-
-      expect(result.error).toBeDefined();
-      expect(result.error).toContain('Target "nonexistent" not found');
+      await expect(
+        strategy.commands.run.handler(mockContext, { target: 'nonexistent' })
+      ).rejects.toMatchObject({
+        exitCode: 3,
+        message: expect.stringContaining('Target "nonexistent" not found'),
+      });
     });
 
     it('should error when no target specified', async () => {
-      const result = await strategy.commands.run.handler(mockContext, {});
-
-      expect(result.error).toBeDefined();
-      expect(result.error).toContain('No target specified');
+      await expect(strategy.commands.run.handler(mockContext, {})).rejects.toMatchObject({
+        exitCode: 2,
+        message: expect.stringContaining('No target specified'),
+      });
     });
   });
 });

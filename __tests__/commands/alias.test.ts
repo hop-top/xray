@@ -143,12 +143,12 @@ describe('Alias Commands', () => {
     };
 
     it.each(['map', 'cache', 'paths', 'describe', 'mcp', 'completion', 'clear-cache', 'help'])(
-      'rejects alias named after existing command "%s" (UsageError, exit 2)',
+      'rejects alias named after existing command "%s" (ConflictError, exit 4)',
       async (name) => {
         mockLoadConfig.mockReturnValue({ paths: ['./src'] });
         await expect(
           rootWithCore().parseAsync(['node', 'test', 'alias', 'set', name, 'react components'])
-        ).rejects.toMatchObject({ exitCode: 2, code: 'USAGE' });
+        ).rejects.toMatchObject({ exitCode: 4, code: 'CONFLICT' });
         expect(mockSaveConfig).not.toHaveBeenCalled();
       }
     );

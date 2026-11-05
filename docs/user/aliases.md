@@ -136,7 +136,7 @@ Reserved names are derived from the commands xray registers (core
 commands such as `map`, `cache`, `paths`, `describe`, `mcp`, `alias`,
 `completion`, hidden ones such as `clear-cache`, strategy commands, and
 `help`). Run `xray --help` to see them. `alias set` rejects a reserved
-name with a usage error (exit 2). A reserved name already in a config is
+name with a conflict error (exit 4). A reserved name already in a config is
 skipped with a warning at startup.
 
 ### Invalid Formats
