@@ -25,7 +25,6 @@ const repeat = (v: string, p: string[]) => p.concat([v]);
 function tree(): Command {
   const root = new Command('xray');
   root.command('explore')
-    .argument('[query]', 'Search query')
     .option('-p, --path <path>', 'Root directory (repeatable)', repeat, [])
     .option('--stats', 'Show statistics')
     .option('-o, --output <path>', 'Output file')
@@ -98,15 +97,15 @@ describe('isExposedPath', () => {
 describe('shapeLeaf', () => {
   const root = tree();
 
-  it('adds positionals, widens repeatable options, adds root, keeps only allowlisted options', () => {
+  it('adds root, widens repeatable options, adds root, keeps only allowlisted options', () => {
     const { leaf, def } = shaped(root, ['explore']);
     expect(leaf.path).toEqual(['explore']);
-    expect(leaf.properties.query).toEqual({ type: 'string', description: 'Search query' });
+    expect(leaf.properties.query).toBeUndefined();
     expect(leaf.properties.path).toMatchObject({ type: 'array', items: { type: 'string' } });
     expect(leaf.properties.stats.type).toBe('boolean');
     expect(leaf.properties.root.type).toBe('string');
     expect(leaf.properties.output).toBeUndefined();
-    expect(def).toMatchObject({ name: 'explore', path: ['explore'], positionals: ['query'], fileOutput: false });
+    expect(def).toMatchObject({ name: 'explore', path: ['explore'], positionals: [], fileOutput: false });
   });
 
   it('names nested tools with _', () => {
@@ -174,9 +173,11 @@ describe('buildArgv', () => {
   });
 
   it('maps options, booleans, arrays and positionals after --', () => {
-    expect(argv(def, cmd, { query: '-x', stats: true, path: ['a', 'b'] })).toEqual([
-      'explore', '--path=<a>', '--path=<b>', '--stats', '--', '-x',
+    expect(argv(def, cmd, { stats: true, path: ['a', 'b'] })).toEqual([
+      'explore', '--path=<a>', '--path=<b>', '--stats',
     ]);
+    const ic = findCommand(root, ['impact'])!;
+    expect(argv(shaped(root, ['impact']).def, ic, { symbol: '-x' })).toEqual(['impact', '--', '-x']);
   });
 
   it('omits false booleans and absent positionals', () => {
@@ -187,7 +188,7 @@ describe('buildArgv', () => {
     [{ bogus: 1 }, /unknown argument "bogus"/],
     [{ output: 'x' }, /unknown argument "output"/],
     [{ stats: 'yes' }, /must be a boolean/],
-    [{ query: { a: 1 } }, /must be a string/],
+    [{ query: 'foo' }, /unknown argument "query"/],
     [{ path: ['http://169.254.169.254/latest'] }, /not a URL/],
   ])('rejects %j', (args, msg) => {
     expect(() => argv(def, cmd, args as Record<string, unknown>)).toThrow(ToolArgumentError);
@@ -331,9 +332,9 @@ describe('root containment', () => {
     ]);
     expect(buildArgv(d, c, { 'no-ignore': true }, scope).argv).toEqual(['imports', '--no-ignore']);
     expect(buildArgv(d, c, { 'no-ignore': false }, scope).argv).toEqual(['imports']);
-    // explore's [query] is a value: never resolved as a path.
-    const e = findCommand(r, ['explore'])!;
-    expect(buildArgv(shaped(r, ['explore']).def, e, { query: '../other' }, scope).argv).toEqual(['explore', '--', '../other']);
+    // impact's <symbol> is a value: never resolved as a path.
+    const e = findCommand(r, ['impact'])!;
+    expect(buildArgv(shaped(r, ['impact']).def, e, { symbol: '../other' }, scope).argv).toEqual(['impact', '--', '../other']);
   });
 
   it('contains config --file against the project path', () => {

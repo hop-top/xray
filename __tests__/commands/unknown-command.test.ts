@@ -63,9 +63,11 @@ describe('unknown-subcommand guard', () => {
     expect(r.stderr).toMatch(/unknown command 'helloquery'/);
   });
 
-  it('preserves explicit explore subcommand', () => {
+  it('preserves explicit explore subcommand; it takes no query', () => {
+    expect(run(['explore']).status).toBe(0);
     const r = run(['explore', 'foobar']);
-    expect(r.status).toBe(0);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('--match');
   });
 
   it('preserves registered subcommands', () => {

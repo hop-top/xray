@@ -212,26 +212,15 @@ describe('cli golden: --help', () => {
   );
 });
 
-// Surplus positionals are a usage error (exit 2), except on the default
-// command, whose [query] takes free-form words.
-const EXCESS_ARG_ACCEPTED: string[][] = [
-  ['explore', 'q', 'extra'], // default command with optional [query]
-];
+// Surplus positionals are a usage error (exit 2), explore included: it
+// takes no query (only a bare `xray <path>` is routed to it).
 const EXCESS_ARG_REJECTED: string[][] = [
+  ['explore', 'q', 'extra'], // no query operand
   ['strategy', 'info', 'express', 'extra'], // required arg + surplus
   ['paths', 'extra'], // no-arg command
 ];
 
 describe('cli golden: excess arguments', () => {
-  it.each(EXCESS_ARG_ACCEPTED.map((c) => [c.join(' '), c]))(
-    'xray %s',
-    async (_label, args) => {
-      const r = await run(args as string[]);
-      expect(r.status).toBe(0);
-      expect(golden(r)).toMatchSnapshot();
-    }
-  );
-
   it.each(EXCESS_ARG_REJECTED.map((c) => [c.join(' '), c]))(
     'xray %s is a usage error',
     async (_label, args) => {

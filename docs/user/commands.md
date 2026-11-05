@@ -56,8 +56,12 @@ Find files by pattern, search code for keywords, or show codebase
 statistics. Prints to stdout; writes nothing.
 
 ```bash
-xray explore [query] [options]
+xray explore [options]
 ```
+
+`explore` takes no query: use `--match` to find files and `--search` to
+search code (`xray explore foo` is a usage error, exit 2). The default
+command, bare `xray <existing-path>`, scans that path as the root.
 
 | Option | Description |
 |--------|-------------|

@@ -157,7 +157,7 @@ describe('xray mcp over stdio', () => {
     expect(names.every((n) => /^[A-Za-z0-9_-]+$/.test(n))).toBe(true);
 
     const explore = tools.find((t) => t.name === 'explore')!.inputSchema;
-    expect(explore.properties.query.type).toBe('string');
+    expect(explore.properties.query).toBeUndefined();
     expect(explore.properties.search).toMatchObject({ type: 'array', items: { type: 'string' } });
     expect(explore.properties.root.type).toBe('string');
     const map = tools.find((t) => t.name === 'map')!.inputSchema;

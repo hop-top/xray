@@ -26,13 +26,12 @@ describe('xray explore output (kit dispatch)', () => {
     program.exitOverride();
     const cmd = program
       .command('explore')
-      .argument('[query]')
       .option('-p, --path <path>', '', (v: string, p: string[]) => p.concat([v]), [])
       .option('-m, --match <pattern>', '', (v: string, p: string[]) => p.concat([v]), [])
       .option('-s, --search <keyword>', '', (v: string, p: string[]) => p.concat([v]), [])
       .option('-t, --type <ext>', '', (v: string, p: string[]) => p.concat([v]), [])
       .option('--stats');
-    addExploreOutputFlags(cmd).action((q, opts, c) => handleExploreAction(q, opts, c));
+    addExploreOutputFlags(cmd).action((opts, c) => handleExploreAction(opts, c));
     await program.parseAsync(['node', 'test', 'explore', '-p', FIXTURE, ...args]);
   }
 

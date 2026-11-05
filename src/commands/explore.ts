@@ -90,12 +90,31 @@ async function render<T>(
   await emit(cmd, rows, { registry: outputRegistry(text), columns: cols, defaultFormat: 'text' });
 }
 
+/** Option-value key under which the default route hands over a bare path (`xray <path>`). */
+export const ROUTED_PATH_KEY = 'routedPath';
+
+/** Set when default routing passes the word `explore` itself through as an operand. */
+export const ROUTED_SELF_KEY = 'routedSelf';
+
 export const handleExploreAction = async (
-  query: string | undefined,
   options: ExploreCommandOptions,
   cmd?: Command
 ) => {
     if (cmd) assertFormat(cmd, exploreRegistry);
+
+    // explore takes no operand. The one exception is a path that default
+    // routing handed over (`xray <path>`), which becomes a scan root.
+    const routed = (options as Record<string, unknown>)[ROUTED_PATH_KEY] as string | undefined;
+    const self = (options as Record<string, unknown>)[ROUTED_SELF_KEY] === true;
+    let operands = (cmd?.args ?? []).filter((a) => a !== routed);
+    if (self && operands[0] === 'explore') operands = operands.slice(1);
+    if (operands.length > 0) {
+      throw new UsageError(
+        `unexpected argument '${operands[0]}': explore takes no query; ` +
+        `use --match <glob> to find files, --search <keyword> to search code, or --path <dir> to pick a root`
+      );
+    }
+    if (routed) options = { ...options, path: [routed, ...(options.path ?? [])] };
 
     // One mode per run; combining --search with --stats would drop one.
     const keywords = options.search ?? [];

@@ -65,7 +65,7 @@ Any other stdio client: run `xray -C <project> mcp`.
 |------|----------------|--------|
 | `map` | `xray map` | map text (or the `--format` output) |
 | `graph` | `xray graph` | CFG/DFG output |
-| `explore` | `xray explore [query]` | match / search / stats rows |
+| `explore` | `xray explore` | match / search / stats rows |
 | `query` | `xray query <query>` | call-graph query result |
 | `impact` | `xray impact <symbol>` | transitive callers by area ("what breaks if I change X") |
 | `imports` | `xray imports [paths...]` | the [`xray.imports/v1`](imports-contract.md) document: per-file imports, parse errors, unsupported constructs |

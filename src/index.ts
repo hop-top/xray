@@ -16,6 +16,7 @@ import {
 import { StrategyLoader, reportSkippedProjectCode } from './lib/strategy/loader';
 import { defaultRouteFromArgv, resolveLogLevel, rootConfigFromArgv } from './commands/root-options';
 import { isCompletionRequest } from './commands/completion';
+import { ROUTED_PATH_KEY, ROUTED_SELF_KEY } from './commands/explore';
 import { applyMcpChdir, parseMcpRequest } from './commands/mcp';
 
 /**
@@ -26,7 +27,7 @@ import { applyMcpChdir, parseMcpRequest } from './commands/mcp';
  * own, e.g. `--format` before the subcommand) into explore, which lists
  * files and ignores it. A bare `xray` keeps that default; otherwise the
  * first operand must be a registered command or alias (strategy commands
- * included), or an existing path (a query for the default command).
+ * included), or an existing path (which the default command scans).
  * Anything else is a usage error, exit 2.
  */
 function rejectUnknownInput(program: any, argv: string[]): void {
@@ -43,13 +44,23 @@ function rejectUnknownInput(program: any, argv: string[]): void {
 
   if (known.has(word)) {
     // `explore` after a leading option is the default command itself.
-    if (!stray || word === 'explore') return;
+    if (!stray) return;
+    if (word === 'explore') {
+      // `xray --format json explore`: the default route passes the word
+      // `explore` through as an operand; tell explore to ignore it.
+      program.commands.find((c: any) => c.name() === 'explore')?.setOptionValue(ROUTED_SELF_KEY, true);
+      return;
+    }
     throw new UsageError(
       `option '${stray}' belongs after the command, not before it (xray ${word} ... ${stray})`
     );
   }
 
-  if (fs.existsSync(path.resolve(base, word))) return;
+  if (fs.existsSync(path.resolve(base, word))) {
+    // `xray <path>`: the default command scans that path.
+    program.commands.find((c: any) => c.name() === 'explore')?.setOptionValue(ROUTED_PATH_KEY, word);
+    return;
+  }
 
   // An unknown word may name a command of a strategy that was not loaded
   // (project code is opt-in): say so. A bare word is only worth the notice
@@ -231,10 +242,11 @@ export async function main() {
   };
   applyParseSettings(program);
 
-  // explore takes extra operands (`xray explore <framework>:<cmd>`). Set
-  // after applyParseSettings, since copyInheritedSettings overwrites the
-  // flag from the parent. Words that reach it by default routing are
-  // vetted by rejectUnknownInput below.
+  // Operands reach explore's action (it rejects them with a usage error
+  // naming --match/--search, except a path handed over by default
+  // routing). Set after applyParseSettings, since copyInheritedSettings
+  // overwrites the flag from the parent. Words that reach it by default
+  // routing are vetted by rejectUnknownInput below.
   program.commands.find((c) => c.name() === 'explore')?.allowExcessArguments();
 
   // `completion <shell>`: kit's command takes the shell as an operand that

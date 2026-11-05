@@ -115,15 +115,40 @@ describe('surplus positionals are a usage error', () => {
   });
 });
 
+describe('explore takes no query', () => {
+  it.each([
+    ['one word', ['explore', 'foo']],
+    ['two words', ['explore', 'foo', 'bar']],
+    ['after --', ['explore', '--', 'foo', 'bar']],
+    ['an existing path', ['explore', 'd1']],
+  ])('%s: usage error pointing at --match/--search', (_n, args) => {
+    const r = run(args);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('--match');
+    expect(r.stderr).toContain('--search');
+  });
+});
+
+describe('xray <path>', () => {
+  it('scans that path, not the whole project', () => {
+    const r = run(['d1']);
+    expect(r.status).toBe(0);
+    expect(r.stdout + r.stderr).toContain('a.py');
+    expect(r.stdout + r.stderr).not.toContain('b.py');
+  });
+
+  it('combines with --match relative to that path', () => {
+    const r = run(['d2', '--match', '*.py']);
+    expect(r.stdout + r.stderr).toContain('b.py');
+    expect(r.stdout + r.stderr).not.toContain('a.py');
+  });
+});
+
 describe('what keeps working', () => {
   it.each([
-    ['explore, one word', ['explore', 'foo']],
-    ['explore, two words', ['explore', 'foo', 'bar']],
-    ['explore, three words', ['explore', 'foo', 'bar', 'baz']],
-    ['explore after --', ['explore', '--', 'foo', 'bar']],
     ['an existing path', ['d1']],
     ['an option, then a path', ['--stats', 'd1']],
-  ])('explore query: %s exits 0', (_n, args) => {
+  ])('default route: %s exits 0', (_n, args) => {
     const r = run(args);
     expect(r.stderr).not.toMatch(/too many arguments/);
     expect(r.status).toBe(0);

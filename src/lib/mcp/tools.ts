@@ -125,7 +125,6 @@ const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
       path: 'path', match: 'value', search: 'value', type: 'value',
       stats: 'value', 'list-strategies': 'value', format: 'value',
     }),
-    positionals: { query: 'value' },
   },
   query: {
     ...scoped({ graph: 'path', 'list-adapters': 'value', format: 'value' }, 'graph'),

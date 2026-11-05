@@ -137,9 +137,10 @@ describe('what keeps working', () => {
     expect(run(['-C', 'src', 'a.ts']).status).toBe(0);
   });
 
-  it('explore and its words, with or without a leading option', () => {
-    expect(run(['explore', 'foo', 'bar']).status).toBe(0);
+  it('explore, with or without a leading option; its words are a usage error', () => {
+    expect(run(['explore', 'foo', 'bar']).status).toBe(2);
     expect(run(['--format', 'json', 'explore']).status).toBe(0);
+    expect(run(['--format', 'json', 'explore', 'foo']).status).toBe(2);
   });
 
   it('completion takes its shell word', () => {

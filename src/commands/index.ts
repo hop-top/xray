@@ -45,7 +45,6 @@ function registerExploreCommand(): void {
   const explore = program
     .command('explore', { isDefault: true })
     .description('Quickly find files by patterns, search code for keywords, or explore codebase [default command]')
-    .argument('[query]', 'Search query or pattern')
     .option('-p, --path <path>', 'Root directory to explore (repeatable) [default: current directory]', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
@@ -61,14 +60,14 @@ function registerExploreCommand(): void {
     .option('--stats', 'Show codebase statistics')
     .option('--list-strategies', 'List all available strategies');
   addExploreOutputFlags(explore)
-    .action(async (query: string | undefined, options: ExploreCommandOptions, cmd: Command) => {
+    .action(async (options: ExploreCommandOptions, cmd: Command) => {
       if (options.listStrategies) {
         await handleMetaStrategyCommand('list', options as any, cmd);
         return;
       }
 
       // Handle regular explore options
-      await handleExploreAction(query, options, cmd);
+      await handleExploreAction(options, cmd);
     });
   declareEffect(explore, 'read', 'yes');
   setCommandGroup(explore, 'analyze');

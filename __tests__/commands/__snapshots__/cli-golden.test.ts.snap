@@ -15,7 +15,7 @@ ANALYZE:
   impact <symbol> [--flags]  Show transitive callers of a symbol, by area
   imports [paths] [--flags]  List every file's imports as the xray.imports/v1
                              JSON contract
-  explore [query] [--flags]  Quickly find files by patterns, search code for
+  explore [--flags]          Quickly find files by patterns, search code for
                              keywords, or explore codebase [default command]
 
 STRATEGY:
@@ -730,12 +730,9 @@ FLAGS:
 exports[`cli golden: --help xray explore --help 1`] = `
 "exit: 0
 --- stdout ---
-Usage: xray explore [options] [query]
+Usage: xray explore [options]
 
 Quickly find files by patterns, search code for keywords, or explore codebase [default command]
-
-ARGUMENTS:
-  query                   Search query or pattern
 
 FLAGS:
   -p, --path <path>       Root directory to explore (repeatable) [default:
@@ -2251,12 +2248,9 @@ exports[`cli golden: error paths xray --bogus 1`] = `
 --- stderr ---
 ✖ unknown option '--bogus'
 
-Usage: xray explore [options] [query]
+Usage: xray explore [options]
 
 Quickly find files by patterns, search code for keywords, or explore codebase [default command]
-
-ARGUMENTS:
-  query                   Search query or pattern
 
 FLAGS:
   -p, --path <path>       Root directory to explore (repeatable) [default:
@@ -2331,7 +2325,7 @@ ANALYZE:
   impact <symbol> [--flags]  Show transitive callers of a symbol, by area
   imports [paths] [--flags]  List every file's imports as the xray.imports/v1
                              JSON contract
-  explore [query] [--flags]  Quickly find files by patterns, search code for
+  explore [--flags]          Quickly find files by patterns, search code for
                              keywords, or explore codebase [default command]
 
 STRATEGY:
@@ -2565,14 +2559,12 @@ FLAGS:
 "
 `;
 
-exports[`cli golden: excess arguments xray explore q extra 1`] = `
-"exit: 0
+exports[`cli golden: excess arguments xray explore q extra is a usage error 1`] = `
+"exit: 2
 --- stdout ---
 
 --- stderr ---
-⚠ Not a git repository or git is not available. Falling back to manual file scanning. This might be slower and include files ignored by git.
-ℹ Found 0 file(s):
-
+✖ unexpected argument 'q': explore takes no query; use --match <glob> to find files, --search <keyword> to search code, or --path <dir> to pick a root
 "
 `;
 
@@ -10772,14 +10764,7 @@ exports[`cli golden: introspection describe 1`] = `
       "qualifiedName": "explore",
       "description": "Quickly find files by patterns, search code for keywords, or explore codebase [default command]",
       "hidden": false,
-      "arguments": [
-        {
-          "name": "query",
-          "required": false,
-          "variadic": false,
-          "description": "Search query or pattern"
-        }
-      ],
+      "arguments": [],
       "options": [
         {
           "name": "--path",
@@ -11000,20 +10985,11 @@ exports[`cli golden: map / query / explore on fixture repo ["explore","-s","alph
 `;
 
 exports[`cli golden: map / query / explore on fixture repo ["explore","beta"] 1`] = `
-"exit: 0
+"exit: 2
 --- stdout ---
-.ts (6):
-  <TMP>/repo/a.ts
-  <TMP>/repo/b.ts
-  <TMP>/repo/c.ts
-  <TMP>/repo/imports/a.ts
-  <TMP>/repo/imports/b.ts
-  <TMP>/repo/imports/c.ts
-
 
 --- stderr ---
-ℹ Found 6 file(s):
-
+✖ unexpected argument 'beta': explore takes no query; use --match <glob> to find files, --search <keyword> to search code, or --path <dir> to pick a root
 "
 `;
 
