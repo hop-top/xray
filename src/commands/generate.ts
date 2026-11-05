@@ -463,7 +463,7 @@ export const runSingleXray = async (
   const commandUsed = getCommandString();
 
   if (scopeName) {
-    Logger.info(`Running scope: ${styles(process.stderr).bold(scopeName)}`);
+    Logger.info(`Running scope: ${scopeName}`);
   }
   Logger.info(`Analyzing repo at: ${paths.map(terminalSafe).join(', ')}`);
 

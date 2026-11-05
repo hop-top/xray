@@ -10,6 +10,7 @@
  * Every line goes to stderr through `console.error` / `console.warn`;
  * stdout carries data only (`Logger.output`).
  */
+import { terminalSafeBlock } from './terminal-safe';
 import { format } from 'util';
 import type * as KitLog from '@hop-top/kit/dist/log';
 import { styles } from './tui';
@@ -49,18 +50,22 @@ function kitLog(): typeof KitLog {
 function render(rec: KitLog.LogRecord): string {
   const paint = styles(process.stderr);
   const shape = rec.fields[SHAPE] as Shape | undefined;
-  if (shape === 'plain') return rec.msg;
-  if (shape === 'detail') return paint.error(rec.msg);
-  if (rec.kind === 'success') return paint.success('✔') + ' ' + rec.msg;
+  // Messages carry repo-controlled text (paths, package errors): escape
+  // control sequences before any styling, keeping newlines. Callers pass
+  // plain text; the level supplies the color.
+  const msg = terminalSafeBlock(rec.msg);
+  if (shape === 'plain') return msg;
+  if (shape === 'detail') return paint.error(msg);
+  if (rec.kind === 'success') return paint.success('✔') + ' ' + msg;
   switch (rec.level) {
     case 'debug':
-      return paint.muted('◆') + ' ' + rec.msg;
+      return paint.muted('◆') + ' ' + msg;
     case 'warn':
-      return paint.warn('⚠') + ' ' + rec.msg;
+      return paint.warn('⚠') + ' ' + msg;
     case 'error':
-      return paint.error('✖') + ' ' + rec.msg;
+      return paint.error('✖') + ' ' + msg;
     default:
-      return paint.accent('ℹ') + ' ' + rec.msg;
+      return paint.accent('ℹ') + ' ' + msg;
   }
 }
 
