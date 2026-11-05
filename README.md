@@ -140,8 +140,8 @@ xray explore --path ./src --match "*.ts" --match "!*.test.ts"
 ### `xray graph` - Control/Data Flow
 
 `graph` is `map` with control flow (`cf`) and data flow (`df`) on: one CFG and
-one DFG per function and method, under the function. TypeScript only for now;
-other languages get one stderr notice and no graphs.
+one DFG per function and method, under the function. TypeScript, JavaScript,
+Python and Go; other languages get one stderr notice and no graphs.
 
 ```bash
 xray graph --path ./src --no-chunk --output flow.txt
@@ -169,7 +169,7 @@ a.ts (L1-L8):
 
 `--with cf` or `--with df` narrows to that one. `map --with cf` gives the same
 graphs on a plain map. See [`docs/user/commands.md`](docs/user/commands.md#xray-graph)
-for the format and its limits.
+for the format, a Python and a Go example, and each language's limits.
 
 ### `xray impact` - What breaks if I change this?
 
@@ -378,8 +378,8 @@ declarative YAML strategies always load.
 | `incs` | Include imports and dependencies |
 | `docs` | Include docstrings |
 | `cost` | Estimate AI cost (requires `OPENAI_API_KEY`) |
-| `cf` | Control Flow Graph per function (TypeScript only for now) |
-| `df` | Data Flow Graph per function (TypeScript only for now) |
+| `cf` | Control Flow Graph per function (TypeScript, JavaScript, Python, Go) |
+| `df` | Data Flow Graph per function (TypeScript, JavaScript, Python, Go) |
 
 ### Filtering
 
@@ -511,8 +511,9 @@ Bash needs bash-completion v2. Scripts call back into `xray __complete` on each 
 
 ### Control and Data Flow Graphs (CFG, DFG)
 
-Available for: TypeScript (`.ts`, `.tsx`). JavaScript, Python and Go are
-next; other languages produce no graphs and say so on stderr.
+Available for: TypeScript (`.ts`, `.tsx`), JavaScript (`.js`, `.jsx`), Python
+(`.py`), Go (`.go`). Other languages (Java, C#, Rust, Swift, C, C++...) produce no
+graphs and say so on stderr.
 
 ```bash
 xray graph --path ./src            # both
@@ -523,7 +524,8 @@ xray graph --format json -o g.json # cfg / dfg fields on each function node
 
 Intra-procedural, per function and method: branches, loops, `switch`,
 `try`/`catch`/`finally`, labelled `break`/`continue`, short-circuit operators
-and ternaries; definitions reaching each use, across branches and loops,
+and ternaries; Python's `with`, `match` and `for`/`else`; Go's `defer`, `select`,
+`goto` and type switches; definitions reaching each use, across branches and loops,
 with scoping and destructuring. Nested functions get their own graphs.
 
 ### Custom Queries

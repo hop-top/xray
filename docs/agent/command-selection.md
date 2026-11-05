@@ -10,7 +10,7 @@ Use this document to determine which xray command to run for any given scenario.
 | `explore --match` | Find files by pattern | Low (50-100t) | Fast |
 | `map` | Understand structure | Medium (300-500t) | Medium |
 | `explore` | Find patterns (React components, routes, etc.) | Low-Med (100-200t) | Fast |
-| `graph` | Control/data flow per function (TypeScript only for now) | Grows with function size: roughly 1-2 output lines per source line | Medium |
+| `graph` | Control/data flow per function (TypeScript, JavaScript, Python, Go) | Grows with function size: roughly 1-2 output lines per source line | Medium |
 | `map --with incs` | Understand dependencies | Medium-High (400-600t) | Medium |
 | `impact <symbol>` | What breaks if a function changes (transitive callers) | Low-Med (150-750t) | Medium |
 
@@ -111,7 +111,7 @@ WHAT DO YOU WANT TO UNDERSTAND?
 │           TOKENS: ~150-750
 │           TIME: ~3s for ~300 files (graph built in memory)
 │
-├─ "How does data/control flow through code?" (TypeScript only for now)
+├─ "How does data/control flow through code?" (TypeScript, JavaScript, Python, Go)
 │   ├─ "Control flow (if/else, loops, try/finally, switch)"
 │   │   └─ COMMAND: xray graph --with cf
 │   │       OUTPUT: one CFG per function under it: nodes + labelled edges
@@ -386,13 +386,13 @@ Default (no --with flags):
 ├─ Tokens: +100-200
 └─ Use when: Need to understand purpose/usage
 
---with cf (control flow, TypeScript only for now):
+--with cf (control flow; TypeScript, JavaScript, Python, Go):
 ├─ Adds: one CFG per function: entry/exit, branches, loops, switch, try/finally
 ├─ Tokens: about one output line per statement of each function
 ├─ Other languages: one stderr notice, no graphs (never wrong ones)
 └─ Use when: Need to understand logic flow
 
---with df (data flow, TypeScript only for now):
+--with df (data flow; TypeScript, JavaScript, Python, Go):
 ├─ Adds: one DFG per function: each definition → the nodes that read it
 ├─ Tokens: about one output line per variable definition
 └─ Use when: Need to understand data transformations

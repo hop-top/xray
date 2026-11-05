@@ -126,9 +126,13 @@ xray graph [paths...] [options]
 
 **Support today:** TypeScript (`.ts`, `.tsx`), JavaScript (`.js`, `.jsx`;
 the same builder with a JavaScript table, also wired for `.mjs` / `.cjs`),
-Python (`.py`), Go (`.go`). For any other language the run still succeeds, prints one stderr
-notice (`cf/df: no flow graphs for python (3 files) yet ...`) and its
-functions carry no graphs.
+Python (`.py`), Go (`.go`). For any other language (Java, C#, Rust, Swift, C,
+C++...) the run still succeeds, prints one stderr notice and its functions
+carry no graphs:
+
+```text
+⚠ cf/df: no flow graphs for rust (1 file) yet; its functions carry none. Supported: typescript, javascript, python, go
+```
 
 **Flags:** `graph` turns `cf` and `df` on. Naming either under `--with`
 narrows to those (`--with cf`, `--with df`), whatever `features.cf` / `features.df`
@@ -168,6 +172,137 @@ a.ts (L1-L8):
 │     d4 total update L5 → n6 n7
 ```
 
+The same shapes for the other languages. Python (`for` ... `else`: the `else`
+runs when the loop ends by its iterator, a `break` would skip it; `counts[w] += 1`
+is a weak `member` definition of `counts`):
+
+```python
+def tally(words):
+    counts = {}
+    for w in words:
+        if w in counts:
+            counts[w] += 1
+            continue
+        counts[w] = 1
+    else:
+        counts["<done>"] = len(counts)
+    return counts
+```
+
+```text
+a.py (L1-L10):
+│ [L1-L10] function tally()
+│   cfg
+│     n0 entry L1 → n2
+│     n1 exit L10
+│     n2 stmt L2 counts = {} → n3
+│     n3 loop L3 for w in words → n4:true n8:false
+│     n4 cond L4 w in counts → n5:true n7:false
+│     n5 stmt L5 counts[w] += 1 → n6
+│     n6 continue L6 continue → n3
+│     n7 stmt L7 counts[w] = 1 → n3
+│     n8 stmt L9 counts["<done>"] = len(counts) → n9
+│     n9 return L10 return counts → n1
+│   dfg
+│     d0 words param L1 → n3
+│     d1 counts assign L2 → n4 n5 n7 n8 n9
+│     d2 w loop L3 → n4 n5 n7
+│     d3 counts member L5 weak → n4 n5 n7 n8 n9
+│     d4 counts member L7 weak → n4 n5 n7 n8 n9
+│     d5 counts member L9 weak → n9
+```
+
+Go (`defer` on a panic and on `return`; the deferred literal calls `recover`, so
+a panic may end with the function returning normally, `n7`, or go on, `n8`;
+named results are read at the exit node `n1`):
+
+```go
+func Sum(xs []int) (n int, err error) {
+	defer func() { err = wrap(recover()) }()
+	for _, x := range xs {
+		if x < 0 {
+			panic("negative")
+		}
+		n += x
+	}
+	return n, nil
+}
+```
+
+```text
+a.go (L3-L12):
+│ [L3-L12] function Sum(xs []int)
+│   cfg
+│     n0 entry L3 → n2
+│     n1 exit L12
+│     n2 stmt L4 defer func() { err = wrap(recover()) }() → n3
+│     n3 loop L5 for _, x := range xs → n4:true n10:false
+│     n4 cond L6 x < 0 → n5:true n9:false
+│     n5 throw L7 panic("negative") → n6:throw
+│     n6 stmt L4 deferred func() { err = wrap(recover()) }() → n7 n8
+│     n7 stmt L12 recovered → n1
+│     n8 rethrow L12 rethrow → n1:throw
+│     n9 stmt L9 n += x → n3
+│     n10 return L11 return n, nil → n11
+│     n11 stmt L4 deferred func() { err = wrap(recover()) }() → n1
+│   closure <anonymous> L4
+│     cfg
+│       n0 entry L4 → n2
+│       n1 exit L4
+│       n2 stmt L4 err = wrap(recover()) → n1
+│   dfg
+│     d0 xs param L3 → n3
+│     d1 n decl L3 → n1 n9 n10
+│     d2 err decl L3 captured → n1 n2
+│     d3 x loop L5 → n4 n9
+│     d4 n update L9 → n1 n9 n10
+│     d5 n assign L11 → n1
+│     d6 err assign L11 captured → n1
+│   closure <anonymous> L4
+│     dfg
+```
+
+JavaScript (`return` inside `try` has a `throw` edge into the `catch`; the
+`throw` at the end leaves the function by a `throw` edge):
+
+```javascript
+export function retry(fn, attempts = 3) {
+  let last;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return fn(i);
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw last;
+}
+```
+
+```text
+a.js (L1-L11):
+│ [L1-L11] function retry(fn, attempts = 3)
+│   cfg
+│     n0 entry L1 → n2
+│     n1 exit L11
+│     n2 stmt L2 let last → n3
+│     n3 stmt L3 let i = 0 → n4
+│     n4 loop L3 i < attempts → n5:true n9:false
+│     n5 return L5 return fn(i) → n1 n6:throw
+│     n6 catch L6 catch (e) → n7
+│     n7 stmt L7 last = e → n8
+│     n8 stmt L3 i++ → n4
+│     n9 throw L10 throw last → n1:throw
+│   dfg
+│     d0 fn param L1 → n5
+│     d1 attempts param L1 → n4
+│     d2 last decl L2 → n9
+│     d3 i decl L3 → n4 n5 n8
+│     d4 e catch L6 → n7
+│     d5 last assign L7 → n9
+│     d6 i update L3 → n4 n5 n8
+```
+
 **Reading it.** One line per CFG node: `<id> <kind> L<line> <source> → <successors>`;
 a successor `n4:true` is an edge labelled `true`, `false` or `throw`. Kinds:
 `entry`, `exit` (always `n1`), `stmt`, `expr` (an operand on one branch),
@@ -178,8 +313,8 @@ its one edge is `throw`). Source text is one line, capped at 60 characters.
 
 One line per definition in the DFG: `<id> <name> <kind> L<line> → <reading CFG nodes>`.
 Definition kinds: `param`, `decl`, `assign`, `update` (`++`, `+=`), `loop`
-(`for-of` variable), `catch`, `function`, `class`, `member` (`o.p = v`, weak),
-`maybe` (`||=` `&&=` `??=`, weak). A weak definition adds itself without
+(`for-of` / `for-in` / `range` variable), `catch`, `function`, `class`, `member` (`o.p = v`, weak),
+`maybe` (`||=` `&&=` `??=`, and the names a Python `match` pattern binds; weak). A weak definition adds itself without
 replacing earlier ones. `captured` marks a variable a nested function
 references. With `--with df` alone, the reading nodes are listed first
 (`n6 L5 total += x`) so the output stands on its own.
@@ -205,6 +340,15 @@ without these fields work with `query --graph` and `impact --graph`.
   Nested functions and closures have their own graphs (`closures`).
 - A function with more than 500 CFG nodes keeps its first 500 and says so
   (`truncated` / `(truncated: 500 of 812 nodes)`).
+- Work is bounded whatever the source: building a function stops after
+  1000 nodes were created (copies of `finally` / `with` exits / deferred calls
+  count), and the graph is the first 500 with `(truncated: 500 of 1000+ nodes)`;
+  a data flow keeps at most 2000 definitions and 20000 edges; a function with
+  more than 256 KB of source, syntax nested deeper than the stack allows, or
+  a file whose functions together built 50000 nodes gets no graph for the
+  function, and one stderr line counts them (`cf/df: skipped 2 functions
+  (nested too deeply); no graphs for them`). A node keeps at most 500 reads
+  and 200 callee names.
 - Only `throw`, calls, `new` and `await` are known to throw. A `try` body
   with none of them keeps its `catch` anyway: every statement of the body
   gets a `throw` edge into it (anything may throw: getters, stack overflow),
@@ -645,8 +789,8 @@ Enable additional analysis features (repeatable):
 | `incs` | Include imports and dependency table |
 | `docs` | Include docstrings |
 | `cost` | Estimate and display cost (requires `OPENAI_API_KEY`) |
-| `cf` | Control Flow Graph per function (TypeScript only for now; see [`xray graph`](#xray-graph)) |
-| `df` | Data Flow Graph per function (TypeScript only for now; see [`xray graph`](#xray-graph)) |
+| `cf` | Control Flow Graph per function (TypeScript, JavaScript, Python, Go; see [`xray graph`](#xray-graph)) |
+| `df` | Data Flow Graph per function (TypeScript, JavaScript, Python, Go; see [`xray graph`](#xray-graph)) |
 
 **Example:**
 ```bash

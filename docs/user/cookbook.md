@@ -383,7 +383,7 @@ xray map --anchor src/routes/admin.ts --with incs
 
 # Step 4: Trace deeper if needed
 xray map --anchor src/routes/admin.ts --with incs --with vars --with df
-# --with df shows data flow: which assignment reaches which use (TypeScript only for now)
+# --with df shows data flow: which assignment reaches which use (TypeScript, JavaScript, Python, Go)
 ```
 
 ### Find All Imports of a Library

@@ -56,7 +56,7 @@ export function registerCoreCommands(program: Command): void {
   const withOption = graphCmd.options.find(o => o.long === '--with');
   if (withOption) {
     withOption.description =
-      'Include feature: vars, incs, cost, docs, df, cf (repeatable); cf and df are on unless one is named, then only those [TypeScript only for now]';
+      'Include feature: vars, incs, cost, docs, df, cf (repeatable); cf and df are on unless one is named, then only those [TypeScript, JavaScript, Python, Go]';
   }
   declareEffect(graphCmd, 'write-local', 'conditional');
 
