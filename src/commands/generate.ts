@@ -4,6 +4,7 @@ import * as path from 'path';
 import { styles, fileProgress } from '../lib/tui';
 import { QueryResolver } from '../lib/query-resolver';
 import { Logger, LogLevel } from '../lib/logger';
+import { reportFailure } from '../lib/error/report';
 import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase, validateScanRoots } from '../lib/config';
 import { CodedError, FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
 import { resolveFormatFlags } from '../lib/output-format';
@@ -819,7 +820,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions, previ
       const scopeNames = Object.keys(scopes);
 
       if (scopeNames.length === 0) {
-        Logger.error('No scopes defined in config file');
+        reportFailure(new Error('No scopes defined in config file'), () => Logger.error('No scopes defined in config file'));
         process.exit(1);
       }
 
@@ -855,7 +856,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions, previ
     if (error instanceof CodedError) {
       throw error;
     }
-    Logger.error('Error generating analysis:', error);
+    reportFailure(error, () => Logger.error('Error generating analysis:', error));
     process.exit(1);
   }
 };

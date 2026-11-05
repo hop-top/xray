@@ -39,6 +39,36 @@ Systematic approach to handling xray errors and recovering from failures.
 
 **Recovery:** Fallback to file reads, ask user for help
 
+## Machine-Readable Errors
+
+Pass `--format json` (or `--json` on commands that have it) and a failing
+command writes one JSON error object to **stderr**; stdout stays empty, so
+anything on stdout is still a valid document. The exit code is the same as
+in text mode. Add `--quiet` so stderr holds the object alone (without it,
+log lines may precede it).
+
+```json
+{
+  "code": "NOT_FOUND",
+  "message": "Target \"nope\" not found in any build file",
+  "exit_code": 3,
+  "transience": "permanent"
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `code` | Stable token: `GENERIC`, `USAGE`, `NOT_FOUND`, `CONFLICT`, `UNAUTHORIZED`, `TRANSIENT`, `CONSENT_REFUSED` |
+| `message` | What failed, with the offending input |
+| `exit_code` | Same as the process exit code (1 to 7) |
+| `transience` | `transient` (retry may clear it), `permanent` (change the input first), `unknown` |
+| `suggested_fix`, `cause`, `alternatives` | Present only when the failure carries them |
+
+Branch on `code` or `exit_code`, never on `message`. Usage errors (bad flag,
+surplus argument, unknown command) use the same object with `code` `USAGE`.
+`xray describe` lists the shape under `errors`. Without a JSON request,
+errors stay a `✖ <message>` line on stderr.
+
 ## Error Handling Decision Tree
 
 ```

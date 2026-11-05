@@ -10,6 +10,7 @@ import {
   normalizeDetectedStrategy,
 } from '../../lib/strategy/types';
 import { Logger } from '../../lib/logger';
+import { jsonErrorsEnabled, toCliError, writeEnvelope } from '../../lib/error/report';
 import { StrategyCacheManager } from './cache';
 import { StrategyCommandOptions } from '../../types/command-options';
 import {
@@ -400,6 +401,10 @@ async function handleStrategyCommandError(
 ): Promise<never> {
   // A coded failure (not found, usage, ...) keeps its exit code.
   if (error instanceof CodedError) throw error;
+  if (jsonErrorsEnabled()) {
+    writeEnvelope(toCliError(error));
+    process.exit(1);
+  }
 
   const { LogLevel } = await import('../../lib/logger');
 

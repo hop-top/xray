@@ -2489,7 +2489,12 @@ exports[`cli golden: error paths xray query --format json calls(x) 1`] = `
 --- stdout ---
 
 --- stderr ---
-✖ --graph flag is required
+{
+  "code": "USAGE",
+  "message": "--graph flag is required",
+  "exit_code": 2,
+  "transience": "permanent"
+}
 "
 `;
 
@@ -3776,6 +3781,40 @@ exports[`cli golden: introspection describe 1`] = `
     "5": "unauthorized / permission denied, or a destructive command refused without --confirm=yes",
     "6": "transient failure (a retry may clear it)",
     "7": "consent refused"
+  },
+  "errors": {
+    "format": "json",
+    "stream": "stderr",
+    "enabledBy": [
+      "--format json",
+      "--format=json",
+      "--json"
+    ],
+    "required": [
+      "code",
+      "message",
+      "exit_code",
+      "transience"
+    ],
+    "optional": [
+      "cause",
+      "suggested_fix",
+      "alternatives"
+    ],
+    "transience": [
+      "transient",
+      "permanent",
+      "unknown"
+    ],
+    "codes": {
+      "GENERIC": 1,
+      "USAGE": 2,
+      "NOT_FOUND": 3,
+      "CONFLICT": 4,
+      "UNAUTHORIZED": 5,
+      "TRANSIENT": 6,
+      "CONSENT_REFUSED": 7
+    }
   },
   "telemetry": {
     "defaultOff": [

@@ -10,6 +10,9 @@ import { createXrayUpgradeChecker } from './upgrade-checker';
 import { CodedError, UsageError, EXIT_USAGE, EXIT_GENERIC } from './lib/error/types';
 import { Logger } from './lib/logger';
 import { nearestMatch as nearestCommand } from './lib/did-you-mean';
+import {
+  jsonRequested, setJsonErrors, jsonErrorsEnabled, toCliError, usageEnvelope, valueOptionNames, writeEnvelope,
+} from './lib/error/report';
 import { StrategyLoader, reportSkippedProjectCode } from './lib/strategy/loader';
 import { defaultRouteFromArgv, resolveLogLevel, rootConfigFromArgv } from './commands/root-options';
 import { isCompletionRequest } from './commands/completion';
@@ -133,6 +136,10 @@ export async function main() {
   // verbose-only diagnostics, and commander's preAction runs too late.
   let argv = process.argv;
   applyEarlyVerbosity(argv);
+  // Fatal errors render as one JSON envelope on stderr when JSON was asked
+  // for. The command tree is not built yet, so only root options are known
+  // here; refined below once every command is registered.
+  setJsonErrors(jsonRequested(argv, valueOptionNames(rootProgram)));
 
   // Shell completion (`xray __complete ...`, run on every tab): answered
   // from the command tree only. No consent write, telemetry or network,
@@ -198,6 +205,11 @@ export async function main() {
   }
 
   const program = await registerCommands({}, rootConfig);
+  setJsonErrors(jsonRequested(argv, valueOptionNames(program)));
+  // Kit's delegation gates (confirmation, policy, --dry-run refusal) render
+  // their refusal in the root's `format`; xray's `--format` lives on the
+  // subcommands, so hand them the one the caller asked for.
+  if (jsonErrorsEnabled()) program.setOptionValue('format', 'json');
 
   // Convert commander parse/usage errors → exit 2 instead of commander's default exit 1.
   // exitOverride must be applied to subcommands too — commander does not
@@ -210,6 +222,9 @@ export async function main() {
   const applyParseSettings = (cmd: any) => {
     if (cmd.parent) cmd.copyInheritedSettings(cmd.parent);
     cmd.exitOverride();
+    // In JSON mode the usage error is rendered once, as an envelope, by the
+    // catch below: commander must not print its own line or the help.
+    if (jsonErrorsEnabled()) cmd.configureOutput({ outputError: () => {} }).showHelpAfterError(false);
     if (Array.isArray(cmd.commands)) {
       for (const sub of cmd.commands) applyParseSettings(sub);
     }
@@ -244,6 +259,7 @@ export async function main() {
         shutdownTelemetry();
         process.exit(0);
       }
+      if (jsonErrorsEnabled()) writeEnvelope(usageEnvelope(String(err.message ?? '')));
       shutdownTelemetry();
       process.exit(EXIT_USAGE);
     }
@@ -255,14 +271,7 @@ export async function main() {
       shutdownTelemetry();
       process.exit(err.exitCode);
     }
-    if (err instanceof CodedError) {
-      Logger.error(err.message);
-      shutdownTelemetry();
-      process.exit(err.exitCode);
-    }
-    Logger.error(err && err.message ? err.message : String(err));
-    shutdownTelemetry();
-    process.exit(EXIT_GENERIC);
+    handleFatalError(err);
   }
 }
 
@@ -272,14 +281,16 @@ export async function main() {
  * direct-run path below.
  */
 export function handleFatalError(error: unknown): never {
-  if (error instanceof CodedError) {
+  const code = error instanceof CodedError ? error.exitCode : EXIT_GENERIC;
+  if (jsonErrorsEnabled()) {
+    writeEnvelope(toCliError(error));
+  } else if (error instanceof CodedError) {
     Logger.error(error.message);
-    shutdownTelemetry();
-    process.exit(error.exitCode);
+  } else {
+    Logger.error(error && (error as Error).message ? (error as Error).message : String(error));
   }
-  Logger.error(error instanceof Error ? error.message : String(error));
   shutdownTelemetry();
-  process.exit(EXIT_GENERIC);
+  process.exit(code);
 }
 
 // Run when executed directly (`node dist/index.js`); bin/xray calls main().

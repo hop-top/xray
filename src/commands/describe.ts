@@ -76,6 +76,44 @@ const EXIT_CODES: Record<string, string> = {
   [EXIT_CONSENT_REFUSED]: 'consent refused',
 };
 
+// Machine-readable failures: when the caller asked for JSON, a failing
+// command writes one `@hop-top/kit` error envelope (output/error) to stderr
+// and leaves stdout empty; the exit code is unchanged.
+const ERRORS: ErrorsDoc = {
+  format: 'json',
+  stream: 'stderr',
+  enabledBy: ['--format json', '--format=json', '--json'],
+  required: ['code', 'message', 'exit_code', 'transience'],
+  optional: ['cause', 'suggested_fix', 'alternatives'],
+  transience: ['transient', 'permanent', 'unknown'],
+  codes: {
+    GENERIC: EXIT_GENERIC,
+    USAGE: EXIT_USAGE,
+    NOT_FOUND: EXIT_NOT_FOUND,
+    CONFLICT: EXIT_CONFLICT,
+    UNAUTHORIZED: EXIT_UNAUTHORIZED,
+    TRANSIENT: EXIT_TRANSIENT,
+    CONSENT_REFUSED: EXIT_CONSENT_REFUSED,
+  },
+};
+
+interface ErrorsDoc {
+  /** Wire format of the error object. */
+  format: 'json';
+  /** Stream it is written to; stdout stays empty. */
+  stream: 'stderr';
+  /** Argv forms that select it. */
+  enabledBy: string[];
+  /** Fields present in every error object. */
+  required: string[];
+  /** Fields present when the failure has them. */
+  optional: string[];
+  /** Values of `transience`. */
+  transience: string[];
+  /** `code` values and the exit code each comes with. */
+  codes: Record<string, number>;
+}
+
 interface ArgumentDoc {
   name: string;
   required: boolean;
@@ -131,6 +169,7 @@ interface DescribeDoc {
   version: string;
   spec: string;
   exitCodes: Record<string, string>;
+  errors: ErrorsDoc;
   telemetry: TelemetryDoc;
   commands: CommandDoc[];
 }
@@ -246,6 +285,7 @@ export function buildDescribeDoc(
     version,
     spec: SPEC,
     exitCodes: EXIT_CODES,
+    errors: ERRORS,
     telemetry: {
       defaultOff: [...TELEMETRY_POLICY.defaultOff],
       env: [...TELEMETRY_POLICY.env],

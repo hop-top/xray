@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Logger } from '../lib/logger';
+import { reportFailure } from '../lib/error/report';
 import { FileScanner } from '../lib/scanner';
 import { compileMatchers } from '../lib/path-match';
 import { resolvePath } from './common';
@@ -102,7 +103,7 @@ export const handleExploreAction = async (
     // Validate all paths exist
     for (const p of paths) {
       if (!fs.existsSync(p)) {
-        Logger.error(`Path does not exist: ${p}`);
+        reportFailure(new Error(`Path does not exist: ${p}`), () => Logger.error(`Path does not exist: ${p}`));
         process.exit(1);
       }
     }

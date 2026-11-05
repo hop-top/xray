@@ -4,6 +4,7 @@ import { styles } from '../lib/tui';
 import { Command } from 'commander';
 import { declareEffect, emitPlan, previewing } from './side-effect';
 import { Logger } from '../lib/logger';
+import { reportFailure } from '../lib/error/report';
 import { StrategyLoader, PROJECT_STRATEGIES_ENV, projectStrategiesAllowed, reportSkippedProjectCode } from '../lib/strategy/loader';
 import { installStrategy, findInstalledStrategyPackage, planStrategyInstall, uninstallStrategyPackage } from './strategy-install';
 import { StrategyDetector } from '../lib/strategy/detector';
@@ -303,7 +304,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         try {
           uninstallStrategyPackage(target.name);
         } catch (err: any) {
-          Logger.error(`Failed to remove strategy: ${err.message}`);
+          reportFailure(new Error(`Failed to remove strategy: ${err.message}`), () => Logger.error(`Failed to remove strategy: ${err.message}`));
           process.exit(1);
         }
         Logger.success(`Strategy package removed: ${target.pkg.strategyName} (${target.name})`);

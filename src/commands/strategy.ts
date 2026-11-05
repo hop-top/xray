@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import { styles } from '../lib/tui';
 import { Logger } from '../lib/logger';
+import { reportFailure } from '../lib/error/report';
 import { StrategyLoader, reportSkippedProjectCode } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
@@ -30,7 +31,7 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
       : process.cwd();
 
     if (!fs.existsSync(projectPath!)) {
-      Logger.error(`Path does not exist: ${projectPath}`);
+      reportFailure(new Error(`Path does not exist: ${projectPath}`), () => Logger.error(`Path does not exist: ${projectPath}`));
       process.exit(1);
     }
 
@@ -52,10 +53,12 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
     }
 
   } else {
-    Logger.error(`Unknown meta-strategy command: "${commandName}"`);
-    Logger.info('\nAvailable meta-strategy commands:');
-    Logger.output('  - strategy list   - List all available strategies');
-    Logger.output('  - strategy detect - Detect applicable strategies');
+    reportFailure(new Error(`Unknown meta-strategy command: "${commandName}"`), () => {
+      Logger.error(`Unknown meta-strategy command: "${commandName}"`);
+      Logger.info('\nAvailable meta-strategy commands:');
+      Logger.output('  - strategy list   - List all available strategies');
+      Logger.output('  - strategy detect - Detect applicable strategies');
+    });
     process.exit(1);
   }
 };

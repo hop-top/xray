@@ -685,6 +685,36 @@ space form takes every following word as a column. Graph strategy commands
 
 Codes follow `@hop-top/kit`. `xray describe` lists, per command, the codes it can produce.
 
+### Errors as JSON
+
+With `--format json` (also `--format=json`, or `--json` where a command has
+it) a failing command writes one error object to stderr and nothing to
+stdout; the exit code is the table above. The object is `@hop-top/kit`'s
+error envelope:
+
+```json
+{
+  "code": "NOT_FOUND",
+  "message": "Target \"nope\" not found in any build file",
+  "exit_code": 3,
+  "transience": "permanent"
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `code` | `GENERIC` (1), `USAGE` (2), `NOT_FOUND` (3), `CONFLICT` (4), `UNAUTHORIZED` (5), `TRANSIENT` (6), `CONSENT_REFUSED` (7) |
+| `message` | What failed; never a stack trace |
+| `exit_code` | The process exit code |
+| `transience` | `transient`, `permanent` or `unknown` |
+| `suggested_fix`, `cause`, `alternatives` | Only when the failure carries them (kit's refusals do) |
+
+Usage errors from the parser (unknown option, surplus argument, unknown
+command) use the same object. Other formats (`txt`, `csv`, `xml`) and text
+mode print `✖ <message>`. Add `--quiet` to keep log lines off stderr. A
+command that has no `--format` rejects it as an unknown option (exit 2).
+`xray describe` lists the shape under `errors`.
+
 ## Output Format
 
 ### Tree Structure

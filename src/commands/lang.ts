@@ -6,6 +6,7 @@ import { globSync } from 'glob';
 import { styles } from '../lib/tui';
 import { bindFlag, staticValues } from './completion';
 import { Logger } from '../lib/logger';
+import { reportFailure } from '../lib/error/report';
 import { EXIT_USAGE, UsageError } from '../lib/error/types';
 import { loadConfig } from '../lib/config';
 import {
@@ -97,7 +98,7 @@ function parseSelection(names: string[]): LanguagePack[] | undefined {
     return expandSelection(names);
   } catch (e) {
     if (e instanceof UnknownLanguageError) {
-      Logger.error(e.message);
+      reportFailure(new UsageError(e.message), () => Logger.error(e.message));
       process.exitCode = EXIT_USAGE;
       return undefined;
     }
