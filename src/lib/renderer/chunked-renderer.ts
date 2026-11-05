@@ -196,14 +196,15 @@ export class ChunkedRenderer {
     // Process directories in depth-first order to handle parent-child relationships
     const sortedDirs = Array.from(directoryMap.keys()).sort();
 
-    for (const dir of sortedDirs) {
+    // Only directories that get a chunk can be linked to.
+    const renderedDirs = sortedDirs.filter(
+      d => this.maxDepth === undefined || this.getDirectoryDepth(d) <= this.maxDepth
+    );
+    const entryDir = this.getRootDir(renderedDirs);
+
+    for (const dir of renderedDirs) {
       const files = directoryMap.get(dir)!;
       const dirDepth = this.getDirectoryDepth(dir);
-
-      // Skip if exceeds max depth
-      if (this.maxDepth !== undefined && dirDepth > this.maxDepth) {
-        continue;
-      }
 
       // Render this directory's content
       const { content, tokenCount } = await this.renderDirectory(dir, files);
@@ -212,11 +213,11 @@ export class ChunkedRenderer {
       const chunkPath = this.getChunkPath(outputBasePath, dir);
 
       // Find parent and children
-      const parent = this.findParentDirectory(dir, sortedDirs);
-      const children = this.findChildDirectories(dir, sortedDirs);
+      const parent = this.findParentDirectory(dir, renderedDirs, entryDir);
+      const children = this.findChildDirectories(dir, renderedDirs, entryDir);
 
       // Add navigation links
-      const contentWithLinks = this.addNavigationLinks(content, dir, parent, children, chunkPath);
+      const contentWithLinks = this.addNavigationLinks(parent, children, outputBasePath, content);
 
       chunks.set(chunkPath, contentWithLinks);
 
@@ -232,7 +233,7 @@ export class ChunkedRenderer {
     }
 
     // Determine root chunk (usually the top-level directory)
-    const rootChunk = this.getRootChunkPath(outputBasePath, sortedDirs);
+    const rootChunk = this.getChunkPath(outputBasePath, entryDir);
 
     // Prepend insight blocks (if any) onto the root chunk content.
     // Insights are pushed by plugins from the `render:start` event.
@@ -405,14 +406,14 @@ export class ChunkedRenderer {
   }
 
   /**
-   * Add navigation links to content
+   * Add navigation links to content. All chunks of one run sit side by
+   * side, so each link is the target chunk's file name.
    */
   private addNavigationLinks(
-    content: string,
-    currentDir: string,
     parent: string | undefined,
     children: string[],
-    currentPath: string
+    outputBasePath: string,
+    content: string
   ): string {
     const lines: string[] = [];
 
@@ -422,7 +423,7 @@ export class ChunkedRenderer {
     lines.push('');
 
     if (parent) {
-      const parentPath = this.getRelativePath(currentPath, this.getChunkPath(path.dirname(currentPath), parent));
+      const parentPath = path.basename(this.getChunkPath(outputBasePath, parent));
       lines.push(`⬆️ **Parent:** [${parent}](${parentPath})`);
       lines.push('');
     }
@@ -430,7 +431,7 @@ export class ChunkedRenderer {
     if (children.length > 0) {
       lines.push(`⬇️ **Children:**`);
       for (const child of children) {
-        const childPath = this.getRelativePath(currentPath, this.getChunkPath(path.dirname(currentPath), child));
+        const childPath = path.basename(this.getChunkPath(outputBasePath, child));
         lines.push(`  - [${child}](${childPath})`);
       }
       lines.push('');
@@ -444,13 +445,6 @@ export class ChunkedRenderer {
   }
 
   /**
-   * Get relative path between two file paths
-   */
-  private getRelativePath(from: string, to: string): string {
-    return path.relative(path.dirname(from), to);
-  }
-
-  /**
    * Get the depth of a directory path
    */
   private getDirectoryDepth(dir: string): number {
@@ -459,22 +453,26 @@ export class ChunkedRenderer {
   }
 
   /**
-   * Find parent directory from sorted list
+   * Parent chunk: the nearest ancestor directory that has a chunk. With no
+   * top-level chunk, the entry chunk adopts the other top-most ones so every
+   * chunk stays reachable from it.
    */
-  private findParentDirectory(dir: string, sortedDirs: string[]): string | undefined {
-    const parentDir = path.dirname(dir);
-    if (parentDir === '.' || parentDir === dir) return undefined;
-    return sortedDirs.includes(parentDir) ? parentDir : undefined;
+  private findParentDirectory(dir: string, renderedDirs: string[], entryDir: string): string | undefined {
+    if (dir === entryDir) return undefined;
+    let ancestor = path.dirname(dir);
+    while (ancestor !== dir) {
+      if (renderedDirs.includes(ancestor)) return ancestor;
+      dir = ancestor;
+      ancestor = path.dirname(dir);
+    }
+    return entryDir;
   }
 
   /**
-   * Find child directories from sorted list
+   * Child chunks: directories whose parent chunk is `dir`.
    */
-  private findChildDirectories(dir: string, sortedDirs: string[]): string[] {
-    return sortedDirs.filter(d => {
-      const parentOfD = path.dirname(d);
-      return parentOfD === dir;
-    });
+  private findChildDirectories(dir: string, renderedDirs: string[], entryDir: string): string[] {
+    return renderedDirs.filter(d => this.findParentDirectory(d, renderedDirs, entryDir) === dir);
   }
 
   /**
@@ -488,11 +486,10 @@ export class ChunkedRenderer {
   }
 
   /**
-   * Get the root chunk path
+   * The entry directory: the top-level one, else the first chunked directory.
    */
-  private getRootChunkPath(outputBasePath: string, sortedDirs: string[]): string {
-    const rootDir = sortedDirs.find(d => this.getDirectoryDepth(d) === 0) || sortedDirs[0] || '.';
-    return this.getChunkPath(outputBasePath, rootDir);
+  private getRootDir(renderedDirs: string[]): string {
+    return renderedDirs.find(d => this.getDirectoryDepth(d) === 0) || renderedDirs[0] || '.';
   }
 
   // ---------------------------------------------------------------------

@@ -11862,6 +11862,8 @@ exports[`cli golden: map / query / explore on fixture repo map --txt (chunked) 2
 ---
 ## Navigation
 
+⬆️ **Parent:** [.](chunks_root.txt)
+
 ---
 
 # Directory: imports
@@ -11882,8 +11884,7 @@ imports/a.ts (L3-L5):
 ## Navigation
 
 ⬇️ **Children:**
-  - [.](../out_root.md)
-  - [imports](../out_imports.md)
+  - [imports](chunks_imports.txt)
 
 ---
 
