@@ -1,0 +1,104 @@
+import * as path from 'path';
+import type Parser from 'tree-sitter';
+import type { Cfg, Dfg, FlowResult } from './types';
+import { MAX_FLOW_NODES } from './types';
+import type { FlowTable } from './table';
+import { Scopes } from './scope';
+import { CfgBuilder, nestedFunctions } from './cfg';
+import { computeDfg } from './dfg';
+import { typescriptTable } from './tables/typescript';
+
+export * from './types';
+export type { FlowTable } from './table';
+
+type Node = Parser.SyntaxNode;
+
+/** Flow table by file extension; absent: flow is not supported for the language yet. */
+const TABLES: Record<string, FlowTable> = {
+  '.ts': typescriptTable,
+  '.tsx': typescriptTable,
+  '.mts': typescriptTable,
+  '.cts': typescriptTable,
+};
+
+export const flowTableFor = (file: string): FlowTable | undefined => TABLES[path.extname(file)];
+
+/** Languages (by table name) with flow support, for messages. */
+export const flowLanguages = (): string[] => [...new Set(Object.values(TABLES).map(t => t.language))];
+
+/**
+ * Cache key part for a flow selection: empty when flow is off. Covers the
+ * languages that have a table, so supporting a new one invalidates entries
+ * cached without its flow; bump FLOW_VERSION when the builders change.
+ */
+const FLOW_VERSION = 1;
+export const flowCacheKey = (cfg: boolean, dfg: boolean): string =>
+  !cfg && !dfg ? '' : `${cfg ? 'cf' : ''}${dfg ? 'df' : ''}@${FLOW_VERSION}:${flowLanguages().join('+')}`;
+
+/** The function-like node a tag's name node belongs to, if it has a body. */
+export function functionOfName(name: Node, table: FlowTable): Node | null {
+  const p = name.parent;
+  if (!p) return null;
+  let fn: Node | null = null;
+  if (table.functions.includes(p.type)) fn = p;
+  else if (p.type === table.data.declarator.type) {
+    const v = p.childForFieldName(table.data.declarator.value);
+    if (v && table.functions.includes(v.type)) fn = v;
+  }
+  return fn && fn.childForFieldName(table.fn.body) ? fn : null;
+}
+
+function closureName(n: Node, table: FlowTable): string {
+  const own = n.childForFieldName(table.fn.name);
+  if (own) return own.text;
+  const p = n.parent;
+  if (p) {
+    if (p.type === table.data.declarator.type) return p.childForFieldName(table.data.declarator.name)?.text ?? table.anonymous;
+    if (p.type === table.data.assignment.type) return p.childForFieldName(table.data.assignment.left)?.text ?? table.anonymous;
+    const key = p.childForFieldName('key');
+    if (key) return key.text;
+  }
+  return table.anonymous;
+}
+
+function analyze(fn: Node, table: FlowTable, scopes: Scopes, want: { cfg: boolean; dfg: boolean }, max: number): FlowResult {
+  const built = new CfgBuilder(fn, table, scopes, max).build();
+  const truncated = built.total > built.nodes.length ? { nodes: built.total, limit: built.nodes.length } : undefined;
+  const result: FlowResult = {};
+  const closures = nestedFunctions(fn, table).map(n => ({
+    name: closureName(n, table),
+    line: n.startPosition.row,
+    res: analyze(n, table, scopes, want, max),
+  }));
+  if (want.cfg) {
+    const cfg: Cfg = {
+      nodes: built.nodes.map(({ refs, ...n }) => n),
+      edges: built.edges,
+    };
+    if (truncated) cfg.truncated = truncated;
+    const cl = closures.filter(c => c.res.cfg).map(c => ({ ...c.res.cfg!, name: c.name, line: c.line }));
+    if (cl.length > 0) cfg.closures = cl;
+    result.cfg = cfg;
+  }
+  if (want.dfg) {
+    const dfg: Dfg = computeDfg(built.nodes, built.edges, b => scopes.bindings[b].captured);
+    if (truncated) dfg.truncated = truncated;
+    const cl = closures.filter(c => c.res.dfg).map(c => ({ ...c.res.dfg!, name: c.name, line: c.line }));
+    if (cl.length > 0) dfg.closures = cl;
+    result.dfg = dfg;
+  }
+  return result;
+}
+
+/**
+ * CFG and/or DFG of one function node. Nested functions (closures, methods
+ * of nested classes) get their own graphs under `closures`.
+ */
+export function buildFlow(
+  fn: Node,
+  table: FlowTable,
+  want: { cfg: boolean; dfg: boolean },
+  maxNodes: number = MAX_FLOW_NODES
+): FlowResult {
+  return analyze(fn, table, new Scopes(fn, table), want, maxNodes);
+}
