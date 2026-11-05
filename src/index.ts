@@ -298,6 +298,14 @@ export async function main() {
       shutdownTelemetry();
       process.exit(EXIT_USAGE);
     }
+    // Kit's delegation gates (confirmation, policy, dry-run preview) render
+    // their own refusal or preview and exit through commander with the
+    // contract code (e.g. 5 unauthorized, 0 preview). Keep that code and
+    // do not print the message a second time.
+    if (err && typeof err.code === 'string' && err.code.startsWith('kit.') && Number.isInteger(err.exitCode)) {
+      shutdownTelemetry();
+      process.exit(err.exitCode);
+    }
     if (err instanceof CodedError) {
       Logger.error(err.message);
       shutdownTelemetry();

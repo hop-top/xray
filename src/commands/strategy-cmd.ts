@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { styles } from '../lib/tui';
 import { Command } from 'commander';
+import { declareManagedWrite } from './side-effect';
 import { Logger } from '../lib/logger';
 import { StrategyLoader, PROJECT_STRATEGIES_ENV, projectStrategiesAllowed, reportSkippedProjectCode } from '../lib/strategy/loader';
 import { installStrategy, findInstalledStrategyPackage, uninstallStrategyPackage } from './strategy-install';
@@ -229,7 +230,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       }
     });
 
-  program
+  declareManagedWrite(program
     .command('remove <name>')
     .alias('uninstall')
     .description('Remove an installed strategy')
@@ -282,7 +283,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       throw new NotFoundError(
         `Strategy "${name}" not found: no strategy file ${name}.{ts,js,yml,yaml} and no installed strategy package.`
       );
-    });
+    }), 'removes one strategy file or installed package; nothing previews the match');
 
   program
     .command('validate <name>')

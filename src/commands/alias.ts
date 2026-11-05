@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { declareManagedWrite } from './side-effect';
 import { assertDataConfig, isWritableConfigFile, loadConfig, saveConfig } from '../lib/config';
 import { isAliasTarget, kitAlias, reservedAliasNames, rootCommand, usableAliases } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
@@ -126,7 +127,7 @@ export function registerAliasCommand(): Command {
     });
 
   // Remove alias
-  program
+  declareManagedWrite(program
     .command('remove <name>')
     .description('Remove an alias')
     .action(async (name: string, _opts: unknown, cmd: Command) => {
@@ -146,7 +147,7 @@ export function registerAliasCommand(): Command {
       saveAliases(config, configPath);
 
       Logger.success(`Removed alias "${name}" (was: "${target}")`);
-    });
+    }), 'removes one alias entry from the config file');
 
   return program;
 }

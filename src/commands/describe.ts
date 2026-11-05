@@ -19,6 +19,9 @@ const SCHEMA_URL = 'https://hop-top.dev/schemas/cli-capabilities/v1.json';
 const SPEC = '12fc/v1';
 
 type SideEffect = 'read' | 'write' | 'write-local' | 'destructive-local';
+
+/** Tiers a command may declare with kit's `kit/side-effect` annotation. */
+const DECLARABLE: ReadonlySet<string> = new Set<SideEffect>(['read', 'write', 'write-local', 'destructive-local']);
 type Idempotent = 'yes' | 'conditional' | 'no';
 
 // Per-command classification. Dot-separated for nested commands
@@ -39,7 +42,7 @@ const SIDE_EFFECTS: Record<string, SideEffect> = {
   'cache.clear': 'destructive-local',
   'clear-cache': 'destructive-local',
   'alias.set': 'write-local',
-  'alias.remove': 'destructive-local',
+  'alias.remove': 'write-local',
   'alias.list': 'read',
 };
 
@@ -60,6 +63,8 @@ const IDEMPOTENT: Record<string, Idempotent> = {
   'clear-cache': 'yes',
   'alias.set': 'conditional',
   'alias.remove': 'no',
+  'strategy.remove': 'no',
+  'lang.remove': 'yes',
   'alias.list': 'yes',
 };
 
@@ -68,6 +73,7 @@ const IDEMPOTENT: Record<string, Idempotent> = {
 // 2 (usage). Specific commands add 3/4/5 where applicable.
 const EXTRA_EXIT_CODES: Record<string, number[]> = {
   'alias.remove': [3],
+  'strategy.remove': [3],
   impact: [3],
   imports: [3],
   paths: [3],
@@ -190,12 +196,18 @@ function parseArguments(cmd: Command): ArgumentDoc[] {
   }));
 }
 
-function classify(qualifiedName: string): {
+function classify(qualifiedName: string, cmd?: Command): {
   sideEffect: SideEffect;
   idempotent: Idempotent;
   exitCodes: number[];
 } {
-  const sideEffect = SIDE_EFFECTS[qualifiedName] ?? 'read';
+  // A tier declared on the command (what kit's gates act on) wins over the table.
+  const declared = (cmd as unknown as { annotations?: Record<string, string> } | undefined)
+    ?.annotations?.['kit/side-effect'];
+  const sideEffect: SideEffect =
+    declared !== undefined && DECLARABLE.has(declared)
+      ? (declared as SideEffect)
+      : SIDE_EFFECTS[qualifiedName] ?? 'read';
   const idempotent =
     IDEMPOTENT[qualifiedName] ?? (sideEffect === 'read' ? 'yes' : 'conditional');
   const base = [0, 1, 2];
@@ -207,7 +219,7 @@ function classify(qualifiedName: string): {
 function walk(cmd: Command, parentPath: string[] = []): CommandDoc {
   const name = cmd.name();
   const qualifiedName = [...parentPath, name].join('.');
-  const cls = classify(qualifiedName);
+  const cls = classify(qualifiedName, cmd);
   const output = Object.prototype.hasOwnProperty.call(OUTPUT_SCHEMAS, qualifiedName)
     ? OUTPUT_SCHEMAS[qualifiedName]
     : undefined;

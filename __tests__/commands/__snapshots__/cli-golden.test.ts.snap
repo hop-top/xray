@@ -5663,12 +5663,13 @@ exports[`cli golden: introspection describe 1`] = `
           ],
           "options": [],
           "subcommands": [],
-          "sideEffect": "read",
-          "idempotent": "yes",
+          "sideEffect": "write-local",
+          "idempotent": "no",
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -5845,7 +5846,7 @@ exports[`cli golden: introspection describe 1`] = `
           ],
           "options": [],
           "subcommands": [],
-          "sideEffect": "destructive-local",
+          "sideEffect": "write-local",
           "idempotent": "no",
           "exitCodes": [
             0,
@@ -5959,7 +5960,7 @@ exports[`cli golden: introspection describe 1`] = `
           ],
           "options": [],
           "subcommands": [],
-          "sideEffect": "read",
+          "sideEffect": "write-local",
           "idempotent": "yes",
           "exitCodes": [
             0,

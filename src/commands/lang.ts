@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { declareManagedWrite } from './side-effect';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { globSync } from 'glob';
@@ -185,7 +186,7 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
       if (!out.ok) process.exitCode = 1;
     });
 
-  lang
+  declareManagedWrite(lang
     .command('remove <names...>')
     .alias('rm')
     .description('Remove language packs from the xray-managed dir')
@@ -209,7 +210,7 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
         else Logger.success(`${p.name}: removed`);
       }
       if (!out.ok) process.exitCode = 1;
-    });
+    }), 'removes packs from the xray-managed dir; `lang add --dry-run` previews the matching install');
 
   return lang;
 }

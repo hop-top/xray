@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import { buildDescribeDoc } from '../../src/commands/describe';
+import { declareManagedWrite } from '../../src/commands/side-effect';
 import { IMPORTS_SCHEMA_ID } from '../../src/lib/imports/types';
 
 function makeProgram(): Command {
@@ -139,6 +140,13 @@ describe('xray describe', () => {
     expect(cache.subcommands.length).toBe(1);
     expect(cache.subcommands[0].name).toBe('clear');
     expect(cache.subcommands[0].qualifiedName).toBe('cache.clear');
+  });
+
+  it('reports the tier a command declares to kit, over the table', () => {
+    const root = new Command('xray');
+    declareManagedWrite(root.command('purge'), 'test');
+    const purge = buildDescribeDoc(root, 'xray', '0.1.0').commands.find((c) => c.name === 'purge')!;
+    expect(purge.sideEffect).toBe('write-local');
   });
 
   it('adds exit code 3 for alias.remove (not-found path)', () => {
