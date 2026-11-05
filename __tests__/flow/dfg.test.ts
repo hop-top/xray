@@ -270,3 +270,23 @@ describe('DFG: finally runs once per way in, each copy reads its operands', () =
       .toEqual(copies.map(c => c.id).sort());
   });
 });
+
+describe('DFG: a catch kept for a try body that cannot throw by itself', () => {
+  it('the catch parameter and its reads are in the graph; the body\'s writes do not complete before the catch sees them', () => {
+    const { cfg, dfg } = flowOf(`function f(last) {
+  try { last = 1; } catch (e) {
+    last = String(e);
+  }
+  return last;
+}`);
+    const shape = dfgShape(dfg!, cfg!);
+    expect(shape.defs).toEqual(sorted([
+      'last:param@1', 'last:assign@2', 'e:catch@2', 'last:assign@3',
+    ]));
+    expect(shape.edges).toEqual(sorted([
+      'e:catch@2 -> stmt last = String(e)',
+      'last:assign@2 -> return return last',
+      'last:assign@3 -> return return last',
+    ]));
+  });
+});

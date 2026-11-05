@@ -606,6 +606,12 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
 
   // CLI --with flags override config features
   const withFeatures = cliOptions.with || [];
+  // cf/df are one selection: naming either on the command line replaces the
+  // config's, so `graph --with cf` is cf only whatever the config says.
+  if (withFeatures.includes('cf') || withFeatures.includes('df')) {
+    features.cf = false;
+    features.df = false;
+  }
   if (withFeatures.length > 0) {
     withFeatures.forEach((feature: string) => {
       if (feature === 'vars') features.vars = true;

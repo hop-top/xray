@@ -13,10 +13,11 @@
  * - switch: the discriminant; case: one `case` test (`default` has no node)
  * - return / throw / break / continue: the jump statement itself
  * - catch: entry of a `catch` clause
+ * - rethrow: where an exception leaves a `finally` copy (always `throw`-labelled out)
  */
 export type CfgKind =
   | 'entry' | 'exit' | 'stmt' | 'expr' | 'cond' | 'loop' | 'switch' | 'case'
-  | 'return' | 'throw' | 'break' | 'continue' | 'catch';
+  | 'return' | 'throw' | 'break' | 'continue' | 'catch' | 'rethrow';
 
 export type CfgEdgeLabel = 'true' | 'false' | 'throw';
 

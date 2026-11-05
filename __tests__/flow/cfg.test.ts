@@ -325,6 +325,7 @@ describe('CFG: try / catch / finally', () => {
       'stmt a()', 'catch catch (e)', 'stmt b()',
       'stmt c() <- stmt a(), stmt b()',
       'stmt c() <- stmt b() /throw',
+      'rethrow rethrow',
       'stmt d()',
     ], [
       'entry entry -> stmt a()',
@@ -333,7 +334,8 @@ describe('CFG: try / catch / finally', () => {
       'catch catch (e) -> stmt b()',
       'stmt b() -> stmt c() <- stmt a(), stmt b()',
       'stmt b() -> stmt c() <- stmt b() /throw [throw]',
-      'stmt c() <- stmt b() /throw -> exit exit [throw]',
+      'stmt c() <- stmt b() /throw -> rethrow rethrow',
+      'rethrow rethrow -> exit exit [throw]',
       'stmt c() <- stmt a(), stmt b() -> stmt d()',
       'stmt d() -> exit exit',
     ]);
@@ -353,6 +355,7 @@ describe('CFG: try / catch / finally', () => {
       'stmt cleanup() <- return return 1',
       'stmt cleanup() <- stmt work()',
       'stmt cleanup() <- stmt work() /throw',
+      'rethrow rethrow',
       'return return 2',
     ], [
       'entry entry -> cond p',
@@ -362,7 +365,8 @@ describe('CFG: try / catch / finally', () => {
       'stmt cleanup() <- return return 1 -> exit exit',
       'stmt work() -> stmt cleanup() <- stmt work()',
       'stmt work() -> stmt cleanup() <- stmt work() /throw [throw]',
-      'stmt cleanup() <- stmt work() /throw -> exit exit [throw]',
+      'stmt cleanup() <- stmt work() /throw -> rethrow rethrow',
+      'rethrow rethrow -> exit exit [throw]',
       'stmt cleanup() <- stmt work() -> return return 2',
       'return return 2 -> exit exit',
     ]);
@@ -383,6 +387,7 @@ describe('CFG: try / catch / finally', () => {
       'stmt tick() <- continue continue',
       'stmt tick() <- stmt use(x)',
       'stmt tick() <- stmt use(x) /throw',
+      'rethrow rethrow',
     ], [
       'entry entry -> loop for (const x of xs)',
       'loop for (const x of xs) -> cond x [true]',
@@ -393,7 +398,8 @@ describe('CFG: try / catch / finally', () => {
       'stmt tick() <- continue continue -> loop for (const x of xs)',
       'stmt use(x) -> stmt tick() <- stmt use(x)',
       'stmt use(x) -> stmt tick() <- stmt use(x) /throw [throw]',
-      'stmt tick() <- stmt use(x) /throw -> exit exit [throw]',
+      'stmt tick() <- stmt use(x) /throw -> rethrow rethrow',
+      'rethrow rethrow -> exit exit [throw]',
       'stmt tick() <- stmt use(x) -> loop for (const x of xs)',
     ]);
   });
@@ -418,10 +424,101 @@ describe('CFG: try / catch / finally', () => {
     ]);
   });
 
-  it('a try body with nothing that can throw leaves the catch out (unreachable)', () => {
+  it('a try body with nothing that can throw still has its catch: conservatively reachable', () => {
     check(`function f() {
   try { x = 1; } catch (e) { never(); }
-}`, ['stmt x = 1'], ['entry entry -> stmt x = 1', 'stmt x = 1 -> exit exit']);
+}`, ['stmt x = 1', 'catch catch (e)', 'stmt never()'], [
+      'entry entry -> stmt x = 1',
+      'stmt x = 1 -> catch catch (e) [throw]',
+      'stmt x = 1 -> exit exit',
+      'catch catch (e) -> stmt never()',
+      'stmt never() -> exit exit',
+    ]);
+  });
+
+  it('conservative catch: every evaluating node of the body may throw, jumps do not, nodes that throw already keep their edge', () => {
+    check(`function f(p) {
+  try {
+    x = 1;
+    if (p) { y = 2; }
+    return y;
+  } catch (e) { z = e; }
+}`, [
+      'stmt x = 1', 'cond p', 'stmt y = 2', 'return return y', 'catch catch (e)', 'stmt z = e',
+    ], [
+      'entry entry -> stmt x = 1',
+      'stmt x = 1 -> cond p',
+      'stmt x = 1 -> catch catch (e) [throw]',
+      'cond p -> stmt y = 2 [true]',
+      'cond p -> return return y [false]',
+      'cond p -> catch catch (e) [throw]',
+      'stmt y = 2 -> return return y',
+      'stmt y = 2 -> catch catch (e) [throw]',
+      'return return y -> exit exit',
+      'catch catch (e) -> stmt z = e',
+      'stmt z = e -> exit exit',
+    ]);
+  });
+
+  it('a body with a throwing node keeps the precise edges only', () => {
+    check(`function f() {
+  try { x = 1; a(); } catch (e) { b(); }
+}`, ['stmt x = 1', 'stmt a()', 'catch catch (e)', 'stmt b()'], [
+      'entry entry -> stmt x = 1',
+      'stmt x = 1 -> stmt a()',
+      'stmt a() -> catch catch (e) [throw]',
+      'stmt a() -> exit exit',
+      'catch catch (e) -> stmt b()',
+      'stmt b() -> exit exit',
+    ]);
+  });
+});
+
+describe('CFG: the exception path of a finally ends in an explicit rethrow', () => {
+  it('a conditional at the end of the copy is not mistaken for a branch to a normal exit', () => {
+    check(`function f() {
+  try { a(); } finally { if (ok()) { x(); } }
+}`, [
+      'stmt a()',
+      'cond ok() <- stmt a()',
+      'stmt x() <- cond ok() <- stmt a() /true',
+      'cond ok() <- stmt a() /throw',
+      'stmt x() <- cond ok() <- stmt a() /throw /true',
+      'rethrow rethrow',
+    ], [
+      'entry entry -> stmt a()',
+      'stmt a() -> cond ok() <- stmt a()',
+      'stmt a() -> cond ok() <- stmt a() /throw [throw]',
+      'cond ok() <- stmt a() -> stmt x() <- cond ok() <- stmt a() /true [true]',
+      'cond ok() <- stmt a() -> exit exit [false]',
+      'stmt x() <- cond ok() <- stmt a() /true -> exit exit',
+      'cond ok() <- stmt a() /throw -> stmt x() <- cond ok() <- stmt a() /throw /true [true]',
+      'cond ok() <- stmt a() /throw -> rethrow rethrow [false]',
+      'stmt x() <- cond ok() <- stmt a() /throw /true -> rethrow rethrow',
+      'rethrow rethrow -> exit exit [throw]',
+    ]);
+  });
+
+  it('a finally inside an outer try: the rethrow reaches the outer catch', () => {
+    check(`function f() {
+  try {
+    try { a(); } finally { c(); }
+  } catch (e) { h(e); }
+}`, [
+      'stmt a()', 'stmt c() <- stmt a()', 'stmt c() <- stmt a() /throw', 'rethrow rethrow',
+      'catch catch (e)', 'stmt h(e)',
+    ], [
+      'entry entry -> stmt a()',
+      'stmt a() -> stmt c() <- stmt a()',
+      'stmt a() -> stmt c() <- stmt a() /throw [throw]',
+      'stmt c() <- stmt a() -> exit exit',
+      'stmt c() <- stmt a() -> catch catch (e) [throw]',
+      'stmt c() <- stmt a() /throw -> catch catch (e) [throw]',
+      'stmt c() <- stmt a() /throw -> rethrow rethrow',
+      'rethrow rethrow -> catch catch (e) [throw]',
+      'catch catch (e) -> stmt h(e)',
+      'stmt h(e) -> exit exit',
+    ]);
   });
 });
 

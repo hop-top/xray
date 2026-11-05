@@ -106,6 +106,19 @@ describe('map / graph flow flags through the built CLI', () => {
       expect(out).toContain('│   dfg');
     });
 
+    it('an explicit --with wins over config features: config df never adds flow back', () => {
+      const rc = path.join(proj, '.xrayrc.json');
+      fs.writeFileSync(rc, JSON.stringify({ features: { df: true } }));
+      try {
+        expect(text(['graph', '--with', 'cf']).out).not.toContain('dfg');
+        expect(text(['map', '--with', 'cf']).out).not.toContain('dfg');
+        expect(text(['map', '--with', 'df']).out).not.toContain('│   cfg');
+        expect(text(['map']).out).toContain('dfg');
+      } finally {
+        fs.rmSync(rc, { force: true });
+      }
+    });
+
     it('graph --with cf narrows to cf; --with df to df; other features add to the default', () => {
       expect(text(['graph', '--with', 'cf']).out).not.toContain('dfg');
       expect(text(['graph', '--with', 'df']).out).not.toContain('│   cfg');
@@ -164,6 +177,8 @@ describe('map / graph flow flags through the built CLI', () => {
         const r = run([...args, '--format', 'csv', '-o', out]);
         expect(r.status).toBe(2);
         expect(r.stderr).toContain('no csv form');
+        expect(r.stderr).toContain('xray map --format csv');
+        expect(r.stderr).toContain('without --with cf/df');
         expect(fs.existsSync(path.join(proj, 'g.nodes.csv'))).toBe(false);
       }
     });

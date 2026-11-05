@@ -214,13 +214,17 @@ export const withGraphFlow = <T extends { with?: string[] }>(options: T): T => {
   return asked.includes('cf') || asked.includes('df') ? options : { ...options, with: [...asked, 'cf', 'df'] };
 };
 
-/** Flow data has no CSV form: asking for it there is a usage error, never a silent omission. */
+/**
+ * Flow data has no CSV form: asking for it there is a usage error, never a
+ * silent omission. Plain `map --format csv` has no flow and keeps working.
+ */
 const assertFlowFormat = (mergedOptions: any, format: string): void => {
   const f = featuresOf(mergedOptions);
   if (format === 'csv' && (f.cf || f.df)) {
     throw new UsageError(
-      'cf/df data has no csv form (nodes and edges only): use --format json, xml or txt; ' +
-      '`xray map --format csv` writes the graph tables without flow'
+      'cf/df flow has no csv form (csv is nodes and edges only), and `graph`, --with cf/df ' +
+      'or features.cf/df in config ask for it: use --format json, xml or txt, ' +
+      'or `xray map --format csv` (without --with cf/df) for the csv tables without flow'
     );
   }
 };

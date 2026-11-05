@@ -43,6 +43,7 @@ function violations(cfg: Cfg, where: string): string[] {
     if (!toExit.has(n.id)) bad.push(`${where}: ${n.id} ${n.kind} cannot reach exit`);
     if (n.kind === 'exit' && outs.length) bad.push(`${where}: exit has successors`);
     if (n.kind === 'entry' && (inn.get(n.id) ?? []).length) bad.push(`${where}: entry has predecessors`);
+    if (n.kind === 'rethrow' && (normal.length || outs.length !== 1)) bad.push(`${where}: rethrow must leave by one throw edge`);
     if (n.kind === 'throw' && normal.length) bad.push(`${where}: throw continues normally`);
     if (['return', 'break', 'continue'].includes(n.kind) && normal.length !== 1) bad.push(`${where}: ${n.kind} has ${normal.length} successors`);
     if (n.kind === 'cond' || n.kind === 'case' || (n.kind === 'loop' && !n.label.startsWith('for '))) {

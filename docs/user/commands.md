@@ -130,10 +130,13 @@ notice (`cf/df: no flow graphs for python (3 files) yet ...`) and its
 functions carry no graphs.
 
 **Flags:** `graph` turns `cf` and `df` on. Naming either under `--with`
-narrows to those (`--with cf`, `--with df`); other `--with` features add to
-the default. `xray map --with cf` / `--with df` produce the same graphs on a
+narrows to those (`--with cf`, `--with df`), whatever `features.cf` / `features.df`
+say in the config (an explicit `--with` wins for cf/df); other `--with` features
+add to the default and to config. `xray map --with cf` / `--with df` produce the same graphs on a
 plain map; plain `map` is unchanged and does no flow work. Flow has no CSV
-form: `--format csv` with cf/df exits 2. `--format xml` carries it as
+form: `--format csv` with `graph`, `--with cf|df` or config cf/df exits 2 and
+says so, never a csv without flow; plain `xray map --format csv` is unchanged
+and writes the csv tables. `--format xml` carries it as
 `<cfg>` / `<dfg>` children of the function's `<node>`.
 
 ```bash
@@ -169,7 +172,8 @@ a successor `n4:true` is an edge labelled `true`, `false` or `throw`. Kinds:
 `entry`, `exit` (always `n1`), `stmt`, `expr` (an operand on one branch),
 `cond` (an `if` / ternary / `&&` `||` `??` operand), `loop` (a loop test or
 `for-of`/`for-in` head), `switch`, `case`, `return`, `throw`, `break`,
-`continue`, `catch`. Source text is one line, capped at 60 characters.
+`continue`, `catch`, `rethrow` (where an exception leaves a `finally` copy;
+its one edge is `throw`). Source text is one line, capped at 60 characters.
 
 One line per definition in the DFG: `<id> <name> <kind> L<line> → <reading CFG nodes>`.
 Definition kinds: `param`, `decl`, `assign`, `update` (`++`, `+=`), `loop`
@@ -200,10 +204,13 @@ without these fields work with `query --graph` and `impact --graph`.
   Nested functions and closures have their own graphs (`closures`).
 - A function with more than 500 CFG nodes keeps its first 500 and says so
   (`truncated` / `(truncated: 500 of 812 nodes)`).
-- Only `throw`, calls, `new` and `await` may throw: a `try` body with none
-  of them has no edge into its `catch`, which is then left out. A `finally`
-  is copied once per way into it (normal, `return`, `break`/`continue`,
-  exception).
+- Only `throw`, calls, `new` and `await` are known to throw. A `try` body
+  with none of them keeps its `catch` anyway: every statement of the body
+  gets a `throw` edge into it (anything may throw: getters, stack overflow),
+  so the catch and its variable are never missing. An empty `try` body has no
+  such edge. A `finally` is copied once per way into it (normal, `return`,
+  `break`/`continue`, exception); the exception copy ends in a `rethrow`
+  node, whose `throw` edge leaves the function or reaches the outer `catch`.
 - Code after `return`, `throw`, `break` or `continue` is unreachable and
   omitted. `?.` optional chaining is not a branch. A `ternary` or `&&` inside
   a nested function belongs to that function's graph.

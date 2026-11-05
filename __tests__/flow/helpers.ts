@@ -31,20 +31,25 @@ export function flowOf(code: string, name = 'f', want = { cfg: true, dfg: true }
 }
 
 /**
- * Name of every CFG node independent of ids: `<kind> <label>`; a label the
- * function has more than once (finally copies) gets ` <- <predecessors>`.
+ * Name of every CFG node independent of ids: `<kind> <label>`; a name the
+ * function has more than once (finally copies) gets ` <- <predecessors>`,
+ * refined with the predecessors' own names until the names differ.
  */
 export function cfgKeys(cfg: Cfg): Map<string, string> {
   const base = new Map(cfg.nodes.map(n => [n.id, `${n.kind} ${n.label}`]));
-  const count = new Map<string, number>();
-  for (const k of base.values()) count.set(k, (count.get(k) ?? 0) + 1);
-  const keys = new Map<string, string>();
-  for (const n of cfg.nodes) {
-    const k = base.get(n.id)!;
-    if (count.get(k) === 1) { keys.set(n.id, k); continue; }
-    const preds = cfg.edges.filter(e => e.to === n.id)
-      .map(e => `${base.get(e.from)}${e.label ? ` /${e.label}` : ''}`).sort();
-    keys.set(n.id, `${k} <- ${preds.join(', ')}`);
+  let keys = new Map(base);
+  for (let round = 0; round < 8; round++) {
+    const count = new Map<string, number>();
+    for (const k of keys.values()) count.set(k, (count.get(k) ?? 0) + 1);
+    if ([...count.values()].every(c => c === 1)) break;
+    const next = new Map(keys);
+    for (const n of cfg.nodes) {
+      if (count.get(keys.get(n.id)!) === 1) continue;
+      const preds = cfg.edges.filter(e => e.to === n.id)
+        .map(e => `${keys.get(e.from)}${e.label ? ` /${e.label}` : ''}`).sort();
+      next.set(n.id, `${base.get(n.id)} <- ${preds.join(', ')}`);
+    }
+    keys = next;
   }
   return keys;
 }

@@ -27,6 +27,7 @@ export interface BuiltCfg {
 }
 
 const LABEL_CAP = 60;
+const EVALUATES: CfgKind[] = ['stmt', 'expr', 'cond', 'loop', 'switch', 'case'];
 
 /** Source text as a one-line label. */
 export function labelOf(s: string): string {
@@ -172,11 +173,25 @@ export class CfgBuilder {
         const outs = this.copyOf(f.body, cur);
         this.frames = saved;
         if (this.total > mark) f.memo.set(key, `n${mark}`);
-        cur = kind === 'throw' ? outs.map(e => ({ from: e.from, label: e.label ?? 'throw' })) : outs;
+        cur = outs;
+        if (kind === 'throw' && outs.length > 0) {
+          // The exception leaves the copy through one node of its own, so a
+          // branch at the end of the copy is never read as a way out.
+          const r = this.mk('rethrow', 'rethrow', null, emptyRefs(), outs, f.body.endPosition.row);
+          cur = [{ from: r.id, label: 'throw' }];
+        }
         if (cur.length === 0) return;
       }
     }
     if (kind === 'return' || kind === 'throw') this.link(cur, 'n1');
+  }
+
+  /** Throw edges from every node built since `mark` that evaluates something and has none yet. */
+  private mayThrow(mark: number): End[] {
+    const has = new Set(this.edges.filter(e => e.label === 'throw').map(e => e.from));
+    return this.nodes
+      .filter(n => Number(n.id.slice(1)) >= mark && EVALUATES.includes(n.kind) && !has.has(n.id))
+      .map(n => ({ from: n.id, label: 'throw' as const }));
   }
 
   // ---- statements -------------------------------------------------------
@@ -420,8 +435,12 @@ export class CfgBuilder {
     if (fin) this.frames.push(fin);
     const catchFrame: Extract<Frame, { kind: 'catch' }> | null = handler ? { kind: 'catch', throws: [] } : null;
     if (catchFrame) this.frames.push(catchFrame);
+    const mark = this.total;
     let outs = body ? this.block(body, ins) : ins;
     if (catchFrame) this.frames.pop();
+    // No node of the body is known to throw: any of them may (getters,
+    // stack overflow...), so the catch stays reachable instead of vanishing.
+    if (catchFrame && catchFrame.throws.length === 0) catchFrame.throws.push(...this.mayThrow(mark));
     if (handler && catchFrame && catchFrame.throws.length > 0) {
       const cb = handler.childForFieldName(this.table.catchClause.body);
       const refs = emptyRefs();
