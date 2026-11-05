@@ -134,7 +134,7 @@ Built-in strategy commands register automatically. Strategies in a project (`.xr
 ### `xray explore` - File Discovery
 
 ```bash
-xray explore --path ./src --type ts --match "!*.test.ts"
+xray explore --path ./src --match "*.ts" --match "!*.test.ts"
 ```
 
 ### `xray graph` - Control/Data Flow

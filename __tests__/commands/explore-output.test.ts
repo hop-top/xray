@@ -59,7 +59,7 @@ describe('xray explore output (kit dispatch)', () => {
   });
 
   it('match: path records', async () => {
-    await explore('-m', 'imports', '--format', 'json');
+    await explore('-m', 'imports/*', '--format', 'json');
     const rows = JSON.parse(captured());
     expect(rows).toHaveLength(3);
     expect(Object.keys(rows[0])).toEqual(['path']);

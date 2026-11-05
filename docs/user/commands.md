@@ -68,9 +68,14 @@ xray explore [query] [options]
 | `--stats` | Show codebase statistics |
 | `--format <fmt>` | `text` (default), `json`, `yaml`, `table`, `csv` |
 
-Repeated `--match` patterns combine with OR. A `!` pattern matches every
-file the pattern does not, so use it alone or together with `--type` to
-exclude files.
+Patterns are globs matched against the path under the explore root (each
+`--path` is its own root), case-insensitively. `*` stays within one path
+segment, `**` crosses `/`, and `.` is literal. A pattern without `/` matches
+the file name at any depth (`*.ts`); one with `/` matches from the root
+(`src/**/*.ts`; a trailing `/` means everything under that directory).
+Repeated `--match` patterns combine with OR. A `!` pattern excludes and wins
+over every other pattern; with only `!` patterns, every file but those is
+listed.
 
 **Examples:**
 ```bash
@@ -81,7 +86,10 @@ xray explore --path ./src
 xray explore --match "*.test.ts" --match "*.spec.ts"
 
 # TypeScript files except tests
-xray explore --path ./src --type ts --match "!*.test.ts"
+xray explore --path ./src --match "*.ts" --match "!*.test.ts"
+
+# Everything under src/api except tests
+xray explore --match "src/api/**" --match "!*.test.ts"
 ```
 
 ### `xray graph`

@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Logger } from '../lib/logger';
 import { FileScanner } from '../lib/scanner';
+import { compileMatchers } from '../lib/path-match';
 import { resolvePath } from './common';
 import type { Command } from 'commander';
 import { ExploreCommandOptions } from '../types/command-options';
@@ -106,46 +107,28 @@ export const handleExploreAction = async (
       }
     }
 
-    // Scan all paths and collect files
-    let files: string[] = [];
+    // Scan all paths and collect files, keeping each one's path under its root
+    const scanned: { abs: string; rel: string }[] = [];
     for (const p of paths) {
       const scanner = new FileScanner(p);
-      const scannedFiles = scanner.scan().map((f: string) => path.join(p, f));
-      files = files.concat(scannedFiles);
+      for (const f of scanner.scan()) scanned.push({ abs: path.join(p, f), rel: f.split(path.sep).join('/') });
     }
+    let entries = scanned;
 
     // Filter by type if specified
     if (options.type && options.type.length > 0) {
       const exts = options.type.map((t: string) => t.startsWith('.') ? t : `.${t}`);
-      files = files.filter(f => exts.includes(path.extname(f)));
+      entries = entries.filter(e => exts.includes(path.extname(e.abs)));
     }
 
-    // Find files by pattern
+    const files = entries.map(e => e.abs);
+
+    // Find files by pattern, against the path under each explore root
     if (options.match && options.match.length > 0) {
-      files = files.filter(f => {
-        const fileName = path.basename(f).toLowerCase();
-        const filePath = f.toLowerCase();
-
-        return options.match!.some((pattern: string) => {
-          const isNegated = pattern.startsWith('!');
-          const actualPattern = (isNegated ? pattern.slice(1) : pattern).toLowerCase();
-
-          let matches = false;
-
-          // Support glob-like patterns
-          if (actualPattern.includes('*')) {
-            const regex = new RegExp(actualPattern.replace(/\*/g, '.*'));
-            matches = regex.test(filePath);
-          } else {
-            matches = fileName.includes(actualPattern) || filePath.includes(actualPattern);
-          }
-
-          return isNegated ? !matches : matches;
-        });
-      });
-
-      Logger.info(`Found ${files.length} file(s) matching pattern(s):\n`);
-      await render<MatchRow>(cmd, files.map((f) => ({ path: f })), matchText, columns('path'));
+      const matches = compileMatchers(options.match);
+      const found = entries.filter(e => matches(e.rel)).map(e => e.abs);
+      Logger.info(`Found ${found.length} file(s) matching pattern(s):\n`);
+      await render<MatchRow>(cmd, found.map((f) => ({ path: f })), matchText, columns('path'));
       return;
     }
 
