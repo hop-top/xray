@@ -428,6 +428,65 @@ describe('xray impact (built CLI)', () => {
     expect(fs.existsSync(path.join(repo, '.xray'))).toBe(false);
   });
 
+  describe('config match narrows the built graph', () => {
+    let narrowed: string;
+    beforeAll(() => {
+      narrowed = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-impact-match-'));
+      fs.cpSync(repo, narrowed, { recursive: true });
+      fs.writeFileSync(path.join(narrowed, '.xrayrc.json'), JSON.stringify({ match: ['lib/core.ts'] }));
+    });
+    afterAll(() => fs.rmSync(narrowed, { recursive: true, force: true }));
+
+    test('one stderr line names the patterns; the walk is narrowed', () => {
+      const r = run(['impact', 'target', '-p', narrowed], narrowed);
+      expect(r.status).toBe(0);
+      const notes = r.stderr.split('\n').filter(l => l.includes('narrows the graph'));
+      expect(notes).toHaveLength(1);
+      expect(notes[0]).toContain('"lib/core.ts"');
+      expect(r.stdout).not.toContain('useIt');
+    });
+
+    test('--format json keeps stdout parseable', () => {
+      const r = run(['impact', 'target', '-p', narrowed, '--format', 'json'], narrowed);
+      expect(r.status).toBe(0);
+      expect(() => JSON.parse(r.stdout)).not.toThrow();
+      expect(r.stderr).toContain('narrows the graph');
+    });
+
+    test.each([
+      ['before the subcommand', ['--quiet', 'impact', 'target']],
+      ['after the subcommand', ['impact', 'target', '--quiet']],
+    ])('--quiet %s: no note', (_w, args) => {
+      const r = run([...args, '-p', narrowed], narrowed);
+      expect(r.status).toBe(0);
+      expect(r.stderr).toBe('');
+    });
+
+    test('a pattern with ESC and newline reaches stderr escaped, never raw', () => {
+      const evil = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-impact-evil-'));
+      try {
+        fs.cpSync(repo, evil, { recursive: true });
+        fs.writeFileSync(path.join(evil, '.xrayrc.json'), JSON.stringify({ match: ['lib/core.ts', '\u001b[2J\nforged: ok'] }));
+        const r = run(['impact', 'target', '-p', evil], evil);
+        expect(r.status).toBe(0);
+        expect(r.stderr).toContain('narrows the graph');
+        expect(r.stderr).not.toContain('\u001b');
+        expect(r.stderr).not.toContain('\nforged');
+        expect(r.stderr).toContain('\\u001b[2J\\nforged');
+      } finally {
+        fs.rmSync(evil, { recursive: true, force: true });
+      }
+    });
+
+    test('no match configured: no note', () => {
+      expect(run(['impact', 'target', '-p', repo], repo).stderr).not.toContain('narrows the graph');
+    });
+
+    test('--graph is not narrowed by config: no note', () => {
+      expect(run(['impact', 'T', '--graph', graphFile], narrowed).stderr).not.toContain('narrows the graph');
+    });
+  });
+
   test('missing --path exits 3', () => {
     expect(run(['impact', 'target', '-p', path.join(dir, 'missing-root')]).status).toBe(3);
   });

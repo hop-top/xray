@@ -9,6 +9,7 @@ import { GraphSerializer } from '../lib/graph/serializer';
 import { computeImpact, DEFAULT_IMPACT_DEPTH, editorLine, impactToQueryResult, renderImpactBrief, renderImpactText, type ImpactResult } from '../lib/query/impact';
 import type { SerializedGraph } from '../lib/query/types';
 import type { ParseCoverage } from '../lib/xray';
+import { quotePattern } from '../lib/path-match';
 import { Logger } from '../lib/logger';
 import { UsageError } from '../lib/error/types';
 import {
@@ -80,6 +81,15 @@ export function coverageLine(c: ParseCoverage, cache?: BuiltGraph['cache']): str
   return `coverage: ${files} · skipped grammars: ${skipped}`;
 }
 
+/**
+ * One stderr line when a config `match` narrowed the graph: impact has no
+ * `--match`, so callers outside the patterns would go unreported silently.
+ */
+export function matchNote(patterns: readonly string[] | undefined): string | null {
+  if (!patterns || patterns.length === 0) return null;
+  return `note: config "match" narrows the graph to ${patterns.map((p) => quotePattern(p)).join(', ')}; callers in other files are not reported`;
+}
+
 async function obtainGraph(options: ImpactCommandOptions): Promise<SerializedGraph> {
   if (options.graph) {
     const building = (options.path?.length ?? 0) > 0 || options.lens || options.scope;
@@ -91,6 +101,8 @@ async function obtainGraph(options: ImpactCommandOptions): Promise<SerializedGra
   const cli = { path: options.path ?? [], lens: options.lens, scope: options.scope, lang: options.lang ?? [], config: options.config };
   const { mergedOptions } = resolveRunOptions(cli);
   validateRunRoots(mergedOptions, options.config);
+  const note = matchNote(mergedOptions.match);
+  if (note) Logger.info(note);
   const built = await buildGraphForRoots(mergedOptions, options.config, { format: 'json', quiet: true, cache: true });
   if (built.cache) Logger.info(cacheLine(built.cache));
   Logger.info(coverageLine(built.coverage, built.cache));

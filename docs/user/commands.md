@@ -155,7 +155,10 @@ Without `--graph`, the graph is built in memory for the resolved roots
 file is written, and stderr gets one coverage line:
 `ℹ coverage: 318 files parsed · skipped grammars: none`, or
 `ℹ coverage: served from cache (715 files) · …` when every root of a
-multi-root run was served from the cache.
+multi-root run was served from the cache. When the config sets `match`,
+stderr also gets a `note:` line naming the patterns: `impact` has no
+`--match`, so callers in other files are not reported. `--quiet` silences
+both lines; a saved `--graph` is never narrowed by config.
 
 **Text output** (`xray impact RunHooks --depth 2 -p ../poly-nerv`):
 
