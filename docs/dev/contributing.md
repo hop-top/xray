@@ -371,7 +371,7 @@ See [Strategy Development Guide](strategy-development.md) for detailed instructi
 1. **Create strategy file** in `strategies/`:
 ```typescript
 // strategies/my-framework.ts
-import { Strategy, StrategyContext, FileMetadata } from '../src/strategy/types';
+import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 
 export default class MyFrameworkStrategy implements Strategy {
   name = 'my-framework';

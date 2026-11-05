@@ -106,7 +106,7 @@ Total: 3 context(s)
 Strategies can define custom commands by adding a `commands` property:
 
 ```typescript
-import { Strategy, StrategyContext, StrategyCommand } from '../src/strategy/types';
+import { Strategy, StrategyContext, StrategyCommand } from '../src/lib/strategy/types';
 
 export default class MyStrategy implements Strategy {
   name = 'my-strategy';

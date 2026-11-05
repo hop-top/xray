@@ -27,7 +27,7 @@ Create a new file in the `strategies/` directory:
 
 ```typescript
 // strategies/vue.ts
-import { Strategy, StrategyContext, FileMetadata } from '../src/strategy/types';
+import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 
 export default class VueStrategy implements Strategy {
   name = 'vue';

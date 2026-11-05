@@ -41,7 +41,6 @@ Critical distinction for predictable behavior:
 | `graph:add-file` | ⚡ | Yes (tags, skip) | Before adding file to graph |
 | `graph:add-node` | ⚡ | Yes (attrs, skip) | Before adding node |
 | `graph:complete` | 🔀 | No | Graph building done |
-| `render:chunk` | ⚡ | Yes (content) | Before writing chunk |
 | `progress` | 🔀 | No | Progress update |
 
 **Full list:** See [Complete Event Reference](#complete-event-reference)
@@ -309,28 +308,6 @@ xray.on('graph:complete', (event) => {
 
 ### Render Events
 
-#### `render:chunk` ⚡
-
-Emitted before writing each chunk.
-
-**Payload:**
-```typescript
-{
-  chunkPath: string;
-  content: string;  // Modifiable
-}
-```
-
-**Typical Use:**
-```typescript
-xray.on('render:chunk', (event) => {
-  // Add header to each chunk
-  event.content = `// Generated ${new Date()}\n${event.content}`;
-});
-```
-
----
-
 #### `render:complete` 🔀
 
 Emitted when rendering completes.
@@ -437,8 +414,6 @@ rank:start
 rank:complete
   ↓
 render:start
-  ↓
-render:chunk (for each chunk)
   ↓
 render:complete
 ```
