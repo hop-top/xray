@@ -4,6 +4,14 @@ import { ParserFactory } from '../src/lib/config/parser-factory';
 import { Logger } from '../src/lib/logger';
 import * as path from 'path';
 
+/**
+ * Human headings and lines only in text mode: with `--format json` (or any
+ * other machine format) stdout carries the rendered result alone.
+ */
+function isTextFormat(opts?: { format?: unknown }): boolean {
+  return opts?.format === undefined || opts.format === 'text';
+}
+
 export default class ConfigStrategy implements Strategy {
   name = 'config';
   version = '0.1.0';
@@ -73,25 +81,28 @@ export default class ConfigStrategy implements Strategy {
         const pattern = opts?.pattern || opts?.['pattern'];
         const files = this.findConfigFiles(ctx, pattern);
 
-        Logger.output('\nConfiguration Files:\n');
+        const text = isTextFormat(opts);
+        const out = (line: string) => { if (text) Logger.output(line); };
+
+        out('\nConfiguration Files:\n');
 
         const grouped = this.groupFilesByType(files);
 
         for (const [type, typeFiles] of Object.entries(grouped)) {
           if (typeFiles.length > 0) {
-            Logger.output(`\n${type.toUpperCase()} Files:`);
+            out(`\n${type.toUpperCase()} Files:`);
             for (const file of typeFiles) {
               // globFiles() yields project-relative paths; path.relative() would
               // resolve those against process.cwd() instead of the project root.
               const relativePath = path.isAbsolute(file)
                 ? path.relative(ctx.getProjectRoot(), file)
                 : file;
-              Logger.output(`  ${relativePath}`);
+              out(`  ${relativePath}`);
             }
           }
         }
 
-        Logger.output(`\nTotal: ${files.length} file(s)\n`);
+        out(`\nTotal: ${files.length} file(s)\n`);
 
         return { files, count: files.length };
       }
@@ -129,11 +140,13 @@ export default class ConfigStrategy implements Strategy {
         // Remove duplicates and sort
         const uniqueKeys = Array.from(new Set(allKeys)).sort();
 
-        Logger.output('\nConfiguration Keys:\n');
-        for (const key of uniqueKeys) {
-          Logger.output(`  ${key}`);
+        if (isTextFormat(opts)) {
+          Logger.output('\nConfiguration Keys:\n');
+          for (const key of uniqueKeys) {
+            Logger.output(`  ${key}`);
+          }
+          Logger.output(`\nTotal: ${uniqueKeys.length} key(s)\n`);
         }
-        Logger.output(`\nTotal: ${uniqueKeys.length} key(s)\n`);
 
         return { keys: uniqueKeys, count: uniqueKeys.length };
       }
@@ -152,7 +165,10 @@ export default class ConfigStrategy implements Strategy {
 
         const showSecrets = opts?.['show-secrets'] === true || opts?.['showSecrets'] === true || opts?.showSecrets === true;
 
-        Logger.output('\nConfiguration Values:\n');
+        const text = isTextFormat(opts);
+        const out = (line: string) => { if (text) Logger.output(line); };
+
+        out('\nConfiguration Values:\n');
 
         for (const file of files) {
           try {
@@ -167,7 +183,7 @@ export default class ConfigStrategy implements Strategy {
             const relativePath = path.relative(ctx.getProjectRoot(), file);
 
             if (files.length > 1) {
-              Logger.output(`\n${relativePath}:`);
+              out(`\n${relativePath}:`);
             }
 
             for (const entry of parsed.entries) {
@@ -185,14 +201,14 @@ export default class ConfigStrategy implements Strategy {
                 displayValue = JSON.stringify(displayValue);
               }
 
-              Logger.output(`  ${entry.key} = ${displayValue}`);
+              out(`  ${entry.key} = ${displayValue}`);
             }
           } catch (err: any) {
             Logger.error(`Error parsing ${file}: ${err.message}`);
           }
         }
 
-        Logger.output('');
+        out('');
         return {};
       }
     }
