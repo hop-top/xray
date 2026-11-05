@@ -139,12 +139,11 @@ test('renders app', () => {
       expect(output).toContain('Auto-configured paths from detected strategies');
     });
 
-    test('should merge with existing match patterns', () => {
+    test('an explicit --match is the only file filter; detected file types are not added', () => {
       const output = runCli(`map --no-chunk -m "*.json" --depth 1`, reactProject);
 
       expect(output).toMatch(/Detected strategies: .*\breact\b/);
-      expect(output).toContain('Auto-configured paths from detected strategies');
-      expect(output).toContain('App.tsx');
+      expect(output).not.toContain('App.tsx');
     });
 
     test('should not duplicate existing match patterns', () => {

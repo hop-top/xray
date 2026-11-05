@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { FileScanner } from './scanner';
+import { compileMatchers } from './path-match';
 import { ParserManager } from './parser/manager';
 import { updateLanguageQuery } from './parser/language-registry';
 import { beginLanguageRun, reportSkippedLanguages, type SkippedSummary } from './parser/grammars';
@@ -290,7 +291,15 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     const manifestNames = new Set(IMPORT_MANIFESTS);
     const listed = scanner.scan([...sourceExts, ...IMPORT_MANIFESTS.map(m => path.extname(m))]);
     this.manifests = listed.filter(f => manifestNames.has(path.basename(f)));
-    const files = listed.filter(f => sourceExts.has(path.extname(f)) && !manifestNames.has(path.basename(f)));
+    let files = listed.filter(f => sourceExts.has(path.extname(f)) && !manifestNames.has(path.basename(f)));
+    // `match` narrows the source files to analyze (same semantics as
+    // `explore --match`); manifests stay: import resolution reads them.
+    const patterns = this.config.match ?? [];
+    if (patterns.length > 0) {
+      const matches = compileMatchers(patterns);
+      files = files.filter(f => matches(f.split(path.sep).join('/')));
+      if (files.length === 0) Logger.warn(`No files match --match ${patterns.join(', ')}`);
+    }
     Logger.info(`Found ${files.length} files.`);
     Logger.debug(`File list:`, files.slice(0, 10));
 

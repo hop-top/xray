@@ -359,7 +359,7 @@ declarative YAML strategies always load.
 |------|-------------|
 | `-a, --anchor <path>` | Focus on specific file (Personalized PageRank) |
 | `-d, --depth <number>` | Maximum tree depth |
-| `-m, --match <patterns...>` | File patterns (`!` to exclude) |
+| `-m, --match <pattern>` | Analyze only files matching a pattern (`!` to exclude; repeatable; same patterns as `explore --match`) |
 | `-c, --catch <patterns...>` | Function/class patterns |
 
 [Complete command reference →](docs/user/commands.md)

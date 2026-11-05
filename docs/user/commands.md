@@ -491,8 +491,16 @@ xray map --with vars --with incs --with cost
 |------|-------------|
 | `-a, --anchor <path>` | Focus analysis on a specific file (Personalized PageRank) |
 | `-d, --depth <number>` | Maximum depth of the tree to render |
-| `-m, --match <patterns...>` | Match filename patterns (prefix with `!` to negate) |
+| `-m, --match <pattern>` | Analyze only files matching a pattern (`!` to exclude; repeatable) |
 | `-c, --catch <patterns...>` | Match function/class names (prefix with `!` to negate) |
+
+`--match` takes the same patterns, with the same rules, as
+[`explore --match`](#xray-explore) (globs on the path under each root; OR;
+`!` excludes and wins), so both commands agree on the file set. It applies
+to `map` and `graph` in every format. The `match` list in the config file
+(top level, a lens or a scope) is the same list; `--match` on the command
+line replaces it. When no file matches, a warning on stderr says so and the
+output is empty.
 
 **Examples:**
 ```bash

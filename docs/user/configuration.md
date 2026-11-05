@@ -175,7 +175,7 @@ command line stays relative to the current directory.
 | `features` | `object` | Features to enable: `vars`, `incs`, `docs`, `cost`, `cf`, `df` |
 | `anchor` | `string` | Focus file for Personalized PageRank |
 | `depth` | `number` | Maximum depth of tree to render |
-| `match` | `string[]` | File name patterns (glob) |
+| `match` | `string[]` | File patterns for `map` and `graph`, the same as `--match` (`!` excludes; `--match` replaces the list) |
 | `catch` | `string[]` | Function/class name patterns |
 | `format` | `'txt' \| 'csv' \| 'xml'` | Output format |
 | `diagram` | `'mermaid' \| 'dot'` | Diagram type |

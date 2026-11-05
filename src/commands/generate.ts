@@ -84,18 +84,16 @@ const preflightPresets = async (specs: string[] | undefined, load: boolean): Pro
 };
 
 const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<{
-  match: string[];
   catch: string[];
   detectedStrategies: string[];
 }> => {
-  const match: string[] = [];
   const catchPatterns: string[] = [];
   const detectedStrategies: string[] = [];
 
   const paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()]).map(resolvePath).filter(Boolean) as string[];
 
   if (paths.length === 0) {
-    return { match, catch: catchPatterns, detectedStrategies };
+    return { catch: catchPatterns, detectedStrategies };
   }
 
   const projectPath = paths[0];
@@ -112,7 +110,7 @@ const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<
   const detected = await detector.detectExtensions(extensions);
 
   if (detected.length === 0) {
-    return { match, catch: catchPatterns, detectedStrategies };
+    return { catch: catchPatterns, detectedStrategies };
   }
 
   for (const strategy of detected) {
@@ -120,16 +118,6 @@ const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<
 
     const resolvedExtension = extensionMap.get(strategy.name);
     if (!resolvedExtension) continue;
-
-    if (resolvedExtension.fileTypes) {
-      const fileTypes = resolvedExtension.fileTypes();
-      for (const ext of fileTypes) {
-        const pattern = `*${ext}`;
-        if (!match.includes(pattern)) {
-          match.push(pattern);
-        }
-      }
-    }
 
     if (resolvedExtension.ignorePatterns) {
       const ignorePatterns = resolvedExtension.ignorePatterns();
@@ -141,7 +129,7 @@ const configureFromStrategies = async (options: CommonAnalysisOptions): Promise<
     }
   }
 
-  return { match, catch: catchPatterns, detectedStrategies };
+  return { catch: catchPatterns, detectedStrategies };
 };
 
 /** Write `content` to `file`, creating missing parent directories. */
@@ -232,7 +220,8 @@ const graphOptionsOf = (mergedOptions: any) => ({
   features: featuresOf(mergedOptions),
   languages: mergedOptions.languages ?? null,
   queries: mergedOptions.query ?? null,
-  match: mergedOptions.match ?? null,
+  // Only when set: runs without --match share one digest.
+  ...(mergedOptions.match?.length > 0 ? { pathMatch: mergedOptions.match } : {}),
   catch: mergedOptions.catch ?? null,
   anchor: resolvePath(mergedOptions.anchor) ?? null,
 });
@@ -412,21 +401,13 @@ export const runSingleXray = async (
   let detectedStrategies: string[] = [];
 
   if (shouldAutoDetect && !mergedOptions.skipDetect) {
-    const { match, catch: catchPatterns, detectedStrategies: strategies } = await configureFromStrategies(mergedOptions);
+    const { catch: catchPatterns, detectedStrategies: strategies } = await configureFromStrategies(mergedOptions);
 
     if (strategies.length > 0) {
       detectedStrategies = strategies;
 
-      // Merge auto-configured patterns with existing ones
-      if (match.length > 0) {
-        const existingMatch = mergedOptions.match || [];
-        const newMatchPatterns = match.filter(p => !existingMatch.includes(p));
-        if (newMatchPatterns.length > 0) {
-          mergedOptions.match = existingMatch.concat(newMatchPatterns);
-          autoConfigured = true;
-        }
-      }
-
+      // Strategy file types are not merged into `match`: it filters the
+      // file set, and only an explicit --match or config `match` may do so.
       if (catchPatterns.length > 0) {
         const existingCatch = mergedOptions.catch || [];
         const newCatchPatterns = catchPatterns.filter(p => !existingCatch.includes(p));

@@ -283,10 +283,12 @@ xray map --with incs
 
 **Solution:**
 
-1. Check file patterns aren't excluding everything:
+1. Check file patterns aren't excluding everything. When `--match` (or the
+   `match` list in config) matches no file, xray warns `No files match
+   --match ...` on stderr. Compare with `xray explore --match`, which lists
+   what the same patterns select:
 ```bash
-# Remove overly restrictive patterns
-xray map --match "*.ts" --match "*.js"
+xray explore --match "*.ts" --match "*.js"
 ```
 
 2. Increase depth limit:

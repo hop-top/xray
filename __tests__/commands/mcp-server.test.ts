@@ -262,6 +262,13 @@ describe('xray mcp over stdio', () => {
     expect(fs.readdirSync(repo).filter((f) => f.startsWith('.xray') && f !== '.xray')).toEqual([]);
   }, 120_000);
 
+  it('map honors match: only matching files are mapped', async () => {
+    const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, txt: true, match: ['sub/**'] });
+    expect(r.result.isError).toBe(false);
+    expect(text(r)).toContain('delta');
+    expect(text(r)).not.toContain('alpha');
+  }, 120_000);
+
   it('maps command failures to isError results with stderr', async () => {
     const r = await client.call('query', { query: 'calls(x)', graph: 'missing.json' });
     expect(r.result.isError).toBe(true);

@@ -109,7 +109,7 @@ You can also specify `--config <path>` to use a custom location.
   // Maximum depth of tree to render
   "depth": 5,
 
-  // File name patterns (glob)
+  // File patterns (glob; ! excludes), same as --match
   "match": ["*.ts", "*.tsx", "!*.test.ts"],
 
   // Function/class name patterns
