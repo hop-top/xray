@@ -20,6 +20,7 @@ import {
   managedDir,
 } from '../lib/parser/grammars';
 import { NpmRunner, defaultNpmRunner, installCommand, installPacks, isManaged, removeCommand, removePacks } from '../lib/parser/lang-install';
+import { terminalSafe } from '../lib/terminal-safe';
 
 export interface LangRow {
   language: string;
@@ -136,25 +137,25 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
       Logger.output(styles().accent('\nLanguage packs:\n'));
       for (const r of rows) {
         const mark = r.status === 'installed' ? styles().success('installed    ') : r.status === 'broken' ? styles().error('broken       ') : styles().warn('not installed');
-        const where = r.source ? styles().muted(` (${r.source})`) : '';
+        const where = r.source ? styles().muted(` (${terminalSafe(String(r.source))})`) : '';
         const repo = r.files ? styles().muted(`  ${r.files} file${r.files === 1 ? '' : 's'} here`) : '';
         const sel = r.selected ? styles().accent('  [configured]') : '';
-        Logger.output(`  ${r.language.padEnd(11)} ${mark}${where}  ${r.extensions.join(' ')}${repo}${sel}`);
+        Logger.output(`  ${r.language.padEnd(11)} ${mark}${where}  ${terminalSafe(r.extensions.join(' '))}${repo}${sel}`);
       }
       Logger.output(styles().accent('\nBundles:\n'));
       for (const [name, langs] of Object.entries(BUNDLES)) {
-        Logger.output(`  ${name.padEnd(11)} ${langs.join(', ')}`);
+        Logger.output(`  ${name.padEnd(11)} ${terminalSafe(langs.join(', '))}`);
       }
       if (detected.length) {
         Logger.output(styles().warn('\nDetected in this repo, not installed:\n'));
         for (const d of detected) {
-          const exts = Object.keys(d.extensions).join(', ');
+          const exts = terminalSafe(Object.keys(d.extensions).join(', '));
           const broken = d.status === 'broken' ? styles().error('  (installed, fails to load)') : '';
           Logger.output(`  ${d.language.padEnd(11)} ${d.files} file${d.files === 1 ? '' : 's'} (${exts})${broken}`);
         }
-        Logger.output(`\nInstall with: ${installHint(detected)}`);
+        Logger.output(`\nInstall with: ${terminalSafe(String(installHint(detected)))}`);
       }
-      Logger.output(styles().muted(`\nManaged dir: ${managedDir()}\n`));
+      Logger.output(styles().muted(`\nManaged dir: ${terminalSafe(managedDir())}\n`));
     }), 'read', 'yes');
   bindFlag(list, 'format', staticValues('text', 'json'));
 

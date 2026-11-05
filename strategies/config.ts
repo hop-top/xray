@@ -3,6 +3,7 @@ import { Strategy, StrategyContext, FileMetadata, StrategyCommand } from '../src
 import { ParserFactory } from '../src/lib/config/parser-factory';
 import { Logger } from '../src/lib/logger';
 import * as path from 'path';
+import { terminalSafe, terminalSafeBlock } from '../src/lib/terminal-safe';
 
 /**
  * Human headings and lines only in text mode: with `--format json` (or any
@@ -82,7 +83,7 @@ export default class ConfigStrategy implements Strategy {
         const files = this.findConfigFiles(ctx, pattern);
 
         const text = isTextFormat(opts);
-        const out = (line: string) => { if (text) Logger.output(line); };
+        const out = (line: string) => { if (text) Logger.output(terminalSafeBlock(line)); };
 
         out('\nConfiguration Files:\n');
 
@@ -143,7 +144,7 @@ export default class ConfigStrategy implements Strategy {
         if (isTextFormat(opts)) {
           Logger.output('\nConfiguration Keys:\n');
           for (const key of uniqueKeys) {
-            Logger.output(`  ${key}`);
+            Logger.output(`  ${terminalSafe(key)}`);
           }
           Logger.output(`\nTotal: ${uniqueKeys.length} key(s)\n`);
         }
@@ -166,7 +167,7 @@ export default class ConfigStrategy implements Strategy {
         const showSecrets = opts?.['show-secrets'] === true || opts?.['showSecrets'] === true || opts?.showSecrets === true;
 
         const text = isTextFormat(opts);
-        const out = (line: string) => { if (text) Logger.output(line); };
+        const out = (line: string) => { if (text) Logger.output(terminalSafeBlock(line)); };
 
         out('\nConfiguration Values:\n');
 

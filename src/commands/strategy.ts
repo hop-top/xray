@@ -9,6 +9,7 @@ import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { resolvePath } from './common';
 import { StrategyCommandOptions } from '../types/command-options';
+import { terminalSafe } from '../lib/terminal-safe';
 
 export const handleMetaStrategyCommand = async (commandName: string, options: StrategyCommandOptions, cmd: Command) => {
 
@@ -38,7 +39,7 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
     } else {
       Logger.info('Detected Strategies:\n');
       detected.forEach(strategy => {
-        Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
+        Logger.output(styles().accent(`  ${terminalSafe(strategy.name)}`) + ' ' + styles().muted(`v${terminalSafe(String(strategy.version))}`));
       });
     }
 

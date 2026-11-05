@@ -94,7 +94,7 @@ export function registerStrategyCommand(): Command {
         } else {
           Logger.info('Detected Strategies:\n');
           detected.forEach(strategy => {
-            Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
+            Logger.output(styles().accent(`  ${terminalSafe(strategy.name)}`) + ' ' + styles().muted(`v${terminalSafe(String(strategy.version))}`));
           });
         }
       });
@@ -132,16 +132,16 @@ export function registerStrategyCommand(): Command {
         detected: Boolean(detected),
       }, () => {
         Logger.info(`\nStrategy: ${strategy.name}`);
-        Logger.output(styles().muted(`Version: ${strategy.version}`));
+        Logger.output(styles().muted(`Version: ${terminalSafe(String(strategy.version))}`));
 
         if (strategy.fileTypes) {
-          Logger.output(`\nFile Types: ${strategy.fileTypes().join(', ')}`);
+          Logger.output(`\nFile Types: ${terminalSafe(strategy.fileTypes().join(', '))}`);
         }
 
         if (strategy.commands) {
           Logger.output('\nCommands:');
           Object.entries(strategy.commands).forEach(([command, details]) => {
-            Logger.output(`  - ${strategy.name}:${command} ${styles().muted(`- ${details.description}`)}`);
+            Logger.output(`  - ${terminalSafe(strategy.name)}:${terminalSafe(command)} ${styles().muted(`- ${terminalSafe(String(details.description))}`)}`);
           });
         }
 
@@ -202,7 +202,7 @@ commands: {}
           Logger.info('\nNext steps:');
           Logger.output(`  1. Edit the YAML file to configure detection rules`);
           Logger.output(`  2. Run 'xray strategy detect' to verify it works`);
-          Logger.output(`  3. Test with 'xray explore ${name}:info'`);
+          Logger.output(`  3. Test with 'xray explore ${terminalSafe(name)}:info'`);
         });
       } else {
         const template = `import { Strategy, StrategyContext, FileMetadata } from '../../../src/lib/strategy/types';
@@ -251,7 +251,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
           }
           Logger.output(`  1. Edit the strategy file to implement detection and analysis logic`);
           Logger.output(`  2. Run 'xray strategy detect' to verify it works`);
-          Logger.output(`  3. Test with 'xray ${name}:info'`);
+          Logger.output(`  3. Test with 'xray ${terminalSafe(name)}:info'`);
         });
       }
     }), 'write-local', 'no');
@@ -402,11 +402,11 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         ...(detectionError !== undefined ? { error: detectionError } : {}),
       }, () => {
         Logger.info(`\nValidating strategy: ${name}`);
-        Logger.output(`  Name: ${strategy.name}`);
-        Logger.output(`  Version: ${strategy.version}`);
+        Logger.output(`  Name: ${terminalSafe(strategy.name)}`);
+        Logger.output(`  Version: ${terminalSafe(String(strategy.version))}`);
         Logger.output(`  Has detect: ${typeof strategy.detect === 'function' ? 'Yes' : 'No'}`);
         Logger.output(`  Has analyze: ${typeof strategy.analyze === 'function' ? 'Yes' : 'No'}`);
-        Logger.output(`  Commands: ${strategy.commands ? Object.keys(strategy.commands).join(', ') : 'None'}`);
+        Logger.output(`  Commands: ${strategy.commands ? Object.keys(strategy.commands).map(terminalSafe).join(', ') : 'None'}`);
         if (detection === 'error') {
           Logger.output(`  Detection test: ${styles().error('Error')}`);
           Logger.error(`  Error: ${detectionError}`);
@@ -431,7 +431,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         Logger.info('\nStrategy Search Paths:\n');
         paths.forEach((p, i) => {
           const exists = fs.existsSync(p);
-          Logger.output(`  ${i + 1}. ${p} ${styles().muted(exists ? '' : '(not found)')}`);
+          Logger.output(`  ${i + 1}. ${terminalSafe(p)} ${styles().muted(exists ? '' : '(not found)')}`);
         });
       });
     }), 'read', 'yes');
