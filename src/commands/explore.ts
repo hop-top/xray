@@ -5,6 +5,7 @@ import { NotFoundError } from '../lib/error/types';
 import { FileScanner } from '../lib/scanner';
 import { compileMatchers } from '../lib/path-match';
 import { resolvePath } from './common';
+import { UsageError } from '../lib/error/types';
 import type { Command } from 'commander';
 import { ExploreCommandOptions } from '../types/command-options';
 import {
@@ -96,6 +97,11 @@ export const handleExploreAction = async (
 ) => {
     if (cmd) assertFormat(cmd, exploreRegistry);
 
+    // One mode per run; combining --search with --stats would drop one.
+    const keywords = options.search ?? [];
+    const searching = keywords.length > 0;
+    if (searching && options.stats) throw new UsageError('--search and --stats are exclusive: pick one');
+
   const paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()])
       .map(resolvePath)
       .filter(Boolean) as string[];
@@ -121,20 +127,24 @@ export const handleExploreAction = async (
       entries = entries.filter(e => exts.includes(path.extname(e.abs)));
     }
 
+    // --match narrows the file set; --search and --stats then work on that set.
+    const matching = options.match && options.match.length > 0;
+    if (matching) {
+      const matches = compileMatchers(options.match!);
+      entries = entries.filter(e => matches(e.rel));
+    }
+
     const files = entries.map(e => e.abs);
 
     // Find files by pattern, against the path under each explore root
-    if (options.match && options.match.length > 0) {
-      const matches = compileMatchers(options.match);
-      const found = entries.filter(e => matches(e.rel)).map(e => e.abs);
-      Logger.info(`Found ${found.length} file(s) matching pattern(s):\n`);
-      await render<MatchRow>(cmd, found.map((f) => ({ path: f })), matchText, columns('path'));
+    if (matching && !searching && !options.stats) {
+      Logger.info(`Found ${files.length} file(s) matching pattern(s):\n`);
+      await render<MatchRow>(cmd, files.map((f) => ({ path: f })), matchText, columns('path'));
       return;
     }
 
     // Search for keyword in code
-    if (options.search && options.search.length > 0) {
-      const keywords = options.search;
+    if (searching) {
       Logger.info(`Searching for ${keywords.length} keyword(s) in ${files.length} files...\n`);
 
       const rows: SearchRow[] = [];

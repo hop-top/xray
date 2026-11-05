@@ -77,6 +77,11 @@ Repeated `--match` patterns combine with OR. A `!` pattern excludes and wins
 over every other pattern; with only `!` patterns, every file but those is
 listed.
 
+`--match` and `--type` narrow the file set. On their own they list the
+files; with `--search` or `--stats` those modes run on the narrowed set only
+(keyword hits and statistics for the matching files). `--search` and
+`--stats` do not combine: pick one (usage error, exit 2).
+
 **Examples:**
 ```bash
 # List files under a directory
@@ -90,6 +95,12 @@ xray explore --path ./src --match "*.ts" --match "!*.test.ts"
 
 # Everything under src/api except tests
 xray explore --match "src/api/**" --match "!*.test.ts"
+
+# Search keywords only in non-test TypeScript files
+xray explore --match "*.ts" --match "!*.test.ts" --search TODO
+
+# Statistics for the files under src/api
+xray explore --match "src/api/**" --stats
 ```
 
 ### `xray graph`

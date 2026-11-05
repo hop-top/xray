@@ -49,7 +49,7 @@ function registerExploreCommand(): void {
     .option('-p, --path <path>', 'Root directory to explore (repeatable) [default: current directory]', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
-    .option('-m, --match <pattern>', 'Find files matching pattern (e.g., "*.ts", "**/*test*") (repeatable)', (value: string, previous: string[]) => {
+    .option('-m, --match <pattern>', 'Find files matching pattern (e.g., "*.ts", "**/*test*"); with --search or --stats, restricts them to these files (repeatable)', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
     .option('-s, --search <keyword>', 'Search for keyword in code (repeatable)', (value: string, previous: string[]) => {
