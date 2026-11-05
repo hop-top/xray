@@ -77,3 +77,89 @@ describe('compileMatchers', () => {
     expect(run('!')).toEqual(TREE);
   });
 });
+
+describe('compileMatchers: hostile patterns', () => {
+  const BOUND_MS = 500;
+  const timed = (patterns: string[], path: string): { hit: boolean; ms: number } => {
+    const start = process.hrtime.bigint();
+    const hit = compileMatchers(patterns)(path);
+    return { hit, ms: Number(process.hrtime.bigint() - start) / 1e6 };
+  };
+
+  it.each([
+    ['`*a` x12, short path', ['*a'.repeat(12) + '*b'], 'a'.repeat(60)],
+    ['`*a` x200, long path', ['*a'.repeat(200) + '*b'], 'a'.repeat(4096)],
+    ['`**/a` x200, deep path', ['**/a'.repeat(200) + 'b'], 'a/'.repeat(2048)],
+    ['`**/*a` x50, deep path', ['**/*a'.repeat(50) + 'b'], 'a/'.repeat(2048)],
+    ['long `?` run', ['?'.repeat(3000) + 'b'], 'a'.repeat(3000)],
+    ['`*?` run', ['*?'.repeat(500) + 'b'], 'a'.repeat(2000)],
+    ['huge class', [`[${'a-b'.repeat(20000)}]*[${'xyz'.repeat(20000)}]b`], 'a'.repeat(3000)],
+    ['as a negative', ['!' + '*a'.repeat(200) + '*b'], 'a'.repeat(4096)],
+  ] as const)('%s finishes fast and does not match', (_name, patterns, path) => {
+    const { hit, ms } = timed([...patterns], path);
+    expect(hit).toBe(patterns[0].startsWith('!'));
+    expect(ms).toBeLessThan(BOUND_MS);
+  });
+
+  it('the same patterns still match when they should', () => {
+    const m = compileMatchers(['*a'.repeat(200) + '*b']);
+    expect(m('a'.repeat(4096) + 'b')).toBe(true);
+    expect(compileMatchers(['**/a'.repeat(50)])('a/'.repeat(49) + 'a')).toBe(true);
+  });
+});
+
+describe('compileMatchers: classes', () => {
+  const m = (p: string, path: string) => compileMatchers([p])(path);
+
+  it('a reversed range is empty, never an error', () => {
+    expect(() => compileMatchers(['[z-a]'])).not.toThrow();
+    expect(m('[z-a]', 'a')).toBe(false);
+    expect(m('[z-a]', 'm')).toBe(false);
+    expect(m('[!z-a]', 'm')).toBe(true);
+    expect(m('[z-ab]', 'b')).toBe(true);
+    expect(m('x[z-a]y', 'xay')).toBe(false);
+  });
+
+  it('ranges and `^` negation, case-insensitive', () => {
+    expect(m('[a-c]', 'b')).toBe(true);
+    expect(m('[a-c]', 'B')).toBe(true);
+    expect(m('[a-c]', 'd')).toBe(false);
+    expect(m('[^a-c]', 'd')).toBe(true);
+    expect(m('[^a-c]', 'b')).toBe(false);
+    expect(m('[!a-c]', 'B')).toBe(false);
+  });
+
+  it('`]` first, leading or trailing `-`, and `\\` are class members', () => {
+    expect(m('[]a]', ']')).toBe(true);
+    expect(m('[a-]', '-')).toBe(true);
+    expect(m('[-a]', '-')).toBe(true);
+    expect(m('[a-]', 'b')).toBe(false);
+    expect(m('[\\]', '\\')).toBe(true);
+    expect(m('[*]', '*')).toBe(true);
+    expect(m('[*]', 'a')).toBe(false);
+  });
+
+  it('an unclosed `[` is literal', () => {
+    expect(m('[', '[')).toBe(true);
+    expect(m('a[b', 'a[b')).toBe(true);
+    expect(m('[!]', 'x')).toBe(true); // `[!]` closes as an empty negated class
+  });
+});
+
+describe('compileMatchers: `**` over odd paths', () => {
+  it('crosses a newline in a file name', () => {
+    expect(compileMatchers(['src/**'])('src/a\nb/c.ts')).toBe(true);
+    expect(compileMatchers(['**/c.ts'])('a\nb/c.ts')).toBe(true);
+    expect(compileMatchers(['c.ts'])('a\nb/c.ts')).toBe(true);
+  });
+
+  it('`**/` takes whole directories only', () => {
+    const m = compileMatchers(['**/b.ts']);
+    expect(m('b.ts')).toBe(true);
+    expect(m('x/y/b.ts')).toBe(true);
+    expect(m('xb.ts')).toBe(false);
+    expect(compileMatchers(['a/**/b'])('a/b')).toBe(true);
+    expect(compileMatchers(['a/**/b'])('a/x/y/b')).toBe(true);
+    expect(compileMatchers(['a/**/b'])('a/xb')).toBe(false);
+  });
+});
