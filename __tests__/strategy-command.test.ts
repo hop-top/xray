@@ -273,14 +273,16 @@ describe('Strategy Command E2E', () => {
       }).toThrow();
     });
 
-    test('should handle local path installation', () => {
+    test('local file is read, not installed, and says so', () => {
       const strategyName = 'local-install-test';
       const sourceFile = path.join(testRoot, `${strategyName}.yml`);
       fs.writeFileSync(sourceFile, `name: ${strategyName}\nversion: 1.0.0`);
 
       const output = execSync(`node ${CLI_PATH} strategy install ${sourceFile} 2>&1`, { cwd: testRoot }).toString();
-      expect(output).toContain('Strategy installed');
       expect(output).toContain(strategyName);
+      expect(output).toMatch(/nothing was installed or copied/i);
+      expect(output).not.toContain('Strategy installed');
+      expect(fs.existsSync(path.join(testRoot, '.xray'))).toBe(false);
     });
 
     test('should fail for non-existent path', () => {

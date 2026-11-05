@@ -4,6 +4,7 @@ import { styles } from '../lib/tui';
 import { Command } from 'commander';
 import { Logger } from '../lib/logger';
 import { StrategyLoader, PROJECT_STRATEGIES_ENV, projectStrategiesAllowed, reportSkippedProjectCode } from '../lib/strategy/loader';
+import { installStrategy } from './strategy-install';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { normalizeDetectedStrategy } from '../lib/strategy/types';
@@ -220,7 +221,6 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
     .option('-g, --global', 'Install globally', false)
     .action(async (source, options) => {
       const loader = new StrategyLoader();
-      const strategyPaths = loader.getStrategyPaths();
 
       if (options.global) {
         const xdgDataHome = process.env.XDG_DATA_HOME || path.join(process.env.HOME || '', '.local/share');
@@ -232,44 +232,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       }
 
       try {
-        let strategyPath = source;
-        let strategyName = '';
-
-        if (source.startsWith('/') || source.startsWith('./') || source.startsWith('../')) {
-          const absolutePath = path.resolve(source);
-          if (!fs.existsSync(absolutePath)) {
-            Logger.error(`Path does not exist: ${absolutePath}`);
-            process.exit(1);
-          }
-          strategyPath = absolutePath;
-          strategyName = path.basename(absolutePath).replace(/\.(ts|js|yml|yaml)$/, '');
-        } else {
-          Logger.warn(`\nInstalling from npm: ${source}`);
-          const { execSync } = require('child_process');
-          try {
-            execSync(`npm install ${source}`, {
-              stdio: 'inherit',
-              cwd: process.cwd()
-            });
-          } catch {
-            Logger.error('Failed to install npm package');
-            process.exit(1);
-          }
-          strategyName = source;
-          strategyPath = path.join(process.cwd(), 'node_modules', source);
-        }
-
-        // Loading a strategy runs its code; only YAML is read without opt-in.
-        const isYaml = /\.ya?ml$/.test(strategyPath);
-        if (!isYaml && !projectStrategiesAllowed()) {
-          Logger.warn(
-            `${strategyPath} runs code and was not loaded: set ${PROJECT_STRATEGIES_ENV}=1 to load it ` +
-            `(only for code you trust). Declarative YAML strategies need no opt-in.`
-          );
-          return;
-        }
-        const strategy = await loader.loadStrategy(strategyPath);
-        Logger.success(`\nStrategy installed: ${strategy.name} v${strategy.version}`);
+        await installStrategy(source, loader);
       } catch (error: any) {
         Logger.error(`Failed to install strategy: ${error.message}`);
         process.exit(1);

@@ -212,6 +212,58 @@ EOF
 XRAY_ALLOW_PROJECT_STRATEGIES=1 xray custom analyze
 ```
 
+### Installing a Strategy Package
+
+`xray strategy install <source>` runs `npm install` in the current
+directory and checks the result:
+
+```bash
+xray strategy install xray-strategy-custom          # registry name
+xray strategy install xray-strategy-custom@1.2.0    # name@version
+xray strategy install @acme/xray-strategy-custom    # scoped name
+xray strategy install ./xray-strategy-custom-1.2.0.tgz   # tarball
+xray strategy install ./path/to/package             # local directory
+```
+
+A path source starts with `/`, `./` or `../`. The source is passed to npm
+as one argument (no shell), so it is never interpreted as a command or an
+npm option. npm runs the package's install scripts, as with `npm install`.
+
+The package must declare itself in `package.json`, and its entry must be
+a file inside the package:
+
+```json
+{ "name": "xray-strategy-custom", "version": "1.2.0",
+  "xray-strategy": { "name": "custom", "entry": "strategy.js" } }
+```
+
+- A YAML entry loads with no opt-in; the command prints the strategy name
+  and version.
+- A `.js` or `.ts` entry runs code. Without `XRAY_ALLOW_PROJECT_STRATEGIES=1`
+  the command checks `package.json` only, loads nothing, prints the
+  name and version, and says to set the variable. With it, the entry
+  loads and the command prints the loaded name and version.
+- A package with no `xray-strategy` declaration, no `name`, or an entry
+  that is missing or points outside the package fails with a non-zero
+  exit. The package is fetched without running its scripts and checked
+  in a temporary directory before `npm install` runs, so a rejected
+  package changes nothing: no `node_modules`, `package.json` or lockfile
+  change, and no install script runs. A valid package at a different
+  version than the installed one updates it, as `npm install` does.
+
+xray discovers code packages in the project only as top-level
+`node_modules/xray-strategy-*` directories; the command warns when the
+installed package has another name.
+
+A local `.yml`, `.yaml`, `.js` or `.ts` file is read, not installed: the
+command prints its name and version and states that nothing was copied.
+Put the file in `.xray/strategies/` to use it. A `.js` or `.ts` file is
+read only with `XRAY_ALLOW_PROJECT_STRATEGIES=1`.
+
+`xray strategy remove` deletes strategy files named `<name>.yml`,
+`<name>.yaml`, `<name>.js` or `<name>.ts` from the strategy
+directories; it does not uninstall npm packages. Use `npm uninstall`.
+
 ## Shell Completion
 
 Completion scripts ask xray for candidates on each tab

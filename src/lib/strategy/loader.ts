@@ -86,6 +86,82 @@ export interface CodeLoadingOptions {
   allowProjectCode?: boolean;
 }
 
+/**
+ * Resolve a strategy package's `xray-strategy.entry` to a file inside the
+ * package. Throws when the entry is not a relative path, leaves the package
+ * (`../`, absolute, or a symlink pointing out), or is not an existing file.
+ */
+export function resolvePackageEntry(pkgDir: string, entry: unknown): string {
+  if (typeof entry !== 'string' || entry === '') {
+    throw new Error('"xray-strategy.entry" must be a non-empty string');
+  }
+  const root = path.resolve(pkgDir);
+  const full = path.resolve(root, entry);
+  const inside = (base: string, target: string): boolean => {
+    const rel = path.relative(base, target);
+    return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  };
+  if (path.isAbsolute(entry) || !inside(root, full)) {
+    throw new Error(`"xray-strategy.entry" (${entry}) points outside the package`);
+  }
+  let real: string;
+  try {
+    real = fs.realpathSync(full);
+  } catch {
+    throw new Error(`"xray-strategy.entry" (${entry}) does not exist in the package`);
+  }
+  if (!inside(fs.realpathSync(root), real)) {
+    throw new Error(`"xray-strategy.entry" (${entry}) points outside the package`);
+  }
+  if (!fs.statSync(real).isFile()) {
+    throw new Error(`"xray-strategy.entry" (${entry}) is not a file`);
+  }
+  return full;
+}
+
+/** What a strategy package declares in its package.json, read without running code. */
+export interface StrategyPackage {
+  /** package.json `name` */
+  packageName: string;
+  /** package.json `version` */
+  version: string;
+  /** `xray-strategy.name` */
+  strategyName: string;
+  /** Absolute path of the validated entry file */
+  entryPath: string;
+  /** Whether the entry is declarative YAML (runs no code) */
+  declarative: boolean;
+}
+
+/**
+ * Validate an installed package as a strategy package from its
+ * package.json alone: needs an `xray-strategy` object with `name` and an
+ * `entry` that stays inside the package. Nothing is imported or run.
+ */
+export function readStrategyPackage(pkgDir: string): StrategyPackage {
+  let pkg: any;
+  try {
+    pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8'));
+  } catch (err: any) {
+    throw new Error(`cannot read package.json: ${err.message}`);
+  }
+  const decl = pkg?.['xray-strategy'];
+  if (!decl || typeof decl !== 'object' || Array.isArray(decl)) {
+    throw new Error('not a strategy package: package.json has no "xray-strategy" field');
+  }
+  if (typeof decl.name !== 'string' || decl.name === '') {
+    throw new Error('not a valid strategy package: "xray-strategy.name" is missing');
+  }
+  const entryPath = resolvePackageEntry(pkgDir, decl.entry);
+  return {
+    packageName: String(pkg.name ?? ''),
+    version: String(pkg.version ?? ''),
+    strategyName: decl.name,
+    entryPath,
+    declarative: isDeclarative(entryPath),
+  };
+}
+
 export class StrategyLoader {
   private readonly projectCode: boolean;
   private readonly allowProjectCode: boolean;
@@ -399,7 +475,7 @@ export class StrategyLoader {
                 const content = fs.readFileSync(pkgPath, 'utf-8');
                 const pkg = JSON.parse(content);
                 if (pkg['xray-strategy']) {
-                  const entryPath = path.join(filePath, pkg['xray-strategy'].entry);
+                  const entryPath = resolvePackageEntry(filePath, pkg['xray-strategy'].entry);
                   if (!seen.has(pkg['xray-strategy'].name) && loadable(searchPath, entryPath)) {
                     const strategy = await this.loadStrategy(entryPath);
                     strategies.push(strategy);
