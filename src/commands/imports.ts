@@ -11,6 +11,7 @@ import { openImportsCache } from '../lib/imports/cache';
 import { collectImportFiles } from '../lib/imports/collect';
 import { Logger } from '../lib/logger';
 import { IMPORTS_SCHEMA_ID } from '../lib/imports/types';
+import { declareEffect } from './side-effect';
 import {
   adaptFormatter, addOutputFlags, assertFormat, colsRequested, columns, emit, formatterOf,
   outputRegistry, textFormatter,
@@ -176,5 +177,5 @@ export function registerImportsCommand(program: Command): Command {
     description: 'Output format: json, yaml, table, csv, text',
     showInHelp: ['cols', 'output'],
   });
-  return cmd.addHelpText('after', HELP_AFTER).action(runImportsCommand);
+  return declareEffect(cmd.addHelpText('after', HELP_AFTER).action(runImportsCommand), 'read', 'yes');
 }

@@ -1,5 +1,6 @@
 import { Command } from 'commander';
-import { declareManagedWrite } from './side-effect';
+import * as path from 'path';
+import { declareEffect, emitPlan, previewing } from './side-effect';
 import { assertDataConfig, isWritableConfigFile, loadConfig, saveConfig } from '../lib/config';
 import { isAliasTarget, kitAlias, reservedAliasNames, rootCommand, usableAliases } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
@@ -37,6 +38,11 @@ function aliasWriteTarget(cmd: Command): string | undefined {
   return configPath;
 }
 
+/** The config file an alias change reads and writes. */
+function configFile(configPath: string | undefined): string {
+  return path.resolve(configPath ?? '.xrayrc.json');
+}
+
 function saveAliases(config: Parameters<typeof saveConfig>[0], configPath: string | undefined): void {
   if (configPath === undefined) saveConfig(config);
   else saveConfig(config, configPath);
@@ -50,6 +56,7 @@ export function registerAliasCommand(): Command {
   const listCmd = program
     .command('list')
     .description('List all configured aliases');
+  declareEffect(listCmd, 'read', 'yes');
   addOutputFlags(listCmd, aliasListRegistry, {
     defaultFormat: 'text',
     description: 'Output format: text, json, yaml, table, csv',
@@ -75,7 +82,7 @@ export function registerAliasCommand(): Command {
   });
 
   // Set alias
-  program
+  declareEffect(program
     .command('set <name> <target>')
     .description('Create or update an alias')
     .action(async (name: string, target: string, _opts: unknown, cmd: Command) => {
@@ -112,6 +119,15 @@ export function registerAliasCommand(): Command {
 
       // Update config
       const isUpdate = config.aliases[name] !== undefined;
+      if (previewing(cmd)) {
+        emitPlan(cmd, [{
+          kind: isUpdate ? 'update' : 'create',
+          target: `alias:${name}`,
+          reversible: !isUpdate,
+          detail: `${name} -> ${target} in ${configFile(configPath)}`,
+        }]);
+        return;
+      }
       config.aliases[name] = target;
 
       // Save config
@@ -124,10 +140,10 @@ export function registerAliasCommand(): Command {
       }
 
       Logger.info('\nThe alias is available on the next xray run.');
-    });
+    }), 'write-local', 'conditional');
 
   // Remove alias
-  declareManagedWrite(program
+  declareEffect(program
     .command('remove <name>')
     .description('Remove an alias')
     .action(async (name: string, _opts: unknown, cmd: Command) => {
@@ -142,12 +158,21 @@ export function registerAliasCommand(): Command {
       }
 
       const target = config.aliases[name];
+      if (previewing(cmd)) {
+        emitPlan(cmd, [{
+          kind: 'delete',
+          target: `alias:${name}`,
+          reversible: true,
+          detail: `was ${name} -> ${target} in ${configFile(configPath)}`,
+        }]);
+        return;
+      }
       delete config.aliases[name];
 
       saveAliases(config, configPath);
 
       Logger.success(`Removed alias "${name}" (was: "${target}")`);
-    }), 'removes one alias entry from the config file');
+    }), 'write-local', 'no');
 
   return program;
 }

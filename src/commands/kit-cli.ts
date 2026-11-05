@@ -16,6 +16,11 @@ export const createCLI = kit.createCLI;
 export const setCommandGroup = kit.setCommandGroup;
 export const getCommandGroup = kit.getCommandGroup;
 export const verboseCount = kit.verboseCount;
+export const isDryRun = kit.isDryRun;
+export const resolveDryRunPolicy = kit.resolveDryRunPolicy;
+export const renderPlan = kit.renderPlan;
+
+export type { Plan, Effect } from '@hop-top/kit/dist/cli';
 
 /** Root help groups (rendered in this order). */
 export const HELP_GROUPS = [

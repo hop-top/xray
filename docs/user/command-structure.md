@@ -284,6 +284,34 @@ xray strategy remove custom                       # xray-strategy.name
   the file goes; the command says the package remains.
 - A name that matches neither fails with a non-zero exit (3).
 
+Removal deletes files or uninstalls a package, so xray asks first. At a
+terminal it prompts; scripts, CI and agents have no terminal and must pass
+`--confirm=yes`. `--confirm=no` (or no way to ask) refuses with exit 5 and
+removes nothing. `--dry-run` shows what would go and asks nothing.
+
+## Side Effects, Confirmation and `--dry-run`
+
+Every command declares what it does, and `xray describe` reports it per
+command (`sideEffect`, `idempotent`):
+
+| Tier | Commands |
+|------|----------|
+| `read` | `query`, `impact`, `imports`, `explore`, `paths`, `describe`, `completion`, `help`, `lang list`, `alias list`, `strategy list/detect/info/validate/path`, every strategy command (`react components`, ...), aliases |
+| `write-local` | `map`, `scan`, `graph` (write the analysis into the project), `alias set/remove`, `lang add/remove`, `strategy create/install` |
+| `destructive-local` | `strategy remove`, `cache clear` (`clear-cache`) |
+| `interactive` | `mcp` |
+
+Caches xray rebuilds on its own in its cache dir (the parse cache, the
+imports cache) do not change a command's tier.
+
+A destructive command needs confirmation: a terminal prompt, or
+`--confirm=yes` (`--confirm=no` refuses). The root `--dry-run` flag, given
+before or after the command, prints the plan for a write or destructive
+command (files, packages, config entries it would touch) and changes
+nothing; `--format json` (or `--json`) on `map`, `scan` and `graph` prints
+it as JSON. A read command ignores `--dry-run` and runs; `mcp` is a live
+session and refuses it.
+
 ## Shell Completion
 
 Completion scripts ask xray for candidates on each tab

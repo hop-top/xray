@@ -32,7 +32,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
             expect(fs.existsSync(cachePath)).toBe(true);
 
             // Run cache clear command in that directory
-            execSync(`node ${CLI_PATH} cache clear`, { cwd: root });
+            execSync(`node ${CLI_PATH} --confirm=yes cache clear`, { cwd: root });
 
             // Cache should be deleted
             expect(fs.existsSync(cachePath)).toBe(false);
@@ -46,7 +46,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
             if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
 
             // Cache doesn't exist, should not error and might show message or be silent
-            const output = execSync(`node ${CLI_PATH} cache clear`, { cwd: root }).toString();
+            const output = execSync(`node ${CLI_PATH} --confirm=yes cache clear`, { cwd: root }).toString();
             // Either shows message or silent - both are acceptable
             // Ignore the "Using config file" notice emitted when a config is found.
             const message = output
@@ -69,7 +69,7 @@ describe('CLI E2E - Complete Command Coverage', () => {
             fs.writeFileSync(cachePath, 'fake cache content');
             expect(fs.existsSync(cachePath)).toBe(true);
 
-            execSync(`node ${CLI_PATH} clear-cache`, { cwd: root });
+            execSync(`node ${CLI_PATH} --confirm=yes clear-cache`, { cwd: root });
 
             expect(fs.existsSync(cachePath)).toBe(false);
 

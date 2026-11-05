@@ -199,7 +199,7 @@ describe('Strategy Command E2E', () => {
 
       expect(fs.existsSync(strategyFile)).toBe(true);
 
-      const output = execSync(`node ${CLI_PATH} strategy remove ${strategyName} 2>&1`, { cwd: testRoot }).toString();
+      const output = execSync(`node ${CLI_PATH} --confirm=yes strategy remove ${strategyName} 2>&1`, { cwd: testRoot }).toString();
       expect(output).toContain('Strategy removed');
 
       expect(fs.existsSync(strategyFile)).toBe(false);
@@ -211,7 +211,7 @@ describe('Strategy Command E2E', () => {
       fs.mkdirSync(path.dirname(strategyFile), { recursive: true });
       fs.writeFileSync(strategyFile, `name: ${strategyName}\nversion: 1.0.0`);
 
-      const output = execSync(`node ${CLI_PATH} strategy uninstall ${strategyName} 2>&1`, { cwd: testRoot }).toString();
+      const output = execSync(`node ${CLI_PATH} --confirm=yes strategy uninstall ${strategyName} 2>&1`, { cwd: testRoot }).toString();
       expect(output).toContain('Strategy removed');
     });
 

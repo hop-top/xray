@@ -3,6 +3,7 @@ import type { Command } from 'commander';
 import { addExploreOutputFlags, handleExploreAction } from './explore';
 import { program, theme } from './root-program';
 import { setCommandGroup } from './kit-cli';
+import { declareEffect } from './side-effect';
 import { registerCoreCommands } from './registration/core';
 import { registerStrategyCommands } from './registration/strategies';
 import { registerAliases } from './registration/aliases';
@@ -69,6 +70,7 @@ function registerExploreCommand(): void {
       // Handle regular explore options
       await handleExploreAction(query, options, cmd);
     });
+  declareEffect(explore, 'read', 'yes');
   setCommandGroup(explore, 'analyze');
 }
 

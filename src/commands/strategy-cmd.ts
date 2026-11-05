@@ -2,10 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { styles } from '../lib/tui';
 import { Command } from 'commander';
-import { declareManagedWrite } from './side-effect';
+import { declareEffect, emitPlan, previewing } from './side-effect';
 import { Logger } from '../lib/logger';
 import { StrategyLoader, PROJECT_STRATEGIES_ENV, projectStrategiesAllowed, reportSkippedProjectCode } from '../lib/strategy/loader';
-import { installStrategy, findInstalledStrategyPackage, uninstallStrategyPackage } from './strategy-install';
+import { installStrategy, findInstalledStrategyPackage, planStrategyInstall, uninstallStrategyPackage } from './strategy-install';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { normalizeDetectedStrategy } from '../lib/strategy/types';
@@ -30,6 +30,7 @@ export function registerStrategyCommand(): Command {
     .command('list')
     .alias('ls')
     .description('List all available strategies');
+  declareEffect(listCmd, 'read', 'yes');
   addOutputFlags(listCmd, strategyListRegistry, {
     defaultFormat: 'text',
     description: 'Output format: text, json, yaml, table, csv',
@@ -56,7 +57,9 @@ export function registerStrategyCommand(): Command {
     }
   });
 
-  program
+  // Detection prints what applies; the result it records is a regenerable
+  // entry in xray's own cache dir, not output.
+  declareEffect(program
     .command('detect')
     .description('Detect applicable strategies for the current project')
     .option('-p, --path <paths...>', 'Project path(s)')
@@ -83,9 +86,9 @@ export function registerStrategyCommand(): Command {
           Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
         });
       }
-    });
+    }), 'read', 'yes');
 
-  program
+  declareEffect(program
     .command('info <name>')
     .description('Show detailed information about a strategy')
     .action(async (name) => {
@@ -120,20 +123,16 @@ export function registerStrategyCommand(): Command {
         await strategy.detect(context)
       );
       Logger.output(`\nDetected in current project: ${detected ? styles().success('Yes') : styles().error('No')}`);
-    });
+    }), 'read', 'yes');
 
-  program
+  declareEffect(program
     .command('create <name>')
     .description('Create a new strategy scaffold')
     .option('-d, --dir <directory>', 'Output directory')
     .option('--yaml', 'Create YAML format strategy (simpler, no code needed)')
     .option('--ts', 'Create TypeScript format strategy (full control)')
-    .action(async (name, options) => {
+    .action(async (name, options, cmd: Command) => {
       const dir = options.dir || path.join(process.cwd(), '.xray/strategies');
-
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
 
       const fileName = name.toLowerCase().replace(/\s+/g, '-');
       const isYaml = options.yaml || (!options.ts && !options.dir);
@@ -142,6 +141,20 @@ export function registerStrategyCommand(): Command {
 
       if (fs.existsSync(filePath)) {
         throw new ConflictError(`Strategy file already exists: ${filePath}`);
+      }
+
+      if (previewing(cmd)) {
+        emitPlan(cmd, [{
+          kind: 'create',
+          target: filePath,
+          reversible: true,
+          detail: fs.existsSync(dir) ? `${isYaml ? 'YAML' : 'TypeScript'} strategy scaffold` : `${isYaml ? 'YAML' : 'TypeScript'} strategy scaffold; creates ${dir}`,
+        }]);
+        return;
+      }
+
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
       }
 
       if (isYaml) {
@@ -212,12 +225,17 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         Logger.output(`  2. Run 'xray strategy detect' to verify it works`);
         Logger.output(`  3. Test with 'xray ${name}:info'`);
       }
-    });
+    }), 'write-local', 'no');
 
-  program
+  declareEffect(program
     .command('install <source>')
     .description('Install a strategy from a path or npm package')
-    .action(async (source) => {
+    .action(async (source, _opts: unknown, cmd: Command) => {
+      if (previewing(cmd)) {
+        const { effects, warnings } = planStrategyInstall(source);
+        emitPlan(cmd, effects, { warnings });
+        return;
+      }
       const loader = new StrategyLoader();
 
       try {
@@ -228,13 +246,15 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         (failure as Error & { cause?: unknown }).cause = error;
         throw failure;
       }
-    });
+    }), 'write-local', 'conditional');
 
-  declareManagedWrite(program
+  // Deletes a strategy file or uninstalls a package: refused unless the
+  // caller confirms (`--confirm=yes`, or an answer at a terminal prompt).
+  declareEffect(program
     .command('remove <name>')
     .alias('uninstall')
-    .description('Remove an installed strategy')
-    .action(async (name) => {
+    .description('Remove an installed strategy (asks first; scripts pass --confirm=yes)')
+    .action(async (name, _opts: unknown, cmd: Command) => {
       const loader = new StrategyLoader();
 
       // Local file in a user-managed directory; never built-in, never node_modules.
@@ -244,6 +264,14 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       const { found, refused } = findInstalledStrategyPackage(name);
 
       if (removedFile) {
+        if (previewing(cmd)) {
+          emitPlan(cmd, [{ kind: 'delete', target: removedFile, reversible: false, detail: 'strategy file' }], {
+            warnings: found.length > 0
+              ? [`the installed package ${found.map(f => f.name).join(', ')} would not be removed`]
+              : [],
+          });
+          return;
+        }
         fs.unlinkSync(removedFile);
         Logger.success(`Strategy removed: ${removedFile}`);
         if (found.length > 0) {
@@ -263,6 +291,15 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       }
       if (found.length === 1) {
         const target = found[0];
+        if (previewing(cmd)) {
+          emitPlan(cmd, [{
+            kind: 'delete',
+            target: `npm:${target.name}`,
+            reversible: true,
+            detail: `npm uninstall in ${process.cwd()}`,
+          }]);
+          return;
+        }
         try {
           uninstallStrategyPackage(target.name);
         } catch (err: any) {
@@ -283,9 +320,9 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       throw new NotFoundError(
         `Strategy "${name}" not found: no strategy file ${name}.{ts,js,yml,yaml} and no installed strategy package.`
       );
-    }), 'removes one strategy file or installed package; nothing previews the match');
+    }), 'destructive-local', 'no');
 
-  program
+  declareEffect(program
     .command('validate <name>')
     .description('Validate a strategy file')
     .action(async (name) => {
@@ -318,9 +355,9 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       }
 
       Logger.success('\nValidation complete.');
-    });
+    }), 'read', 'yes');
 
-  program
+  declareEffect(program
     .command('path')
     .description('Show strategy search paths')
     .action(() => {
@@ -333,7 +370,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         const exists = fs.existsSync(p);
         Logger.output(`  ${i + 1}. ${p} ${styles().muted(exists ? '' : '(not found)')}`);
       });
-    });
+    }), 'read', 'yes');
 
   return program;
 }

@@ -192,7 +192,7 @@ describe('cache location', () => {
     const one = mkProject('one', 'app');
     const two = mkProject('two', 'app');
     for (const p of [one, two]) xray(['map', '-p', '.', '-o', path.join(base, 'o')], p);
-    const r = xray(['cache', 'clear'], one);
+    const r = xray(['--confirm=yes', 'cache', 'clear'], one);
     expect(r.status).toBe(0);
     expect(fs.existsSync(cacheDbOf(one))).toBe(false);
     expect(fs.existsSync(cacheDbOf(two))).toBe(true);
@@ -200,7 +200,7 @@ describe('cache location', () => {
 
   it('cache clear with no cache: exit 0, "No cache found.", nothing created', () => {
     const proj = mkProject('proj');
-    const r = xray(['cache', 'clear'], proj);
+    const r = xray(['--confirm=yes', 'cache', 'clear'], proj);
     expect(r.status).toBe(0);
     expect(r.stdout + r.stderr).toContain('No cache found.');
     expect(tree(proj)).toEqual(['a.ts', 'b.py']);
@@ -211,7 +211,7 @@ describe('cache location', () => {
     const proj = mkProject('proj');
     fs.writeFileSync(path.join(proj, '.xray_cache.db'), 'legacy bytes');
     expect(xray(['map', '-p', '.', '-o', path.join(base, 'o')], proj).status).toBe(0);
-    expect(xray(['cache', 'clear'], proj).status).toBe(0);
+    expect(xray(['--confirm=yes', 'cache', 'clear'], proj).status).toBe(0);
     expect(fs.readFileSync(path.join(proj, '.xray_cache.db'), 'utf-8')).toBe('legacy bytes');
   });
 

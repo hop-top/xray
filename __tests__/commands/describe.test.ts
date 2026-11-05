@@ -8,7 +8,7 @@ import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import { buildDescribeDoc } from '../../src/commands/describe';
-import { declareManagedWrite } from '../../src/commands/side-effect';
+import { declareEffect } from '../../src/commands/side-effect';
 import { IMPORTS_SCHEMA_ID } from '../../src/lib/imports/types';
 
 function makeProgram(): Command {
@@ -16,38 +16,38 @@ function makeProgram(): Command {
   // each branch of the walker without dragging in command registrations
   // (which would require tree-sitter / telemetry init).
   const root = new Command('xray');
-  root
+  declareEffect(root
     .command('map')
     .description('Generate visual map')
     .option('-l, --limit <number>', 'Token limit', '4000')
     .option('-o, --output <file>', 'Output path')
-    .action(() => {});
-  root
+    .action(() => {}), 'write-local', 'conditional');
+  declareEffect(root
     .command('scan')
     .description('Scan and discover')
     .argument('[path]', 'Path to scan')
     .option('--list-strategies', 'List strategies')
-    .action(() => {});
+    .action(() => {}), 'read', 'yes');
   const cache = root.command('cache').description('Cache management');
-  cache.command('clear').description('Clear cache').action(() => {});
-  root
+  declareEffect(cache.command('clear').description('Clear cache').action(() => {}), 'destructive-local', 'yes');
+  declareEffect(root
     .command('alias')
     .description('Alias management')
     .command('remove')
     .description('Remove an alias')
     .argument('<name>', 'Alias name')
-    .action(() => {});
-  root
+    .action(() => {}), 'write-local', 'no');
+  declareEffect(root
     .command('imports')
     .description('Imports contract')
     .argument('[paths...]', 'Paths')
     .option('--format <fmt>', 'Output format', 'json')
-    .action(() => {});
-  root
+    .action(() => {}), 'read', 'yes');
+  declareEffect(root
     .command('describe')
     .description('Capability surface')
     .option('--format <fmt>', 'Output format', 'json')
-    .action(() => {});
+    .action(() => {}), 'read', 'yes');
   return root;
 }
 
@@ -94,7 +94,7 @@ describe('xray describe', () => {
     expect(doc.exitCodes['7']).toMatch(/consent/i);
   });
 
-  it('classifies scan as read / idempotent yes', () => {
+  it('classifies a leaf by what it declares', () => {
     const scan = doc.commands.find((c) => c.name === 'scan')!;
     expect(scan).toBeDefined();
     expect(scan.sideEffect).toBe('read');
@@ -146,11 +146,27 @@ describe('xray describe', () => {
     expect(cache.subcommands[0].qualifiedName).toBe('cache.clear');
   });
 
-  it('reports the tier a command declares to kit, over the table', () => {
+  it('reports the tier a command declares to kit, whatever its name', () => {
     const root = new Command('xray');
-    declareManagedWrite(root.command('purge'), 'test');
-    const purge = buildDescribeDoc(root, 'xray', '0.1.0').commands.find((c) => c.name === 'purge')!;
-    expect(purge.sideEffect).toBe('write-local');
+    declareEffect(root.command('purge').action(() => {}), 'write-local', 'conditional');
+    declareEffect(root.command('list').action(() => {}), 'destructive-local', 'no');
+    const doc2 = buildDescribeDoc(root, 'xray', '0.1.0');
+    expect(doc2.commands.find((c) => c.name === 'purge')).toMatchObject({ sideEffect: 'write-local', idempotent: 'conditional' });
+    expect(doc2.commands.find((c) => c.name === 'list')).toMatchObject({ sideEffect: 'destructive-local', idempotent: 'no' });
+  });
+
+  it('fails on a leaf that declares nothing, never guessing a tier', () => {
+    const root = new Command('xray');
+    root.command('map').action(() => {});
+    expect(() => buildDescribeDoc(root, 'xray', '0.1.0')).toThrow(/"map" declares no valid kit\/side-effect tier/);
+    const half = new Command('xray');
+    (half.command('map').action(() => {}) as any).annotations = { 'kit/side-effect': 'read' };
+    expect(() => buildDescribeDoc(half, 'xray', '0.1.0')).toThrow(/kit\/idempotent/);
+  });
+
+  it('reports a group that only holds subcommands as read / yes', () => {
+    const cacheDoc = doc.commands.find((c) => c.name === 'cache')!;
+    expect(cacheDoc).toMatchObject({ sideEffect: 'read', idempotent: 'yes' });
   });
 
   it('adds exit code 3 for alias.remove (not-found path)', () => {

@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { declareManagedWrite } from './side-effect';
+import { declareEffect, emitPlan, previewing } from './side-effect';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { globSync } from 'glob';
@@ -17,7 +17,7 @@ import {
   getGrammar,
   managedDir,
 } from '../lib/parser/grammars';
-import { NpmRunner, defaultNpmRunner, installCommand, installPacks, isManaged, removePacks } from '../lib/parser/lang-install';
+import { NpmRunner, defaultNpmRunner, installCommand, installPacks, isManaged, removeCommand, removePacks } from '../lib/parser/lang-install';
 
 export interface LangRow {
   language: string;
@@ -108,7 +108,7 @@ function parseSelection(names: string[]): LanguagePack[] | undefined {
 export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command {
   const lang = new Command('lang').description('Manage language packs (tree-sitter grammars)');
 
-  const list = lang
+  const list = declareEffect(lang
     .command('list')
     .description('List language packs, install status, and files of each language in this repo')
     .option('-p, --path <path>', 'Repository to inspect', process.cwd())
@@ -153,25 +153,30 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
         Logger.output(`\nInstall with: ${installHint(detected)}`);
       }
       Logger.output(styles().muted(`\nManaged dir: ${managedDir()}\n`));
-    });
+    }), 'read', 'yes');
   bindFlag(list, 'format', staticValues('text', 'json'));
 
-  lang
+  declareEffect(lang
     .command('add <names...>')
     .description('Install language packs (language names or bundles: web, go, systems, jvm, scripting, full)')
-    .option('--dry-run', 'Print the npm command without running it')
-    .action((names: string[], opts: { dryRun?: boolean }) => {
+    .option('--dry-run', 'Print what would be installed (the npm command) without running it')
+    .action((names: string[], opts: { dryRun?: boolean }, cmd: Command) => {
       const packs = parseSelection(names);
       if (!packs) return;
       const todo = packs.filter(p => !getGrammar(p.name).ok);
       for (const p of packs) {
         if (!todo.includes(p)) Logger.info(`${p.name}: already installed (${getGrammar(p.name).source})`);
       }
-      if (todo.length === 0) return;
-      if (opts.dryRun) {
-        Logger.output(`npm ${installCommand(todo).join(' ')}   (in ${managedDir()})`);
+      if (previewing(cmd, opts.dryRun)) {
+        emitPlan(cmd, todo.map(p => ({
+          kind: 'install',
+          target: `npm:${p.module}@${p.range}`,
+          reversible: true,
+          detail: `in ${managedDir()}`,
+        })), { args: { npm: `npm ${installCommand(todo).join(' ')}`, cwd: managedDir() } });
         return;
       }
+      if (todo.length === 0) return;
       Logger.info(`Installing ${todo.map(p => p.name).join(', ')} into ${managedDir()} (native build only if no prebuilt binary)...`);
       const out = installPacks(todo, run);
       for (const s of out.statuses) {
@@ -184,13 +189,13 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
         else Logger.error(`${s.language}: ${s.reason === 'broken' ? `failed to load (${s.error})` : 'not installed'}`);
       }
       if (!out.ok) process.exitCode = 1;
-    });
+    }), 'write-local', 'yes');
 
-  declareManagedWrite(lang
+  declareEffect(lang
     .command('remove <names...>')
     .alias('rm')
     .description('Remove language packs from the xray-managed dir')
-    .action((names: string[]) => {
+    .action((names: string[], _opts: unknown, cmd: Command) => {
       const packs = parseSelection(names);
       if (!packs) return;
       const managed = packs.filter(p => isManaged(p));
@@ -202,6 +207,15 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
             : `${p.name}: not installed`);
         }
       }
+      if (previewing(cmd)) {
+        emitPlan(cmd, managed.map(p => ({
+          kind: 'delete',
+          target: `npm:${p.module}`,
+          reversible: true,
+          detail: `from ${managedDir()}`,
+        })), { args: { npm: `npm ${removeCommand(managed).join(' ')}`, cwd: managedDir() } });
+        return;
+      }
       if (managed.length === 0) return;
       const out = removePacks(managed, run);
       for (const p of managed) {
@@ -210,7 +224,7 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
         else Logger.success(`${p.name}: removed`);
       }
       if (!out.ok) process.exitCode = 1;
-    }), 'removes packs from the xray-managed dir; `lang add --dry-run` previews the matching install');
+    }), 'write-local', 'yes');
 
   return lang;
 }

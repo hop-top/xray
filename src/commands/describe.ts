@@ -7,8 +7,7 @@
 //
 // `xray describe` walks the constructed commander tree and emits a JSON
 // document with the active surface. Side-effect class and idempotency
-// are declared in maps below — for any command not in the maps, the
-// defaults err on the safe side (read / yes).
+// are the annotations each leaf declares to kit (see side-effect.ts).
 
 import { Command, Option } from 'commander';
 import { Logger } from '../lib/logger';
@@ -24,59 +23,19 @@ import {
   UsageError,
 } from '../lib/error/types';
 import { TELEMETRY_POLICY } from '../lib/telemetry-policy';
+import { declaredEffect } from './side-effect';
 
 const SCHEMA_URL = 'https://hop-top.dev/schemas/cli-capabilities/v1.json';
 const SPEC = '12fc/v1';
 
-type SideEffect = 'read' | 'write' | 'write-local' | 'destructive-local';
-
-/** Tiers a command may declare with kit's `kit/side-effect` annotation. */
-const DECLARABLE: ReadonlySet<string> = new Set<SideEffect>(['read', 'write', 'write-local', 'destructive-local']);
+type SideEffect = 'read' | 'write' | 'write-local' | 'write-shared' | 'destructive' | 'destructive-local' | 'destructive-shared' | 'interactive';
 type Idempotent = 'yes' | 'conditional' | 'no';
 
-// Per-command classification. Dot-separated for nested commands
-// ('cache.clear'). Missing entries fall back to defaults below.
-const SIDE_EFFECTS: Record<string, SideEffect> = {
-  map: 'write-local',
-  generate: 'write-local',
-  scan: 'read',
-  graph: 'write-local',
-  query: 'read',
-  impact: 'read',
-  imports: 'read',
-  explore: 'read',
-  describe: 'read',
-  paths: 'read',
-  completion: 'read',
-  strategy: 'read',
-  'cache.clear': 'destructive-local',
-  'clear-cache': 'destructive-local',
-  'alias.set': 'write-local',
-  'alias.remove': 'write-local',
-  'alias.list': 'read',
-};
-
-const IDEMPOTENT: Record<string, Idempotent> = {
-  map: 'conditional',
-  generate: 'conditional',
-  scan: 'yes',
-  graph: 'conditional',
-  query: 'yes',
-  impact: 'yes',
-  imports: 'yes',
-  explore: 'yes',
-  describe: 'yes',
-  paths: 'yes',
-  completion: 'yes',
-  strategy: 'yes',
-  'cache.clear': 'yes',
-  'clear-cache': 'yes',
-  'alias.set': 'conditional',
-  'alias.remove': 'no',
-  'strategy.remove': 'no',
-  'lang.remove': 'yes',
-  'alias.list': 'yes',
-};
+const TIERS: ReadonlySet<string> = new Set<SideEffect>([
+  'read', 'write', 'write-local', 'write-shared',
+  'destructive', 'destructive-local', 'destructive-shared', 'interactive',
+]);
+const IDEMPOTENCY: ReadonlySet<string> = new Set<Idempotent>(['yes', 'conditional', 'no']);
 
 // Conservative exit-code listings: what the dispatcher / handler can
 // demonstrably produce. Every command can hit 0 (success), 1 (generic),
@@ -84,7 +43,10 @@ const IDEMPOTENT: Record<string, Idempotent> = {
 // handler throws them; a real-exit test pins each entry.
 const EXTRA_EXIT_CODES: Record<string, number[]> = {
   'alias.remove': [EXIT_NOT_FOUND],
-  'strategy.remove': [EXIT_NOT_FOUND],
+  // Destructive: refused (unauthorized) unless the caller confirms.
+  'strategy.remove': [EXIT_NOT_FOUND, EXIT_UNAUTHORIZED],
+  'cache.clear': [EXIT_UNAUTHORIZED],
+  'clear-cache': [EXIT_UNAUTHORIZED],
   'strategy.detect': [EXIT_NOT_FOUND],
   'strategy.info': [EXIT_NOT_FOUND],
   'strategy.validate': [EXIT_NOT_FOUND],
@@ -109,9 +71,9 @@ const EXIT_CODES: Record<string, string> = {
   [EXIT_USAGE]: 'usage error (bad flag, missing arg)',
   [EXIT_NOT_FOUND]: 'not found (alias, config, strategy, path)',
   [EXIT_CONFLICT]: 'conflict (resource collision, already exists)',
-  [EXIT_UNAUTHORIZED]: 'unauthorized / permission denied',
+  [EXIT_UNAUTHORIZED]: 'unauthorized / permission denied, or a destructive command refused without --confirm=yes',
   [EXIT_TRANSIENT]: 'transient failure (a retry may clear it)',
-  [EXIT_CONSENT_REFUSED]: 'consent refused (re-run with --confirm=yes)',
+  [EXIT_CONSENT_REFUSED]: 'consent refused',
 };
 
 interface ArgumentDoc {
@@ -215,20 +177,31 @@ function parseArguments(cmd: Command): ArgumentDoc[] {
   }));
 }
 
-function classify(qualifiedName: string, cmd?: Command): {
+/**
+ * Tier and idempotency come from the annotations every runnable leaf
+ * declares (kit's `kit/side-effect` and `kit/idempotent`), the same ones
+ * kit's gates act on. A command that only groups subcommands runs nothing
+ * and reports read / yes. An undeclared leaf is a defect: describe fails
+ * rather than guess a tier.
+ */
+function classify(qualifiedName: string, cmd: Command): {
   sideEffect: SideEffect;
   idempotent: Idempotent;
   exitCodes: number[];
 } {
-  // A tier declared on the command (what kit's gates act on) wins over the table.
-  const declared = (cmd as unknown as { annotations?: Record<string, string> } | undefined)
-    ?.annotations?.['kit/side-effect'];
-  const sideEffect: SideEffect =
-    declared !== undefined && DECLARABLE.has(declared)
-      ? (declared as SideEffect)
-      : SIDE_EFFECTS[qualifiedName] ?? 'read';
-  const idempotent =
-    IDEMPOTENT[qualifiedName] ?? (sideEffect === 'read' ? 'yes' : 'conditional');
+  let sideEffect: SideEffect = 'read';
+  let idempotent: Idempotent = 'yes';
+  if (cmd.commands.length === 0) {
+    const declared = declaredEffect(cmd);
+    if (declared.tier === undefined || !TIERS.has(declared.tier)) {
+      throw new Error(`command "${qualifiedName.replace(/\./g, ' ')}" declares no valid kit/side-effect tier`);
+    }
+    if (declared.idempotent === undefined || !IDEMPOTENCY.has(declared.idempotent)) {
+      throw new Error(`command "${qualifiedName.replace(/\./g, ' ')}" declares no valid kit/idempotent class`);
+    }
+    sideEffect = declared.tier as SideEffect;
+    idempotent = declared.idempotent as Idempotent;
+  }
   const base = [EXIT_SUCCESS, EXIT_GENERIC, EXIT_USAGE];
   const extras = EXTRA_EXIT_CODES[qualifiedName] ?? [];
   const exitCodes = Array.from(new Set([...base, ...extras])).sort((a, b) => a - b);

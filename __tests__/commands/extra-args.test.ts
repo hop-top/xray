@@ -102,7 +102,7 @@ describe('surplus positionals are a usage error', () => {
     fs.writeFileSync(db, 'cache');
     expect(run(['cache', 'clear', 'zzz']).status).toBe(2);
     expect(fs.existsSync(db)).toBe(true);
-    expect(run(['cache', 'clear']).status).toBe(0);
+    expect(run(['--confirm=yes', 'cache', 'clear']).status).toBe(0);
     expect(fs.existsSync(db)).toBe(false);
   });
 

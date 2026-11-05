@@ -260,9 +260,9 @@ claude mcp add xray -- xray -C <project> mcp
 
 ## Failure Modes
 - Empty output: narrow scope, wrong path, or strategy not detected.
-- Stale output: run `xray clear-cache` then retry.
+- Stale output: run `xray --confirm=yes cache clear` then retry (destructive: scripts and agents must pass `--confirm=yes`).
 
 Commands:
 ```bash
-xray clear-cache
+xray --confirm=yes cache clear
 ```

@@ -14,6 +14,7 @@ import { registerPathsCommand } from '../paths';
 import { registerLangCommand } from '../lang';
 import { registerMcpCommand } from '../mcp';
 import { setCommandGroup, type HelpGroupId } from '../kit-cli';
+import { declareEffect } from '../side-effect';
 
 // Root help group per top-level command name; unlisted/hidden commands
 // fall into kit's default section.
@@ -42,25 +43,27 @@ const POSITIONAL_ROOTS = 'Root directories to analyze (same as --path; not combi
  */
 export function registerCoreCommands(program: Command): void {
   // Analysis commands
-  addCommonOptions(program.command('map').argument('[paths...]', POSITIONAL_ROOTS))
+  // All four write the analysis output (`.xray_*.md` chunks, or the file
+  // `-o` names) into the project; re-running rewrites the same files.
+  declareEffect(addCommonOptions(program.command('map').argument('[paths...]', POSITIONAL_ROOTS))
     .description('Generate visual map of codebase')
-    .action(handleGenerateCommand);
+    .action(handleGenerateCommand), 'write-local', 'conditional');
 
-  addCommonOptions(program.command('scan').argument('[paths...]', POSITIONAL_ROOTS))
+  declareEffect(addCommonOptions(program.command('scan').argument('[paths...]', POSITIONAL_ROOTS))
     .description('Scan and discover files in codebase')
-    .action(handleGenerateCommand);
+    .action(handleGenerateCommand), 'write-local', 'conditional');
 
-  addCommonOptions(program.command('graph').argument('[paths...]', POSITIONAL_ROOTS))
+  declareEffect(addCommonOptions(program.command('graph').argument('[paths...]', POSITIONAL_ROOTS))
     .description('Generate control flow (CFG) and data flow (DFG) graphs')
-    .action(handleGenerateCommand);
+    .action(handleGenerateCommand), 'write-local', 'conditional');
 
   // Generate command (kept for backwards compatibility; hidden alias of `map`)
-  addCommonOptions(program.command('generate', { hidden: true }).argument('[paths...]', POSITIONAL_ROOTS))
+  declareEffect(addCommonOptions(program.command('generate', { hidden: true }).argument('[paths...]', POSITIONAL_ROOTS))
     .description('Generate code analysis visualization [alias: map]')
-    .action(handleGenerateCommand);
+    .action(handleGenerateCommand), 'write-local', 'conditional');
 
   // Query command - call graph queries
-  addQueryOutputFlags(
+  declareEffect(addQueryOutputFlags(
     program
       .command('query')
       .description('Query call graph using function-based syntax')
@@ -68,7 +71,7 @@ export function registerCoreCommands(program: Command): void {
       .option('--graph <file>', 'Path to saved graph JSON file')
   )
     .option('--list-adapters', 'List available query adapters')
-    .action(runQueryCommand);
+    .action(runQueryCommand), 'read', 'yes');
 
   // Impact command - transitive callers of a symbol, grouped by area
   registerImpactCommand(program);
@@ -88,17 +91,17 @@ export function registerCoreCommands(program: Command): void {
   // System commands
   // `cache` noun-verb group (canonical form)
   const cache = new Command('cache').description('Cache management');
-  cache
+  declareEffect(cache
     .command('clear')
     .description('Clear SQLite cache for this project')
-    .action(handleClearCacheAction);
+    .action(handleClearCacheAction), 'destructive-local', 'yes');
   program.addCommand(cache);
 
   // Hidden alias of `cache clear` for backwards compatibility
-  program
+  declareEffect(program
     .command('clear-cache', { hidden: true })
     .description('[deprecated alias of `cache clear`] Clear SQLite cache for this project')
-    .action(handleClearCacheAction);
+    .action(handleClearCacheAction), 'destructive-local', 'yes');
 
   // Introspect xray's own runtime paths (config + cache locations).
   // Note: distinct from the `config` strategy, which analyzes config files
@@ -114,6 +117,7 @@ export function registerCoreCommands(program: Command): void {
     .description('Emit machine-readable capability surface (12fc Factor 1)')
     .option('--format <fmt>', 'Output format (json)', 'json')
     .action(handleDescribeAction);
+  declareEffect(describe, 'read', 'yes');
   bindFlag(describe, 'format', staticValues('json'));
 
   // Read-only analysis commands as MCP tools over stdio.

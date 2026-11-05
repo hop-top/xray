@@ -66,6 +66,8 @@ describe('failing commands exit with the code describe advertises', () => {
     { name: 'strategy validate <unknown>', command: 'strategy.validate', args: ['strategy', 'validate', 'nope-strategy'], code: 3, stderr: /not found/ },
     { name: 'alias set <reserved name>', command: 'alias.set', args: ['alias', 'set', 'strategy', 'build targets'], code: 4, stderr: /conflicts/ },
     { name: 'build run --target <unknown>', command: 'build.run', args: ['build', 'run', '--target', 'nope'], code: 3, stderr: /not found/ },
+    { name: 'strategy remove --confirm=no', command: 'strategy.remove', args: ['--confirm=no', 'strategy', 'remove', 'anything'], code: 5, stderr: /refused/ },
+    { name: 'cache clear --confirm=no', command: 'cache.clear', args: ['--confirm=no', 'cache', 'clear'], code: 5, stderr: /refused/ },
     { name: 'build run (no --target)', command: 'build.run', args: ['build', 'run'], code: 2, stderr: /No target specified/ },
   ];
 

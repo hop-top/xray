@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { Command } from 'commander';
 import { UsageError } from '../lib/error/types';
+import { declareEffect } from './side-effect';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { version } = require('../../package.json');
@@ -82,7 +83,7 @@ Example (Claude Code):
 
 /** Register `xray mcp`. */
 export function registerMcpCommand(program: Command): Command {
-  return program
+  return declareEffect(program
     .command('mcp')
     .description('Serve analysis commands as MCP tools over stdio')
     .option('--timeout <seconds>', 'Per-call timeout in seconds', '300')
@@ -104,5 +105,5 @@ export function registerMcpCommand(program: Command): Command {
         timeoutMs: Math.round(seconds * 1000),
         version,
       });
-    });
+    }), 'interactive', 'no');
 }

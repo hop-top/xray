@@ -15,6 +15,7 @@
  * package `exports` map, so types come from the dist path while the
  * runtime require goes through the exported subpath.
  */
+import { declareEffect } from './side-effect';
 import type { Command } from 'commander';
 import type * as KitCompletion from '@hop-top/kit/dist/completion';
 import type * as KitValues from '@hop-top/kit/dist/completion-values';
@@ -55,6 +56,8 @@ export function registerCompletionCommand(program: Command): Command {
         : `missing shell (expected one of: ${shells})`
     );
   });
+  // One script per shell, printed to stdout.
+  for (const shell of cmd.commands) declareEffect(shell, 'read', 'yes');
   program.addCommand(cmd);
   setCommandGroup(cmd, 'management');
   return cmd;

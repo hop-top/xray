@@ -25,6 +25,7 @@ import { Logger } from '../lib/logger';
 import { UsageError } from '../lib/error/types';
 import { disableColor, setTheme } from '../lib/tui';
 import { createCLI, HELP_GROUPS, type CLIResult } from './kit-cli';
+import { declareEffect } from './side-effect';
 
 // Root flag attribute keys forwarded onto the invoked subcommand's opts.
 // `color` covers `--no-color`, `telemetry` covers `--no-telemetry`.
@@ -147,6 +148,8 @@ export function createRootProgram(version: string): CLIResult {
     groups: HELP_GROUPS.map((g) => ({ ...g })),
   });
   setTheme(result.theme);
+  // Kit's own `help <command>`: prints, changes nothing.
+  for (const c of result.program.commands) if (c.name() === 'help') declareEffect(c, 'read', 'yes');
   respectTerminalColor(result.program);
   configureRootProgram(result.program);
   return result;

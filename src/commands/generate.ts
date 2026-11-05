@@ -31,6 +31,9 @@ import { CommonAnalysisOptions } from '../types/command-options';
 import { applyPreset, resolvePreset } from '../lib/plugins/presets';
 import { openCacheDbPath } from '../lib/storage';
 import type { Xray as XrayType, ParseCoverage } from '../lib/xray';
+import { emitPlan, previewing } from './side-effect';
+import type { Effect } from './kit-cli';
+import type { Command } from 'commander';
 
 /**
  * Resolve every `--preset <spec>` flag in order and apply the
@@ -317,13 +320,70 @@ export const buildGraphForRoots = async (
   }
 };
 
-// Helper function to run a single xray generation
+/**
+ * What a run would write, from the resolved options alone (no analysis).
+ * Text output is chunked: one file per directory or community, named
+ * after the analysis, so the pattern is listed rather than each name.
+ */
+const plannedWrites = (
+  mergedOptions: any,
+  format: 'txt' | 'csv' | 'xml' | 'json',
+  outputPath: string,
+  paths: string[]
+): Effect[] => {
+  const effects: Effect[] = [];
+  const write = (target: string, detail: string) =>
+    effects.push({ kind: fs.existsSync(target) ? 'update' : 'create', target, reversible: false, detail });
+  const chunked = mergedOptions.chunked !== false && format === 'txt';
+  if (format === 'csv') {
+    const base = outputPath.replace(/\.csv$/i, '');
+    write(`${base}.nodes.csv`, 'graph nodes');
+    write(`${base}.edges.csv`, 'graph edges');
+  } else if (chunked) {
+    const ext = path.extname(outputPath) || '.md';
+    effects.push({
+      kind: 'write',
+      target: `${outputPath.replace(ext, '')}_*${ext}`,
+      reversible: false,
+      detail: 'one file per directory or community; names known after analysis',
+    });
+  } else {
+    write(outputPath, format === 'txt' ? 'analysis' : `graph (${format})`);
+  }
+  const shareOption = mergedOptions.share;
+  if (shareOption !== undefined && shareOption !== false) {
+    paths.forEach((p, i) => write(resolveShareOutputPath({
+      outputPath, projectPath: p, shareOption, pathIndex: i, totalPaths: paths.length,
+    }), 'share summary'));
+  }
+  return effects;
+};
+
+// Helper function to run a single xray generation. With `plan`, nothing is
+// analyzed or written: the files a real run would write are appended to it.
 export const runSingleXray = async (
   mergedOptions: any,
   scopeName?: string,
-  configPath: string | undefined = mergedOptions.config
+  configPath: string | undefined = mergedOptions.config,
+  plan?: Effect[]
 ) => {
   validateRunRoots(mergedOptions, configPath);
+
+  // Determine format first (needed for output path resolution)
+  // `outputFormat` is the resolved --format/legacy-flag/config selection;
+  // the boolean chain is the fallback for callers passing raw flags.
+  const format: 'txt' | 'csv' | 'xml' | 'json' =
+    mergedOptions.outputFormat ??
+    (mergedOptions.json ? 'json' :
+     mergedOptions.csv ? 'csv' :
+     mergedOptions.xml ? 'xml' : 'txt');
+
+  const outputPath = resolveOutputPath(mergedOptions.output, format, mergedOptions.chunked !== false);
+
+  if (plan) {
+    plan.push(...plannedWrites(mergedOptions, format, outputPath!, runRoots(mergedOptions)));
+    return;
+  }
 
   // Auto-configure from detected strategies if enabled
   // Only auto-detect when no path is explicitly provided (unless --detect is used)
@@ -372,16 +432,6 @@ export const runSingleXray = async (
   const paths = runRoots(mergedOptions);
   const anchor = resolvePath(mergedOptions.anchor);
 
-  // Determine format first (needed for output path resolution)
-  // `outputFormat` is the resolved --format/legacy-flag/config selection;
-  // the boolean chain is the fallback for callers passing raw flags.
-  const format: 'txt' | 'csv' | 'xml' | 'json' =
-    mergedOptions.outputFormat ??
-    (mergedOptions.json ? 'json' :
-     mergedOptions.csv ? 'csv' :
-     mergedOptions.xml ? 'xml' : 'txt');
-
-  const outputPath = resolveOutputPath(mergedOptions.output, format, mergedOptions.chunked !== false);
   const shareOption = mergedOptions.share;
   const shareRequested = shareOption !== undefined && shareOption !== false;
   const commandUsed = getCommandString();
@@ -704,7 +754,8 @@ export const resolveRunOptions = (
  */
 export const handleGenerateCommand = async (
   paths: string[] | undefined,
-  options: CommonAnalysisOptions
+  options: CommonAnalysisOptions,
+  cmd?: Command
 ) => {
   if (paths && paths.length > 0) {
     if (options.path && options.path.length > 0) {
@@ -714,11 +765,12 @@ export const handleGenerateCommand = async (
     }
     options = { ...options, path: [...paths] };
   }
-  return handleGenerateAction(options);
+  return handleGenerateAction(options, cmd && previewing(cmd) ? cmd : undefined);
 };
 
 // Shared action handler for all generation commands
-export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
+export const handleGenerateAction = async (options: CommonAnalysisOptions, previewOf?: Command) => {
+  const plan: Effect[] | undefined = previewOf ? [] : undefined;
   try {
     // Resolve --format / legacy flags first: a conflict is a usage error
     // that must surface before any config loading or analysis.
@@ -769,15 +821,17 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions) => {
           },
           undefined
         );
-        await runSingleXray(mergedOptions, scopeName, normalizedOptions.config);
+        await runSingleXray(mergedOptions, scopeName, normalizedOptions.config, plan);
       }
 
+      if (previewOf) emitPlan(previewOf, plan!, {}, resolvedFormat.format === 'json' ? 'json' : 'text');
       return;
     }
 
     // --scope, or the regular flow (config + --lens + CLI options)
     const { mergedOptions, scopeName } = resolveRunOptions(normalizedOptions, config);
-    await runSingleXray(mergedOptions, scopeName, normalizedOptions.config);
+    await runSingleXray(mergedOptions, scopeName, normalizedOptions.config, plan);
+    if (previewOf) emitPlan(previewOf, plan!, {}, resolvedFormat.format === 'json' ? 'json' : 'text');
 
   } catch (error) {
     // CodedError (NotFoundError, UsageError, etc.) carries an exit code —

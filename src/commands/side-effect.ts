@@ -1,25 +1,52 @@
 /**
  * Side-effect declarations kit's delegation gates read.
  *
- * Kit gates an undeclared leaf named remove/rm/delete/destroy/purge/drop
- * behind a confirmation that no terminal-less caller (scripts, CI, agents)
- * can answer. A leaf that changes only state xray itself manages (an alias
- * entry, a strategy file or package, an xray-managed language pack) says so
- * by declaring the `write-local` tier, which kit does not confirm.
+ * Every runnable leaf declares what it does to the world with kit's
+ * `kit/side-effect` tier and `kit/idempotent` class. Kit acts on them:
  *
- * Kit then applies a root `--dry-run` to the leaf as a promise to preview.
- * These handlers do not, so the leaf opts out: `--dry-run` is a usage error
- * rather than a real run.
+ * - a destructive tier (`destructive-local`, ...) is refused unless the
+ *   caller confirms (`--confirm=yes`, or an answer at a terminal prompt);
+ * - a write or destructive tier honors a root `--dry-run`: kit skips the
+ *   confirmation and the handler prints a plan instead of acting;
+ * - `read` ignores `--dry-run` and simply runs.
+ *
+ * Tiers xray uses: `read` (also for commands whose only write is a
+ * regenerable cache in xray's own cache dir); `write-local` (files in the
+ * project, the config, or xray's data dir); `destructive-local` (deletes
+ * user-visible local state); `interactive` (a long-lived session).
  */
 import type { Command } from 'commander';
+import { isDryRun, renderPlan, type Effect, type Plan } from './kit-cli';
 
-export function declareManagedWrite<C extends Command>(cmd: C, noDryRunReason: string): C {
-  const target = cmd as unknown as { annotations?: Record<string, string> };
-  target.annotations = {
-    ...target.annotations,
-    'kit/side-effect': 'write-local',
-    'kit/dry-run': 'opted-out',
-    'kit/dry-run-rationale': noDryRunReason,
-  };
+export type Tier = 'read' | 'write-local' | 'destructive-local' | 'interactive';
+export type Idempotency = 'yes' | 'no' | 'conditional';
+
+export const SIDE_EFFECT_KEY = 'kit/side-effect';
+export const IDEMPOTENT_KEY = 'kit/idempotent';
+
+type Annotated = { annotations?: Record<string, string> };
+
+/** Declare `cmd`'s side-effect tier and idempotency; returns `cmd`. */
+export function declareEffect<C extends Command>(cmd: C, tier: Tier, idempotent: Idempotency): C {
+  const target = cmd as unknown as Annotated;
+  target.annotations = { ...target.annotations, [SIDE_EFFECT_KEY]: tier, [IDEMPOTENT_KEY]: idempotent };
   return cmd;
+}
+
+/** What `cmd` declares; a field is undefined when not declared. */
+export function declaredEffect(cmd: Command): { tier?: string; idempotent?: string } {
+  const ann = (cmd as unknown as Annotated).annotations ?? {};
+  return { tier: ann[SIDE_EFFECT_KEY], idempotent: ann[IDEMPOTENT_KEY] };
+}
+
+/** True when the run is a dry run: the handler must plan, not act. */
+export function previewing(cmd: Command, ownFlag?: boolean): boolean {
+  return ownFlag === true || isDryRun(cmd);
+}
+
+/** Print what a real run would change; `format` json|yaml, else a table. */
+export function emitPlan(cmd: Command, effects: Effect[], extra: Omit<Plan, 'effects'> = {}, format = 'text'): void {
+  const path: string[] = [];
+  for (let c: Command | null = cmd; c; c = c.parent) path.unshift(c.name());
+  renderPlan(process.stdout, format, { ...extra, effects }, path.join(' '));
 }

@@ -19,6 +19,7 @@ import {
 } from '../common';
 import { CodedError, UsageError } from '../../lib/error/types';
 import { setCommandGroup } from '../kit-cli';
+import { declareEffect } from '../side-effect';
 import {
   OUTPUT_FLAG_NAMES, addOutputFlags, assertFormat, emit, outputRegistry, textFormatter,
   unionColumns,
@@ -135,12 +136,15 @@ function registerStrategyCommand(
       continue;
     }
 
-    const cmd = addExtensionOverrideOptions(
+    // Strategy commands analyze the project and return a result; xray
+    // prints it. They have no write API, so they are reads (opt-in
+    // execution of repo code stays in a sandbox).
+    const cmd = declareEffect(addExtensionOverrideOptions(
       strategyCmd
         .command(cmdName)
         .description(cmdDef.description || `Execute ${cmdName} command`)
         .option('-p, --path <path>', 'Project path to analyze', process.cwd())
-    );
+    ), 'read', 'yes');
 
     if (cmdDef.options) {
       for (const [optName, optDef] of Object.entries(cmdDef.options)) {

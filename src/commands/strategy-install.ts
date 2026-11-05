@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { Logger } from '../lib/logger';
+import type { Effect } from './kit-cli';
 import {
   PROJECT_STRATEGIES_ENV,
   StrategyLoader,
@@ -158,6 +159,34 @@ export async function installStrategy(source: string, loader: StrategyLoader): P
       `${name} will not be discovered.`
     );
   }
+}
+
+/**
+ * What `installStrategy` would do, without fetching or changing anything:
+ * the npm install it would run, or nothing for a local strategy file. A
+ * missing local path fails as the real run does.
+ */
+export function planStrategyInstall(source: string): { effects: Effect[]; warnings: string[] } {
+  let spec = source;
+  if (source.startsWith('/') || source.startsWith('./') || source.startsWith('../')) {
+    const absolute = path.resolve(source);
+    if (!fs.existsSync(absolute)) {
+      throw new NotFoundError(`Path does not exist: ${absolute}`);
+    }
+    if (fs.statSync(absolute).isFile() && FILE_STRATEGY.test(absolute)) {
+      return { effects: [], warnings: [`${absolute} is a strategy file: it is read, never installed or copied`] };
+    }
+    spec = absolute;
+  }
+  return {
+    effects: [{
+      kind: 'install',
+      target: `npm:${spec}`,
+      reversible: true,
+      detail: `npm install in ${process.cwd()}; the package is fetched and validated first, and its name comes from npm`,
+    }],
+    warnings: [],
+  };
 }
 
 const PACKAGE_NAME = /^(@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/;

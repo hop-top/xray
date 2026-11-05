@@ -6,6 +6,7 @@ import { CodeLoadingOptions, StrategyLoader, reportSkippedProjectCode } from '..
 import { Logger } from '../../lib/logger';
 import { loadConfig } from '../../lib/config';
 import { AliasCommandOptions } from '../../types/command-options';
+import { declaredEffect, declareEffect, type Idempotency, type Tier } from '../side-effect';
 
 export async function registerAliases(
   program: Command,
@@ -55,10 +56,13 @@ export async function registerAliases(
   });
 
   // Bridge proxies accept any arguments; xray aliases take only --path.
-  for (const alias of targets.keys()) {
-    program.commands.find(c => c.name() === alias)!
+  // An alias does exactly what its target does, so it declares the same.
+  for (const [alias, target] of targets) {
+    const proxy = program.commands.find(c => c.name() === alias)!
       .option('-p, --path <path>', 'Project path', process.cwd())
       .allowExcessArguments(false);
+    const { tier, idempotent } = declaredEffect(target);
+    if (tier && idempotent) declareEffect(proxy, tier as Tier, idempotent as Idempotency);
   }
 
   Logger.debug(`Registered ${targets.size} aliases`);

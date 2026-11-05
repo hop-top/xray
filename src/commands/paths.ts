@@ -13,6 +13,7 @@ import {
 } from '../lib/output';
 import { projectCacheDbPath, projectTelemetryPath } from '../lib/storage';
 import { findConfigPath, findGlobalConfigPath } from '../lib/config';
+import { declareEffect } from './side-effect';
 
 // require(): tsconfig moduleResolution 'node' ignores the kit exports map.
 const xdg = require('@hop-top/kit/xdg') as Record<
@@ -96,4 +97,5 @@ export function registerPathsCommand(program: Command): void {
     description: 'Output format: text, json, yaml, table, csv',
   });
   cmd.action((opts: PathsOptions, c: Command) => handlePathsAction(opts, c));
+  declareEffect(cmd, 'read', 'yes');
 }

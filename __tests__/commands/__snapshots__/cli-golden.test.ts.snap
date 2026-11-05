@@ -1434,7 +1434,7 @@ Usage: xray lang add [options] <names...>
 Install language packs (language names or bundles: web, go, systems, jvm, scripting, full)
 
 FLAGS:
-  --dry-run   Print the npm command without running it
+  --dry-run   Print what would be installed (the npm command) without running it
   -h, --help  Display help
 
 
@@ -2259,7 +2259,8 @@ COMMANDS:
   info <name>              Show detailed information about a strategy
   create <name> [--flags]  Create a new strategy scaffold
   install <source>         Install a strategy from a path or npm package
-  remove <name>            Remove an installed strategy
+  remove <name>            Remove an installed strategy (asks first; scripts
+                           pass --confirm=yes)
   validate <name>          Validate a strategy file
   path                     Show strategy search paths
 
@@ -2371,7 +2372,7 @@ exports[`cli golden: --help xray strategy remove --help 1`] = `
 --- stdout ---
 Usage: xray strategy remove|uninstall [options] <name>
 
-Remove an installed strategy
+Remove an installed strategy (asks first; scripts pass --confirm=yes)
 
 FLAGS:
   -h, --help  Display help
@@ -2544,7 +2545,7 @@ Usage: xray lang add [options] <names...>
 Install language packs (language names or bundles: web, go, systems, jvm, scripting, full)
 
 FLAGS:
-  --dry-run   Print the npm command without running it
+  --dry-run   Print what would be installed (the npm command) without running it
   -h, --help  Display help
 
 "
@@ -3935,9 +3936,9 @@ exports[`cli golden: introspection describe 1`] = `
     "2": "usage error (bad flag, missing arg)",
     "3": "not found (alias, config, strategy, path)",
     "4": "conflict (resource collision, already exists)",
-    "5": "unauthorized / permission denied",
+    "5": "unauthorized / permission denied, or a destructive command refused without --confirm=yes",
     "6": "transient failure (a retry may clear it)",
-    "7": "consent refused (re-run with --confirm=yes)"
+    "7": "consent refused"
   },
   "telemetry": {
     "defaultOff": [
@@ -4528,8 +4529,8 @@ exports[`cli golden: introspection describe 1`] = `
         }
       ],
       "subcommands": [],
-      "sideEffect": "read",
-      "idempotent": "yes",
+      "sideEffect": "write-local",
+      "idempotent": "conditional",
       "exitCodes": [
         0,
         1,
@@ -5621,8 +5622,8 @@ exports[`cli golden: introspection describe 1`] = `
             }
           ],
           "subcommands": [],
-          "sideEffect": "read",
-          "idempotent": "yes",
+          "sideEffect": "write-local",
+          "idempotent": "no",
           "exitCodes": [
             0,
             1,
@@ -5645,8 +5646,8 @@ exports[`cli golden: introspection describe 1`] = `
           ],
           "options": [],
           "subcommands": [],
-          "sideEffect": "read",
-          "idempotent": "yes",
+          "sideEffect": "write-local",
+          "idempotent": "conditional",
           "exitCodes": [
             0,
             1,
@@ -5657,7 +5658,7 @@ exports[`cli golden: introspection describe 1`] = `
         {
           "name": "remove",
           "qualifiedName": "strategy.remove",
-          "description": "Remove an installed strategy",
+          "description": "Remove an installed strategy (asks first; scripts pass --confirm=yes)",
           "hidden": false,
           "arguments": [
             {
@@ -5669,13 +5670,14 @@ exports[`cli golden: introspection describe 1`] = `
           ],
           "options": [],
           "subcommands": [],
-          "sideEffect": "write-local",
+          "sideEffect": "destructive-local",
           "idempotent": "no",
           "exitCodes": [
             0,
             1,
             2,
-            3
+            3,
+            5
           ]
         },
         {
@@ -5940,11 +5942,11 @@ exports[`cli golden: introspection describe 1`] = `
               "type": "boolean",
               "required": false,
               "default": null,
-              "description": "Print the npm command without running it"
+              "description": "Print what would be installed (the npm command) without running it"
             }
           ],
           "subcommands": [],
-          "sideEffect": "read",
+          "sideEffect": "write-local",
           "idempotent": "yes",
           "exitCodes": [
             0,
@@ -6005,7 +6007,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            5
           ]
         }
       ],
@@ -6030,7 +6033,8 @@ exports[`cli golden: introspection describe 1`] = `
       "exitCodes": [
         0,
         1,
-        2
+        2,
+        5
       ]
     },
     {
@@ -6156,8 +6160,8 @@ exports[`cli golden: introspection describe 1`] = `
         }
       ],
       "subcommands": [],
-      "sideEffect": "read",
-      "idempotent": "yes",
+      "sideEffect": "interactive",
+      "idempotent": "no",
       "exitCodes": [
         0,
         1,

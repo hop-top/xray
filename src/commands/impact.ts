@@ -16,6 +16,7 @@ import {
   outputRegistry, textFormatter,
 } from '../lib/output';
 import { formatTree, readSerializedGraph } from './query';
+import { declareEffect } from './side-effect';
 import { buildGraphForRoots, cacheLine, resolveRunOptions, validateRunRoots, type BuiltGraph } from './generate';
 
 export interface ImpactCommandOptions {
@@ -171,5 +172,5 @@ export function registerImpactCommand(program: Command): Command {
     description: 'Output format: text, brief, tree, json, yaml, table, csv',
     showInHelp: ['cols', 'output'],
   });
-  return cmd.addHelpText('after', HELP_AFTER).action(runImpactCommand);
+  return declareEffect(cmd.addHelpText('after', HELP_AFTER).action(runImpactCommand), 'read', 'yes');
 }

@@ -48,13 +48,16 @@ describe('xray lang', () => {
     expect(out.managedDir).toBe(managed);
   });
 
-  it('add --dry-run prints the npm command and installs nothing', async () => {
+  it('add --dry-run prints the plan (the npm command) and installs nothing', async () => {
     const lines = capture();
+    const out: string[] = [];
+    jest.spyOn(process.stdout, 'write').mockImplementation((c: any) => { out.push(String(c)); return true; });
     const run = jest.fn();
     await registerLangCommand(run).parseAsync(['node', 'lang', 'add', 'kotlin', '--dry-run']);
     expect(run).not.toHaveBeenCalled();
-    expect(lines.join('\n')).toContain('npm install');
-    expect(lines.join('\n')).toContain('tree-sitter-kotlin@');
+    const plan = out.join('') + lines.join('\n');
+    expect(plan).toContain('install');
+    expect(plan).toContain('tree-sitter-kotlin@');
     expect(fs.existsSync(path.join(managed, 'package.json'))).toBe(false);
   });
 
