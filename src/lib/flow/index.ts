@@ -7,6 +7,7 @@ import { Scopes } from './scope';
 import { CfgBuilder, nestedFunctions } from './cfg';
 import { computeDfg } from './dfg';
 import { typescriptTable } from './tables/typescript';
+import { javascriptTable } from './tables/javascript';
 
 export * from './types';
 export type { FlowTable } from './table';
@@ -19,6 +20,10 @@ const TABLES: Record<string, FlowTable> = {
   '.tsx': typescriptTable,
   '.mts': typescriptTable,
   '.cts': typescriptTable,
+  '.js': javascriptTable,
+  '.jsx': javascriptTable,
+  '.mjs': javascriptTable,
+  '.cjs': javascriptTable,
 };
 
 export const flowTableFor = (file: string): FlowTable | undefined => TABLES[path.extname(file)];
@@ -31,7 +36,7 @@ export const flowLanguages = (): string[] => [...new Set(Object.values(TABLES).m
  * languages that have a table, so supporting a new one invalidates entries
  * cached without its flow; bump FLOW_VERSION when the builders change.
  */
-const FLOW_VERSION = 1;
+const FLOW_VERSION = 2;
 export const flowCacheKey = (cfg: boolean, dfg: boolean): string =>
   !cfg && !dfg ? '' : `${cfg ? 'cf' : ''}${dfg ? 'df' : ''}@${FLOW_VERSION}:${flowLanguages().join('+')}`;
 

@@ -2,17 +2,28 @@ import Parser from 'tree-sitter';
 import { buildFlow, flowTableFor } from '../../src/lib/flow';
 import type { Cfg, Dfg, FlowResult } from '../../src/lib/flow';
 
-const TS = require('tree-sitter-typescript').typescript;
-const table = flowTableFor('x.ts')!;
-let parser: Parser | undefined;
+export type Lang = 'ts' | 'js' | 'py' | 'go';
+const GRAMMAR: Record<Lang, () => any> = {
+  ts: () => require('tree-sitter-typescript').typescript,
+  js: () => require('tree-sitter-javascript'),
+  py: () => require('tree-sitter-python'),
+  go: () => require('tree-sitter-go'),
+};
+const parsers = new Map<Lang, Parser>();
 
-/** Flow of the function called `name` in `code`. */
-export function flowOf(code: string, name = 'f', want = { cfg: true, dfg: true }, maxNodes?: number): FlowResult {
-  if (!parser) {
-    parser = new Parser();
-    parser.setLanguage(TS);
+export const parserFor = (lang: Lang): Parser => {
+  let p = parsers.get(lang);
+  if (!p) {
+    p = new Parser();
+    p.setLanguage(GRAMMAR[lang]());
+    parsers.set(lang, p);
   }
-  const tree = parser.parse(code);
+  return p;
+};
+
+/** Function node called `name` in a parsed tree (declaration name, or the variable it is assigned to). */
+function findFunction(root: Parser.SyntaxNode, name: string, lang: Lang): Parser.SyntaxNode {
+  const table = flowTableFor(`x.${lang}`)!;
   const find = (n: Parser.SyntaxNode): Parser.SyntaxNode | null => {
     if (table.functions.includes(n.type)) {
       const nm = n.childForFieldName('name');
@@ -25,9 +36,15 @@ export function flowOf(code: string, name = 'f', want = { cfg: true, dfg: true }
     }
     return null;
   };
-  const fn = find(tree.rootNode);
+  const fn = find(root);
   if (!fn) throw new Error(`no function ${name}`);
-  return buildFlow(fn, table, want, maxNodes);
+  return fn;
+}
+
+/** Flow of the function called `name` in `code` (TypeScript unless `lang` says otherwise). */
+export function flowOf(code: string, name = 'f', want = { cfg: true, dfg: true }, maxNodes?: number, lang: Lang = 'ts'): FlowResult {
+  const tree = parserFor(lang).parse(code);
+  return buildFlow(findFunction(tree.rootNode, name, lang), flowTableFor(`x.${lang}`)!, want, maxNodes);
 }
 
 /**
@@ -74,3 +91,17 @@ export function dfgShape(dfg: Dfg, cfg: Cfg): { defs: string[]; edges: string[] 
 }
 
 export const sorted = (a: string[]): string[] => [...a].sort();
+
+/** Exact-graph assertions for one language (see cfg.test.ts for the idea). */
+export const cfgCheck = (lang: Lang) => (code: string, nodes: string[], edges: string[], name = 'f'): void => {
+  const shape = cfgShape(flowOf(code, name, { cfg: true, dfg: true }, undefined, lang).cfg!);
+  expect(shape.nodes).toEqual(sorted(['entry entry', 'exit exit', ...nodes]));
+  expect(shape.edges).toEqual(sorted(edges));
+};
+
+export const dfgCheck = (lang: Lang) => (code: string, defs: string[], edges: string[], name = 'f'): void => {
+  const { cfg, dfg } = flowOf(code, name, { cfg: true, dfg: true }, undefined, lang);
+  const shape = dfgShape(dfg!, cfg!);
+  expect(shape.defs).toEqual(sorted(defs));
+  expect(shape.edges).toEqual(sorted(edges));
+};

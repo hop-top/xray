@@ -1,18 +1,18 @@
-import Parser from 'tree-sitter';
+import type Parser from 'tree-sitter';
 import * as fs from 'fs';
 import * as path from 'path';
 import { buildFlow, flowTableFor } from '../../src/lib/flow';
 import type { Cfg } from '../../src/lib/flow';
+import { parserFor, Lang } from './helpers';
 
-const TS = require('tree-sitter-typescript').typescript;
-const table = flowTableFor('x.ts')!;
-const SRC = path.join(__dirname, '../../src');
+const ROOT = path.join(__dirname, '../..');
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'coverage', '.git']);
 
-const files = (dir: string, out: string[] = []): string[] => {
+const files = (dir: string, ok: (name: string) => boolean, out: string[] = []): string[] => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
-    if (e.isDirectory()) files(p, out);
-    else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) out.push(p);
+    if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name)) files(p, ok, out); }
+    else if (ok(e.name)) out.push(p);
   }
   return out;
 };
@@ -55,30 +55,44 @@ function violations(cfg: Cfg, where: string): string[] {
   return bad;
 };
 
-describe('every function of this repo yields a well-formed graph', () => {
+
+/** Where each language's real code comes from, and how many functions it must have. */
+const CORPORA: Array<{ lang: Lang; ext: string; roots: string[]; ok: (n: string) => boolean; min: number }> = [
+  { lang: 'ts', ext: '.ts', roots: ['src'], ok: n => n.endsWith('.ts') && !n.endsWith('.d.ts'), min: 500 },
+  { lang: 'js', ext: '.js', roots: ['bin', 'jest.config.js', '__tests__'], ok: n => /\.(js|mjs|cjs|jsx)$/.test(n), min: 5 },
+
+
+];
+
+describe.each(CORPORA)('every function of the $lang corpus yields a well-formed graph', ({ lang, ext, roots, ok, min }) => {
   it('reachable from entry, reaching exit, branches paired, jumps single-exit', () => {
-    const parser = new Parser();
-    parser.setLanguage(TS);
+    const table = flowTableFor(`x${ext}`)!;
+    const parser = parserFor(lang);
     let functions = 0;
     const bad: string[] = [];
-    for (const file of files(SRC)) {
+    const list = roots.flatMap(r => {
+      const abs = path.join(ROOT, r);
+      return fs.statSync(abs).isDirectory() ? files(abs, ok) : [abs];
+    });
+    for (const file of list) {
       const root = parser.parse(fs.readFileSync(file, 'utf8')).rootNode;
       const all: Parser.SyntaxNode[] = [];
       const visit = (n: Parser.SyntaxNode): void => {
-        if (table.functions.includes(n.type) && n.childForFieldName('body')) { all.push(n); return; }
+        if (table.functions.includes(n.type) && n.childForFieldName(table.fn.body)) { all.push(n); return; }
         for (const c of n.namedChildren) visit(c);
       };
       visit(root);
       for (const fn of all) {
         functions++;
         const { cfg, dfg } = buildFlow(fn, table, { cfg: true, dfg: true });
-        bad.push(...violations(cfg!, `${path.relative(SRC, file)}:${fn.startPosition.row + 1}`));
+        const where = `${path.relative(ROOT, file)}:${fn.startPosition.row + 1}`;
+        bad.push(...violations(cfg!, where));
         const defs = new Set(dfg!.nodes.map(d => d.id));
         const sites = new Set(cfg!.nodes.map(n => n.id));
         for (const e of dfg!.edges) if (!defs.has(e.from) || !sites.has(e.to)) bad.push(`dfg edge ${e.from}->${e.to} dangles`);
       }
     }
-    expect(functions).toBeGreaterThan(500);
+    expect(functions).toBeGreaterThanOrEqual(min);
     expect(bad).toEqual([]);
   });
 });

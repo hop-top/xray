@@ -124,8 +124,9 @@ function and method, printed under the function in the map (or as `cfg` /
 xray graph [paths...] [options]
 ```
 
-**Support today:** TypeScript (`.ts`, `.tsx`). JavaScript, Python and Go are
-coming. For any other language the run still succeeds, prints one stderr
+**Support today:** TypeScript (`.ts`, `.tsx`), JavaScript (`.js`, `.jsx`;
+the same builder with a JavaScript table, also wired for `.mjs` / `.cjs`).
+Python and Go are coming. For any other language the run still succeeds, prints one stderr
 notice (`cf/df: no flow graphs for python (3 files) yet ...`) and its
 functions carry no graphs.
 
@@ -221,6 +222,14 @@ without these fields work with `query --graph` and `impact --graph`.
   tracked; the variable is flagged `captured`, and the closure counts as a
   read of it where it is created. Hoisted function declarations are defined
   at entry. Globals and imports have no definition (no edge).
+
+**Per language** (on top of the limits above):
+
+- JavaScript: a class field holding an arrow function (`push = (x) => {}`) is
+  a field, not a function: no graph of its own (the field's value is not
+  analysed as a closure of anything). `.mjs` and `.cjs` files are not scanned
+  by `map` at all today, so they never reach the flow builder; JSX tags are
+  ordinary reads of the tag identifier. `for await` is a plain loop head.
 
 ### `xray impact`
 
