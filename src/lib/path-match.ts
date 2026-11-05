@@ -25,6 +25,7 @@ type Range = readonly [number, number];
 type Token =
   | { k: 'lit'; c: string } // one character, case-folded
   | { k: 'any' } //            `?`: one non-`/` character
+  | { k: 'one' } //            `?` in symbol globs: any one character
   | { k: 'set'; ranges: Range[]; neg: boolean } // `[...]`: any character, `/` included
   | { k: 'star' } //           `*`: non-`/` run, possibly empty
   | { k: 'deep' } //           `**`: any run, possibly empty
@@ -133,7 +134,8 @@ function tokenize(pat: string): Token[] {
  * consumed"; the set of live states advances one character at a time, so
  * work is bounded by tokens x characters whatever the pattern looks like.
  */
-function machine(tokens: Token[]): (s: string) => boolean {
+function machine(tokens: Token[], caseSensitive = false): (s: string) => boolean {
+  const norm = caseSensitive ? (c: string): string => c : fold;
   const m = tokens.length;
   let cur = new Uint8Array(m + 1);
   let next = new Uint8Array(m + 1);
@@ -152,7 +154,7 @@ function machine(tokens: Token[]): (s: string) => boolean {
     for (let p = 0; p < s.length; p++) {
       const ch = s[p];
       const slash = ch === '/';
-      const folded = fold(ch);
+      const folded = norm(ch);
       next.fill(0);
       let live = false;
       for (let j = 0; j < m; j++) {
@@ -164,6 +166,9 @@ function machine(tokens: Token[]): (s: string) => boolean {
             break;
           case 'any':
             if (!slash) next[j + 1] = 1;
+            break;
+          case 'one':
+            next[j + 1] = 1;
             break;
           case 'set':
             if (setMatches(t, ch)) next[j + 1] = 1;
@@ -189,6 +194,29 @@ function machine(tokens: Token[]): (s: string) => boolean {
     }
     return cur[m] === 1;
   };
+}
+
+/**
+ * Symbol-name glob, whole-string, case-sensitive: `*` a run without `/`,
+ * `**` any run, `?` any one character, everything else literal (no
+ * classes, no `**` directory rule, `/` is not special beyond `*`).
+ * Same linear machine as the path matcher.
+ */
+export function compileSymbolGlob(pattern: string): (s: string) => boolean {
+  const tokens: Token[] = [];
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern[i];
+    if (c === '*') {
+      const deep = pattern[i + 1] === '*';
+      while (pattern[i + 1] === '*') i++;
+      tokens.push({ k: deep ? 'deep' : 'star' });
+    } else if (c === '?') {
+      tokens.push({ k: 'one' });
+    } else {
+      tokens.push({ k: 'lit', c });
+    }
+  }
+  return machine(tokens, true);
 }
 
 function compileOne(raw: string): ((relPath: string) => boolean) | null {
