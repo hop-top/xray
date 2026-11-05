@@ -77,6 +77,23 @@ describe('match pattern cap through the built CLI', () => {
     expect(r.stderr).toContain('--match: 257 patterns, over the 256 limit');
   });
 
+  it('total length over 4096: usage error from --match and from config', () => {
+    const pats = ['a'.repeat(1024), 'b'.repeat(1024), 'c'.repeat(1024), 'd'.repeat(1024), 'e'];
+    const r = run('explore', ...pats.flatMap((p) => ['--match', p]));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('--match: patterns total 4097 characters');
+    const rc = path.join(proj, '.xrayrc.json');
+    try {
+      fs.writeFileSync(rc, JSON.stringify({ match: pats }));
+      const c = run('map', '--output', path.join(home, 'o.md'));
+      expect(c.status).toBe(2);
+      expect(c.stderr).toContain('.xrayrc.json');
+      expect(c.stderr).toContain('patterns total 4097');
+    } finally {
+      fs.rmSync(rc, { force: true });
+    }
+  });
+
   it('config match: 256 run, 257 are a usage error naming the file', () => {
     const rc = path.join(proj, '.xrayrc.json');
     try {

@@ -28,6 +28,9 @@ export const MAX_PATTERN_LENGTH = 1024;
 /** Most patterns accepted at once; with the length cap this bounds total size and per-file work. */
 export const MAX_PATTERNS = 256;
 
+/** Most characters across all patterns together; bounds per-file matching work. */
+export const MAX_TOTAL_LENGTH = 4096;
+
 /**
  * A pattern as it may appear in a message: truncated, JSON-quoted, with
  * control characters (ESC, newline, DEL, C1) escaped. Patterns can come
@@ -39,8 +42,8 @@ export function quotePattern(p: string, max = 40): string {
 }
 
 /**
- * Reject more than MAX_PATTERNS patterns, or any longer than
- * MAX_PATTERN_LENGTH, with a UsageError naming `source` (e.g. `--match`,
+ * Reject more than MAX_PATTERNS patterns, any longer than
+ * MAX_PATTERN_LENGTH, or MAX_TOTAL_LENGTH characters in all, with a UsageError naming `source` (e.g. `--match`,
  * or the config file the patterns came from).
  */
 export function assertPatternLengths(patterns: readonly string[], source: string): void {
@@ -53,6 +56,10 @@ export function assertPatternLengths(patterns: readonly string[], source: string
         `${source}: pattern is ${p.length} characters, over the ${MAX_PATTERN_LENGTH} limit (starts with ${quotePattern(p)})`
       );
     }
+  }
+  const total = patterns.reduce((n, p) => n + (typeof p === 'string' ? p.length : 0), 0);
+  if (total > MAX_TOTAL_LENGTH) {
+    throw new UsageError(`${source}: patterns total ${total} characters, over the ${MAX_TOTAL_LENGTH} limit`);
   }
 }
 

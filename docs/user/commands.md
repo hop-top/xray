@@ -79,7 +79,8 @@ the file name at any depth (`*.ts`); one with `/` matches from the root
 (`src/**/*.ts`; a trailing `/` means everything under that directory).
 Repeated `--match` patterns combine with OR. A `!` pattern excludes and wins
 over every other pattern; with only `!` patterns, every file but those is
-listed. More than 256 patterns, or a pattern over 1024 characters, is a usage
+listed. More than 256 patterns, a pattern over 1024 characters, or more than 4096
+characters across all patterns is a usage
 error (exit 2); the same limits apply to `match` in the config file, which
 must be an array of strings.
 

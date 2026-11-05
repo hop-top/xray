@@ -1,4 +1,4 @@
-import { assertPatternLengths, compileMatchers, MAX_PATTERN_LENGTH, MAX_PATTERNS, quotePattern } from '../../src/lib/path-match';
+import { assertPatternLengths, compileMatchers, MAX_PATTERN_LENGTH, MAX_PATTERNS, MAX_TOTAL_LENGTH, quotePattern } from '../../src/lib/path-match';
 import { mergeConfig } from '../../src/lib/config';
 import { UsageError } from '../../src/lib/error/types';
 
@@ -49,18 +49,30 @@ describe('match pattern count cap', () => {
     expect(() => mergeConfig({ match: many(257) } as any, {})).toThrow(/"match" in .*: 257 patterns/);
   });
 
-  it('worst case within the limits stays fast: 256 x 1024-char patterns, 4096-char path', () => {
-    const pats = Array.from({ length: 256 }, () => '*a'.repeat(511) + '*');
-    const path = 'a'.repeat(4096);
-    const t = Date.now();
-    expect(compileMatchers(pats)(path)).toBe(true);
-    const nope = compileMatchers(pats.map((p) => p + 'b'));
-    expect(nope(path)).toBe(false);
-    const ms = Date.now() - t;
+  it('total length: 4096 characters in all accepted, 4097 rejected', () => {
+    const fill = (n: number) => ['a'.repeat(1024), 'a'.repeat(1024), 'a'.repeat(1024), 'a'.repeat(1024), 'a'.repeat(n - 4096)].filter(Boolean);
+    expect(MAX_TOTAL_LENGTH).toBe(4096);
+    expect(() => compileMatchers(fill(4096))).not.toThrow();
+    expect(() => compileMatchers(fill(4097))).toThrow(/patterns total 4097 characters, over the 4096 limit/);
+    expect(() => mergeConfig(null, { match: fill(4097) })).toThrow(/^--match: patterns total 4097/);
+    expect(() => mergeConfig({ match: fill(4097) } as any, {})).toThrow(/"match" in .*: patterns total 4097/);
+    expect(() => mergeConfig({ match: fill(4096) } as any, {})).not.toThrow();
+  });
+
+  it('worst case within the limits stays fast: 4 x 1024-char patterns', () => {
+    const m = compileMatchers(Array.from({ length: 4 }, () => '*a'.repeat(511) + '*b'));
+    let t = Date.now();
+    expect(m('a'.repeat(4096))).toBe(false);
+    const long = Date.now() - t;
+    const short = 'src/' + 'a'.repeat(56);
+    t = Date.now();
+    for (let i = 0; i < 1000; i++) m(short);
+    const many = Date.now() - t;
     // eslint-disable-next-line no-console
-    console.log(`worst case 256x1024 vs 4096: ${ms}ms`);
-    expect(ms).toBeLessThan(30_000);
-  }, 60_000);
+    console.log(`worst case: 4096-char path ${long}ms; 1000 x 60-char paths ${many}ms`);
+    expect(long).toBeLessThan(1500);
+    expect(many).toBeLessThan(5000);
+  }, 30_000);
 });
 
 describe('config match shape', () => {
