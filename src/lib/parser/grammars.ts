@@ -18,6 +18,7 @@ import { createRequire } from 'module';
 import { Logger, LogLevel } from '../logger';
 import { isMachineFormat } from '../output-format';
 import { NotFoundError, UsageError } from '../error/types';
+import { terminalSafe } from '../terminal-safe';
 
 export interface LanguagePack {
   /** Canonical language name (what `xray lang add <name>` takes). */
@@ -214,7 +215,7 @@ function candidates(mod: string): Array<{ source: GrammarSource; load: (spec?: s
       load: (spec = mod) => {
         const from = path.join(process.cwd(), 'noop.js');
         const resolved = createRequire(from).resolve(spec);
-        if (spec === mod) Logger.warn(`loading grammar from project path ${resolved} (XRAY_ALLOW_PROJECT_GRAMMARS=1)`);
+        if (spec === mod) Logger.warn(`loading grammar from project path ${terminalSafe(resolved)} (XRAY_ALLOW_PROJECT_GRAMMARS=1)`);
         return createRequire(from)(spec);
       },
     });

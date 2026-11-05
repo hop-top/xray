@@ -8,6 +8,7 @@ import type { QueryResult, SerializedGraph } from '../lib/query/types';
 import { editorLine } from '../lib/query/impact';
 import { QueryCommandOptions } from '../types/command-options';
 import { Logger } from '../lib/logger';
+import { terminalSafe } from '../lib/terminal-safe';
 import { NotFoundError, UsageError } from '../lib/error/types';
 import {
   adaptFormatter, addOutputFlags, assertFormat, colsRequested, columns, emit, formatterOf,
@@ -148,7 +149,7 @@ function listAdapters(): string {
  * line 0 is a real line, only null/undefined is absent.
  */
 function nodeLocation(node: { file?: string; line?: number }): string {
-  return node.file && node.line != null ? ' (' + node.file + ':L' + editorLine(node.line) + ')' : '';
+  return node.file && node.line != null ? ' (' + terminalSafe(node.file) + ':L' + editorLine(node.line) + ')' : '';
 }
 
 /** Render the call tree for a query result. */
@@ -178,7 +179,7 @@ export function formatTree(result: QueryResult, s: Styles = styles()): string {
   if (result.edges.length === 0) {
     for (const node of result.nodes) {
       const location = nodeLocation(node);
-      output += node.name + s.muted(location) + '\n';
+      output += terminalSafe(node.name) + s.muted(location) + '\n';
     }
     return output;
   }
@@ -211,7 +212,7 @@ export function formatTree(result: QueryResult, s: Styles = styles()): string {
     // No clear roots, just print all nodes as a flat tree
     for (const node of result.nodes) {
       const location = nodeLocation(node);
-      output += node.name + s.muted(location) + '\n';
+      output += terminalSafe(node.name) + s.muted(location) + '\n';
     }
   }
 
@@ -231,7 +232,7 @@ function printNode(
 
   const connector = isLast ? '└─→ ' : '├─→ ';
   const location = nodeLocation(node);
-  print(prefix + connector + node.name + s.muted(location) + (node.note ? ` (${node.note})` : ''));
+  print(prefix + connector + terminalSafe(String(node.name)) + s.muted(location) + (node.note ? ` (${node.note})` : ''));
 
   const children = childrenMap.get(nodeId) || [];
   const newPrefix = prefix + (isLast ? '    ' : '│   ');

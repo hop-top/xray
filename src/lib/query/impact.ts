@@ -21,6 +21,7 @@ import type { Confidence } from '../../types/graph';
 import type { Styles } from '../tui';
 import type { QueryResult } from './types';
 import { findNodes } from './match';
+import { terminalSafe } from '../terminal-safe';
 
 export const DEFAULT_IMPACT_DEPTH = 3;
 
@@ -228,15 +229,19 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
  */
 export const editorLine = (line: number | undefined) => (line == null ? undefined : line + 1);
 
+/** Text escaper: terminal-safe for `text`, identity for `brief` (hook scripts strip control sequences themselves). */
+type Esc = (s: string) => string;
+const RAW: Esc = (s) => s;
+
 /** `file:Lline` (editor line), the form callers and the tree use. */
-function locationOf(file: string, line: number | undefined): string {
+function locationOf(file: string, line: number | undefined, esc: Esc = terminalSafe): string {
   const l = editorLine(line);
-  return l != null ? `${file}:L${l}` : file;
+  return esc(l != null ? `${file}:L${l}` : file);
 }
 
-function definedAt(s: ImpactSymbol): string {
-  const loc = s.file ? locationOf(s.file, s.line) : '';
-  return [s.kind, loc].filter(Boolean).join(', ');
+function definedAt(s: ImpactSymbol, esc: Esc = terminalSafe): string {
+  const loc = s.file ? locationOf(s.file, s.line, esc) : '';
+  return [esc(String(s.kind ?? '')), loc].filter(Boolean).join(', ');
 }
 
 /**
@@ -247,20 +252,21 @@ const confidenceNote = (c: Confidence): string | undefined =>
   c === 'EXTRACTED' ? undefined : c.toLowerCase();
 
 /** `fn (file:Ldef)`: callers are reported with their definition line. */
-function callerRef(n: ImpactNode): string {
-  const ref = n.file ? `${n.name} (${locationOf(n.file, n.line)})` : n.name;
+function callerRef(n: ImpactNode, esc: Esc = terminalSafe): string {
+  const name = esc(n.name);
+  const ref = n.file ? `${name} (${locationOf(n.file, n.line, esc)})` : name;
   const note = confidenceNote(n.confidence);
   return note ? `${ref} (${note})` : ref;
 }
 
 /** `<symbol> (<where>) — N callers across M groups`: first line of text and brief. */
-function headerLine(r: ImpactResult, s: Styles | undefined): string {
+function headerLine(r: ImpactResult, s: Styles | undefined, esc: Esc = terminalSafe): string {
   const { matches, query } = r.symbol;
   const bold = (t: string) => (s ? s.bold(t) : t);
   const head =
     matches.length === 1
-      ? `${bold(matches[0].name)}${definedAt(matches[0]) ? ' (' + definedAt(matches[0]) + ')' : ''}`
-      : `${bold(query)} (${matches.length} definitions)`;
+      ? `${bold(esc(matches[0].name))}${definedAt(matches[0], esc) ? ' (' + definedAt(matches[0], esc) + ')' : ''}`
+      : `${bold(esc(query))} (${matches.length} definitions)`;
   const tail = r.counts.callers === 0
     ? plural(0, 'caller', 'callers')
     : `${plural(r.counts.callers, 'caller', 'callers')} across ${plural(r.counts.groups, 'group', 'groups')}`;
@@ -278,13 +284,13 @@ function edgesLine(r: ImpactResult): string {
 export function renderImpactText(r: ImpactResult, put: (line?: string) => void, s: Styles): void {
   const { matches, query } = r.symbol;
   if (matches.length === 0) {
-    put(`${s.bold(query)}: no matching symbol in the graph`);
+    put(`${s.bold(terminalSafe(query))}: no matching symbol in the graph`);
     return;
   }
 
   put(headerLine(r, s));
   if (matches.length > 1) {
-    const shown = matches.slice(0, LISTED_PER_GROUP).map(definedAt).join('; ');
+    const shown = matches.slice(0, LISTED_PER_GROUP).map((m) => definedAt(m)).join('; ');
     const more = matches.length > LISTED_PER_GROUP ? `; …and ${matches.length - LISTED_PER_GROUP} more` : '';
     put(s.muted(`  defined: ${shown}${more}`));
   }
@@ -297,8 +303,8 @@ export function renderImpactText(r: ImpactResult, put: (line?: string) => void, 
     const groupOrder = r.groups.map(g => g.name).filter(g => atDepth.some(n => n.group === g));
     for (const g of groupOrder) {
       const members = atDepth.filter(n => n.group === g);
-      const listed = members.slice(0, LISTED_PER_GROUP).map(callerRef).join(', ');
-      put(`${indent}${s.accent(g)}: ${plural(members.length, 'caller', 'callers')} — ${listed}`);
+      const listed = members.slice(0, LISTED_PER_GROUP).map((n) => callerRef(n)).join(', ');
+      put(`${indent}${s.accent(terminalSafe(g))}: ${plural(members.length, 'caller', 'callers')} — ${listed}`);
       if (members.length > LISTED_PER_GROUP) {
         put(s.muted(`${indent}  …and ${members.length - LISTED_PER_GROUP} more`));
       }
@@ -325,10 +331,10 @@ const BRIEF_PER_GROUP = 3;
 export function renderImpactBrief(r: ImpactResult): string {
   if (r.symbol.matches.length === 0 || r.counts.callers === 0) return '';
 
-  const lines = [headerLine(r, undefined)];
+  const lines = [headerLine(r, undefined, RAW)];
   for (const g of r.groups) {
     const members = r.nodes.filter(n => n.group === g.name);
-    const listed = members.slice(0, BRIEF_PER_GROUP).map(callerRef);
+    const listed = members.slice(0, BRIEF_PER_GROUP).map((n) => callerRef(n, RAW));
     if (members.length > BRIEF_PER_GROUP) listed.push(`…and ${members.length - BRIEF_PER_GROUP} more`);
     lines.push(`  ${g.name}: ${plural(members.length, 'caller', 'callers')} — ${listed.join(', ')}`);
   }

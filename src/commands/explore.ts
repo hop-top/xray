@@ -3,6 +3,7 @@ import * as path from 'path';
 import { Logger } from '../lib/logger';
 import { NotFoundError } from '../lib/error/types';
 import { FileScanner } from '../lib/scanner';
+import { terminalSafe } from '../lib/terminal-safe';
 import { assertPatternLengths, compileMatchers } from '../lib/path-match';
 import { resolvePath } from './common';
 import { UsageError } from '../lib/error/types';
@@ -31,14 +32,14 @@ function groupBy<T>(rows: readonly T[], key: (r: T) => string): Map<string, T[]>
 }
 
 const matchText = textFormatter<MatchRow[]>('text', (rows, put) => {
-  rows.forEach((r) => put(`  ${r.path}`));
+  rows.forEach((r) => put(`  ${terminalSafe(r.path)}`));
 });
 
 const searchText = textFormatter<SearchRow[]>('text', (rows, put, s) => {
   for (const [file, lines] of groupBy(rows, (r) => r.file)) {
-    put(s.accent(`${file}:`));
+    put(s.accent(`${terminalSafe(file)}:`));
     lines.slice(0, 5).forEach(({ line, content, keyword }) => {
-      put(`  ${s.muted(`${line}:`)} ${s.warn(`[${keyword}]`)} ${content}`);
+      put(`  ${s.muted(`${line}:`)} ${s.warn(`[${terminalSafe(keyword)}]`)} ${terminalSafe(content)}`);
     });
     if (lines.length > 5) {
       put(s.muted(`  ... and ${lines.length - 5} more matches`));
@@ -53,13 +54,13 @@ const statsText = textFormatter<StatsRow[]>('text', (rows, put, s) => {
   put(`  ${s.bold('Total Files:')} ${totalFiles}`);
   put(`  ${s.bold('Total Lines:')} ${totalLines.toLocaleString()}\n`);
   put(`  ${s.bold('Files by Type:')}`);
-  rows.forEach((r) => put(`    ${r.type.padEnd(10)} ${r.files}`));
+  rows.forEach((r) => put(`    ${terminalSafe(r.type).padEnd(10)} ${r.files}`));
 });
 
 const listText = textFormatter<ListRow[]>('text', (rows, put, s) => {
   for (const [ext, group] of groupBy(rows, (r) => r.type)) {
-    put(s.accent(`${ext} (${group.length}):`));
-    group.slice(0, 10).forEach((r) => put(`  ${r.path}`));
+    put(s.accent(`${terminalSafe(ext)} (${group.length}):`));
+    group.slice(0, 10).forEach((r) => put(`  ${terminalSafe(r.path)}`));
     if (group.length > 10) {
       put(s.muted(`  ... and ${group.length - 10} more`));
     }
@@ -129,7 +130,7 @@ export const handleExploreAction = async (
     // Validate all paths exist
     for (const p of paths) {
       if (!fs.existsSync(p)) {
-        throw new NotFoundError(`Path does not exist: ${p}`);
+        throw new NotFoundError(`Path does not exist: ${terminalSafe(p)}`);
       }
     }
 
@@ -140,7 +141,7 @@ export const handleExploreAction = async (
       // scanner would have listed it: never `.git`, ignored or unsupported files.
       if (fs.statSync(p).isFile()) {
         const why = FileScanner.skipReason(p);
-        if (why) Logger.warn(`skipped ${p}: it ${why}; explore only reads files the scanner lists`);
+        if (why) Logger.warn(`skipped ${terminalSafe(p)}: it ${why}; explore only reads files the scanner lists`);
         else scanned.push({ abs: p, rel: path.basename(p) });
         continue;
       }
@@ -198,7 +199,7 @@ export const handleExploreAction = async (
       }
 
       if (rows.length === 0) {
-        Logger.warn(`No matches found for keyword(s): ${keywords.join(', ')}`);
+        Logger.warn(`No matches found for keyword(s): ${keywords.map(terminalSafe).join(', ')}`);
       } else {
         Logger.success(`Found matches in ${fileSet.size} file(s):\n`);
       }

@@ -12,6 +12,7 @@ import {
 import { FileReadError } from '../error/types';
 import { Logger, LogLevel } from '../logger';
 import { isGrammarAvailable } from '../parser/grammars';
+import { terminalSafe } from '../terminal-safe';
 
 const warnedStrategies = new Set<string>();
 const warnedProjectCode = new Set<string>();
@@ -581,7 +582,7 @@ export class StrategyLoader {
       if (!this.allowProjectCode) return false;
       if (!warnedProjectCode.has(entry)) {
         warnedProjectCode.add(entry);
-        Logger.warn(`loading strategy code from project path ${entry} (${PROJECT_STRATEGIES_ENV}=1)`);
+        Logger.warn(`loading strategy code from project path ${terminalSafe(entry)} (${PROJECT_STRATEGIES_ENV}=1)`);
       }
       return true;
     };
@@ -614,7 +615,7 @@ export class StrategyLoader {
                 }
               } catch (err: any) {
                 // Log warning but continue - individual strategy failures shouldn't block discovery
-                Logger.warn(`Failed to load strategy from ${pkgPath}: ${err.message}`);
+                Logger.warn(`Failed to load strategy from ${terminalSafe(pkgPath)}: ${err.message}`);
               }
             }
           }

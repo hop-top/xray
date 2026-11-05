@@ -1,4 +1,5 @@
 // src/commands/registration/strategies.ts
+import { terminalSafe, terminalSafeBlock } from '../../lib/terminal-safe';
 import { Command } from 'commander';
 import { CodeLoadingOptions, StrategyLoader, reportSkippedProjectCode } from '../../lib/strategy/loader';
 import { StrategyContextImpl } from '../../lib/strategy/context';
@@ -236,7 +237,7 @@ const DOT_FORMATTER = textFormatter<unknown>('dot', (result, put) => {
   if (!doc || doc.format !== 'dot' || typeof doc.content !== 'string') {
     throw new Error('format "dot" is only supported by graph commands');
   }
-  put(doc.content);
+  put(terminalSafeBlock(doc.content));
 });
 
 /**
@@ -474,6 +475,7 @@ function renderStrategyResult(
 ): void {
   const title = formatTitle(strategyName, cmdName);
 
+  // Everything below can come from repo files (headings, targets, paths).
   if (Array.isArray(result)) {
     put(`\n${title}:\n`);
 
@@ -483,26 +485,26 @@ function renderStrategyResult(
       result.forEach((item: any) => {
         if (typeof item === 'object') {
           const name = item.name || item.title || item.id || JSON.stringify(item);
-          put(`  ${name}`);
+          put(`  ${terminalSafe(String(name))}`);
 
           if (item.file) {
-            put(`    → ${item.file}${item.line ? `:${item.line}` : ''}`);
+            put(`    → ${terminalSafe(String(item.file))}${item.line ? `:${terminalSafe(String(item.line))}` : ''}`);
           }
 
           if (item.description) {
-            put(`    ${item.description}`);
+            put(`    ${terminalSafe(String(item.description))}`);
           }
         } else {
-          put(`  ${item}`);
+          put(`  ${terminalSafe(String(item))}`);
         }
       });
     }
 
     put(`\nTotal: ${result.length}\n`);
   } else if (typeof result === 'object' && result !== null) {
-    put(JSON.stringify(result, null, 2));
+    put(terminalSafeBlock(JSON.stringify(result, null, 2)));
   } else if (result !== undefined && result !== null) {
-    put(String(result));
+    put(terminalSafeBlock(String(result)));
   }
 }
 

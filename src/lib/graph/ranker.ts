@@ -1,6 +1,7 @@
 import * as pagerank from 'graphology-metrics/centrality';
 import { Logger } from '../logger';
 import { XrayGraph, NodeAttributes, RankedNode } from '../../types/graph';
+import { terminalSafe } from '../terminal-safe';
 
 export class Ranker {
   private graph: XrayGraph;
@@ -56,7 +57,7 @@ export class Ranker {
     const sorted = ranked.sort((a, b) => b.rank - a.rank);
 
     Logger.info('Top 5 ranked nodes:');
-    sorted.slice(0, 5).forEach(n => Logger.log(`  ${n.id}: ${n.rank.toFixed(4)}`));
+    sorted.slice(0, 5).forEach(n => Logger.log(`  ${terminalSafe(n.id)}: ${n.rank.toFixed(4)}`));
 
     return sorted;
   }

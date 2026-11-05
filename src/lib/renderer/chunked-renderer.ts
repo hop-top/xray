@@ -1,4 +1,5 @@
 import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../types/graph';
+import { terminalSafe, terminalSafeBlock } from '../terminal-safe';
 import { CLUSTER_SENTINEL } from '../graph/cluster';
 import { Logger } from '../logger';
 import type { Insight } from './insight';
@@ -110,9 +111,9 @@ export class ChunkedRenderer {
     if (this.insights.length === 0) return '';
     const lines: string[] = [];
     for (const ins of this.insights) {
-      lines.push(`## ${ins.title}`);
+      lines.push(`## ${terminalSafe(ins.title)}`);
       lines.push('');
-      lines.push(ins.body);
+      lines.push(terminalSafeBlock(ins.body));
       lines.push('');
     }
     return lines.join('\n');
@@ -400,7 +401,7 @@ export class ChunkedRenderer {
     }
 
     return {
-      content: outputLines.join('\n'),
+      content: outputLines.map(terminalSafe).join('\n'),
       tokenCount: currentTokens,
     };
   }
@@ -424,7 +425,7 @@ export class ChunkedRenderer {
 
     if (parent) {
       const parentPath = path.basename(this.getChunkPath(outputBasePath, parent));
-      lines.push(`⬆️ **Parent:** [${parent}](${parentPath})`);
+      lines.push(`⬆️ **Parent:** [${terminalSafe(parent)}](${terminalSafe(parentPath)})`);
       lines.push('');
     }
 
@@ -432,7 +433,7 @@ export class ChunkedRenderer {
       lines.push(`⬇️ **Children:**`);
       for (const child of children) {
         const childPath = path.basename(this.getChunkPath(outputBasePath, child));
-        lines.push(`  - [${child}](${childPath})`);
+        lines.push(`  - [${terminalSafe(child)}](${terminalSafe(childPath)})`);
       }
       lines.push('');
     }
@@ -629,7 +630,7 @@ export class ChunkedRenderer {
       );
     }
 
-    return { content: outputLines.join('\n'), tokenCount: currentTokens };
+    return { content: outputLines.map(terminalSafe).join('\n'), tokenCount: currentTokens };
   }
 
   /**
@@ -648,13 +649,13 @@ export class ChunkedRenderer {
     for (const cid of communityOrder) {
       const members = byCommunity.get(cid) ?? [];
       const label = cid === CLUSTER_SENTINEL ? 'Unclustered' : `Community ${cid}`;
-      lines.push(`## ${label} — ${members.length} nodes`);
+      lines.push(`## ${terminalSafe(String(label))} — ${members.length} nodes`);
       const topNodes = members
         .slice()
         .sort((a, b) => b.rank - a.rank)
         .slice(0, 5);
       for (const n of topNodes) {
-        lines.push(`- ${n.id}`);
+        lines.push(`- ${terminalSafe(n.id)}`);
       }
       lines.push('');
     }

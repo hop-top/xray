@@ -15,6 +15,7 @@ import type * as KitCompletion from '@hop-top/kit/dist/completion';
 import type * as KitValues from '@hop-top/kit/dist/completion-values';
 import { UsageError, FileWriteError } from './error/types';
 import { styles, type Styles } from './tui';
+import { terminalSafe } from './terminal-safe';
 
 export type ColumnSpec = KitOutput.ColumnSpec;
 export type Formatter<T = unknown> = KitOutput.Formatter<T>;
@@ -39,8 +40,10 @@ export const OUTPUT_FLAG_NAMES = [
   'format', 'format-opt', 'format-help', 'cols', 'columns', 'template', 'output',
 ] as const;
 
+/** Table/csv cell: nested values as compact JSON; strings made terminal-safe (json/yaml never pass here). */
 function stringifyCell(v: unknown): unknown {
-  return v !== null && typeof v === 'object' ? JSON.stringify(v) : v;
+  if (typeof v === 'string') return terminalSafe(v);
+  return v !== null && typeof v === 'object' ? terminalSafe(JSON.stringify(v)) : v;
 }
 
 /**

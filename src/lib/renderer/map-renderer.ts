@@ -1,5 +1,6 @@
 import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../types/graph';
 import type { Insight } from './insight';
+import { terminalSafe, terminalSafeBlock } from '../terminal-safe';
 import { collectCrossFileCallers, formatCallerLines } from './callers';
 export type { Insight } from './insight';
 
@@ -288,8 +289,9 @@ export class MapRenderer {
       }
     }
 
-    const body = outputLines.join('\n');
-    const header = this.renderInsights();
+    // File names, labels, signatures, docs and import text come from the repo.
+    const body = outputLines.map(terminalSafe).join('\n');
+    const header = terminalSafeBlock(this.renderInsights());
     return header ? `${header}\n${body}` : body;
   }
 }

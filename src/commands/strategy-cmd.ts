@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { terminalSafe } from '../lib/terminal-safe';
 import { styles } from '../lib/tui';
 import { Command } from 'commander';
 import { declareEffect, emitPlan, previewing } from './side-effect';
@@ -20,7 +21,7 @@ interface StrategyRow { name: string; version: string; commands: string }
 
 const strategyListRegistry = outputRegistry(
   textFormatter<StrategyRow[]>('text', (rows, put, s) => {
-    rows.forEach((r) => put(s.accent(`  ${r.name}`) + ' ' + s.muted(`v${r.version}`)));
+    rows.forEach((r) => put(s.accent(`  ${terminalSafe(r.name)}`) + ' ' + s.muted(`v${terminalSafe(String(r.version))}`)));
   })
 );
 

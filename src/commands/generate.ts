@@ -35,6 +35,7 @@ import type { Xray as XrayType, ParseCoverage } from '../lib/xray';
 import { emitPlan, previewing } from './side-effect';
 import type { Effect } from './kit-cli';
 import type { Command } from 'commander';
+import { terminalSafe } from '../lib/terminal-safe';
 
 /**
  * Resolve every `--preset <spec>` flag in order and apply the
@@ -272,7 +273,7 @@ export const buildGraphForRoots = async (
         continue;
       }
       if (uniquePaths.length > 1) {
-        Logger.info(`\nProcessing path ${i + 1}/${uniquePaths.length}: ${currentPath}`);
+        Logger.info(`\nProcessing path ${i + 1}/${uniquePaths.length}: ${terminalSafe(currentPath)}`);
       }
       const progress = fileProgress({ label: 'Parsing', quiet: progressQuiet });
       const xray = new Xray({
@@ -438,7 +439,7 @@ export const runSingleXray = async (
   if (scopeName) {
     Logger.info(`Running scope: ${styles(process.stderr).bold(scopeName)}`);
   }
-  Logger.info(`Analyzing repo at: ${paths.join(', ')}`);
+  Logger.info(`Analyzing repo at: ${paths.map(terminalSafe).join(', ')}`);
 
   // Parse features from --with flags
   const features = featuresOf(mergedOptions);
@@ -505,7 +506,7 @@ export const runSingleXray = async (
     for (let i = 0; i < paths.length; i++) {
       const currentPath = paths[i];
       if (paths.length > 1) {
-        Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${currentPath}`);
+        Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${terminalSafe(currentPath)}`);
       }
 
       const progress = newProgress();
@@ -622,7 +623,7 @@ export const runSingleXray = async (
     for (let i = 0; i < paths.length; i++) {
       const currentPath = paths[i];
       if (paths.length > 1) {
-        Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${currentPath}`);
+        Logger.info(`\nProcessing path ${i + 1}/${paths.length}: ${terminalSafe(currentPath)}`);
       }
 
       const progress = newProgress();

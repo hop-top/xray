@@ -7,6 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { terminalSafe } from '../lib/terminal-safe';
 import { Command } from 'commander';
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
@@ -64,15 +65,15 @@ const PATHS_COLUMNS = columns(
 
 const pathsText = textFormatter<PathsReport | PathsReport[]>('text', (data, put) => {
   const report = Array.isArray(data) ? data[0] : data;
-  put(`project-root:    ${report.projectRoot}`);
-  put(`project-config:  ${report.projectConfig ?? '(none)'}`);
-  put(`global-config:   ${report.globalConfig ?? '(none)'}`);
-  put(`cache-db:        ${report.cacheDb}${report.cacheDbExists ? '' : ' (not yet created)'}`);
-  put(`telemetry:       ${report.telemetry}`);
-  put(`config-dir:      ${report.configDir}`);
-  put(`data-dir:        ${report.dataDir}`);
-  put(`cache-dir:       ${report.cacheDir}`);
-  put(`state-dir:       ${report.stateDir}`);
+  put(`project-root:    ${terminalSafe(String(report.projectRoot))}`);
+  put(`project-config:  ${terminalSafe(report.projectConfig ?? '(none)')}`);
+  put(`global-config:   ${terminalSafe(report.globalConfig ?? '(none)')}`);
+  put(`cache-db:        ${terminalSafe(String(report.cacheDb))}${report.cacheDbExists ? '' : ' (not yet created)'}`);
+  put(`telemetry:       ${terminalSafe(String(report.telemetry))}`);
+  put(`config-dir:      ${terminalSafe(String(report.configDir))}`);
+  put(`data-dir:        ${terminalSafe(String(report.dataDir))}`);
+  put(`cache-dir:       ${terminalSafe(String(report.cacheDir))}`);
+  put(`state-dir:       ${terminalSafe(String(report.stateDir))}`);
 });
 
 const registry = outputRegistry(pathsText);

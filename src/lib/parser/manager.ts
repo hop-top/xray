@@ -18,6 +18,7 @@ import { SwiftGraphGenerator } from './graphs/swift';
 import { PythonGraphGenerator } from './graphs/python';
 import { JavaScriptGraphGenerator } from './graphs/javascript';
 import { TypeScriptGraphGenerator } from './graphs/typescript';
+import { terminalSafe } from '../terminal-safe';
 
 // Register Generators
 graphManager.register('.c', 'internal', new CGraphGenerator());
@@ -197,7 +198,7 @@ export class ParserManager {
         }
       }
     } catch (e) {
-      Logger.warn(`Query error in ${file}: ${e}`);
+      Logger.warn(`Query error in ${terminalSafe(file)}: ${e}`);
     }
 
     return tags;
@@ -447,7 +448,7 @@ export class ParserManager {
       }
 
     } catch (e) {
-      Logger.warn(`Import query error in ${file}: ${e}`);
+      Logger.warn(`Import query error in ${terminalSafe(file)}: ${e}`);
     }
 
     return imports;

@@ -3,6 +3,7 @@ import { IMPORTS_EXTRACTOR_VERSION } from '../imports';
 import type { ImportRecord } from '../imports/types';
 import { CacheWriteError } from '../error/types';
 import { Logger } from '../logger';
+import { terminalSafe } from '../terminal-safe';
 
 // Minimal structural view of the driver handle exposed by Store.db(); keeps
 // xray free of a direct driver (and driver typings) dependency.
@@ -108,7 +109,7 @@ export class SqliteCache {
     try {
       return this.store.get<T>(key);
     } catch (err) {
-      Logger.warn(`Failed to read from cache for ${file}: ${(err as Error).message}`);
+      Logger.warn(`Failed to read from cache for ${terminalSafe(file)}: ${(err as Error).message}`);
       return null;
     }
   }
@@ -126,7 +127,7 @@ export class SqliteCache {
     }
     if (!Array.isArray(entry.tags) || !Array.isArray(entry.imports) ||
         (entry.records !== undefined && !Array.isArray(entry.records))) {
-      Logger.warn(`Corrupted cache entry for ${file}, treating as cache miss`);
+      Logger.warn(`Corrupted cache entry for ${terminalSafe(file)}, treating as cache miss`);
       return null;
     }
     return entry.records ? { tags: entry.tags, imports: entry.imports, records: entry.records } : { tags: entry.tags, imports: entry.imports };
@@ -165,7 +166,7 @@ export class SqliteCache {
       this.store.db().prepare('DELETE FROM kv WHERE key = ?').run(ANALYSIS_PREFIX + file);
     } catch (err) {
       // Clearing cache is not critical
-      Logger.warn(`Failed to clear analysis cache for ${file}: ${(err as Error).message}`);
+      Logger.warn(`Failed to clear analysis cache for ${terminalSafe(file)}: ${(err as Error).message}`);
     }
   }
 

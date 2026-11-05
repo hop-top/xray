@@ -6,6 +6,7 @@
  * off with --no-cache); never anything under the root.
  */
 import type { Command } from 'commander';
+import { terminalSafe } from '../lib/terminal-safe';
 import { extractImports, type FileImports, type ImportsDoc } from '../lib/imports';
 import { openImportsCache } from '../lib/imports/cache';
 import { collectImportFiles } from '../lib/imports/collect';
@@ -61,7 +62,7 @@ export function importRows(doc: ImportsDoc): Array<Record<string, unknown>> {
 
 function fileHeading(f: FileImports): string {
   const state = f.complete ? f.status : `${f.status}, incomplete`;
-  return `${f.path} (${f.language}, ${state})`;
+  return `${terminalSafe(f.path)} (${f.language}, ${state})`;
 }
 
 /** Human summary: per file its imports, unsupported constructs and parse errors. */
@@ -70,10 +71,10 @@ export function renderImportsText(doc: ImportsDoc, put: (line?: string) => void)
     put(fileHeading(f));
     for (const r of f.imports) {
       const target = r.normalized && r.normalized !== r.module ? ` -> ${r.normalized}` : '';
-      put(`  ${r.line}:${r.column}  ${r.kind} ${r.form}  ${r.module}${target}  [${r.locality}]`);
+      put(`  ${r.line}:${r.column}  ${r.kind} ${r.form}  ${terminalSafe(String(r.module))}${terminalSafe(target)}  [${r.locality}]`);
     }
     for (const u of f.unsupported) {
-      put(`  ${u.line}:${u.column}  unsupported ${u.construct}${u.detail ? `: ${u.detail}` : ''}`);
+      put(`  ${u.line}:${u.column}  unsupported ${terminalSafe(String(u.construct))}${u.detail ? `: ${terminalSafe(String(u.detail))}` : ''}`);
     }
     for (const e of f.parseErrors) put(`  ${e.start.line}:${e.start.column}  parse ${e.kind}`);
   }

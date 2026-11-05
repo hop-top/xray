@@ -1,3 +1,4 @@
+import { terminalSafe } from '../lib/terminal-safe';
 import { Command } from 'commander';
 import * as path from 'path';
 import { declareEffect, emitPlan, previewing } from './side-effect';
@@ -17,7 +18,7 @@ const aliasListRegistry = outputRegistry(
     if (rows.length === 0) return;
     put(s.accent('\nConfigured Aliases:\n'));
     for (const { alias, target } of rows) {
-      put(`  ${s.bold(alias)} → ${s.muted(target)}`);
+      put(`  ${s.bold(terminalSafe(alias))} → ${s.muted(terminalSafe(target))}`);
     }
     put(`\nTotal: ${rows.length} alias(es)\n`);
   })
