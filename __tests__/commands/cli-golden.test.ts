@@ -162,7 +162,9 @@ function normalize(s: string): string {
     .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g, '<TIMESTAMP>')
     .replace(/"executionTime": \d+/g, '"executionTime": <N>')
     .replace(/\b\d+(?:\.\d+)?ms\b/g, '<N>ms')
-    .replace(/<TMP>\/cwd\/\d+-x+/g, '<CWD>');
+    .replace(/<TMP>\/cwd\/\d+-x+/g, '<CWD>')
+    // Per-project storage key: a hash of the (random) sandbox cwd.
+    .replace(/\/(projects|telemetry)\/[0-9a-f]{16}\//g, '/$1/<KEY>/');
 }
 
 function golden(r: Result): string {

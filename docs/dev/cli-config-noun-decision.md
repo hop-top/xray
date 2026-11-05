@@ -15,7 +15,7 @@ shell, `xray config <verb>` asks questions **about the user's project config**.
 Separately, xray has its own runtime configuration: `.xrayrc{,.json,.js}`,
 `xray.config.{js,json}`, `package.json#xray`, and the XDG global
 (`$XDG_CONFIG_HOME/xray/config.json`). It also writes a SQLite analysis cache
-to `.xray_cache.db` in the project root.
+to the user cache dir, keyed by project root.
 
 There was previously **no** command answering "what config is xray itself
 using right now?" — a basic introspection question every CLI agent or
@@ -79,8 +79,8 @@ but is outweighed by:
 
 - `src/commands/paths.ts` — handler. Reuses `findConfigPath` and
   `findGlobalConfigPath` from `src/lib/config.ts`. Computes
-  `<project-root>/.xray_cache.db` for the cache path (matches the literal
-  used in `src/lib/xray.ts` and `src/commands/clear-cache.ts`).
+  the cache path with `projectCacheDbPath` from `src/lib/storage.ts` (the
+  same helper `src/lib/xray.ts` and `src/commands/clear-cache.ts` use).
 - `src/commands/registration/core.ts` — wires the command in via
   `registerPathsCommand(program)`.
 - Output: plain text by default (`project-root`, `project-config`,

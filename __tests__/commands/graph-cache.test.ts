@@ -1,14 +1,15 @@
 /**
  * Merged-graph cache for multi-root `impact`: keyed by the sorted absolute
  * roots (plus build options), each root fingerprinted by its scanned file
- * set (path, mtime, size). Unchanged roots are served from the cache db in
- * the cwd; a changed root alone is rebuilt. stderr reports
+ * set (path, mtime, size). Unchanged roots are served from the project's
+ * cache db (user cache dir, keyed by the cwd); a changed root alone is rebuilt. stderr reports
  * `cache: <label> hit|miss` per root.
  */
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { projectCacheDbPath } from '../../src/lib/storage';
 
 const BIN = path.resolve(__dirname, '../..', 'bin', 'xray');
 
@@ -109,8 +110,9 @@ describe('merged-graph cache (impact, multi-root)', () => {
     expect(impact('-p', 'beta').cache).toEqual([]);
   });
 
-  test('the cache lives in the cwd db, not in the roots', () => {
-    expect(fs.existsSync(path.join(work, '.xray_cache.db'))).toBe(true);
+  test('the cache lives in the user cache dir (keyed by the cwd), not in the cwd or the roots', () => {
+    expect(fs.existsSync(projectCacheDbPath(work)!)).toBe(true);
+    expect(fs.existsSync(path.join(work, '.xray_cache.db'))).toBe(false);
     expect(fs.existsSync(path.join(work, 'alpha', '.xray_cache.db'))).toBe(false);
   });
 });

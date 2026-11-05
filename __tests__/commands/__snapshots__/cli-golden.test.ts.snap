@@ -259,7 +259,7 @@ Usage: xray cache [options] [command]
 Cache management
 
 COMMANDS:
-  clear           Clear SQLite cache (.xray_cache.db)
+  clear           Clear SQLite cache for this project
 
 FLAGS:
   -h, --help      Display help
@@ -274,7 +274,7 @@ exports[`cli golden: --help xray cache clear --help 1`] = `
 --- stdout ---
 Usage: xray cache clear [options]
 
-Clear SQLite cache (.xray_cache.db)
+Clear SQLite cache for this project
 
 FLAGS:
   -h, --help  Display help
@@ -438,7 +438,7 @@ exports[`cli golden: --help xray clear-cache --help 1`] = `
 --- stdout ---
 Usage: xray clear-cache [options]
 
-[deprecated alias of \`cache clear\`] Clear SQLite cache (.xray_cache.db)
+[deprecated alias of \`cache clear\`] Clear SQLite cache for this project
 
 FLAGS:
   -h, --help  Display help
@@ -5987,7 +5987,7 @@ exports[`cli golden: introspection describe 1`] = `
         {
           "name": "clear",
           "qualifiedName": "cache.clear",
-          "description": "Clear SQLite cache (.xray_cache.db)",
+          "description": "Clear SQLite cache for this project",
           "hidden": false,
           "arguments": [],
           "options": [],
@@ -6012,7 +6012,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "clear-cache",
       "qualifiedName": "clear-cache",
-      "description": "[deprecated alias of \`cache clear\`] Clear SQLite cache (.xray_cache.db)",
+      "description": "[deprecated alias of \`cache clear\`] Clear SQLite cache for this project",
       "hidden": true,
       "arguments": [],
       "options": [],
@@ -11429,8 +11429,9 @@ exports[`cli golden: introspection paths --format json 1`] = `
   "projectRoot": "<CWD>",
   "projectConfig": null,
   "globalConfig": null,
-  "cacheDb": "<CWD>/.xray_cache.db",
+  "cacheDb": "<TMP>/home/.cache/xray/projects/<KEY>/xray_cache.db",
   "cacheDbExists": false,
+  "telemetry": "<TMP>/home/.local/state/xray/telemetry/<KEY>/telemetry.json",
   "configDir": "<TMP>/home/.config/xray",
   "dataDir": "<TMP>/home/.local/share/xray",
   "cacheDir": "<TMP>/home/.cache/xray",
@@ -11447,7 +11448,8 @@ exports[`cli golden: introspection paths --format text 1`] = `
 project-root:    <CWD>
 project-config:  (none)
 global-config:   (none)
-cache-db:        <CWD>/.xray_cache.db (not yet created)
+cache-db:        <TMP>/home/.cache/xray/projects/<KEY>/xray_cache.db (not yet created)
+telemetry:       <TMP>/home/.local/state/xray/telemetry/<KEY>/telemetry.json
 config-dir:      <TMP>/home/.config/xray
 data-dir:        <TMP>/home/.local/share/xray
 cache-dir:       <TMP>/home/.cache/xray

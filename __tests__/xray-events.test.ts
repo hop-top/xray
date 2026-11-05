@@ -32,7 +32,9 @@ describe('Xray Event Integration', () => {
 
     beforeEach(() => {
         config = {
-            path: '/test/project'
+            path: '/test/project',
+            // fs is mocked here, so the on-disk cache location can't be resolved.
+            cachePath: ':memory:'
         };
 
         // Mock file system
@@ -168,6 +170,7 @@ describe('Xray Event Integration', () => {
 
             xray = new Xray({
                 path: '/test',
+                cachePath: ':memory:',
                 onProgress
             });
 
@@ -179,6 +182,7 @@ describe('Xray Event Integration', () => {
 
             xray = new Xray({
                 path: '/test',
+                cachePath: ':memory:',
                 onProgress
             });
 
@@ -195,6 +199,7 @@ describe('Xray Event Integration', () => {
 
         it('should work without onProgress callback', () => {
             xray = new Xray({
+                cachePath: ':memory:',
                 path: '/test'
             });
 

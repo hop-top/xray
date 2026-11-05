@@ -90,14 +90,14 @@ export function registerCoreCommands(program: Command): void {
   const cache = new Command('cache').description('Cache management');
   cache
     .command('clear')
-    .description('Clear SQLite cache (.xray_cache.db)')
+    .description('Clear SQLite cache for this project')
     .action(handleClearCacheAction);
   program.addCommand(cache);
 
   // Hidden alias of `cache clear` for backwards compatibility
   program
     .command('clear-cache', { hidden: true })
-    .description('[deprecated alias of `cache clear`] Clear SQLite cache (.xray_cache.db)')
+    .description('[deprecated alias of `cache clear`] Clear SQLite cache for this project')
     .action(handleClearCacheAction);
 
   // Introspect xray's own runtime paths (config + cache locations).

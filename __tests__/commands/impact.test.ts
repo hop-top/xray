@@ -423,7 +423,7 @@ describe('xray impact (built CLI)', () => {
     expect(r.stdout).toContain('useIt (lib/use.ts:L2)');
     expect(r.stderr).toMatch(/coverage: 2 files parsed/);
     expect(r.stderr).not.toContain('Analyzing repo at');
-    const after = fs.readdirSync(repo).filter(f => !f.startsWith('.xray_cache')).sort();
+    const after = fs.readdirSync(repo).sort();
     expect(after).toEqual(before);
     expect(fs.existsSync(path.join(repo, '.xray'))).toBe(false);
   });

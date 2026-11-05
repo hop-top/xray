@@ -20,6 +20,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Xray } from '../src/lib/xray';
 import { cluster } from '../src/lib/graph/cluster';
+import { openCacheDbPath } from '../src/lib/storage';
 
 const RNG_SEED = 0x5eed_c001;
 
@@ -57,7 +58,7 @@ async function main() {
   const xray = new Xray({
     path: repoPath,
     chunked: false,
-    cachePath: path.join(cwd, '.xray_cache.db'),
+    cachePath: openCacheDbPath(cwd),
   });
 
   const { graph } = await xray.buildGraph();

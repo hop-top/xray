@@ -160,7 +160,7 @@ xray react components -p /full/path/to/project
 ```bash
 xray clear-cache
 ```
-3. Check `.xray_cache.db` file size - delete if too large (it will regenerate)
+3. Check the cache file size (`cache-db` in `xray paths`) - delete if too large (it will regenerate)
 
 ### Outdated Strategy Results
 

@@ -259,7 +259,7 @@ describe('xray mcp over stdio', () => {
     expect(r.result.isError).toBe(false);
     expect(text(r)).toContain('alpha');
     expect(fs.existsSync(path.join(repo, '.xray.txt'))).toBe(false);
-    expect(fs.readdirSync(repo).filter((f) => f.startsWith('.xray') && f !== '.xray' && f !== '.xray_cache.db')).toEqual([]);
+    expect(fs.readdirSync(repo).filter((f) => f.startsWith('.xray') && f !== '.xray')).toEqual([]);
   }, 120_000);
 
   it('maps command failures to isError results with stderr', async () => {

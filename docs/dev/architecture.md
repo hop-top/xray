@@ -172,7 +172,7 @@ SQLite-based caching for parsed ASTs and analysis results.
 - `src/lib/cache/sqlite-cache.ts` - Cache implementation
 
 **Cache Location:**
-- `.xray_cache.db` in project root (SQLite database)
+- `<cache-dir>/projects/<project-key>/xray_cache.db` in the user cache dir (SQLite database; key from `src/lib/storage.ts`, never in the project)
 
 **Cache Keys:**
 - File path + modification time

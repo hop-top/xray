@@ -78,8 +78,7 @@ xray/
 ├── docs/                 # Documentation
 │   ├── user/             # User documentation
 │   └── dev/              # Developer documentation
-├── hooks/                # Git hooks
-└── .xray_cache.db        # SQLite cache (generated at runtime)
+└── hooks/                # Git hooks
 ```
 
 ## Development Workflow

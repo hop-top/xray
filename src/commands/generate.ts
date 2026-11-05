@@ -29,6 +29,7 @@ import { applyStashedInsights } from '../lib/renderer/insight';
 import { buildShareSummary, resolveShareOutputPath } from '../lib/share-summary';
 import { CommonAnalysisOptions } from '../types/command-options';
 import { applyPreset, resolvePreset } from '../lib/plugins/presets';
+import { openCacheDbPath } from '../lib/storage';
 import type { Xray as XrayType, ParseCoverage } from '../lib/xray';
 
 /**
@@ -225,7 +226,7 @@ export const cacheLine = (cache: NonNullable<BuiltGraph['cache']>): string =>
  * merged. Roots must already be validated (`validateRunRoots`).
  * `quiet` drops per-root progress and info logs (warnings still show).
  * `cache` (multi-root, no presets) serves unchanged roots and the merged
- * graph from the cache db in the cwd; `shareInputs` then omits cached roots.
+ * graph from the project's cache db; `shareInputs` then omits cached roots.
  */
 export const buildGraphForRoots = async (
   mergedOptions: any,
@@ -237,7 +238,7 @@ export const buildGraphForRoots = async (
   const useCache = Boolean(opts.cache) && uniquePaths.length > 1 &&
     !(Array.isArray(mergedOptions.preset) && mergedOptions.preset.length > 0);
   const graphCache = useCache
-    ? new GraphCache(path.join(cwd, '.xray_cache.db'), optionsDigest(graphOptionsOf(mergedOptions)))
+    ? new GraphCache(openCacheDbPath(cwd), optionsDigest(graphOptionsOf(mergedOptions)))
     : null;
   const fingerprints = graphCache ? uniquePaths.map(rootFingerprint) : [];
   const hits: boolean[] = [];

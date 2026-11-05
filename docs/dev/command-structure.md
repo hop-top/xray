@@ -177,7 +177,7 @@ xray cache clear    # Clear the AST cache (`xray clear-cache` is a hidden legacy
 ```
 
 **Cache Details:**
-- Location: `.xray_cache.db` (SQLite)
+- Location: `<cache-dir>/projects/<project-key>/xray_cache.db` (SQLite; user cache dir, keyed by project root)
 - Stores: AST trees (project root, kit sqlstore)
 - Strategy detection results are cached separately as JSON in the user cache dir (`cache-dir` in `xray paths`), keyed by project root
 - Auto-invalidated on file changes

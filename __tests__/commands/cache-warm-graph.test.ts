@@ -1,11 +1,12 @@
 /**
- * A warm parse cache (.xray_cache.db from a previous run in the same cwd) must
+ * A warm parse cache (the project's cache db from a previous run in the same cwd) must
  * yield exactly the graph a cold run yields: same nodes, same edges.
  */
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { projectCacheDbPath } from '../../src/lib/storage';
 
 const BIN = path.resolve(__dirname, '../..', 'bin', 'xray');
 
@@ -47,7 +48,7 @@ describe('warm cache == cold cache', () => {
   });
   beforeEach(() => {
     outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-warm-out-'));
-    fs.rmSync(path.join(work, '.xray_cache.db'), { force: true });
+    fs.rmSync(projectCacheDbPath(work)!, { force: true });
   });
   afterEach(() => fs.rmSync(outDir, { recursive: true, force: true }));
   afterAll(() => fs.rmSync(work, { recursive: true, force: true }));
@@ -55,7 +56,8 @@ describe('warm cache == cold cache', () => {
   test('second run with a warm cache reproduces the cold graph', () => {
     const cold = map(path.join(outDir, 'cold.json'), 'proj');
     expect(cold.edges.filter((e: string) => e.startsWith('imports|'))).toHaveLength(3);
-    expect(fs.existsSync(path.join(work, '.xray_cache.db'))).toBe(true);
+    expect(fs.existsSync(projectCacheDbPath(work)!)).toBe(true);
+    expect(fs.existsSync(path.join(work, '.xray_cache.db'))).toBe(false);
     const warm = map(path.join(outDir, 'warm.json'), 'proj');
     expect(warm.nodes).toEqual(cold.nodes);
     expect(warm.edges).toEqual(cold.edges);

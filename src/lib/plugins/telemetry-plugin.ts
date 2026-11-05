@@ -6,6 +6,7 @@ import { AsyncEventEmitter } from '../events/async-emitter';
 import { XrayEvents } from '../events/types';
 import { Logger } from '../logger';
 import { telemetryOffReason } from '../telemetry-policy';
+import { projectTelemetryPath, ensurePrivateDir, ensurePrivateFile } from '../storage';
 
 export interface TelemetryConfig {
   enabled?: boolean;
@@ -76,15 +77,16 @@ export class TelemetryPlugin implements XrayPlugin {
       return;
     }
 
-    try {
-      // Setup telemetry directory
-      const xrayDir = path.join(projectRoot, '.xray');
-      fs.mkdirSync(xrayDir, { recursive: true });
-      this.telemetryPath = path.join(xrayDir, 'telemetry.json');
-    } catch (error) {
-      Logger.debug('Failed to initialize telemetry', error);
+    // The sink lives in the user state dir, keyed by project root: never in
+    // the project. The dir is created on first flush, so a run that records
+    // nothing creates nothing.
+    const sink = projectTelemetryPath(projectRoot);
+    if (!sink) {
+      Logger.debug('Telemetry off: no usable state directory');
       this.enabled = false;
+      return;
     }
+    this.telemetryPath = sink;
   }
 
   private isEnabled(config: TelemetryConfig): boolean {
@@ -300,6 +302,13 @@ export class TelemetryPlugin implements XrayPlugin {
 
     try {
       const lines = this.events.map(event => JSON.stringify(event)).join('\n') + '\n';
+      // The sink holds usage detail: private dir (0700) and file (0600), or
+      // nothing is written.
+      if (!ensurePrivateDir(path.dirname(this.telemetryPath)) || !ensurePrivateFile(this.telemetryPath)) {
+        Logger.debug('Telemetry not written: state directory cannot be made private');
+        this.events = [];
+        return;
+      }
       fs.appendFileSync(this.telemetryPath, lines, 'utf-8');
       this.events = [];
     } catch (error) {

@@ -754,7 +754,7 @@ xray go-cli flags >> CLI.md
 1. First run is slower (AST parsing + detection). Subsequent runs use cache.
 2. Clear stale cache if you've made many changes: `xray clear-cache`
 3. Reduce project size by excluding `node_modules`, `dist`, etc. (automatically excluded)
-4. Check `.xray_cache.db` file size - delete if too large (it will regenerate)
+4. Check the cache file size (`cache-db` in `xray paths`) - delete if too large (it will regenerate)
 
 ### Outdated results
 

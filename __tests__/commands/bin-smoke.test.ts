@@ -17,11 +17,47 @@ const ROOT = path.resolve(__dirname, '../..');
 const BIN = path.join(ROOT, 'bin', 'xray');
 const DIST_ENTRY = path.join(ROOT, 'dist', 'index.js');
 
+// Every spawn runs `--offline` (the startup upgrade check would otherwise
+// reach the GitHub API) and with its dirs redirected, so nothing lands in the
+// developer's real cache, state, config or temp dirs.
+let sandbox: string;
+let netLog: string;
+let netGuardFile: string;
+
+// Preload for every spawn: logs any attempt to resolve or connect to a host.
+const NET_GUARD = `
+const fs = require('fs'), net = require('net'), dns = require('dns');
+const log = (what) => fs.appendFileSync(process.env.XRAY_TEST_NET_LOG, what + '\\n');
+const connect = net.Socket.prototype.connect;
+net.Socket.prototype.connect = function (...a) {
+  const o = a[0];
+  if (!(o && typeof o === 'object' && o.path) && typeof o !== 'string') log('connect ' + JSON.stringify(o));
+  return connect.apply(this, a);
+};
+const lookup = dns.lookup;
+dns.lookup = function (host, ...a) { log('lookup ' + host); return lookup.call(this, host, ...a); };
+`;
+
+function isolatedEnv(base: string): NodeJS.ProcessEnv {
+  fs.mkdirSync(path.join(base, 'tmp'), { recursive: true });
+  return {
+    ...process.env,
+    XRAY_NO_TELEMETRY: '1',
+    HOME: base,
+    TMPDIR: path.join(base, 'tmp'),
+    XRAY_TEST_NET_LOG: netLog,
+    XDG_CACHE_HOME: path.join(base, 'cache'),
+    XDG_STATE_HOME: path.join(base, 'state'),
+    XDG_CONFIG_HOME: path.join(base, 'config'),
+    XDG_DATA_HOME: path.join(base, 'data'),
+  };
+}
+
 function run(args: string[], cwd: string) {
-  return spawnSync(process.execPath, [BIN, ...args], {
+  return spawnSync(process.execPath, ['-r', netGuardFile, BIN, '--offline', ...args], {
     cwd,
     encoding: 'utf-8',
-    env: { ...process.env, XRAY_NO_TELEMETRY: '1' },
+    env: isolatedEnv(sandbox),
     timeout: 90_000,
   });
 }
@@ -36,6 +72,10 @@ describe('bin/xray smoke', () => {
       if (r.status !== 0) throw new Error(`tsc failed:\n${r.stdout}${r.stderr}`);
     }
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-smoke-'));
+    sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-smoke-env-'));
+    netLog = path.join(sandbox, 'net.log');
+    netGuardFile = path.join(sandbox, 'net-guard.js');
+    fs.writeFileSync(netGuardFile, NET_GUARD);
     fs.writeFileSync(
       path.join(tmp, 'a.ts'),
       'export function hello() { return 1 }\nexport class A { m() { return hello() } }\n'
@@ -45,6 +85,7 @@ describe('bin/xray smoke', () => {
 
   afterAll(() => {
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
+    if (sandbox) fs.rmSync(sandbox, { recursive: true, force: true });
   });
 
   it('--version prints the package version', () => {
@@ -76,16 +117,10 @@ describe('bin/xray smoke', () => {
     try {
       fs.writeFileSync(path.join(cwd, 'a.ts'), 'export const a = 1;\n');
       for (const args of [['describe'], ['--help'], ['describe', '--help']]) {
-        const r = spawnSync(process.execPath, [BIN, ...args], {
+        const r = spawnSync(process.execPath, ['-r', netGuardFile, BIN, '--offline', ...args], {
           cwd,
           encoding: 'utf-8',
-          env: {
-            ...process.env,
-            XDG_CACHE_HOME: xdg,
-            XDG_CONFIG_HOME: xdg,
-            XDG_DATA_HOME: xdg,
-            HOME: xdg,
-          },
+          env: isolatedEnv(xdg),
           timeout: 90_000,
         });
         expect(r.status).toBe(0);
@@ -96,4 +131,8 @@ describe('bin/xray smoke', () => {
       fs.rmSync(xdg, { recursive: true, force: true });
     }
   }, 120_000);
+
+  it('no run in this file reached the network (the startup upgrade check is off)', () => {
+    expect(fs.existsSync(netLog) ? fs.readFileSync(netLog, 'utf-8') : '').toBe('');
+  });
 });

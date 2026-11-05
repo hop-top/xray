@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { Strategy } from '../../lib/strategy/types';
 import { Logger } from '../../lib/logger';
+import { projectKey } from '../../lib/storage';
 
 // require(): tsconfig moduleResolution 'node' ignores the kit exports map.
 const { cacheDir: xdgCacheDir } = require('@hop-top/kit/xdg') as {
@@ -34,12 +35,7 @@ export class StrategyCacheManager {
    * the project: read-only commands must not write into the cwd.
    */
   constructor(projectRoot: string = process.cwd()) {
-    const key = crypto
-      .createHash('sha256')
-      .update(path.resolve(projectRoot))
-      .digest('hex')
-      .slice(0, 16);
-    this.cacheDir = path.join(xdgCacheDir('xray'), 'strategies', key);
+    this.cacheDir = path.join(xdgCacheDir('xray'), 'strategies', projectKey(projectRoot));
     this.cacheFile = path.join(this.cacheDir, 'strategy-cache.json');
   }
 

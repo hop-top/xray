@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { projectCacheDbPath } from '../src/lib/storage';
 
 const CLI_PATH = path.join(__dirname, '../bin/cli.js');
 
@@ -23,7 +24,8 @@ describe('CLI E2E - Complete Command Coverage', () => {
             const root = path.join(os.tmpdir(), 'xray-cli-complete-manual-cache');
             if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
 
-            const cachePath = path.join(root, '.xray_cache.db');
+            const cachePath = projectCacheDbPath(root)!;
+            fs.mkdirSync(path.dirname(cachePath), { recursive: true });
 
             // Create a fake cache file
             fs.writeFileSync(cachePath, 'fake cache content');
@@ -62,7 +64,8 @@ describe('CLI E2E - Complete Command Coverage', () => {
             const root = path.join(__dirname, 'manual-cache-alias');
             if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
 
-            const cachePath = path.join(root, '.xray_cache.db');
+            const cachePath = projectCacheDbPath(root)!;
+            fs.mkdirSync(path.dirname(cachePath), { recursive: true });
             fs.writeFileSync(cachePath, 'fake cache content');
             expect(fs.existsSync(cachePath)).toBe(true);
 

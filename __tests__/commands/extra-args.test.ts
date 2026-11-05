@@ -10,6 +10,7 @@ import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { projectKey } from '../../src/lib/storage';
 
 const BIN = path.join(__dirname, '..', '..', 'bin', 'xray');
 
@@ -96,7 +97,8 @@ describe('surplus positionals are a usage error', () => {
   });
 
   it('cache clear zzz removes nothing', () => {
-    const db = path.join(repo, '.xray_cache.db');
+    const db = path.join(tmp, 'home', 'k', 'xray', 'projects', projectKey(repo), 'xray_cache.db');
+    fs.mkdirSync(path.dirname(db), { recursive: true });
     fs.writeFileSync(db, 'cache');
     expect(run(['cache', 'clear', 'zzz']).status).toBe(2);
     expect(fs.existsSync(db)).toBe(true);

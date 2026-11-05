@@ -431,7 +431,7 @@ miss and is recomputed. Output with and without the cache is
 byte-identical. `--verbose` prints hit/miss counts on stderr.
 
 Delete the directory to reset it (`xray cache clear` clears
-`.xray_cache.db` only).
+the project's analysis cache db only).
 
 Entry validation takes its enum sets (`kind`, `locality`, `confidence`,
 `status`, `construct`, parse-error `kind`) from `src/lib/imports/types.ts`,

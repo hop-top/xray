@@ -28,7 +28,7 @@
 
   "telemetry": {
     "enabled": false,
-    "_comment": "Set to true to enable telemetry tracking. All data is stored locally in .xray/telemetry.json"
+    "_comment": "Set to true to enable telemetry tracking. All data is stored locally in the xray state directory (see `xray paths`)"
   },
 
   "presets": {

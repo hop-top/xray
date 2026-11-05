@@ -10,7 +10,7 @@ The telemetry system uses OpenTelemetry SDK to collect:
 - **Error Types**: What errors occur and their context
 - **Performance Stats**: Execution time, memory usage, codebase size
 
-All telemetry data is written to `.xray/telemetry.json` in JSONL format.
+All telemetry data is written, in JSONL format, to a per-project file in the xray state directory, never into the project. `xray paths` prints it (`telemetry`).
 
 ## First Run Consent
 
@@ -33,7 +33,7 @@ What is NOT collected:
   • Personal information
   • Network activity (data stays local)
 
-All data is stored locally in .xray/telemetry.json
+All data is stored locally in the xray state directory (see `xray paths`)
 You are asked once. Change it anytime in your user config,
 or per project via "telemetry" in .xrayrc.json.
 
@@ -202,9 +202,19 @@ Common stats tracked:
 
 ### Location
 
-Telemetry data is stored in:
+Telemetry data is stored in the xray state directory, one file per project, keyed by the project root (two projects with the same name never share a file):
 ```
-<project-root>/.xray/telemetry.json
+<state-dir>/telemetry/<project-key>/telemetry.json
+```
+
+`<state-dir>` is `$XDG_STATE_HOME/xray` when set, else the platform default. Print the exact path:
+```bash
+xray paths --format json | jq -r .telemetry
+```
+
+The commands below assume:
+```bash
+TELEMETRY_FILE="$(xray paths --format json | jq -r .telemetry)"
 ```
 
 ### Format
@@ -220,7 +230,7 @@ Telemetry data is **append-only**. Old data is never automatically deleted.
 
 To clear telemetry data:
 ```bash
-rm .xray/telemetry.json
+rm "$TELEMETRY_FILE"
 ```
 
 ## Analyzing Telemetry Data
@@ -228,31 +238,31 @@ rm .xray/telemetry.json
 ### View All Events
 
 ```bash
-cat .xray/telemetry.json | jq '.'
+cat "$TELEMETRY_FILE" | jq '.'
 ```
 
 ### Count Commands
 
 ```bash
-cat .xray/telemetry.json | jq 'select(.name == "command.execute") | .attributes["command.name"]' | sort | uniq -c
+cat "$TELEMETRY_FILE" | jq 'select(.name == "command.execute") | .attributes["command.name"]' | sort | uniq -c
 ```
 
 ### View Errors
 
 ```bash
-cat .xray/telemetry.json | jq 'select(.name == "error.occurred")'
+cat "$TELEMETRY_FILE" | jq 'select(.name == "error.occurred")'
 ```
 
 ### Average Execution Time
 
 ```bash
-cat .xray/telemetry.json | jq 'select(.kind == "span") | .duration' | awk '{sum+=$1; n++} END {print sum/n}'
+cat "$TELEMETRY_FILE" | jq 'select(.kind == "span") | .duration' | awk '{sum+=$1; n++} END {print sum/n}'
 ```
 
 ### Memory Usage Stats
 
 ```bash
-cat .xray/telemetry.json | jq 'select(.attributes["stat.name"] == "memory.heap_used") | .attributes["stat.value"]'
+cat "$TELEMETRY_FILE" | jq 'select(.attributes["stat.name"] == "memory.heap_used") | .attributes["stat.value"]'
 ```
 
 ## Privacy & Security
@@ -278,10 +288,10 @@ If error messages or command options contain sensitive data, they will be includ
 To sanitize before sharing:
 ```bash
 # Remove error stacks (may contain file paths)
-cat .xray/telemetry.json | jq 'del(.attributes["error.stack"])' > sanitized.json
+cat "$TELEMETRY_FILE" | jq 'del(.attributes["error.stack"])' > sanitized.json
 
 # Remove all context attributes
-cat .xray/telemetry.json | jq 'del(.attributes["error.context"])' > sanitized.json
+cat "$TELEMETRY_FILE" | jq 'del(.attributes["error.context"])' > sanitized.json
 ```
 
 ## Disabling Telemetry
@@ -317,7 +327,7 @@ Track how command performance changes over time:
 
 ```bash
 # Extract execution times with timestamps
-cat .xray/telemetry.json | jq -r 'select(.kind == "span") | "\(.timestamp) \(.duration)"'
+cat "$TELEMETRY_FILE" | jq -r 'select(.kind == "span") | "\(.timestamp) \(.duration)"'
 ```
 
 ### Error Analysis
@@ -326,7 +336,7 @@ Identify common error patterns:
 
 ```bash
 # Group errors by type
-cat .xray/telemetry.json | jq -r 'select(.name == "error.occurred") | .attributes["error.type"]' | sort | uniq -c | sort -rn
+cat "$TELEMETRY_FILE" | jq -r 'select(.name == "error.occurred") | .attributes["error.type"]' | sort | uniq -c | sort -rn
 ```
 
 ### Usage Patterns
@@ -335,7 +345,7 @@ Understand which commands are used most:
 
 ```bash
 # Command frequency
-cat .xray/telemetry.json | jq -r 'select(.name == "command.execute") | .attributes["command.name"]' | sort | uniq -c | sort -rn
+cat "$TELEMETRY_FILE" | jq -r 'select(.name == "command.execute") | .attributes["command.name"]' | sort | uniq -c | sort -rn
 ```
 
 ### Resource Usage
@@ -344,7 +354,7 @@ Monitor memory consumption:
 
 ```bash
 # Peak memory usage
-cat .xray/telemetry.json | jq 'select(.attributes["stat.name"] == "memory.heap_used") | .attributes["stat.value"]' | sort -n | tail -1
+cat "$TELEMETRY_FILE" | jq 'select(.attributes["stat.name"] == "memory.heap_used") | .attributes["stat.value"]' | sort -n | tail -1
 ```
 
 ## Integration with Monitoring Tools
@@ -355,21 +365,21 @@ The JSONL format is compatible with many log analysis tools:
 
 ```bash
 # Stream telemetry to Loki
-cat .xray/telemetry.json | promtail --stdin --server.url=http://localhost:3100
+cat "$TELEMETRY_FILE" | promtail --stdin --server.url=http://localhost:3100
 ```
 
 ### Elasticsearch
 
 ```bash
 # Bulk import to Elasticsearch
-cat .xray/telemetry.json | jq -c '{index: {_index: "xray-telemetry"}} , .' | curl -X POST "localhost:9200/_bulk" -H 'Content-Type: application/x-ndjson' --data-binary @-
+cat "$TELEMETRY_FILE" | jq -c '{index: {_index: "xray-telemetry"}} , .' | curl -X POST "localhost:9200/_bulk" -H 'Content-Type: application/x-ndjson' --data-binary @-
 ```
 
 ### Splunk
 
 ```bash
 # Forward to Splunk
-cat .xray/telemetry.json | splunk add oneshot -sourcetype _json
+cat "$TELEMETRY_FILE" | splunk add oneshot -sourcetype _json
 ```
 
 ## Troubleshooting
@@ -385,14 +395,14 @@ xray paths   # shows the global config dir
 
 Verify file is being created:
 ```bash
-ls -la .xray/telemetry.json
+ls -la "$TELEMETRY_FILE"
 ```
 
 ### File Permission Errors
 
-Ensure `.xray` directory is writable:
+Ensure the state directory is writable:
 ```bash
-chmod 755 .xray
+xray paths | grep state-dir
 ```
 
 ### Large Telemetry Files
@@ -400,8 +410,8 @@ chmod 755 .xray
 Rotate logs periodically:
 ```bash
 # Archive old telemetry
-mv .xray/telemetry.json .xray/telemetry.$(date +%Y%m%d).json
-gzip .xray/telemetry.*.json
+mv "$TELEMETRY_FILE" "${TELEMETRY_FILE%.json}.$(date +%Y%m%d).json"
+gzip "${TELEMETRY_FILE%.json}".*.json
 ```
 
 ## See Also

@@ -217,8 +217,8 @@ Hello (function, alpha/greet/greet.go:L3) — 4 callers across 3 groups
 edges: EXTRACTED 4 · INFERRED 0
 ```
 
-Multi-root runs cache per-root and merged graphs in `.xray_cache.db` in
-the current directory and print one line per root on stderr:
+Multi-root runs cache per-root and merged graphs in the current
+directory's cache db (user cache dir, `cache-db` in `xray paths`) and print one line per root on stderr:
 
 ```
 ℹ cache: main miss · symbol-impact miss     # first run
@@ -395,7 +395,7 @@ See [Command Aliases Guide](aliases.md) for detailed documentation.
 
 ### `xray clear-cache`
 
-Clear the SQLite cache used for parsed AST data. `xray cache clear` is the same command (the `cache` group is what `xray --help` lists).
+Clear the SQLite cache used for parsed AST data, for the project in the current directory (other projects' caches stay). `xray cache clear` is the same command (the `cache` group is what `xray --help` lists).
 
 ```bash
 xray clear-cache
@@ -566,7 +566,7 @@ union of every root's nodes and edges.
 - `xray impact` on several roots (several `-p`, or `--lens <name>` with
   `lenses.<name>.paths`) builds the same merged graph in memory and groups
   callers by root then top-level directory (`api/internal`). It caches each root's graph and the merged graph
-  in `.xray_cache.db` (current directory) and reports
+  in the current directory's cache db (`cache-db` in `xray paths`) and reports
   `cache: <label> hit|miss` per root on stderr; see
   [`xray impact`](#xray-impact).
 
@@ -618,7 +618,7 @@ Records per command:
 | `explore -m` | `path` |
 | `explore -s` | `file`, `line`, `keyword`, `content` (every match; the text view caps 5 per file) |
 | `explore --stats` | `type`, `files`, `lines` |
-| `paths` | one record: `projectRoot`, `projectConfig`, `globalConfig`, `cacheDb`, `cacheDbExists`, `configDir`, `dataDir`, `cacheDir`, `stateDir` |
+| `paths` | one record: `projectRoot`, `projectConfig`, `globalConfig`, `cacheDb`, `cacheDbExists`, `telemetry`, `configDir`, `dataDir`, `cacheDir`, `stateDir` |
 | `alias list` | `alias`, `target` |
 | `strategy list` | `name`, `version`, `commands` |
 | strategy commands | the fields each command returns (union across records); nested values render as JSON in `table`/`csv` |

@@ -11,6 +11,7 @@ import { Command } from 'commander';
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
+import { projectCacheDbPath, projectTelemetryPath } from '../lib/storage';
 import { findConfigPath, findGlobalConfigPath } from '../lib/config';
 
 // require(): tsconfig moduleResolution 'node' ignores the kit exports map.
@@ -32,6 +33,7 @@ interface PathsReport {
   globalConfig: string | null;
   cacheDb: string;
   cacheDbExists: boolean;
+  telemetry: string;
   configDir: string;
   dataDir: string;
   cacheDir: string;
@@ -39,13 +41,14 @@ interface PathsReport {
 }
 
 function collectPaths(projectRoot: string, configPath?: string): PathsReport {
-  const cacheDb = path.join(projectRoot, '.xray_cache.db');
+  const cacheDb = projectCacheDbPath(projectRoot) ?? '(unavailable)';
   return {
     projectRoot,
     projectConfig: configPath ? path.resolve(configPath) : findConfigPath(projectRoot),
     globalConfig: findGlobalConfigPath(),
     cacheDb,
     cacheDbExists: fs.existsSync(cacheDb),
+    telemetry: projectTelemetryPath(projectRoot) ?? '(unavailable)',
     configDir: xdg.configDir('xray'),
     dataDir: xdg.dataDir('xray'),
     cacheDir: xdg.cacheDir('xray'),
@@ -54,7 +57,7 @@ function collectPaths(projectRoot: string, configPath?: string): PathsReport {
 }
 
 const PATHS_COLUMNS = columns(
-  'projectRoot', 'projectConfig', 'globalConfig', 'cacheDb', 'cacheDbExists',
+  'projectRoot', 'projectConfig', 'globalConfig', 'cacheDb', 'cacheDbExists', 'telemetry',
   'configDir', 'dataDir', 'cacheDir', 'stateDir',
 );
 
@@ -64,6 +67,7 @@ const pathsText = textFormatter<PathsReport | PathsReport[]>('text', (data, put)
   put(`project-config:  ${report.projectConfig ?? '(none)'}`);
   put(`global-config:   ${report.globalConfig ?? '(none)'}`);
   put(`cache-db:        ${report.cacheDb}${report.cacheDbExists ? '' : ' (not yet created)'}`);
+  put(`telemetry:       ${report.telemetry}`);
   put(`config-dir:      ${report.configDir}`);
   put(`data-dir:        ${report.dataDir}`);
   put(`cache-dir:       ${report.cacheDir}`);

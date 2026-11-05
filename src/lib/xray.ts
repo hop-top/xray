@@ -21,6 +21,7 @@ import { TelemetryPlugin } from './plugins/telemetry-plugin';
 import { loadConfig } from './config';
 import { FileReadError, FileAccessError } from './error/types';
 import { XrayGraph, RankedNode } from '../types/graph';
+import { openCacheDbPath } from './storage';
 
 // Export strategy module
 export * as strategy from './strategy';
@@ -91,7 +92,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     this.config.limit = config.limit || 4096;
     this.config.features = config.features || {};
     this.config.chunked = config.chunked !== false; // default to true
-    this.cache = new SqliteCache(config.cachePath || path.join(process.cwd(), '.xray_cache.db'));
+    this.cache = new SqliteCache(config.cachePath || openCacheDbPath(process.cwd()));
     this.pluginManager = new PluginManager();
 
     // Auto-register telemetry plugin if enabled

@@ -74,7 +74,7 @@ export async function promptForConsent(): Promise<boolean> {
   console.log('  • Personal information');
   console.log('  • Network activity (data stays local)');
   console.log('');
-  console.log(paint.muted('All data is stored locally in .xray/telemetry.json'));
+  console.log(paint.muted('All data is stored locally in the xray state directory (see `xray paths`)'));
   console.log(paint.muted('You are asked once. Change it anytime in your user config (xray paths shows where),'));
   console.log(paint.muted('or per project via "telemetry" in .xrayrc.json.'));
   console.log('');

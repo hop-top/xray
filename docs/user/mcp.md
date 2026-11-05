@@ -178,9 +178,9 @@ directory, and `xray mcp` fixes the trusted directory at startup:
   another checkout, or at a subtree's own strategies or config.
 - Each call runs the CLI command in a child process with
   `--no-telemetry --offline`: no consent prompt, no consent
-  write, no upgrade check. The `.xray_cache.db` cache and `.xray/` files are
-  written in the server root exactly as the same CLI command run there
-  would write them.
+  write, no upgrade check. The analysis cache lives in the user cache dir (keyed by
+  the server root), not in the root; `.xray/` files are written in the server
+  root exactly as the same CLI command run there would write them.
 - No tool writes outside those caches or deletes anything.
 
 The server runs with your user's permissions; tools read whatever the

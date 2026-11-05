@@ -32,6 +32,7 @@ module.exports = {
         },
     },
     setupFiles: ['<rootDir>/__tests__/support/fresh-native.ts'],
+    globalSetup: '<rootDir>/__tests__/support/isolate-storage.ts',
     testMatch: ['**/*.test.ts'],
     roots: ['<rootDir>/__tests__'],
     verbose: true,

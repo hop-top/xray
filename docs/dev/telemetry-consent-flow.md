@@ -159,7 +159,7 @@ What is NOT collected:
   • Personal information
   • Network activity (data stays local)
 
-All data is stored locally in .xray/telemetry.json
+All data is stored locally in the xray state directory (see `xray paths`)
 You can change this setting anytime in .xrayrc.json
 
 Enable telemetry? [Y/n]:
@@ -362,7 +362,7 @@ All tests pass except one skipped (interactive prompt is tested manually).
 
 **Behavior:**
 - Next run: Prompt appears again (treated as first run)
-- Previous telemetry data in `.xray/telemetry.json` is not deleted
+- Previous telemetry data (`telemetry` in `xray paths`) is not deleted
 
 ### Conflicting Settings
 
@@ -393,7 +393,7 @@ All tests pass except one skipped (interactive prompt is tested manually).
    - Aggregate stats only
 
 4. **Telemetry dashboard** - Show collected data to user
-   - Local web view of `.xray/telemetry.json`
+   - Local web view of the telemetry file (`telemetry` in `xray paths`)
    - Statistics and charts
 
 ## Related Documentation

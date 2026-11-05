@@ -2,6 +2,7 @@ import { TelemetryTracker, TelemetryConfig } from '../../src/lib/telemetry';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { projectTelemetryPath } from '../../src/lib/storage';
 
 // Recording needs an interactive run (see telemetry-policy): simulate a
 // TTY stdout and clear the env that forces telemetry off.
@@ -11,7 +12,13 @@ const OFF_ENV = [
 ];
 let savedTTY: boolean | undefined;
 let savedEnv: Record<string, string | undefined> = {};
+let savedState: string | undefined;
+let stateHome: string;
 beforeEach(() => {
+  // The sink lives in the state dir: keep it out of the real one.
+  savedState = process.env.XDG_STATE_HOME;
+  stateHome = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-telemetry-state-'));
+  process.env.XDG_STATE_HOME = stateHome;
   savedTTY = process.stdout.isTTY;
   (process.stdout as { isTTY?: boolean }).isTTY = true;
   savedEnv = {};
@@ -21,6 +28,9 @@ beforeEach(() => {
   }
 });
 afterEach(() => {
+  if (savedState === undefined) delete process.env.XDG_STATE_HOME;
+  else process.env.XDG_STATE_HOME = savedState;
+  fs.rmSync(stateHome, { recursive: true, force: true });
   (process.stdout as { isTTY?: boolean }).isTTY = savedTTY;
   for (const k of OFF_ENV) {
     if (savedEnv[k] === undefined) delete process.env[k];
@@ -57,7 +67,7 @@ describe('TelemetryTracker', () => {
       tracker.trackCommand('generate', { path: '/test' });
 
       // No telemetry file should be created
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       expect(fs.existsSync(telemetryFile)).toBe(false);
     });
 
@@ -73,7 +83,7 @@ describe('TelemetryTracker', () => {
       tracker.shutdown();
 
       // Telemetry file should exist
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       expect(fs.existsSync(telemetryFile)).toBe(true);
     });
 
@@ -89,7 +99,7 @@ describe('TelemetryTracker', () => {
       tracker.trackCommand('generate', { path: '/test' });
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       expect(fs.existsSync(telemetryFile)).toBe(true);
 
       delete process.env.XRAY_TELEMETRY_ENABLED;
@@ -109,7 +119,7 @@ describe('TelemetryTracker', () => {
       tracker.trackCommand('generate', { format: 'json', chunked: true });
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -134,7 +144,7 @@ describe('TelemetryTracker', () => {
       span.end();
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -161,7 +171,7 @@ describe('TelemetryTracker', () => {
       });
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -180,7 +190,7 @@ describe('TelemetryTracker', () => {
       tracker.trackError('ConfigError', error);
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -203,7 +213,7 @@ describe('TelemetryTracker', () => {
       tracker.trackStat('execution.time', 1234, { command: 'generate' });
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -222,7 +232,7 @@ describe('TelemetryTracker', () => {
       tracker.trackStat('memory.heap_used', memoryUsage.heapUsed, { unit: 'bytes' });
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -236,7 +246,7 @@ describe('TelemetryTracker', () => {
       tracker.trackStat('codebase.lines', 45000, { unit: 'count' });
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -261,7 +271,7 @@ describe('TelemetryTracker', () => {
       tracker.trackCommand('generate', {});
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -282,7 +292,7 @@ describe('TelemetryTracker', () => {
       tracker.trackCommand('generate', {});
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -305,7 +315,7 @@ describe('TelemetryTracker', () => {
       tracker.trackCommand('explore', { path: '/test2' });
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const lines = content.trim().split('\n');
 
@@ -315,24 +325,35 @@ describe('TelemetryTracker', () => {
       });
     });
 
-    it('should create telemetry directory if it does not exist', () => {
+    it('should create the telemetry directory in the state dir, not the project', () => {
       const config: TelemetryConfig = {
         enabled: true,
         projectRoot: tmpDir
       };
-
-      // Ensure .xray doesn't exist
-      const xrayDir = path.join(tmpDir, '.xray');
-      if (fs.existsSync(xrayDir)) {
-        fs.rmSync(xrayDir, { recursive: true });
-      }
+      const sink = projectTelemetryPath(tmpDir)!;
+      expect(fs.existsSync(path.dirname(sink))).toBe(false);
 
       tracker = new TelemetryTracker(config);
+      // Nothing is created until something is recorded.
+      expect(fs.existsSync(path.dirname(sink))).toBe(false);
       tracker.trackCommand('generate', {});
       tracker.shutdown();
 
-      expect(fs.existsSync(xrayDir)).toBe(true);
-      expect(fs.existsSync(path.join(xrayDir, 'telemetry.json'))).toBe(true);
+      expect(fs.existsSync(sink)).toBe(true);
+      expect(sink.startsWith(stateHome)).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, '.xray'))).toBe(false);
+    });
+
+    it('keys the sink by project root: same basename, different roots, different files', () => {
+      const other = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-telemetry-other-'));
+      try {
+        expect(projectTelemetryPath(other)).not.toBe(projectTelemetryPath(tmpDir));
+        const nested = path.join(other, path.basename(tmpDir));
+        fs.mkdirSync(nested);
+        expect(projectTelemetryPath(nested)).not.toBe(projectTelemetryPath(tmpDir));
+      } finally {
+        fs.rmSync(other, { recursive: true, force: true });
+      }
     });
   });
 
@@ -353,7 +374,7 @@ describe('TelemetryTracker', () => {
       parentSpan.end();
       tracker.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 

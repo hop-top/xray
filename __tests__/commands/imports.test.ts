@@ -5,6 +5,7 @@
  * narrowing (positional paths, --lang); other formats; and a run leaves
  * the scanned root untouched (no cache, no telemetry sink, nothing).
  */
+import { projectKey } from '../../src/lib/storage';
 import { spawn, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -220,7 +221,8 @@ describe('xray imports writes nothing under the scanned root', () => {
     // Interactive run: stdin/stdout report a TTY (preloaded), no CI, no opt-out env.
     const preload = path.join(base, 'fake-tty.js');
     fs.writeFileSync(preload, 'process.stdout.isTTY = true; process.stdin.isTTY = true;\n');
-    const interactive: NodeJS.ProcessEnv = { XDG_CONFIG_HOME: xdg, XRAY_NO_TELEMETRY: '', DO_NOT_TRACK: '' };
+    const stateHome = path.join(base, 'state');
+    const interactive: NodeJS.ProcessEnv = { XDG_CONFIG_HOME: xdg, XDG_STATE_HOME: stateHome, XRAY_NO_TELEMETRY: '', DO_NOT_TRACK: '' };
     for (const k of CI_ENV_VARS) interactive[k] = '';
     const runTTY = (args: string[]) => new Promise<Result>((resolve, reject) => {
       const p = spawn(process.execPath, ['-r', preload, BIN, ...args], { cwd: root, env: { ...env, ...interactive }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -239,7 +241,9 @@ describe('xray imports writes nothing under the scanned root', () => {
     // Control: an explicit human format at the same terminal does record (consent decides).
     const text = await runTTY(['imports', '-p', root, '--format', 'text']);
     expect(text.status).toBe(0);
-    expect(fs.existsSync(path.join(root, '.xray', 'telemetry.json'))).toBe(true);
+    // The sink is the state dir's, keyed by the root; the root gets nothing.
+    expect(fs.existsSync(path.join(stateHome, 'xray', 'telemetry', projectKey(root), 'telemetry.json'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.xray'))).toBe(false);
   }, 60_000);
 
   it('telemetry treats `imports --format json` as a machine run even at a terminal', () => {

@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { registerPathsCommand } from '../../src/commands/paths';
+import { projectCacheDbPath, projectTelemetryPath } from '../../src/lib/storage';
 
 async function runPaths(...args: string[]): Promise<void> {
   const program = new Command();
@@ -30,8 +31,9 @@ describe('xray paths command', () => {
     const output = captured();
     expect(output).toContain(`project-root:    ${tmpRoot}`);
     expect(output).toContain(
-      `cache-db:        ${path.join(tmpRoot, '.xray_cache.db')}`
+      `cache-db:        ${projectCacheDbPath(tmpRoot)}`
     );
+    expect(output).toContain(`telemetry:       ${projectTelemetryPath(tmpRoot)}`);
     expect(output).toContain('(not yet created)');
   });
 
@@ -49,7 +51,10 @@ describe('xray paths command', () => {
     const raw = captured();
     const parsed = JSON.parse(raw);
     expect(parsed.projectRoot).toBe(tmpRoot);
-    expect(parsed.cacheDb).toBe(path.join(tmpRoot, '.xray_cache.db'));
+    expect(parsed.cacheDb).toBe(projectCacheDbPath(tmpRoot));
+    expect(parsed.cacheDb.startsWith(tmpRoot)).toBe(false);
+    expect(parsed.telemetry).toBe(projectTelemetryPath(tmpRoot));
+    expect(parsed.telemetry.startsWith(tmpRoot)).toBe(false);
     expect(parsed.cacheDbExists).toBe(false);
   });
 
@@ -88,7 +93,7 @@ describe('xray paths command', () => {
     const out = captured();
     expect(out).toBe(JSON.stringify(JSON.parse(out), null, 2) + '\n');
     expect(Object.keys(JSON.parse(out))).toEqual([
-      'projectRoot', 'projectConfig', 'globalConfig', 'cacheDb', 'cacheDbExists',
+      'projectRoot', 'projectConfig', 'globalConfig', 'cacheDb', 'cacheDbExists', 'telemetry',
       'configDir', 'dataDir', 'cacheDir', 'stateDir',
     ]);
   });

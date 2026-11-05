@@ -4,6 +4,7 @@ import { XrayEvents } from '../../src/lib/events/types';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { projectTelemetryPath } from '../../src/lib/storage';
 
 // Recording needs an interactive run (see telemetry-policy): simulate a
 // TTY stdout and clear the env that forces telemetry off.
@@ -13,7 +14,13 @@ const OFF_ENV = [
 ];
 let savedTTY: boolean | undefined;
 let savedEnv: Record<string, string | undefined> = {};
+let savedState: string | undefined;
+let stateHome: string;
 beforeEach(() => {
+  // The sink lives in the state dir: keep it out of the real one.
+  savedState = process.env.XDG_STATE_HOME;
+  stateHome = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-telemetry-state-'));
+  process.env.XDG_STATE_HOME = stateHome;
   savedTTY = process.stdout.isTTY;
   (process.stdout as { isTTY?: boolean }).isTTY = true;
   savedEnv = {};
@@ -23,6 +30,9 @@ beforeEach(() => {
   }
 });
 afterEach(() => {
+  if (savedState === undefined) delete process.env.XDG_STATE_HOME;
+  else process.env.XDG_STATE_HOME = savedState;
+  fs.rmSync(stateHome, { recursive: true, force: true });
   (process.stdout as { isTTY?: boolean }).isTTY = savedTTY;
   for (const k of OFF_ENV) {
     if (savedEnv[k] === undefined) delete process.env[k];
@@ -89,7 +99,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       expect(fs.existsSync(telemetryFile)).toBe(true);
 
       const content = fs.readFileSync(telemetryFile, 'utf-8');
@@ -119,7 +129,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -142,7 +152,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -163,7 +173,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -183,7 +193,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -198,7 +208,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -216,7 +226,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -236,7 +246,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -265,7 +275,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       expect(fs.existsSync(telemetryFile)).toBe(false);
     });
 
@@ -288,7 +298,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       expect(fs.existsSync(telemetryFile)).toBe(true);
 
       delete process.env.XRAY_TELEMETRY_ENABLED;
@@ -314,7 +324,7 @@ describe('TelemetryPlugin', () => {
 
       plugin.shutdown();
 
-      const telemetryFile = path.join(tmpDir, '.xray', 'telemetry.json');
+      const telemetryFile = projectTelemetryPath(tmpDir)!;
       const content = fs.readFileSync(telemetryFile, 'utf-8');
       const events = content.trim().split('\n').map(line => JSON.parse(line));
 
@@ -335,7 +345,7 @@ describe('TelemetryPlugin', () => {
       });
       plugin.trackStat('files', 1);
       plugin.shutdown();
-      return fs.existsSync(path.join(tmpDir, '.xray', 'telemetry.json'));
+      return fs.existsSync(projectTelemetryPath(tmpDir)!);
     };
 
     it('records on an interactive run (control)', async () => {
@@ -346,6 +356,7 @@ describe('TelemetryPlugin', () => {
       (process.stdout as { isTTY?: boolean }).isTTY = false;
       expect(await record()).toBe(false);
       expect(fs.existsSync(path.join(tmpDir, '.xray'))).toBe(false);
+      expect(fs.existsSync(path.dirname(projectTelemetryPath(tmpDir)!))).toBe(false);
     });
 
     it.each([['XRAY_NO_TELEMETRY'], ['DO_NOT_TRACK'], ['CI']])('%s=1', async (k) => {
