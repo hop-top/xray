@@ -14,6 +14,7 @@ import { CodedError, ConflictError, FileWriteError, NotFoundError, UsageError } 
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
+import { addResultFormat, assertResultFormat, emitResult } from '../lib/result-format';
 
 interface StrategyRow { name: string; version: string; commands: string }
 
@@ -22,6 +23,30 @@ const strategyListRegistry = outputRegistry(
     rows.forEach((r) => put(s.accent(`  ${r.name}`) + ' ' + s.muted(`v${r.version}`)));
   })
 );
+
+/** `strategy list`, also behind `explore --list-strategies`: rows through the command's `--format`. */
+export async function runStrategyList(cmd: Command): Promise<void> {
+  assertFormat(cmd, strategyListRegistry);
+  const loader = new StrategyLoader();
+  const strategies = await loader.discoverStrategies();
+  reportSkippedProjectCode('warn');
+
+  Logger.info('Available Strategies:\n');
+  const rows: StrategyRow[] = strategies.map((s) => ({
+    name: s.name,
+    version: s.version,
+    commands: Object.keys(s.commands ?? {}).join(','),
+  }));
+  await emit(cmd, rows, {
+    registry: strategyListRegistry,
+    columns: columns('name', 'version', 'commands'),
+    defaultFormat: 'text',
+  });
+
+  if (strategies.length === 0) {
+    Logger.warn('No strategies found.');
+  }
+}
 
 export function registerStrategyCommand(): Command {
   const program = new Command('strategy')
@@ -35,36 +60,16 @@ export function registerStrategyCommand(): Command {
   addOutputFlags(listCmd, strategyListRegistry, {
     defaultFormat: 'text',
     description: 'Output format: text, json, yaml, table, csv',
-  }).action(async (_opts: unknown, cmd: Command) => {
-    assertFormat(cmd, strategyListRegistry);
-    const loader = new StrategyLoader();
-    const strategies = await loader.discoverStrategies();
-    reportSkippedProjectCode('warn');
-
-    Logger.info('Available Strategies:\n');
-    const rows: StrategyRow[] = strategies.map((s) => ({
-      name: s.name,
-      version: s.version,
-      commands: Object.keys(s.commands ?? {}).join(','),
-    }));
-    await emit(cmd, rows, {
-      registry: strategyListRegistry,
-      columns: columns('name', 'version', 'commands'),
-      defaultFormat: 'text',
-    });
-
-    if (strategies.length === 0) {
-      Logger.warn('No strategies found.');
-    }
-  });
+  }).action(async (_opts: unknown, cmd: Command) => runStrategyList(cmd));
 
   // Detection prints what applies; the result it records is a regenerable
   // entry in xray's own cache dir, not output.
-  declareEffect(program
+  declareEffect(addResultFormat(program
     .command('detect')
     .description('Detect applicable strategies for the current project')
-    .option('-p, --path <paths...>', 'Project path(s)')
-    .action(async (options) => {
+    .option('-p, --path <paths...>', 'Project path(s)'))
+    .action(async (options, cmd: Command) => {
+      assertResultFormat(cmd);
       const projectPath = options.path && options.path.length > 0 ? options.path[0] : process.cwd();
 
       if (!fs.existsSync(projectPath)) {
@@ -79,20 +84,26 @@ export function registerStrategyCommand(): Command {
       Logger.info(`Detecting strategies for: ${projectPath}\n`);
       const detected = await detector.runDetection();
 
-      if (detected.length === 0) {
-        Logger.warn('No strategies detected for this project.');
-      } else {
-        Logger.info('Detected Strategies:\n');
-        detected.forEach(strategy => {
-          Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
-        });
-      }
+      emitResult(cmd, {
+        path: projectPath,
+        strategies: detected.map(s => ({ name: s.name, version: s.version })),
+      }, () => {
+        if (detected.length === 0) {
+          Logger.warn('No strategies detected for this project.');
+        } else {
+          Logger.info('Detected Strategies:\n');
+          detected.forEach(strategy => {
+            Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
+          });
+        }
+      });
     }), 'read', 'yes');
 
-  declareEffect(program
+  declareEffect(addResultFormat(program
     .command('info <name>')
-    .description('Show detailed information about a strategy')
-    .action(async (name) => {
+    .description('Show detailed information about a strategy'))
+    .action(async (name, _opts: unknown, cmd: Command) => {
+      assertResultFormat(cmd);
       const loader = new StrategyLoader();
       const strategies = await loader.discoverStrategies();
       const strategy = strategies.find(s => s.name === name);
@@ -100,22 +111,8 @@ export function registerStrategyCommand(): Command {
       if (!strategy) {
         reportSkippedProjectCode('warn');
         Logger.info('\nAvailable strategies:');
-        strategies.forEach(s => console.log(`  - ${s.name}`));
+        strategies.forEach(s => Logger.info(`  - ${s.name}`));
         throw new NotFoundError(`Strategy "${name}" not found.`);
-      }
-
-      Logger.info(`\nStrategy: ${strategy.name}`);
-      Logger.output(styles().muted(`Version: ${strategy.version}`));
-
-      if (strategy.fileTypes) {
-        Logger.output(`\nFile Types: ${strategy.fileTypes().join(', ')}`);
-      }
-
-      if (strategy.commands) {
-        Logger.output('\nCommands:');
-        Object.entries(strategy.commands).forEach(([cmd, details]) => {
-          Logger.output(`  - ${strategy.name}:${cmd} ${styles().muted(`- ${details.description}`)}`);
-        });
       }
 
       const context = new StrategyContextImpl(process.cwd());
@@ -123,16 +120,42 @@ export function registerStrategyCommand(): Command {
         strategy,
         await strategy.detect(context)
       );
-      Logger.output(`\nDetected in current project: ${detected ? styles().success('Yes') : styles().error('No')}`);
+      emitResult(cmd, {
+        name: strategy.name,
+        version: strategy.version,
+        fileTypes: strategy.fileTypes ? strategy.fileTypes() : [],
+        commands: Object.entries(strategy.commands ?? {}).map(([command, details]) => ({
+          name: command,
+          description: details.description,
+        })),
+        detected: Boolean(detected),
+      }, () => {
+        Logger.info(`\nStrategy: ${strategy.name}`);
+        Logger.output(styles().muted(`Version: ${strategy.version}`));
+
+        if (strategy.fileTypes) {
+          Logger.output(`\nFile Types: ${strategy.fileTypes().join(', ')}`);
+        }
+
+        if (strategy.commands) {
+          Logger.output('\nCommands:');
+          Object.entries(strategy.commands).forEach(([command, details]) => {
+            Logger.output(`  - ${strategy.name}:${command} ${styles().muted(`- ${details.description}`)}`);
+          });
+        }
+
+        Logger.output(`\nDetected in current project: ${detected ? styles().success('Yes') : styles().error('No')}`);
+      });
     }), 'read', 'yes');
 
-  declareEffect(program
+  declareEffect(addResultFormat(program
     .command('create <name>')
     .description('Create a new strategy scaffold')
     .option('-d, --dir <directory>', 'Output directory')
     .option('--yaml', 'Create YAML format strategy (simpler, no code needed)')
-    .option('--ts', 'Create TypeScript format strategy (full control)')
+    .option('--ts', 'Create TypeScript format strategy (full control)'))
     .action(async (name, options, cmd: Command) => {
+      assertResultFormat(cmd);
       const dir = options.dir || path.join(process.cwd(), '.xray/strategies');
 
       const fileName = name.toLowerCase().replace(/\s+/g, '-');
@@ -170,14 +193,16 @@ commands: {}
 `;
         try {
           fs.writeFileSync(filePath, template);
-          Logger.success(`\nStrategy created: ${filePath}`);
-          Logger.info('\nNext steps:');
         } catch (err: any) {
           throw new FileWriteError(filePath, err);
         }
-        Logger.output(`  1. Edit the YAML file to configure detection rules`);
-        Logger.output(`  2. Run 'xray strategy detect' to verify it works`);
-        Logger.output(`  3. Test with 'xray explore ${name}:info'`);
+        emitResult(cmd, { strategy: name, path: filePath, kind: 'yaml', action: 'created' }, () => {
+          Logger.success(`\nStrategy created: ${filePath}`);
+          Logger.info('\nNext steps:');
+          Logger.output(`  1. Edit the YAML file to configure detection rules`);
+          Logger.output(`  2. Run 'xray strategy detect' to verify it works`);
+          Logger.output(`  3. Test with 'xray explore ${name}:info'`);
+        });
       } else {
         const template = `import { Strategy, StrategyContext, FileMetadata } from '../../../src/lib/strategy/types';
 
@@ -211,27 +236,30 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
 `;
         try {
           fs.writeFileSync(filePath, template);
-          Logger.success(`\nStrategy created: ${filePath}`);
-          Logger.info('\nNext steps:');
         } catch (err: any) {
           throw new FileWriteError(filePath, err);
         }
-        if (!projectStrategiesAllowed()) {
-          Logger.warn(
-            `TypeScript strategies run code and are not loaded from a project unless ${PROJECT_STRATEGIES_ENV}=1 is set; ` +
-            `use --yaml for a declarative strategy that always loads.`
-          );
-        }
-        Logger.output(`  1. Edit the strategy file to implement detection and analysis logic`);
-        Logger.output(`  2. Run 'xray strategy detect' to verify it works`);
-        Logger.output(`  3. Test with 'xray ${name}:info'`);
+        emitResult(cmd, { strategy: name, path: filePath, kind: 'ts', action: 'created' }, () => {
+          Logger.success(`\nStrategy created: ${filePath}`);
+          Logger.info('\nNext steps:');
+          if (!projectStrategiesAllowed()) {
+            Logger.warn(
+              `TypeScript strategies run code and are not loaded from a project unless ${PROJECT_STRATEGIES_ENV}=1 is set; ` +
+              `use --yaml for a declarative strategy that always loads.`
+            );
+          }
+          Logger.output(`  1. Edit the strategy file to implement detection and analysis logic`);
+          Logger.output(`  2. Run 'xray strategy detect' to verify it works`);
+          Logger.output(`  3. Test with 'xray ${name}:info'`);
+        });
       }
     }), 'write-local', 'no');
 
-  declareEffect(program
+  declareEffect(addResultFormat(program
     .command('install <source>')
-    .description('Install a strategy from a path or npm package')
+    .description('Install a strategy from a path or npm package'))
     .action(async (source, _opts: unknown, cmd: Command) => {
+      assertResultFormat(cmd);
       if (previewing(cmd)) {
         const { effects, warnings } = planStrategyInstall(source);
         emitPlan(cmd, effects, { warnings });
@@ -240,7 +268,7 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       const loader = new StrategyLoader();
 
       try {
-        await installStrategy(source, loader);
+        emitResult(cmd, await installStrategy(source, loader), () => {});
       } catch (error: any) {
         if (error instanceof CodedError) throw error;
         const failure = new Error(`Failed to install strategy: ${error.message}`);
@@ -251,11 +279,12 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
 
   // Deletes a strategy file or uninstalls a package: refused unless the
   // caller confirms (`--confirm=yes`, or an answer at a terminal prompt).
-  declareEffect(program
+  declareEffect(addResultFormat(program
     .command('remove <name>')
     .alias('uninstall')
-    .description('Remove an installed strategy (asks first; scripts pass --confirm=yes)')
+    .description('Remove an installed strategy (asks first; scripts pass --confirm=yes)'))
     .action(async (name, _opts: unknown, cmd: Command) => {
+      assertResultFormat(cmd);
       const loader = new StrategyLoader();
 
       // Local file in a user-managed directory; never built-in, never node_modules.
@@ -274,7 +303,13 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
           return;
         }
         fs.unlinkSync(removedFile);
-        Logger.success(`Strategy removed: ${removedFile}`);
+        emitResult(cmd, {
+          strategy: name,
+          kind: 'file',
+          path: removedFile,
+          action: 'removed',
+          notRemoved: found.map(f => f.name),
+        }, () => Logger.success(`Strategy removed: ${removedFile}`));
         if (found.length > 0) {
           Logger.warn(
             `The installed package ${found.map(f => f.name).join(', ')} was not removed; ` +
@@ -307,7 +342,12 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
           reportFailure(new Error(`Failed to remove strategy: ${err.message}`), () => Logger.error(`Failed to remove strategy: ${err.message}`));
           process.exit(1);
         }
-        Logger.success(`Strategy package removed: ${target.pkg.strategyName} (${target.name})`);
+        emitResult(cmd, {
+          strategy: target.pkg.strategyName,
+          kind: 'package',
+          package: target.name,
+          action: 'removed',
+        }, () => Logger.success(`Strategy package removed: ${target.pkg.strategyName} (${target.name})`));
         return;
       }
 
@@ -323,10 +363,11 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
       );
     }), 'destructive-local', 'no');
 
-  declareEffect(program
+  declareEffect(addResultFormat(program
     .command('validate <name>')
-    .description('Validate a strategy file')
-    .action(async (name) => {
+    .description('Validate a strategy file'))
+    .action(async (name, _opts: unknown, cmd: Command) => {
+      assertResultFormat(cmd);
       const loader = new StrategyLoader();
       const strategies = await loader.discoverStrategies();
       const strategy = strategies.find(s => s.name === name);
@@ -336,40 +377,61 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
         throw new NotFoundError(`Strategy "${name}" not found.`);
       }
 
-      Logger.info(`\nValidating strategy: ${name}`);
-      Logger.output(`  Name: ${strategy.name}`);
-      Logger.output(`  Version: ${strategy.version}`);
-      Logger.output(`  Has detect: ${typeof strategy.detect === 'function' ? 'Yes' : 'No'}`);
-      Logger.output(`  Has analyze: ${typeof strategy.analyze === 'function' ? 'Yes' : 'No'}`);
-      Logger.output(`  Commands: ${strategy.commands ? Object.keys(strategy.commands).join(', ') : 'None'}`);
-
       const context = new StrategyContextImpl(process.cwd());
+      let detection: 'passed' | 'not-detected' | 'error';
+      let detectionError: string | undefined;
       try {
         const detected = normalizeDetectedStrategy(
           strategy,
           await strategy.detect(context)
         );
-        Logger.output(`  Detection test: ${detected ? styles().success('Passed') : styles().warn('Not detected')}`);
+        detection = detected ? 'passed' : 'not-detected';
       } catch (error: any) {
-        Logger.output(`  Detection test: ${styles().error('Error')}`);
-        Logger.error(`  Error: ${error.message}`);
+        detection = 'error';
+        detectionError = error.message;
       }
 
-      Logger.success('\nValidation complete.');
+      emitResult(cmd, {
+        name: strategy.name,
+        version: strategy.version,
+        hasDetect: typeof strategy.detect === 'function',
+        hasAnalyze: typeof strategy.analyze === 'function',
+        commands: Object.keys(strategy.commands ?? {}),
+        detection,
+        ...(detectionError !== undefined ? { error: detectionError } : {}),
+      }, () => {
+        Logger.info(`\nValidating strategy: ${name}`);
+        Logger.output(`  Name: ${strategy.name}`);
+        Logger.output(`  Version: ${strategy.version}`);
+        Logger.output(`  Has detect: ${typeof strategy.detect === 'function' ? 'Yes' : 'No'}`);
+        Logger.output(`  Has analyze: ${typeof strategy.analyze === 'function' ? 'Yes' : 'No'}`);
+        Logger.output(`  Commands: ${strategy.commands ? Object.keys(strategy.commands).join(', ') : 'None'}`);
+        if (detection === 'error') {
+          Logger.output(`  Detection test: ${styles().error('Error')}`);
+          Logger.error(`  Error: ${detectionError}`);
+        } else {
+          Logger.output(`  Detection test: ${detection === 'passed' ? styles().success('Passed') : styles().warn('Not detected')}`);
+        }
+
+        Logger.success('\nValidation complete.');
+      });
     }), 'read', 'yes');
 
-  declareEffect(program
+  declareEffect(addResultFormat(program
     .command('path')
-    .description('Show strategy search paths')
-    .action(() => {
+    .description('Show strategy search paths'))
+    .action((_opts: unknown, cmd: Command) => {
+      assertResultFormat(cmd);
       const loader = new StrategyLoader();
       const paths = loader.getStrategyPaths();
       reportSkippedProjectCode('warn');
 
-      Logger.info('\nStrategy Search Paths:\n');
-      paths.forEach((p, i) => {
-        const exists = fs.existsSync(p);
-        Logger.output(`  ${i + 1}. ${p} ${styles().muted(exists ? '' : '(not found)')}`);
+      emitResult(cmd, { paths: paths.map(p => ({ path: p, exists: fs.existsSync(p) })) }, () => {
+        Logger.info('\nStrategy Search Paths:\n');
+        paths.forEach((p, i) => {
+          const exists = fs.existsSync(p);
+          Logger.output(`  ${i + 1}. ${p} ${styles().muted(exists ? '' : '(not found)')}`);
+        });
       });
     }), 'read', 'yes');
 

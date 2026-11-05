@@ -205,6 +205,9 @@ export interface AliasCommandOptions extends BaseCommandOptions {
   /** Root path for alias operations */
   path?: string;
 
+  /** `--format`, forwarded to the target command */
+  format?: string;
+
   /** List all aliases */
   list?: boolean;
 

@@ -15,6 +15,7 @@ import { registerLangCommand } from '../lang';
 import { registerMcpCommand } from '../mcp';
 import { setCommandGroup, type HelpGroupId } from '../kit-cli';
 import { declareEffect } from '../side-effect';
+import { addResultFormat } from '../../lib/result-format';
 
 // Root help group per top-level command name; unlisted/hidden commands
 // fall into kit's default section.
@@ -81,16 +82,16 @@ export function registerCoreCommands(program: Command): void {
   // System commands
   // `cache` noun-verb group (canonical form)
   const cache = new Command('cache').description('Cache management');
-  declareEffect(cache
+  declareEffect(addResultFormat(cache
     .command('clear')
-    .description('Clear SQLite cache for this project')
+    .description('Clear SQLite cache for this project'))
     .action(handleClearCacheAction), 'destructive-local', 'yes');
   program.addCommand(cache);
 
   // Hidden alias of `cache clear` for backwards compatibility
-  declareEffect(program
+  declareEffect(addResultFormat(program
     .command('clear-cache', { hidden: true })
-    .description('[deprecated alias of `cache clear`] Clear SQLite cache for this project')
+    .description('[deprecated alias of `cache clear`] Clear SQLite cache for this project'))
     .action(handleClearCacheAction), 'destructive-local', 'yes');
 
   // Introspect xray's own runtime paths (config + cache locations).

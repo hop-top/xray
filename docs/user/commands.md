@@ -687,8 +687,12 @@ Codes follow `@hop-top/kit`. `xray describe` lists, per command, the codes it ca
 
 ### Errors as JSON
 
-With `--format json` (also `--format=json`, or `--json` where a command has
-it) a failing command writes one error object to stderr and nothing to
+Every command accepts `--format json` (except `help` and `completion`,
+whose output is text by nature), also written `--format=json`, or `--json`
+where a command has it. A succeeding command then prints one JSON document
+on stdout (state-changing commands: a small result object such as
+`{"alias":"x","target":"a b","action":"created"}`), and a failing command
+writes one error object to stderr and nothing to
 stdout; the exit code is the table above. The object is `@hop-top/kit`'s
 error envelope:
 
@@ -711,8 +715,9 @@ error envelope:
 
 Usage errors from the parser (unknown option, surplus argument, unknown
 command) use the same object. Other formats (`txt`, `csv`, `xml`) and text
-mode print `✖ <message>`. Add `--quiet` to keep log lines off stderr. A
-command that has no `--format` rejects it as an unknown option (exit 2).
+mode print `✖ <message>`. `xray imports` defaults to JSON output, so its
+errors are JSON without a flag; an explicit `--format text|table|csv|yaml`
+keeps the `✖ <message>` line. Add `--quiet` to keep log lines off stderr.
 `xray describe` lists the shape under `errors`.
 
 ## Output Format

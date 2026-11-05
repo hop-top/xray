@@ -127,14 +127,6 @@ describe('coded errors', () => {
 });
 
 describe('generic failures (exit 1)', () => {
-  it('explore on a missing path: GENERIC, no stack, no internal path', () => {
-    const r = run(['explore', '--path', path.join(tmp, 'nope'), '--format', 'json']);
-    const env = expectEnvelope(r, 1, 'GENERIC', 'unknown');
-    expect(env.message).toBe(`Path does not exist: ${path.join(tmp, 'nope')}`);
-    expect(r.stderr).not.toMatch(/\n\s+at /);
-    expect(r.stderr).not.toContain(ROOT);
-  });
-
   it('a thrown Error keeps its message only: no stack, no cause', () => {
     const inner = new Error('inner detail');
     const err = Object.assign(new Error('boom'), { cause: inner });
@@ -179,8 +171,8 @@ describe('usage errors', () => {
   });
 
   it('commander: option the subcommand lacks', () => {
-    const env = expectEnvelope(run(['alias', 'set', 'map', 'x', '--format', 'json']), 2, 'USAGE', 'permanent');
-    expect(env.message).toBe("unknown option '--format'");
+    const env = expectEnvelope(run(['alias', 'list', '--bogus', '--format', 'json']), 2, 'USAGE', 'permanent');
+    expect(env.message).toBe("unknown option '--bogus'");
   });
 
   it('unknown-input guard: unknown command', () => {
@@ -235,7 +227,7 @@ describe('text mode and other formats are unchanged', () => {
     [['map', '--format', 'csv', '--path', '/nonexistent-xray-dir'], 3, '✖ Path does not exist or is not a directory: /nonexistent-xray-dir'],
     [['map', '--format', 'xml', '--path', '/nonexistent-xray-dir'], 3, '✖ Path does not exist or is not a directory: /nonexistent-xray-dir'],
     [['map', '--format', 'txt', '--path', '/nonexistent-xray-dir'], 3, '✖ Path does not exist or is not a directory: /nonexistent-xray-dir'],
-    [['explore', '--format', 'yaml', '--path', '/nonexistent-xray-dir'], 1, '✖ Path does not exist: /nonexistent-xray-dir'],
+    [['explore', '--format', 'yaml', '--path', '/nonexistent-xray-dir'], 3, '✖ Path does not exist: /nonexistent-xray-dir'],
   ])('%j', (args, exit, line) => {
     const r = run(args);
     expect(r.status).toBe(exit);
@@ -289,6 +281,15 @@ describe('jsonRequested', () => {
     [['map', '--', '--format', 'json'], false],
     [['map', 'json'], false],
     [['map', '-f', 'json'], false],
+    [['imports'], true],
+    [['imports', '--format=json'], true],
+    [['imports', '--format', 'text'], false],
+    [['imports', '--format=table'], false],
+    [['imports', '--format', 'yaml'], false],
+    [['imports', '--format', 'csv', '--format', 'json'], true],
+    [['-C', 'json', 'imports'], true],
+    [['--quiet', 'imports', '-p', 'json'], true],
+    [['map', 'imports'], false],
   ] as Array<[string[], boolean]>)('%j -> %s', (args, want) => {
     expect(req(...args)).toBe(want);
   });
@@ -307,6 +308,7 @@ describe('describe', () => {
       format: 'json',
       stream: 'stderr',
       enabledBy: ['--format json', '--format=json', '--json'],
+      defaultFor: ['imports'],
       required: ['code', 'message', 'exit_code', 'transience'],
       optional: ['cause', 'suggested_fix', 'alternatives'],
       transience: ['transient', 'permanent', 'unknown'],

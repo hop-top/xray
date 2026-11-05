@@ -8,6 +8,7 @@ import { ConflictError, NotFoundError, UsageError } from '../lib/error/types';
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
+import { addResultFormat, assertResultFormat, emitResult } from '../lib/result-format';
 
 interface AliasRow { alias: string; target: string }
 
@@ -82,10 +83,11 @@ export function registerAliasCommand(): Command {
   });
 
   // Set alias
-  declareEffect(program
+  declareEffect(addResultFormat(program
     .command('set <name> <target>')
-    .description('Create or update an alias')
+    .description('Create or update an alias'))
     .action(async (name: string, target: string, _opts: unknown, cmd: Command) => {
+      assertResultFormat(cmd);
       const configPath = aliasWriteTarget(cmd);
       let config = loadConfig(configPath);
       if (!config) {
@@ -133,20 +135,23 @@ export function registerAliasCommand(): Command {
       // Save config
       saveAliases(config, configPath);
 
-      if (isUpdate) {
-        Logger.success(`Updated alias "${name}" → "${target}"`);
-      } else {
-        Logger.success(`Created alias "${name}" → "${target}"`);
-      }
+      emitResult(cmd, { alias: name, target, action: isUpdate ? 'updated' : 'created', config: configFile(configPath) }, () => {
+        if (isUpdate) {
+          Logger.success(`Updated alias "${name}" → "${target}"`);
+        } else {
+          Logger.success(`Created alias "${name}" → "${target}"`);
+        }
 
-      Logger.info('\nThe alias is available on the next xray run.');
+        Logger.info('\nThe alias is available on the next xray run.');
+      });
     }), 'write-local', 'conditional');
 
   // Remove alias
-  declareEffect(program
+  declareEffect(addResultFormat(program
     .command('remove <name>')
-    .description('Remove an alias')
+    .description('Remove an alias'))
     .action(async (name: string, _opts: unknown, cmd: Command) => {
+      assertResultFormat(cmd);
       const configPath = aliasWriteTarget(cmd);
       const config = loadConfig(configPath);
       if (!config) {
@@ -171,7 +176,9 @@ export function registerAliasCommand(): Command {
 
       saveAliases(config, configPath);
 
-      Logger.success(`Removed alias "${name}" (was: "${target}")`);
+      emitResult(cmd, { alias: name, target, action: 'removed', config: configFile(configPath) }, () => {
+        Logger.success(`Removed alias "${name}" (was: "${target}")`);
+      });
     }), 'write-local', 'no');
 
   return program;

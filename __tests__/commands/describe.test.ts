@@ -99,7 +99,7 @@ describe('xray describe', () => {
     expect(explore).toBeDefined();
     expect(explore.sideEffect).toBe('read');
     expect(explore.idempotent).toBe('yes');
-    expect(explore.exitCodes).toEqual([0, 1, 2]);
+    expect(explore.exitCodes).toEqual([0, 1, 2, 3]);
   });
 
   it('classifies map as write-local / conditional', () => {

@@ -9,6 +9,7 @@ import * as path from 'path';
 import type { Command } from 'commander';
 import { UsageError } from '../lib/error/types';
 import { declareEffect } from './side-effect';
+import { addResultFormat } from '../lib/result-format';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { version } = require('../../package.json');
@@ -83,12 +84,17 @@ Example (Claude Code):
 
 /** Register `xray mcp`. */
 export function registerMcpCommand(program: Command): Command {
-  return declareEffect(program
+  return declareEffect(addResultFormat(program
     .command('mcp')
     .description('Serve analysis commands as MCP tools over stdio')
-    .option('--timeout <seconds>', 'Per-call timeout in seconds', '300')
+    .option('--timeout <seconds>', 'Per-call timeout in seconds', '300'),
+    'Output format: json (the protocol is JSON-RPC on stdout; with json, errors are JSON on stderr)',
+    ['json'])
     .addHelpText('after', HELP_AFTER)
-    .action(async (opts: { timeout: string; config?: string }, cmd: Command) => {
+    .action(async (opts: { timeout: string; config?: string; format?: string }, cmd: Command) => {
+      if (opts.format !== undefined && opts.format.toLowerCase() !== 'json') {
+        throw new UsageError(`invalid --format '${opts.format}' (expected: json)`);
+      }
       const seconds = Number(opts.timeout);
       if (!Number.isFinite(seconds) || seconds <= 0) {
         throw new UsageError(`invalid --timeout '${opts.timeout}' (expected a positive number of seconds)`);

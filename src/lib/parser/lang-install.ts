@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
+import { childStdio } from '../result-format';
 import { LanguagePack, managedDir, resetGrammarCache, getGrammar, getPack, GrammarStatus } from './grammars';
 
 export interface NpmRunResult {
@@ -16,7 +17,7 @@ export type NpmRunner = (args: string[], cwd: string) => NpmRunResult;
 
 export const defaultNpmRunner: NpmRunner = (args, cwd) => {
   const bin = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const r = spawnSync(bin, args, { cwd, stdio: 'inherit' });
+  const r = spawnSync(bin, args, { cwd, stdio: childStdio() });
   return { status: r.status, error: r.error };
 };
 

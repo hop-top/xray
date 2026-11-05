@@ -35,7 +35,9 @@ the files reported only: manifests under the root (`go.mod`, `go.work`,
 `package.json`, `Cargo.toml`) are always read for resolution. Exit `0`
 whenever a document is produced (parse errors and unsupported constructs
 are data), `2` on usage errors, `3` when the root or a path does not
-exist. Nothing is written into the scanned tree (see
+exist; failures are JSON by default (one kit error object on stderr,
+stdout empty), and an explicit `--format text|table|csv|yaml` keeps the
+`✖ <message>` line. Nothing is written into the scanned tree (see
 [Caching](#caching)). Full option list:
 [Commands: `xray imports`](commands.md#xray-imports).
 

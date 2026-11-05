@@ -75,12 +75,12 @@ Usage: xray alias [options] [command]
 Manage command aliases
 
 COMMANDS:
-  list [--flags]       List all configured aliases
-  set <name> <target>  Create or update an alias
-  remove <name>        Remove an alias
+  list [--flags]                 List all configured aliases
+  set <name> <target> [--flags]  Create or update an alias
+  remove <name> [--flags]        Remove an alias
 
 FLAGS:
-  -h, --help           Display help
+  -h, --help                     Display help
 
 
 --- stderr ---
@@ -111,7 +111,8 @@ Usage: xray alias remove [options] <name>
 Remove an alias
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -126,7 +127,8 @@ Usage: xray alias set [options] <name> <target>
 Create or update an alias
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -258,10 +260,10 @@ Usage: xray cache [options] [command]
 Cache management
 
 COMMANDS:
-  clear           Clear SQLite cache for this project
+  clear [--flags]  Clear SQLite cache for this project
 
 FLAGS:
-  -h, --help      Display help
+  -h, --help       Display help
 
 
 --- stderr ---
@@ -276,7 +278,8 @@ Usage: xray cache clear [options]
 Clear SQLite cache for this project
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -440,7 +443,8 @@ Usage: xray clear-cache [options]
 [deprecated alias of \`cache clear\`] Clear SQLite cache for this project
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -1326,14 +1330,14 @@ Usage: xray lang [options] [command]
 Manage language packs (tree-sitter grammars)
 
 COMMANDS:
-  list [--flags]         List language packs, install status, and files of each
-                         language in this repo
-  add <names> [--flags]  Install language packs (language names or bundles: web,
-                         go, systems, jvm, scripting, full)
-  remove <names>         Remove language packs from the xray-managed dir
+  list [--flags]            List language packs, install status, and files of
+                            each language in this repo
+  add <names> [--flags]     Install language packs (language names or bundles:
+                            web, go, systems, jvm, scripting, full)
+  remove <names> [--flags]  Remove language packs from the xray-managed dir
 
 FLAGS:
-  -h, --help             Display help
+  -h, --help                Display help
 
 
 --- stderr ---
@@ -1348,8 +1352,10 @@ Usage: xray lang add [options] <names...>
 Install language packs (language names or bundles: web, go, systems, jvm, scripting, full)
 
 FLAGS:
-  --dry-run   Print what would be installed (the npm command) without running it
-  -h, --help  Display help
+  --dry-run       Print what would be installed (the npm command) without
+                  running it
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -1383,7 +1389,8 @@ Usage: xray lang remove|rm [options] <names...>
 Remove language packs from the xray-managed dir
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -1700,6 +1707,8 @@ Serve analysis commands as MCP tools over stdio
 
 FLAGS:
   --timeout <seconds>  Per-call timeout in seconds (default: "300")
+  --format <fmt>       Output format: json (the protocol is JSON-RPC on stdout;
+                       with json, errors are JSON on stderr)
   -h, --help           Display help
 
 Serves map, graph, explore, query, strategy list/detect and every
@@ -2083,18 +2092,19 @@ Usage: xray strategy [options] [command]
 Manage strategies (list, create, install, remove, enable, disable, info)
 
 COMMANDS:
-  list [--flags]           List all available strategies
-  detect [--flags]         Detect applicable strategies for the current project
-  info <name>              Show detailed information about a strategy
-  create <name> [--flags]  Create a new strategy scaffold
-  install <source>         Install a strategy from a path or npm package
-  remove <name>            Remove an installed strategy (asks first; scripts
-                           pass --confirm=yes)
-  validate <name>          Validate a strategy file
-  path                     Show strategy search paths
+  list [--flags]              List all available strategies
+  detect [--flags]            Detect applicable strategies for the current
+                              project
+  info <name> [--flags]       Show detailed information about a strategy
+  create <name> [--flags]     Create a new strategy scaffold
+  install <source> [--flags]  Install a strategy from a path or npm package
+  remove <name> [--flags]     Remove an installed strategy (asks first; scripts
+                              pass --confirm=yes)
+  validate <name> [--flags]   Validate a strategy file
+  path [--flags]              Show strategy search paths
 
 FLAGS:
-  -h, --help               Display help
+  -h, --help                  Display help
 
 
 --- stderr ---
@@ -2112,6 +2122,7 @@ FLAGS:
   -d, --dir <directory>  Output directory
   --yaml                 Create YAML format strategy (simpler, no code needed)
   --ts                   Create TypeScript format strategy (full control)
+  --format <fmt>         Output format: text (default) or json
   -h, --help             Display help
 
 
@@ -2128,6 +2139,7 @@ Detect applicable strategies for the current project
 
 FLAGS:
   -p, --path <paths...>  Project path(s)
+  --format <fmt>         Output format: text (default) or json
   -h, --help             Display help
 
 
@@ -2143,7 +2155,8 @@ Usage: xray strategy info [options] <name>
 Show detailed information about a strategy
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -2158,7 +2171,8 @@ Usage: xray strategy install [options] <source>
 Install a strategy from a path or npm package
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -2189,7 +2203,8 @@ Usage: xray strategy path [options]
 Show strategy search paths
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -2204,7 +2219,8 @@ Usage: xray strategy remove|uninstall [options] <name>
 Remove an installed strategy (asks first; scripts pass --confirm=yes)
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -2219,7 +2235,8 @@ Usage: xray strategy validate [options] <name>
 Validate a strategy file
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 
 --- stderr ---
@@ -2269,7 +2286,8 @@ Usage: xray alias remove [options] <name>
 Remove an alias
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 "
 `;
@@ -2373,8 +2391,10 @@ Usage: xray lang add [options] <names...>
 Install language packs (language names or bundles: web, go, systems, jvm, scripting, full)
 
 FLAGS:
-  --dry-run   Print what would be installed (the npm command) without running it
-  -h, --help  Display help
+  --dry-run       Print what would be installed (the npm command) without
+                  running it
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 "
 `;
@@ -2537,7 +2557,8 @@ Usage: xray strategy info [options] <name>
 Show detailed information about a strategy
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 "
 `;
@@ -2586,7 +2607,8 @@ Usage: xray strategy info [options] <name>
 Show detailed information about a strategy
 
 FLAGS:
-  -h, --help  Display help
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
 
 "
 `;
@@ -3790,6 +3812,9 @@ exports[`cli golden: introspection describe 1`] = `
       "--format=json",
       "--json"
     ],
+    "defaultFor": [
+      "imports"
+    ],
     "required": [
       "code",
       "message",
@@ -4862,6 +4887,14 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": null,
               "description": "Project path(s)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
             }
           ],
           "subcommands": [],
@@ -4887,7 +4920,16 @@ exports[`cli golden: introspection describe 1`] = `
               "description": ""
             }
           ],
-          "options": [],
+          "options": [
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "read",
           "idempotent": "yes",
@@ -4935,6 +4977,14 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": null,
               "description": "Create TypeScript format strategy (full control)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
             }
           ],
           "subcommands": [],
@@ -4960,7 +5010,16 @@ exports[`cli golden: introspection describe 1`] = `
               "description": ""
             }
           ],
-          "options": [],
+          "options": [
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "write-local",
           "idempotent": "conditional",
@@ -4984,7 +5043,16 @@ exports[`cli golden: introspection describe 1`] = `
               "description": ""
             }
           ],
-          "options": [],
+          "options": [
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "destructive-local",
           "idempotent": "no",
@@ -5009,7 +5077,16 @@ exports[`cli golden: introspection describe 1`] = `
               "description": ""
             }
           ],
-          "options": [],
+          "options": [
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "read",
           "idempotent": "yes",
@@ -5026,7 +5103,16 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Show strategy search paths",
           "hidden": false,
           "arguments": [],
-          "options": [],
+          "options": [
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "read",
           "idempotent": "yes",
@@ -5145,7 +5231,16 @@ exports[`cli golden: introspection describe 1`] = `
               "description": ""
             }
           ],
-          "options": [],
+          "options": [
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "write-local",
           "idempotent": "conditional",
@@ -5169,7 +5264,16 @@ exports[`cli golden: introspection describe 1`] = `
               "description": ""
             }
           ],
-          "options": [],
+          "options": [
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "write-local",
           "idempotent": "no",
@@ -5259,6 +5363,14 @@ exports[`cli golden: introspection describe 1`] = `
               "required": false,
               "default": null,
               "description": "Print what would be installed (the npm command) without running it"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
             }
           ],
           "subcommands": [],
@@ -5283,7 +5395,16 @@ exports[`cli golden: introspection describe 1`] = `
               "description": ""
             }
           ],
-          "options": [],
+          "options": [
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "write-local",
           "idempotent": "yes",
@@ -5316,7 +5437,16 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Clear SQLite cache for this project",
           "hidden": false,
           "arguments": [],
-          "options": [],
+          "options": [
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
+            }
+          ],
           "subcommands": [],
           "sideEffect": "destructive-local",
           "idempotent": "yes",
@@ -5342,7 +5472,16 @@ exports[`cli golden: introspection describe 1`] = `
       "description": "[deprecated alias of \`cache clear\`] Clear SQLite cache for this project",
       "hidden": true,
       "arguments": [],
-      "options": [],
+      "options": [
+        {
+          "name": "--format",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Output format: text (default) or json"
+        }
+      ],
       "subcommands": [],
       "sideEffect": "destructive-local",
       "idempotent": "yes",
@@ -5473,6 +5612,14 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": "300",
           "description": "Per-call timeout in seconds"
+        },
+        {
+          "name": "--format",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Output format: json (the protocol is JSON-RPC on stdout; with json, errors are JSON on stderr)"
         }
       ],
       "subcommands": [],
@@ -10743,7 +10890,8 @@ exports[`cli golden: introspection describe 1`] = `
       "exitCodes": [
         0,
         1,
-        2
+        2,
+        3
       ]
     }
   ]

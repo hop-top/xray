@@ -48,11 +48,19 @@ export function valueOptionNames(program: Command): Set<string> {
 }
 
 /**
+ * Commands whose output defaults to JSON: their errors are JSON too unless
+ * a `--format` other than json says otherwise.
+ */
+export const JSON_DEFAULT_COMMANDS: readonly string[] = ['imports'];
+
+/**
  * Whether argv asks for JSON output. `--format` is an option of the
  * subcommands, not of the root, so the command is not known yet: scan every
  * token up to `--`, skipping the value of any option that takes one, so
  * `--path json` or `--query --json` do not count. The last `--format`
  * wins, as in commander; `--json` is the alias on commands that define it.
+ * A command in JSON_DEFAULT_COMMANDS asks for JSON unless `--format` names
+ * something else.
  */
 export function jsonRequested(argv: readonly string[], valueOptions: ReadonlySet<string>): boolean {
   const args = argv.slice(2);
@@ -60,9 +68,12 @@ export function jsonRequested(argv: readonly string[], valueOptions: ReadonlySet
   const scan = end === -1 ? args : args.slice(0, end);
   let format: string | undefined;
   let alias = false;
+  let command: string | undefined;
   for (let i = 0; i < scan.length; i++) {
     const a = scan[i];
-    if (a === '--format') {
+    if (!a.startsWith('-') && command === undefined) {
+      command = a;
+    } else if (a === '--format') {
       if (i + 1 < scan.length) format = scan[++i];
     } else if (a.startsWith('--format=')) {
       format = a.slice('--format='.length);
@@ -72,6 +83,7 @@ export function jsonRequested(argv: readonly string[], valueOptions: ReadonlySet
       i++;
     }
   }
+  if (format === undefined && command !== undefined && JSON_DEFAULT_COMMANDS.includes(command)) return true;
   return format === 'json' || (alias && format === undefined);
 }
 

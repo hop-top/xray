@@ -41,7 +41,8 @@ Systematic approach to handling xray errors and recovering from failures.
 
 ## Machine-Readable Errors
 
-Pass `--format json` (or `--json` on commands that have it) and a failing
+Pass `--format json` (every command accepts it; `--json` on commands that
+have it; `xray imports` needs no flag, its output is JSON by default) and a failing
 command writes one JSON error object to **stderr**; stdout stays empty, so
 anything on stdout is still a valid document. The exit code is the same as
 in text mode. Add `--quiet` so stderr holds the object alone (without it,

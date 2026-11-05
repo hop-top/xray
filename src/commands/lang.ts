@@ -9,6 +9,7 @@ import { Logger } from '../lib/logger';
 import { reportFailure } from '../lib/error/report';
 import { EXIT_USAGE, UsageError } from '../lib/error/types';
 import { loadConfig } from '../lib/config';
+import { addResultFormat, assertResultFormat, emitResult } from '../lib/result-format';
 import {
   BUNDLES,
   LANGUAGE_PACKS,
@@ -157,11 +158,12 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
     }), 'read', 'yes');
   bindFlag(list, 'format', staticValues('text', 'json'));
 
-  declareEffect(lang
+  declareEffect(addResultFormat(lang
     .command('add <names...>')
     .description('Install language packs (language names or bundles: web, go, systems, jvm, scripting, full)')
-    .option('--dry-run', 'Print what would be installed (the npm command) without running it')
+    .option('--dry-run', 'Print what would be installed (the npm command) without running it'))
     .action((names: string[], opts: { dryRun?: boolean }, cmd: Command) => {
+      assertResultFormat(cmd);
       const packs = parseSelection(names);
       if (!packs) return;
       const todo = packs.filter(p => !getGrammar(p.name).ok);
@@ -177,10 +179,25 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
         })), { args: { npm: `npm ${installCommand(todo).join(' ')}`, cwd: managedDir() } });
         return;
       }
-      if (todo.length === 0) return;
+      if (todo.length === 0) {
+        emitResult(cmd, {
+          action: 'add',
+          ok: true,
+          dir: managedDir(),
+          languages: packs.map(p => ({ language: p.name, status: 'already-installed', source: getGrammar(p.name).source })),
+        }, () => {});
+        return;
+      }
       Logger.info(`Installing ${todo.map(p => p.name).join(', ')} into ${managedDir()} (native build only if no prebuilt binary)...`);
       const out = installPacks(todo, run);
+      const languages: Array<Record<string, unknown>> = packs.filter(p => !todo.includes(p))
+        .map(p => ({ language: p.name, status: 'already-installed', source: getGrammar(p.name).source }));
       for (const s of out.statuses) {
+        languages.push({
+          language: s.language,
+          status: s.ok ? 'installed' : s.check && !s.check.ok ? 'incompatible' : 'failed',
+          ...(s.ok ? { source: s.source } : { error: s.check && !s.check.ok ? s.check.error : s.error ?? 'not installed' }),
+        });
         if (s.ok) Logger.success(`${s.language}: installed`);
         else if (s.check && !s.check.ok) {
           const ts = s.check.treeSitter ? ` ${s.check.treeSitter}` : '';
@@ -189,14 +206,16 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
         }
         else Logger.error(`${s.language}: ${s.reason === 'broken' ? `failed to load (${s.error})` : 'not installed'}`);
       }
+      emitResult(cmd, { action: 'add', ok: out.ok, dir: out.dir, languages }, () => {});
       if (!out.ok) process.exitCode = 1;
     }), 'write-local', 'yes');
 
-  declareEffect(lang
+  declareEffect(addResultFormat(lang
     .command('remove <names...>')
     .alias('rm')
-    .description('Remove language packs from the xray-managed dir')
+    .description('Remove language packs from the xray-managed dir'))
     .action((names: string[], _opts: unknown, cmd: Command) => {
+      assertResultFormat(cmd);
       const packs = parseSelection(names);
       if (!packs) return;
       const managed = packs.filter(p => isManaged(p));
@@ -217,13 +236,23 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
         })), { args: { npm: `npm ${removeCommand(managed).join(' ')}`, cwd: managedDir() } });
         return;
       }
-      if (managed.length === 0) return;
+      const skipped = packs.filter(p => !managed.includes(p))
+        .map(p => ({ language: p.name, status: getGrammar(p.name).ok ? 'not-managed' : 'not-installed' }));
+      if (managed.length === 0) {
+        emitResult(cmd, { action: 'remove', ok: true, dir: managedDir(), languages: skipped }, () => {});
+        return;
+      }
       const out = removePacks(managed, run);
+      const languages: Array<Record<string, unknown>> = [...skipped];
       for (const p of managed) {
         const s = getGrammar(p.name);
         if (s.ok) Logger.warn(`${p.name}: removed from managed dir, still provided by ${s.source} install`);
         else Logger.success(`${p.name}: removed`);
+        languages.push(out.ok
+          ? { language: p.name, status: s.ok ? 'removed-still-provided' : 'removed', ...(s.ok ? { source: s.source } : {}) }
+          : { language: p.name, status: 'failed' });
       }
+      emitResult(cmd, { action: 'remove', ok: out.ok, dir: out.dir, languages }, () => {});
       if (!out.ok) process.exitCode = 1;
     }), 'write-local', 'yes');
 

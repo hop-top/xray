@@ -44,8 +44,16 @@ export function previewing(cmd: Command, ownFlag?: boolean): boolean {
   return ownFlag === true || isDryRun(cmd);
 }
 
-/** Print what a real run would change; `format` json|yaml, else a table. */
-export function emitPlan(cmd: Command, effects: Effect[], extra: Omit<Plan, 'effects'> = {}, format = 'text'): void {
+/**
+ * Print what a real run would change; `format` json|yaml, else a table.
+ * Unless given, the format is the command's own `--format`.
+ */
+export function emitPlan(
+  cmd: Command,
+  effects: Effect[],
+  extra: Omit<Plan, 'effects'> = {},
+  format: string = String(cmd.opts().format ?? 'text').toLowerCase()
+): void {
   const path: string[] = [];
   for (let c: Command | null = cmd; c; c = c.parent) path.unshift(c.name());
   renderPlan(process.stdout, format, { ...extra, effects }, path.join(' '));

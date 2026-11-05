@@ -22,6 +22,7 @@ import {
   EXIT_USAGE,
   UsageError,
 } from '../lib/error/types';
+import { JSON_DEFAULT_COMMANDS } from '../lib/error/report';
 import { TELEMETRY_POLICY } from '../lib/telemetry-policy';
 import { declaredEffect } from './side-effect';
 
@@ -56,6 +57,7 @@ const EXTRA_EXIT_CODES: Record<string, number[]> = {
   impact: [EXIT_NOT_FOUND],
   imports: [EXIT_NOT_FOUND],
   'alias.set': [EXIT_CONFLICT],
+  explore: [EXIT_NOT_FOUND],
 };
 
 // Commands whose machine output is a versioned document: schema id (the
@@ -83,6 +85,7 @@ const ERRORS: ErrorsDoc = {
   format: 'json',
   stream: 'stderr',
   enabledBy: ['--format json', '--format=json', '--json'],
+  defaultFor: [...JSON_DEFAULT_COMMANDS],
   required: ['code', 'message', 'exit_code', 'transience'],
   optional: ['cause', 'suggested_fix', 'alternatives'],
   transience: ['transient', 'permanent', 'unknown'],
@@ -104,6 +107,8 @@ interface ErrorsDoc {
   stream: 'stderr';
   /** Argv forms that select it. */
   enabledBy: string[];
+  /** Commands whose errors are JSON without a flag (their output defaults to JSON); an explicit other `--format` keeps text. */
+  defaultFor: string[];
   /** Fields present in every error object. */
   required: string[];
   /** Fields present when the failure has them. */

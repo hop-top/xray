@@ -63,7 +63,7 @@ function registerExploreCommand(): void {
   addExploreOutputFlags(explore)
     .action(async (query: string | undefined, options: ExploreCommandOptions, cmd: Command) => {
       if (options.listStrategies) {
-        await handleMetaStrategyCommand('list', options as any);
+        await handleMetaStrategyCommand('list', options as any, cmd);
         return;
       }
 

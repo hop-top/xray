@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { Logger } from '../lib/logger';
+import { childStdio } from '../lib/result-format';
 import type { Effect } from './kit-cli';
 import {
   PROJECT_STRATEGIES_ENV,
@@ -17,12 +18,18 @@ import {
 const FILE_STRATEGY = /\.(ts|js|yml|yaml)$/;
 const DECLARATIVE_FILE = /\.ya?ml$/;
 
+/** npm's own output passes through; to stderr when stdout must hold a JSON document. */
+function inheritedStdio(): ['ignore', 'inherit' | number, 'inherit' | number] {
+  const out = childStdio();
+  return out === 'inherit' ? ['ignore', 'inherit', 'inherit'] : out;
+}
+
 /** Run npm without a shell; `--` ends option parsing so a source is never a flag. */
 function npm(args: string[], stdio: 'inherit' | 'capture'): string {
   const out = execFileSync('npm', args, {
     cwd: process.cwd(),
     encoding: 'utf-8',
-    stdio: stdio === 'inherit' ? ['ignore', 'inherit', 'inherit'] : ['ignore', 'pipe', 'inherit'],
+    stdio: stdio === 'inherit' ? inheritedStdio() : ['ignore', 'pipe', 'inherit'],
   });
   return out ?? '';
 }
@@ -65,15 +72,29 @@ function validateBeforeInstall(spec: string): { name: string; pkg: StrategyPacka
   }
 }
 
+/** What `installStrategy` did, for the command's JSON result. */
+export interface InstallResult {
+  /** read = local file read, nothing installed; installed = npm package installed. */
+  action: 'read' | 'installed';
+  source: string;
+  /** Strategy name and version, when the strategy was loaded. */
+  strategy?: string;
+  version?: string;
+  /** npm package name (installed). */
+  package?: string;
+  /** Whether the strategy's code was loaded. */
+  loaded: boolean;
+}
+
 /** A local strategy file is read, not installed; say so. */
-async function readLocalFile(loader: StrategyLoader, file: string): Promise<void> {
+async function readLocalFile(loader: StrategyLoader, file: string): Promise<InstallResult> {
   const declarative = DECLARATIVE_FILE.test(file);
   if (!declarative && !projectStrategiesAllowed()) {
     Logger.warn(
       `${file} runs code and was not loaded: set ${PROJECT_STRATEGIES_ENV}=1 to load it ` +
       `(only for code you trust). Nothing was installed or copied.`
     );
-    return;
+    return { action: 'read', source: file, loaded: false };
   }
   const strategy = await loader.loadStrategy(file);
   Logger.success(`Read strategy ${strategy.name} v${strategy.version} from ${file}.`);
@@ -81,6 +102,7 @@ async function readLocalFile(loader: StrategyLoader, file: string): Promise<void
     `Nothing was installed or copied. To use it, put the file in .xray/strategies/ ` +
     `or in a directory listed in XRAY_STRATEGIES_PATH.`
   );
+  return { action: 'read', source: file, strategy: strategy.name, version: strategy.version, loaded: true };
 }
 
 /**
@@ -95,7 +117,7 @@ async function readLocalFile(loader: StrategyLoader, file: string): Promise<void
  *
  * Throws on failure; the caller reports it and exits non-zero.
  */
-export async function installStrategy(source: string, loader: StrategyLoader): Promise<void> {
+export async function installStrategy(source: string, loader: StrategyLoader): Promise<InstallResult> {
   let spec = source;
   if (source.startsWith('/') || source.startsWith('./') || source.startsWith('../')) {
     const absolute = path.resolve(source);
@@ -135,6 +157,7 @@ export async function installStrategy(source: string, loader: StrategyLoader): P
   // The installed copy is what npm unpacked from the same archive.
   const pkg = readStrategyPackage(pkgDir);
   const useCode = !pkg.declarative && projectStrategiesAllowed();
+  let result: InstallResult;
   if (pkg.declarative || useCode) {
     let strategy;
     try {
@@ -143,10 +166,12 @@ export async function installStrategy(source: string, loader: StrategyLoader): P
       throw new Error(`${name} is installed but failed to load: ${err.message}`);
     }
     Logger.success(`\nStrategy installed: ${strategy.name} v${strategy.version} (${name})`);
+    result = { action: 'installed', source, package: name, strategy: strategy.name, version: strategy.version, loaded: true };
     if (useCode) {
       Logger.warn(`${name} runs code and was loaded because ${PROJECT_STRATEGIES_ENV}=1 is set.`);
     }
   } else {
+    result = { action: 'installed', source, package: name, strategy: pkg.strategyName, version: pkg.version, loaded: false };
     Logger.success(`\nStrategy package installed: ${pkg.strategyName} v${pkg.version} (${name})`);
     Logger.warn(
       `It runs code and was not loaded. Set ${PROJECT_STRATEGIES_ENV}=1 to load it ` +
@@ -159,6 +184,7 @@ export async function installStrategy(source: string, loader: StrategyLoader): P
       `${name} will not be discovered.`
     );
   }
+  return result;
 }
 
 /**

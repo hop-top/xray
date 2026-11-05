@@ -6,6 +6,7 @@ import { CodeLoadingOptions, StrategyLoader, reportSkippedProjectCode } from '..
 import { Logger } from '../../lib/logger';
 import { loadConfig } from '../../lib/config';
 import { AliasCommandOptions } from '../../types/command-options';
+import { addResultFormat } from '../../lib/result-format';
 import { declaredEffect, declareEffect, type Idempotency, type Tier } from '../side-effect';
 
 export async function registerAliases(
@@ -58,9 +59,10 @@ export async function registerAliases(
   // Bridge proxies accept any arguments; xray aliases take only --path.
   // An alias does exactly what its target does, so it declares the same.
   for (const [alias, target] of targets) {
-    const proxy = program.commands.find(c => c.name() === alias)!
+    const proxy = addResultFormat(program.commands.find(c => c.name() === alias)!
       .option('-p, --path <path>', 'Project path', process.cwd())
-      .allowExcessArguments(false);
+      .allowExcessArguments(false),
+      'Output format, passed to the target command (default: its own)');
     const { tier, idempotent } = declaredEffect(target);
     if (tier && idempotent) declareEffect(proxy, tier as Tier, idempotent as Idempotency);
   }
@@ -87,5 +89,7 @@ async function runAlias(
   options: AliasCommandOptions
 ): Promise<void> {
   Logger.debug(`Executing alias "${alias}" → "${target}"`);
-  await targetCmd.parseAsync(['--path', options.path || process.cwd()], { from: 'user' });
+  const args = ['--path', options.path || process.cwd()];
+  if (options.format !== undefined) args.push('--format', options.format);
+  await targetCmd.parseAsync(args, { from: 'user' });
 }

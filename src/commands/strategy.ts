@@ -1,28 +1,19 @@
 import * as fs from 'fs';
 import { styles } from '../lib/tui';
 import { Logger } from '../lib/logger';
-import { reportFailure } from '../lib/error/report';
+import type { Command } from 'commander';
+import { NotFoundError, UsageError } from '../lib/error/types';
+import { runStrategyList } from './strategy-cmd';
 import { StrategyLoader, reportSkippedProjectCode } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { resolvePath } from './common';
 import { StrategyCommandOptions } from '../types/command-options';
 
-export const handleMetaStrategyCommand = async (commandName: string, options: StrategyCommandOptions) => {
+export const handleMetaStrategyCommand = async (commandName: string, options: StrategyCommandOptions, cmd: Command) => {
 
   if (commandName === 'list') {
-    const loader = new StrategyLoader();
-    const strategies = await loader.discoverStrategies();
-    reportSkippedProjectCode('warn');
-
-    Logger.info('Available Strategies:\n');
-    strategies.forEach(strategy => {
-      Logger.output(styles().accent(`  ${strategy.name}`) + ' ' + styles().muted(`v${strategy.version}`));
-    });
-
-    if (strategies.length === 0) {
-      Logger.warn('No strategies found.');
-    }
+    await runStrategyList(cmd);
 
   } else if (commandName === 'detect') {
     const startTime = Date.now();
@@ -31,8 +22,7 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
       : process.cwd();
 
     if (!fs.existsSync(projectPath!)) {
-      reportFailure(new Error(`Path does not exist: ${projectPath}`), () => Logger.error(`Path does not exist: ${projectPath}`));
-      process.exit(1);
+      throw new NotFoundError(`Path does not exist: ${projectPath}`);
     }
 
     const loader = new StrategyLoader();
@@ -53,12 +43,9 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
     }
 
   } else {
-    reportFailure(new Error(`Unknown meta-strategy command: "${commandName}"`), () => {
-      Logger.error(`Unknown meta-strategy command: "${commandName}"`);
-      Logger.info('\nAvailable meta-strategy commands:');
-      Logger.output('  - strategy list   - List all available strategies');
-      Logger.output('  - strategy detect - Detect applicable strategies');
-    });
-    process.exit(1);
+    Logger.info('\nAvailable meta-strategy commands:');
+    Logger.info('  - strategy list   - List all available strategies');
+    Logger.info('  - strategy detect - Detect applicable strategies');
+    throw new UsageError(`Unknown meta-strategy command: "${commandName}"`);
   }
 };
