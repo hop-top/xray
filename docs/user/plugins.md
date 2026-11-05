@@ -1,427 +1,134 @@
-# Using xray Plugins
+# Custom plugins via `--preset`
 
-Plugins extend xray's functionality by hooking into the analysis pipeline. This guide shows you how to use existing plugins and understand what they do.
+xray has no library API. The npm package exposes the CLI, the
+`@hop-top/xray/strategy` types, and `schemas/*`; nothing exports an `Xray`
+class, a `use()` method, or a `plugins` entry point. The one supported
+route to custom plugin code is a custom **preset**: a module you point
+`--preset` at.
 
-## What Are Plugins?
+## What a preset is
 
-Plugins are code modules that listen to xray events and:
-- **Filter** what gets analyzed (skip test files, private functions, etc.)
-- **Transform** data during analysis (redact secrets, add metadata, etc.)
-- **Track** progress and collect metrics
-- **Customize** output format
+A preset is a function `(ctx) => plugins[]`. Each plugin is an object with
+a `name` and an `apply(xray)` method; `apply` subscribes to events with
+`xray.on(event, handler)`.
 
-## Using Built-in Plugins
-
-xray comes with several ready-to-use plugins in the `examples/plugins/` directory.
-
-### Progress Logger
-
-Shows colored console output with progress bars during analysis.
-
-```typescript
-import { ProgressLoggerPlugin } from 'xray/examples/plugins/progress-logger';
-import { Xray } from 'xray';
-
-const xray = new Xray({ path: './src' });
-await xray.use(new ProgressLoggerPlugin());
-await xray.run();
+```js
+// my-preset.js
+module.exports = function myPreset(ctx) {
+  // ctx.root: absolute path of the scanned root
+  return [
+    {
+      name: 'skip-secrets',
+      apply(xray) {
+        xray.on('scan:file', (e) => {
+          if (e.file.includes('secret')) e.skip = true; // drop from the map
+        });
+        xray.on('graph:complete', (e) => {
+          console.error(`graph: ${e.nodeCount} nodes, ${e.edgeCount} edges`);
+        });
+      },
+    },
+  ];
+};
 ```
 
-**Output:**
-```
-🔍 Scanning...
-✓ Found 127 files
-
-📝 Parsing... ████████████████████ 100% (127/127)
-✓ Parsing complete
-
-📊 Building graph... ████████████████ 100% (127/127)
-✓ Graph: 450 nodes, 892 edges
-
-✍️  Rendering...
-✓ Analysis complete: .xray_root.md
+```bash
+xray map -p src --preset ./my-preset.js
 ```
 
----
+Run against a 3-file project, this prints `graph: 4 nodes, 4 edges`
+(without the plugin: 6 nodes, 5 edges) and `secret.js` is absent from the
+map.
 
-### Filter Private Functions
+## Loading
 
-Removes underscore-prefixed (private) functions, classes, and variables from output.
+`--preset <spec>` is repeatable and works on `map` and `graph`.
 
-```typescript
-import { FilterPrivatePlugin } from 'xray/examples/plugins/filter-private';
+| Spec | Resolves to |
+|------|-------------|
+| `insights`, `onboarding`, `exploration` | built-in preset; always wins over any package of the same name |
+| `./x.js`, `../x.js`, `/abs/x.js` | file, resolved against the current directory |
+| `@scope/pkg`, `pkg/sub` | npm package, resolved from the current directory's `node_modules` |
+| any other bare word | error listing the built-ins |
 
-const xray = new Xray({ path: './src' });
-await xray.use(new FilterPrivatePlugin());
-await xray.run();
-```
+Module shape: `module.exports = fn`, `export default fn`, or a named
+export that is a function (default first, otherwise the first function).
+CommonJS and ESM (`.mjs`) both load; an ESM preset using top-level
+`await` does not. xray does not transpile: a `.ts` preset loads only where
+Node itself can `require` it (type stripping; checked on Node 26).
 
-**Effect:**
-- `_helperFunction()` → **Excluded**
-- `class _InternalService` → **Excluded**
-- `const _PRIVATE_CONSTANT` → **Excluded**
-- `publicFunction()` → **Included**
+## Failure behavior
 
----
+Every failure is a warning and the run continues with the default output
+(exit code 0):
 
-### Skip Test Files
+- file missing, module throws on load, or no function exported:
+  `[presets] failed to apply "<spec>": ...`
+- a plugin's `apply()` throws: that plugin is skipped, later plugins in
+  the same preset still register
+- two plugins with the same `name`: the second is skipped
 
-Automatically skips test and spec files during analysis.
+## Events a plugin can observe
 
-```typescript
-import { SkipTestsPlugin } from 'xray/examples/plugins/skip-tests';
+Plugins can read every event and, on sequential events, modify the payload.
+Sequential listeners run in registration order; parallel ones are
+observers only.
 
-const xray = new Xray({ path: './src' });
-await xray.use(new SkipTestsPlugin({
-  patterns: ['*.test.*', '*.spec.*', '__tests__/**']
-}));
-await xray.run();
-```
-
-**Configuration:**
-```typescript
-new SkipTestsPlugin({
-  patterns: [
-    '*.test.ts',      // Unit tests
-    '*.spec.ts',      // Spec tests
-    '*.e2e.ts',       // E2E tests
-    '__tests__/**',   // Jest test directory
-    '__mocks__/**'    // Mock files
-  ]
-});
-```
-
----
-
-### Metrics Collector
-
-Tracks comprehensive metrics about your analysis.
-
-```typescript
-import { MetricsCollectorPlugin } from 'xray/examples/plugins/metrics-collector';
-
-const metricsPlugin = new MetricsCollectorPlugin();
-const xray = new Xray({ path: './src' });
-
-await xray.use(metricsPlugin);
-await xray.run();
-
-// Access metrics
-const metrics = metricsPlugin.getMetrics();
-console.log(metrics);
-```
-
-**Metrics Output:**
-```json
-{
-  "timing": {
-    "start": "2024-01-15T10:30:00.000Z",
-    "end": "2024-01-15T10:30:15.234Z",
-    "duration": 15234
-  },
-  "files": {
-    "total": 127,
-    "processed": 127,
-    "skipped": 0
-  },
-  "cache": {
-    "hits": 89,
-    "misses": 38,
-    "hitRate": 0.70
-  },
-  "parsing": {
-    "successful": 127,
-    "errors": 0
-  },
-  "graph": {
-    "nodes": 450,
-    "edges": 892
-  },
-  "output": {
-    "chunks": 12,
-    "filesWritten": 12
-  }
-}
-```
-
----
-
-### Sanitizer Plugin
-
-Redacts sensitive information before analysis.
-
-```typescript
-import { SanitizerPlugin } from 'xray/examples/plugins/sanitizer';
-
-const xray = new Xray({ path: './src' });
-await xray.use(new SanitizerPlugin({
-  patterns: [
-    { pattern: /Bearer\s+\S+/g, replacement: 'Bearer [REDACTED]' },
-    { pattern: /api_key\s*=\s*['"][^'"]+['"]/gi, replacement: 'api_key="[REDACTED]"' }
-  ]
-}));
-await xray.run();
-```
-
-**Effect:**
-```typescript
-// Before
-const token = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
-const apiKey = "sk-1234567890abcdef";
-
-// After (in xray output)
-const token = "Bearer [REDACTED]";
-const apiKey = "[REDACTED]";
-```
-
----
-
-## Using Multiple Plugins
-
-You can use multiple plugins together:
-
-```typescript
-import { Xray } from 'xray';
-import { ProgressLoggerPlugin } from 'xray/examples/plugins/progress-logger';
-import { FilterPrivatePlugin } from 'xray/examples/plugins/filter-private';
-import { SkipTestsPlugin } from 'xray/examples/plugins/skip-tests';
-import { SanitizerPlugin } from 'xray/examples/plugins/sanitizer';
-
-const xray = new Xray({ path: './src' });
-
-// Add plugins in order of importance
-await xray.use(new ProgressLoggerPlugin());          // Visual feedback
-await xray.use(new SkipTestsPlugin());               // Filter files early
-await xray.use(new SanitizerPlugin());               // Redact before parsing
-await xray.use(new FilterPrivatePlugin());           // Filter after parsing
-
-await xray.run();
-```
-
-**Plugin Order Matters:**
-- Filters apply in registration order
-- Later plugins see data modified by earlier plugins
-- Use this for layered transformations
-
-## Common Workflows
-
-### Workflow 1: Clean Output for Sharing
-
-```typescript
-const xray = new Xray({ path: './src' });
-
-// Skip tests and private code
-await xray.use(new SkipTestsPlugin());
-await xray.use(new FilterPrivatePlugin());
-
-// Sanitize secrets
-await xray.use(new SanitizerPlugin());
-
-await xray.run();
-// Output: Clean, public API only, secrets redacted
-```
-
----
-
-### Workflow 2: Development Analysis
-
-```typescript
-const xray = new Xray({ path: './src' });
-
-// Track everything
-const metrics = new MetricsCollectorPlugin();
-await xray.use(metrics);
-
-// Visual progress
-await xray.use(new ProgressLoggerPlugin());
-
-await xray.run();
-
-// Review metrics
-console.log('Cache hit rate:', metrics.getMetrics().cache.hitRate);
-console.log('Parse errors:', metrics.getMetrics().parsing.errors);
-```
-
----
-
-### Workflow 3: CI/CD Pipeline
-
-```typescript
-const xray = new Xray({ path: './src' });
-
-// Skip tests (already tested elsewhere)
-await xray.use(new SkipTestsPlugin());
-
-// Collect metrics for monitoring
-const metrics = new MetricsCollectorPlugin();
-await xray.use(metrics);
-
-await xray.run();
-
-// Check quality thresholds
-if (metrics.getMetrics().cache.hitRate < 0.5) {
-  console.warn('Low cache hit rate - code changing frequently');
-}
-
-if (metrics.getMetrics().parsing.errors > 0) {
-  throw new Error('Parsing errors detected');
-}
-```
-
----
-
-## Understanding Plugin Behavior
-
-### Sequential vs Parallel Events
-
-Plugins listen to events that fire during analysis. Understanding event execution is key:
-
-**Sequential Events (⚡):**
-- Listeners run one-by-one
-- Later listeners see modifications from earlier listeners
-- Use for: filtering, transformations
-
-**Example:**
-```typescript
-// Plugin A filters private tags
-pluginA.on('parse:after', (event) => {
-  event.tags = event.tags.filter(tag => !tag.name.startsWith('_'));
-});
-
-// Plugin B sees already-filtered tags
-pluginB.on('parse:after', (event) => {
-  console.log(`Processing ${event.tags.length} tags`); // Only public tags
-});
-```
-
-**Parallel Events (🔀):**
-- Listeners run concurrently
-- Each receives original payload
-- Use for: logging, metrics collection
-
-**Example:**
-```typescript
-// Both run in parallel, neither affects the other
-pluginA.on('scan:complete', (event) => {
-  console.log(`Found ${event.files.length} files`);
-});
-
-pluginB.on('scan:complete', (event) => {
-  metrics.totalFiles = event.files.length;
-});
-```
-
-### Common Events for Users
-
-| Event | When | What You Can Do |
+| Event | Mode | Mutable payload |
 |-------|------|-----------------|
-| `scan:file` | Before each file | Skip files by pattern |
-| `parse:after` | After parsing | Filter tags/imports |
-| `graph:complete` | Graph built | Review structure |
-| `render:complete` | Output written | Access results |
-| `progress` | During work | Show progress |
+| `scan:start`, `scan:complete` | parallel | none |
+| `scan:file` | sequential | `skip` |
+| `cache:check`, `cache:miss` | parallel | none |
+| `cache:hit`, `cache:write` | sequential | `tags`, `imports` |
+| `parse:before` | sequential | `content`, `skip` |
+| `parse:after` | sequential | `tags`, `imports` |
+| `graph:add-file` | sequential | `tags`, `imports`, `skip` |
+| `graph:add-node`, `graph:add-edge` | sequential | `attrs`, `skip` |
+| `graph:complete`, `rank:start` | parallel | none |
+| `rank:complete` | sequential | `rankedNodes` |
+| `render:start` | sequential | renderer |
+| `render:complete` | parallel | none |
+| `progress` | parallel | none |
+| `preset:applied` | parallel | none |
 
-## Creating Simple Plugins
+Payload fields and an event-by-event reference: [Event
+reference](../agent/events.md).
 
-For simple use cases, you don't need a full plugin file:
+Behaviors observed when running `xray map`:
 
-```typescript
-import { Xray } from 'xray';
+- `scan:complete` fires before the per-file `scan:file` events.
+- `parse:before`, `parse:after` and `graph:add-file` fire only for files
+  missing from the cache; unchanged files fire `cache:hit` instead.
+- `render:complete` fires only with `--no-chunk`.
+- Changes made in `parse:after` are written to the per-file cache. A later
+  run without your preset keeps seeing the modified tags until the file
+  changes or you run `xray cache clear` (`--confirm=yes` when non-interactive).
 
-const xray = new Xray({ path: './src' });
+## Not supported
 
-// Inline plugin
-xray.on('scan:file', (event) => {
-  // Skip vendor directory
-  if (event.file.startsWith('vendor/')) {
-    event.skip = true;
-  }
-});
+- Registering plugins from code: no `new Xray()`, no `xray.use()`.
+- Importing xray internals from a preset: deep paths such as
+  `@hop-top/xray/dist/lib/plugins/clustering` fail with
+  `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+- Selecting plugins or presets in a config file: `.xrayrc`,
+  `.xrayrc.json`, `xray.config.json` and `package.json` ignore a `preset`
+  key. Only the `--preset` flag loads preset code.
+- Per-plugin options from the command line.
+- Other commands: `--preset` is only read by `map`, `graph` and their
+  `generate` alias.
 
-xray.on('progress', (event) => {
-  // Custom progress display
-  console.log(`${event.stage}: ${event.current}/${event.total}`);
-});
+## Security
 
-await xray.run();
-```
+A custom preset is arbitrary code running in the xray process with your
+privileges. Pass only files and packages you trust. A relative path or
+package name resolves against the current directory, so run it from a
+directory you trust.
 
-## Troubleshooting
+## Related
 
-### Plugin Not Working
-
-**Check:**
-1. Plugin registered before `xray.run()`
-2. Using correct event name
-3. Plugin actually installed/imported
-
-```typescript
-// ❌ Wrong - plugin registered after run
-await xray.run();
-await xray.use(plugin);
-
-// ✅ Correct - plugin registered before run
-await xray.use(plugin);
-await xray.run();
-```
-
-### Modifications Not Applied
-
-**Check:**
-1. Event supports modification (check event docs)
-2. Plugin registered early enough
-3. No other plugin overwriting changes
-
-```typescript
-// Plugin order matters!
-
-// ❌ Wrong - filter runs after sanitizer sees unsanitized content
-await xray.use(new SanitizerPlugin());
-await xray.use(new FilterPrivatePlugin());
-
-// ✅ Correct - filter first, then sanitize what remains
-await xray.use(new FilterPrivatePlugin());
-await xray.use(new SanitizerPlugin());
-```
-
-### Performance Issues
-
-**Check:**
-1. Not doing heavy work in event listeners
-2. Using appropriate events (parallel vs sequential)
-
-```typescript
-// ❌ Slow - heavy work on every file
-xray.on('parse:after', (event) => {
-  for (let i = 0; i < 1000000; i++) {
-    heavyComputation();
-  }
-});
-
-// ✅ Fast - defer heavy work until end
-const queue = [];
-xray.on('parse:after', (event) => queue.push(event.tags));
-xray.on('render:complete', () => processQueue(queue));
-```
-
-## Available Plugins
-
-Check `examples/plugins/` directory for:
-
-- **ProgressLoggerPlugin** - Visual progress indicators
-- **FilterPrivatePlugin** - Remove private symbols
-- **SkipTestsPlugin** - Skip test files
-- **MetricsCollectorPlugin** - Collect analysis metrics
-- **SanitizerPlugin** - Redact sensitive data
-
-## Next Steps
-
-- **Want to create your own plugin?** See [Plugin Development (Developer)](../dev/extensions.md)
-- **Want to understand events?** See [Event Reference (Developer)](../dev/events.md)
-- **Want example code?** Check `examples/` directory
-
-## See Also
-
-- [Command Reference](commands.md) - xray CLI commands
-- [Configuration Guide](configuration.md) - Config file options
-- [Workflows](workflows.md) - Common usage patterns
+- Support for new file types or commands without plugin code:
+  [Strategies](strategies.md)
+- Built-in bundles and composing them: [Presets](presets.md)
+- In-repo plugin examples (run from a source checkout):
+  [examples/README.md](../../examples/README.md)
+- Config file options: [Configuration](configuration.md)

@@ -40,28 +40,36 @@ plugin-instance ownership.
 
 ## Writing your own
 
-A preset is a function:
+A preset is a function that returns plugins; a plugin is an object with
+a `name` and an `apply(xray)` method that subscribes to events:
 
-```pseudocode
+```js
 // my-preset.js
-const { SomePlugin } = require('xray/lib/plugins/some');
 module.exports = function myPreset(ctx) {
-  return [new SomePlugin({ root: ctx.root })];
+  return [{
+    name: 'log-graph',
+    apply(xray) {
+      xray.on('graph:complete', (e) => {
+        console.error(`${e.nodeCount} nodes under ${ctx.root}`);
+      });
+    },
+  }];
 };
-module.exports.default = module.exports;
 ```
 
-Use exact code when your preset is not pseudocode. Load it with:
+Load it with:
 
 ```
 xray map --preset ./my-preset.js
 xray map --preset @scope/xray-preset-foo
 ```
 
-The resolver imports the spec as a CJS or ESM module and expects a
-default export that is a function matching
+The resolver loads the spec as a CJS or ESM module and expects a default
+export (or `module.exports`) that is a function matching
 `(ctx: PresetContext) => XrayPlugin[]`. Named exports are accepted as
-a fallback — first function wins.
+a fallback; first function wins. xray internals cannot be imported from
+a preset (the package `exports` map blocks deep paths). Events, load
+errors and limits: [plugins.md](plugins.md).
 
 ## Loading user presets — security note
 

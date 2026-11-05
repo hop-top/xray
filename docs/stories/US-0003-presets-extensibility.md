@@ -6,11 +6,11 @@ related-tracks: [xray-presets-init]
 
 ## context
 
-Before this track, users had to call `xray.use(plugin)` imperatively in
-their own code to assemble any non-trivial plugin stack. The CLI had no
-way to wire the full confidence → clustering → surprise → question
-pipeline. Users also had no vocabulary for "I want the onboarding
-experience" vs "I want raw exploration data".
+Before this track, the CLI had no way to wire the full confidence →
+clustering → surprise → question pipeline, and the package exports no
+library API (`Xray`, `use()`) to assemble one in user code. Users also had
+no vocabulary for "I want the onboarding experience" vs "I want raw
+exploration data".
 
 The preset primitive ships:
 
