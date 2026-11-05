@@ -123,8 +123,11 @@ export function myPreset() {
     it('unknown built-in name: exit 2, valid names listed, nothing written', () => {
       const r = bad('nope');
       expect(r.status).toBe(2);
-      expect(r.stderr).toContain('Unknown preset "nope"');
-      for (const n of ['insights', 'onboarding', 'exploration']) expect(r.stderr).toContain(n);
+      const env = JSON.parse(r.stderr);
+      expect(env.code).toBe('USAGE');
+      expect(env.exit_code).toBe(2);
+      expect(env.message).toContain('Unknown preset "nope"');
+      for (const n of ['insights', 'onboarding', 'exploration']) expect(env.message).toContain(n);
       expect(fs.existsSync(outFile())).toBe(false);
       noStack(r.stderr);
     });
