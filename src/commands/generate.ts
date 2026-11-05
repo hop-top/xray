@@ -835,6 +835,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions, previ
             extensions: normalizedOptions.extensions,
             outputFormat: normalizedOptions.outputFormat,
             outputDiagram: normalizedOptions.outputDiagram,
+            preset: normalizedOptions.preset,
           },
           undefined
         );
