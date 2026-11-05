@@ -3,16 +3,35 @@
   "version": "0.1.0-rc.0",
   "description": "X-ray your codebase - Generate AST, CFG, and DFG visualizations",
   "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "default": "./dist/index.js"
+    },
+    "./strategy": {
+      "types": "./dist/lib/strategy/types.d.ts",
+      "default": "./dist/lib/strategy/types.js"
+    },
+    "./schemas/*": "./schemas/*",
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "strategy": [
+        "dist/lib/strategy/types.d.ts"
+      ]
+    }
+  },
   "bin": {
     "xray": "bin/xray"
   },
   "files": [
-    "bin",
+    "bin/xray",
     "dist",
     "schemas",
     "README.md",
     "LICENSE"
   ],
+  "license": "MIT",
   "keywords": [
     "ast",
     "code-analysis",
@@ -42,7 +61,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc && tsc --project tsconfig.strategies.json && cp -r src/lib/parser/queries dist/lib/parser/",
+    "build": "tsc && tsc --project tsconfig.declarations.json && tsc --project tsconfig.strategies.json && cp -r src/lib/parser/queries dist/lib/parser/",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "./scripts/test-sequential.sh",
@@ -50,8 +69,8 @@
     "typecheck:tests": "tsc -p tsconfig.tests.json",
     "test:coverage": "./scripts/test-coverage.sh",
     "prepublishOnly": "npm run build && npm test",
-    "prepare": "husky install",
-    "strategy:detect": "node dist/index.js strategy detect"
+    "strategy:detect": "node dist/index.js strategy detect",
+    "hooks": "husky"
   },
   "dependencies": {
     "@hop-top/kit": "0.5.0-alpha.11",

@@ -49,6 +49,9 @@ cd xray
 # Install dependencies
 npm ci
 
+# Enable the pre-commit hook (once per clone)
+npm run hooks
+
 # Build the project
 npm run build
 

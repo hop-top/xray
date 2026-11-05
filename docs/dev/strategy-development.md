@@ -23,11 +23,11 @@ Strategies are TypeScript classes that implement the `Strategy` interface. Creat
 
 ### 1. Create Strategy File
 
-Create a new file in the `strategies/` directory:
+Create the file in `.xray/strategies/`, a directory on `XRAY_STRATEGIES_PATH`, or an npm package. Types come from the public `@hop-top/xray/strategy` entry (installed with `@hop-top/xray`); use `import type` so the strategy has no runtime dependency on xray. Built-in strategies in this repo's `strategies/` directory import `../src/lib/strategy/types` instead.
 
 ```typescript
 // strategies/vue.ts
-import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
+import type { Strategy, StrategyContext, FileMetadata } from '@hop-top/xray/strategy';
 
 export default class VueStrategy implements Strategy {
   name = 'vue';
