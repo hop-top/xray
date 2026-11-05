@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { globSync } from 'glob';
 import ignore from 'ignore';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { Logger } from './logger';
 import { FileReadError } from './error/types';
 import { knownExtensions } from './parser/grammars';
@@ -55,7 +55,7 @@ export class FileScanner {
     if (!new Set(extensions).has(path.extname(real))) return `has an unsupported extension (${path.extname(real) || 'none'})`;
     const dir = path.dirname(real);
     try {
-      execSync(`git check-ignore -q -- ${JSON.stringify(path.basename(real))}`, { cwd: dir, stdio: 'pipe' });
+      execFileSync('git', ['check-ignore', '-q', '--', path.basename(real)], { cwd: dir, stdio: 'pipe' });
       return 'is ignored by git';
     } catch (err: any) {
       if (err?.status === 1) return null; // a repo, and not ignored
