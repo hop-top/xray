@@ -52,7 +52,7 @@ export interface BaseCommandOptions extends ExtensionOverrideCommandOptions {
 }
 
 /**
- * Common options shared by analysis commands (map, graph, generate)
+ * Common options shared by analysis commands (map, graph)
  */
 export interface CommonAnalysisOptions extends BaseCommandOptions {
   /** Root directory to analyze (repeatable) */

@@ -42,7 +42,7 @@ const POSITIONAL_ROOTS = 'Root directories to analyze (same as --path; not combi
  */
 export function registerCoreCommands(program: Command): void {
   // Analysis commands
-  // All three write the analysis output (`.xray_*.md` chunks, or the file
+  // Both write the analysis output (`.xray_*.md` chunks, or the file
   // `-o` names) into the project; re-running rewrites the same files.
   declareEffect(addCommonOptions(program.command('map').argument('[paths...]', POSITIONAL_ROOTS))
     .description('Generate visual map of codebase')
@@ -50,11 +50,6 @@ export function registerCoreCommands(program: Command): void {
 
   declareEffect(addCommonOptions(program.command('graph').argument('[paths...]', POSITIONAL_ROOTS))
     .description('Generate control flow (CFG) and data flow (DFG) graphs')
-    .action(handleGenerateCommand), 'write-local', 'conditional');
-
-  // Generate command (kept for backwards compatibility; hidden alias of `map`)
-  declareEffect(addCommonOptions(program.command('generate', { hidden: true }).argument('[paths...]', POSITIONAL_ROOTS))
-    .description('Generate code analysis visualization [alias: map]')
     .action(handleGenerateCommand), 'write-local', 'conditional');
 
   // Query command - call graph queries

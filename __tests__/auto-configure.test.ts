@@ -189,8 +189,8 @@ test('renders app', () => {
       expect(output).toContain('--skip-detect');
     });
 
-    test('should work with generate alias command', () => {
-      const output = runCli(`generate --no-chunk --depth 1`, reactProject);
+    test('should work with map command', () => {
+      const output = runCli(`map --no-chunk --depth 1`, reactProject);
 
       expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');

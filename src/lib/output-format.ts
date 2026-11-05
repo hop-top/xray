@@ -13,7 +13,7 @@ export function isMachineFormat(format?: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Output flag resolution (map / graph / generate)
+// Output flag resolution (map / graph)
 // ---------------------------------------------------------------------------
 
 export type DataFormat = 'txt' | 'csv' | 'xml' | 'json';

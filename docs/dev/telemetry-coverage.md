@@ -4,7 +4,7 @@ This document tracks which commands have telemetry integration.
 
 ## Commands with Telemetry ✅
 
-### 1. `generate` / `map` / `graph`
+### 1. `map` / `graph`
 **File:** `src/commands/generate.ts`
 
 **Tracked Events:**

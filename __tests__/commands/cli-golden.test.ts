@@ -25,10 +25,10 @@ const FIXTURE = path.join(ROOT, '__tests__', 'fixtures', 'plumbing');
 const PKG_VERSION: string = require('../../package.json').version;
 
 // Every command path whose --help is pinned; [] is the root. Hidden
-// commands (generate, clear-cache) included on purpose.
+// commands (clear-cache) included on purpose.
 const COMMANDS: string[][] = [
   [],
-  ['map'], ['graph'], ['generate'], ['query'], ['explore'], ['imports'],
+  ['map'], ['graph'], ['query'], ['explore'], ['imports'],
   ['strategy'],
   ['strategy', 'list'], ['strategy', 'detect'], ['strategy', 'info'],
   ['strategy', 'create'], ['strategy', 'install'], ['strategy', 'remove'],

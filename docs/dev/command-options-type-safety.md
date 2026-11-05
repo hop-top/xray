@@ -22,7 +22,7 @@ export interface BaseCommandOptions {
   telemetry?: boolean;
 }
 
-// Analysis commands (map, graph, generate)
+// Analysis commands (map, graph)
 export interface CommonAnalysisOptions extends BaseCommandOptions {
   path?: string[];
   output?: string;

@@ -133,7 +133,6 @@ describe('what keeps working', () => {
     ['map', ['map', 'd1', 'd2', '-o', 'out']],
     ['graph', ['graph', 'd1', 'd2', '-o', 'out']],
     ['imports', ['imports', 'd1', 'd2']],
-    ['hidden generate', ['generate', 'd1', 'd2', '-o', 'out']],
     ['map after --', ['map', '-o', 'out', '--', 'd1', 'd2']],
   ])('variadic paths: %s takes several', (_n, args) => {
     const r = run(args);
@@ -149,6 +148,12 @@ describe('what keeps working', () => {
     const r = run(['build', 'nosuchnoun']);
     expect(r.status).toBe(2);
     expect(r.stderr).toMatch(/unknown command 'nosuchnoun'/);
+  });
+
+  it('the removed generate command is an unknown command', () => {
+    const r = run(['generate', 'd1']);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/unknown command 'generate'/);
   });
 
   it('unknown options fail as before', () => {

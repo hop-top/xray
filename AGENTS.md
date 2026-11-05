@@ -20,7 +20,7 @@ Agent guidance for xray. Full guide at [`docs/agent/`](docs/agent/).
 
 `xray --help` — top-level commands. Functional groups:
 
-- Analysis: `map`, `graph`, `query`, `impact`, `explore`, `generate`
+- Analysis: `map`, `graph`, `query`, `impact`, `explore`
 - Strategy: `strategy` + dynamic noun commands
 - Management: `alias`, `clear-cache`, `completion`, `upgrade`
 - Integration: `mcp` — stdio MCP server ([`docs/user/mcp.md`](docs/user/mcp.md)); harness hooks in `hooks/harness/` push `xray impact` into Claude Code / nerv / Gemini CLI sessions ([`docs/user/harness-integration.md`](docs/user/harness-integration.md))

@@ -114,7 +114,7 @@ Enable telemetry for specific scopes:
 
 Every command invocation is tracked with:
 
-- Command name (e.g., `generate`, `explore`)
+- Command name (e.g., `map`, `explore`)
 - Options used (e.g., `format: 'json'`, `chunked: true`)
 - Timestamp
 - Service information (name, version)
@@ -126,7 +126,7 @@ Example:
   "name": "command.execute",
   "timestamp": 1707512400000,
   "attributes": {
-    "command.name": "generate",
+    "command.name": "map",
     "command.options.format": "json",
     "command.options.chunked": true
   },
@@ -145,7 +145,7 @@ Command execution time is tracked using spans:
 
 ```json
 {
-  "name": "generate",
+  "name": "map",
   "timestamp": 1707512400000,
   "kind": "span",
   "spanId": "abc123def456",
@@ -187,7 +187,7 @@ Various metrics are tracked:
     "stat.name": "execution.time",
     "stat.value": 1234,
     "stat.unit": "ms",
-    "stat.context.command": "generate"
+    "stat.context.command": "map"
   }
 }
 ```

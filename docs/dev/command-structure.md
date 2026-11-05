@@ -12,7 +12,7 @@ xray uses a modular command architecture built on Commander.js. Commands are org
 src/commands/
 ├── index.ts              # Command registration and setup
 ├── common.ts            # Shared utilities and common options
-├── generate.ts          # map, graph, generate commands
+├── generate.ts          # map, graph commands
 ├── explore.ts           # explore command with strategy support
 ├── strategy.ts          # strategy * commands and routing
 ├── strategy-cmd.ts      # Strategy command execution engine
