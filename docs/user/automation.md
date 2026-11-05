@@ -241,7 +241,7 @@ jobs:
       - run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          git add .
+          git add 'docs/*-map*'
           git commit -m "docs: update ${{ matrix.lens }} xray map" || exit 0
           git push
 ```

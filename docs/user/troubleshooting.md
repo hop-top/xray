@@ -258,10 +258,11 @@ chmod +x .git/hooks/pre-commit
 
 **Solution:**
 
-Hook automatically stages changes with `git add -A`. Verify:
-1. Output path in config is correct
-2. xray map command succeeds (check for errors)
-3. Files are actually being generated
+The hook maps your staged files and stages only the files xray changed. Verify:
+1. A config file is tracked or staged: an untracked config is skipped, and the hook says so
+2. Output path in config is correct
+3. xray map command succeeds (a failure stops the commit)
+4. Files are actually being generated
 
 ## Output Issues
 
