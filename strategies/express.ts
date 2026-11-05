@@ -133,7 +133,7 @@ export default class ExpressStrategy implements Strategy {
     const routes: Array<{ method: string; path: string; handler?: string; middlewareChain?: string[] }> = [];
 
     // Pattern: Find route definitions and extract everything until the closing parenthesis
-    const routePattern = /(?:app|router|\w+)\.(get|post|put|delete|patch|head|options|all)\s*\(\s*['"`]([^'"`]+)['"`]\s*,/g;
+    const routePattern = /\b\w+\.(get|post|put|delete|patch|head|options|all)\s*\(\s*['"`]([^'"`]+)['"`]\s*,/g;
 
     let match;
     while ((match = routePattern.exec(content)) !== null) {
@@ -239,7 +239,7 @@ export default class ExpressStrategy implements Strategy {
     const mounts: Array<{ path: string; router: string }> = [];
 
     // Pattern: app.use('/path', routerVariable)
-    const mountPattern = /(?:app|\w+)\.use\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*(\w+)\s*\)/g;
+    const mountPattern = /\b\w+\.use\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*(\w+)\s*\)/g;
 
     let match;
     while ((match = mountPattern.exec(content)) !== null) {
@@ -255,7 +255,7 @@ export default class ExpressStrategy implements Strategy {
     const middleware: Array<{ name?: string; path?: string }> = [];
 
     // Pattern 1: app.use(middleware) - global middleware
-    const globalPattern = /(?:app|\w+)\.use\s*\(\s*([a-zA-Z_$][a-zA-Z0-9_$.()]*(?:\([^)]*\))?)\s*\)/g;
+    const globalPattern = /\b\w+\.use\s*\(\s*([a-zA-Z_$][a-zA-Z0-9_$.()]{0,127}(?:\([^)]{0,511}\))?)\s*\)/g;
 
     let match;
     while ((match = globalPattern.exec(content)) !== null) {
@@ -268,7 +268,7 @@ export default class ExpressStrategy implements Strategy {
     }
 
     // Pattern 2: app.use('/path', middleware) - path-specific middleware
-    const pathPattern = /(?:app|\w+)\.use\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*([a-zA-Z_$][a-zA-Z0-9_$.()]*(?:\([^)]*\))?)\s*\)/g;
+    const pathPattern = /\b\w+\.use\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*([a-zA-Z_$][a-zA-Z0-9_$.()]{0,127}(?:\([^)]{0,511}\))?)\s*\)/g;
 
     while ((match = pathPattern.exec(content)) !== null) {
       const path = match[1];
@@ -287,29 +287,31 @@ export default class ExpressStrategy implements Strategy {
 
     // Pattern 1: Inline error handler with 4 parameters (err, req, res, next)
     // app.use((err, req, res, next) => { ... })
-    const inlinePattern = /(?:app|\w+)\.use\s*\(\s*\(\s*err\s*,\s*req\s*,\s*res\s*,\s*next\s*\)\s*=>/g;
+    const inlinePattern = /\b\w+\.use\s*\(\s*\(\s*err\s*,\s*req\s*,\s*res\s*,\s*next\s*\)\s*=>/g;
     if (inlinePattern.test(content)) {
       errorHandlers.push({ type: 'inline' });
     }
 
     // Pattern 2: Inline error handler with function keyword
     // app.use(function(err, req, res, next) { ... })
-    const inlineFunctionPattern = /(?:app|\w+)\.use\s*\(\s*function\s*\(\s*err\s*,\s*req\s*,\s*res\s*,\s*next\s*\)/g;
+    const inlineFunctionPattern = /\b\w+\.use\s*\(\s*function\s*\(\s*err\s*,\s*req\s*,\s*res\s*,\s*next\s*\)/g;
     if (inlineFunctionPattern.test(content)) {
       errorHandlers.push({ type: 'inline' });
     }
 
+    // Names passed bare to `.use(name)`, collected in one linear pass so each
+    // handler is a Set lookup rather than another scan of the file.
+    const usedNames = new Set<string>();
+    const useArgPattern = /\b\w+\.use\s*\(\s*(\w+)\s*\)/g;
+    let match;
+    while ((match = useArgPattern.exec(content)) !== null) usedNames.add(match[1]);
+
     // Pattern 3: Named error handler function definition
     // function errorHandler(err, req, res, next) { ... }
     const namedFunctionPattern = /function\s+(\w+)\s*\(\s*err\s*,\s*req\s*,\s*res\s*,\s*next\s*\)/g;
-    let match;
     while ((match = namedFunctionPattern.exec(content)) !== null) {
       const name = match[1];
-      // Check if this function is used in app.use()
-      const usagePattern = new RegExp(`(?:app|\\w+)\\.use\\s*\\(\\s*${name}\\s*\\)`, 'g');
-      if (usagePattern.test(content)) {
-        errorHandlers.push({ name, type: 'named' });
-      }
+      if (usedNames.has(name)) errorHandlers.push({ name, type: 'named' });
     }
 
     // Pattern 4: Arrow function error handler
@@ -317,11 +319,7 @@ export default class ExpressStrategy implements Strategy {
     const arrowFunctionPattern = /(?:const|let|var)\s+(\w+)\s*=\s*\(\s*err\s*,\s*req\s*,\s*res\s*,\s*next\s*\)\s*=>/g;
     while ((match = arrowFunctionPattern.exec(content)) !== null) {
       const name = match[1];
-      // Check if this function is used in app.use()
-      const usagePattern = new RegExp(`(?:app|\\w+)\\.use\\s*\\(\\s*${name}\\s*\\)`, 'g');
-      if (usagePattern.test(content)) {
-        errorHandlers.push({ name, type: 'named' });
-      }
+      if (usedNames.has(name)) errorHandlers.push({ name, type: 'named' });
     }
 
     return errorHandlers;

@@ -103,7 +103,7 @@ export default class RestApiStrategy implements Strategy {
 
     // Pattern: app.get('/path', ...) or router.post('/path', ...)
     // Matches: app.METHOD, router.METHOD, someVar.METHOD where METHOD is get, post, put, delete, patch
-    const routePattern = /(?:app|router|\w+)\.(get|post|put|delete|patch|head|options)\s*\(\s*['"`]([^'"`]+)['"`]/g;
+    const routePattern = /\b\w+\.(get|post|put|delete|patch|head|options)\s*\(\s*['"`]([^'"`]+)['"`]/g;
 
     let match;
     while ((match = routePattern.exec(content)) !== null) {
@@ -124,7 +124,7 @@ export default class RestApiStrategy implements Strategy {
 
     // Pattern: @app.get("/path") or @router.post("/path")
     // Matches: @app.METHOD, @router.METHOD, @someVar.METHOD where METHOD is get, post, put, delete, patch
-    const decoratorPattern = /@(?:app|router|\w+)\.(get|post|put|delete|patch|head|options)\s*\(\s*['"]([^'"]+)['"]/g;
+    const decoratorPattern = /@\w+\.(get|post|put|delete|patch|head|options)\s*\(\s*['"]([^'"]+)['"]/g;
 
     let match;
     while ((match = decoratorPattern.exec(content)) !== null) {
@@ -144,7 +144,7 @@ export default class RestApiStrategy implements Strategy {
     const endpoints: Array<{ method: string; path: string; handler?: string }> = [];
 
     // Pattern 1: http.HandleFunc("/path", handler) or mux.HandleFunc("/path", handler)
-    const handleFuncPattern = /(?:http|mux|\w+)\.HandleFunc\s*\(\s*"([^"]+)"\s*,/g;
+    const handleFuncPattern = /\b\w+\.HandleFunc\s*\(\s*"([^"]+)"\s*,/g;
     let match;
     while ((match = handleFuncPattern.exec(content)) !== null) {
       const path = match[1];
