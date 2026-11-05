@@ -13,7 +13,7 @@ describe('xray upgrade checker: failed lookups stay silent', () => {
   const realFetch = globalThis.fetch;
   let stateDir: string;
   let requested: string[];
-  const realTmp = process.env.TMPDIR;
+  let tmpSpy: jest.SpyInstance;
 
   function stubFetch(impl: () => Promise<unknown>) {
     requested = [];
@@ -35,22 +35,22 @@ describe('xray upgrade checker: failed lookups stay silent', () => {
 
   beforeEach(() => {
     stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-upgrade-'));
-    // The kit caches under os.tmpdir(); isolate it per test.
-    process.env.TMPDIR = stateDir;
+    // The kit caches under os.tmpdir(); isolate it per test. (Jest's
+    // process.env is a copy: assigning TMPDIR there never reaches os.)
+    tmpSpy = jest.spyOn(require('os'), 'tmpdir').mockReturnValue(stateDir);
   });
 
   afterEach(() => {
     globalThis.fetch = realFetch;
-    if (realTmp === undefined) delete process.env.TMPDIR;
-    else process.env.TMPDIR = realTmp;
+    tmpSpy.mockRestore();
     fs.rmSync(stateDir, { recursive: true, force: true });
   });
 
-  it('targets the xray-codes/xray releases endpoint', async () => {
+  it('lists xray-codes/xray releases (tagged xray/v, prereleases included)', async () => {
     stubFetch(async () => ({ ok: false, status: 404, json: async () => ({}) }));
     await run();
     expect(requested).toEqual([
-      'https://api.github.com/repos/xray-codes/xray/releases/latest',
+      'https://api.github.com/repos/xray-codes/xray/releases?per_page=100&page=1',
     ]);
   });
 

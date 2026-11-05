@@ -34,6 +34,8 @@ describe('upgrade wiring', () => {
       name: 'xray',
       owner: 'xray-codes',
       repo: 'xray',
+      tagPrefix: 'xray/v',
+      includePrereleases: true,
     });
     expect(typeof opts.currentVersion).toBe('string');
     expect((opts.currentVersion as string).length).toBeGreaterThan(0);

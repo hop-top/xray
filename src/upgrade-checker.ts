@@ -16,6 +16,8 @@ const { createChecker } = require('@hop-top/kit/upgrade') as {
     currentVersion: string;
     owner: string;
     repo: string;
+    tagPrefix?: string;
+    includePrereleases?: boolean;
   }) => { notifyIfAvailable: (stream?: NodeJS.WritableStream) => Promise<void> };
 };
 
@@ -32,5 +34,10 @@ export function createXrayUpgradeChecker() {
     currentVersion: XRAY_VERSION,
     owner: 'xray-codes',
     repo: 'xray',
+    // Tags are `xray/v<semver>`: the repo hosts other components, so
+    // releases/latest may name one of theirs. Prereleases stay on while
+    // only rc releases exist; drop includePrereleases once a stable ships.
+    tagPrefix: 'xray/v',
+    includePrereleases: true,
   });
 }
