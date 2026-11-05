@@ -15,7 +15,6 @@ Built-in commands available in all installations:
 | Command | Description |
 |---------|-------------|
 | `map` | Generate visual map of codebase |
-| `scan` | Scan and discover files |
 | `graph` | Generate CFG and DFG graphs |
 | `query` | Query call graph |
 | `strategy` | Manage strategies |
@@ -306,7 +305,7 @@ command (`sideEffect`, `idempotent`):
 | Tier | Commands |
 |------|----------|
 | `read` | `query`, `impact`, `imports`, `explore`, `paths`, `describe`, `completion`, `help`, `lang list`, `alias list`, `strategy list/detect/info/validate/path`, every strategy command (`react components`, ...), aliases |
-| `write-local` | `map`, `scan`, `graph` (write the analysis into the project), `alias set/remove`, `lang add/remove`, `strategy create/install` |
+| `write-local` | `map`, `graph` (write the analysis into the project), `alias set/remove`, `lang add/remove`, `strategy create/install` |
 | `destructive-local` | `strategy remove`, `cache clear` (`clear-cache`) |
 | `interactive` | `mcp` |
 
@@ -317,7 +316,7 @@ A destructive command needs confirmation: a terminal prompt, or
 `--confirm=yes` (`--confirm=no` refuses). The root `--dry-run` flag, given
 before or after the command, prints the plan for a write or destructive
 command (files, packages, config entries it would touch) and changes
-nothing; `--format json` (or `--json`) on `map`, `scan` and `graph` prints
+nothing; `--format json` (or `--json`) on `map` and `graph` prints
 it as JSON. A read command ignores `--dry-run` and runs; `mcp` is a live
 session and refuses it.
 

@@ -32,8 +32,8 @@ function run(args: string[]): { stderr: string; status: number | null } {
 
 describe('usage error rendering', () => {
   const cases: Array<[string, string[], RegExp]> = [
-    ['unknown flag', ['scan', '--bogus'], /unknown option '--bogus'/],
-    ['missing flag value', ['scan', '--log-level'], /argument missing/],
+    ['unknown flag', ['map', '--bogus'], /unknown option '--bogus'/],
+    ['missing flag value', ['map', '--log-level'], /argument missing/],
     ['missing argument', ['alias', 'remove'], /missing required argument 'name'/],
     ['unknown help topic', ['help', 'nosuch'], /unknown help topic 'nosuch'/],
     ['unsupported shell', ['completion', 'pwsh'], /unsupported shell 'pwsh'/],

@@ -201,7 +201,7 @@ Based on your framework, look for:
 **Action:** Check for important configuration files
 
 ```bash
-xray scan --path ./ --match ".env*" --match "*config*" --match "package.json" --match "*.yaml"
+xray explore --path ./ --match ".env*" --match "*config*" --match "package.json" --match "*.yaml"
 ```
 
 **Expected Output:**
@@ -299,13 +299,13 @@ You've successfully understood the codebase when you can:
 **Recovery:**
 - Use `xray map --path ./src --depth 1` for simpler view
 - Use `xray map --path <single-directory>` to focus on one area
-- Use `xray scan` to find specific files only
+- Use `xray explore` to find specific files only
 - Focus on one framework at a time
 
 ### Problem: Can't find entry point
 **Recovery:**
-- Check package.json for "main" field: `xray scan --match "package.json"`
-- Look for common entry point names: `xray scan --match "index.*" --match "main.*" --match "app.*"`
+- Check package.json for "main" field: `xray explore --match "package.json"`
+- Look for common entry point names: `xray explore --match "index.*" --match "main.*" --match "app.*"`
 - Check test files for imports to understand startup
 
 ### Problem: Dependencies seem random
@@ -391,7 +391,7 @@ Once you understand the codebase:
 - **Reference Output:** Keep xray output as reference while implementing
 - **Test Understanding:** Can you explain the structure to someone else?
 - **Use Anchors:** When unsure what to look at, use xray map --anchor <main-file>
-- **Combine Patterns:** Use scan + map + explore together for full picture
+- **Combine Patterns:** Use explore (with --match, --search or a framework command) + map together for full picture
 
 ## Related Documentation
 

@@ -387,7 +387,6 @@ xray User Manual
 ├── Commands Reference (Complete reference)
 │   ├── xray map
 │   ├── xray explore / strategies
-│   ├── xray scan
 │   ├── xray graph
 │   ├── xray impact (what breaks if I change X)
 │   ├── xray strategy detect/list

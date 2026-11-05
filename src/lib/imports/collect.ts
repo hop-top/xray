@@ -1,7 +1,7 @@
 /**
  * Files for `xray imports`: one root, optionally narrowed to paths under
  * it and to contract languages. Listing is the scanner's (git ls-files,
- * else glob + .gitignore, same as `scan`) widened to the contract
+ * else glob + .gitignore, same as `explore`) widened to the contract
  * extensions; order is posix path, byte-wise. Manifests (IMPORT_MANIFESTS)
  * anywhere under the root are always included as resolution inputs; the
  * narrowing applies to source files only. Reads only.

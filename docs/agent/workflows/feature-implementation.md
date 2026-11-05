@@ -42,7 +42,7 @@ xray explore <framework>:components
 xray express routes
 
 # General search
-xray scan --match "*<related-keyword>*"
+xray explore --match "*<related-keyword>*"
 ```
 
 **Success Criteria:**
@@ -136,7 +136,7 @@ xray react components
 xray rest-api endpoints
 
 # If data-heavy feature
-xray scan --match "*model*" --match "*schema*" --match "*service*"
+xray explore --match "*model*" --match "*schema*" --match "*service*"
 ```
 
 **Success Criteria:**
@@ -147,7 +147,7 @@ xray scan --match "*model*" --match "*schema*" --match "*service*"
 #### Step 3.2: Check Dependencies and Services
 
 ```bash
-xray scan --match "*service*" --match "!*.test.ts"
+xray explore --match "*service*"
 ```
 
 **Success Criteria:**

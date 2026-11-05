@@ -273,7 +273,7 @@ xray comp
 - **Framework-agnostic** - Name aliases however makes sense for your team
 
 **Restrictions:**
-- Cannot override built-in commands (map, scan, graph, etc.)
+- Cannot override built-in commands (map, graph, etc.)
 - Must include both strategy and command name
 - Requires restart after creating/modifying
 

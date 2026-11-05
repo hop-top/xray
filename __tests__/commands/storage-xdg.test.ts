@@ -110,7 +110,6 @@ describe.each([['on'], ['off']])('consent %s: the project is left as found', (co
   const cases: Array<[string, (out: string) => string[]]> = [
     ['map', (o) => ['map', '-p', '.', '-o', path.join(o, 'm')]],
     ['map --format json', (o) => ['map', '-p', '.', '--format', 'json', '-o', path.join(o, 'm.json')]],
-    ['scan', (o) => ['scan', '-p', '.', '-o', path.join(o, 's')]],
     ['graph', (o) => ['graph', '-p', '.', '-o', path.join(o, 'g')]],
     ['paths', () => ['paths']],
     ['describe', () => ['describe']],
@@ -229,7 +228,7 @@ describe('cache location', () => {
     if (typeof process.getuid === 'function' && process.getuid() === 0) return; // root ignores modes
     const proj = mkProject('ro');
     fs.chmodSync(proj, 0o555);
-    for (const args of [['map', '-p', '.', '-o', path.join(base, 'o')], ['scan', '-p', '.', '-o', path.join(base, 's')],
+    for (const args of [['map', '-p', '.', '-o', path.join(base, 'o')],
       ['graph', '-p', '.', '-o', path.join(base, 'g')], ['imports', '-p', '.', '-o', path.join(base, 'i.json')], ['paths'], ['describe']]) {
       const r = xray(args, proj);
       expect({ args, status: r.status, err: r.stderr }).toEqual({ args, status: 0, err: r.stderr });

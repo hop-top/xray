@@ -35,7 +35,7 @@ QUESTION FROM USER
   │   NO → Continue
   │
   ├─ Is it about "what files exist matching criteria"?
-  │   YES → Use xray scan
+  │   YES → Use xray explore
   │   NO → Continue
   │
   ├─ Is it about "how is this organized"?
@@ -70,8 +70,8 @@ QUESTION FROM USER
 
 - User asks: "Where would I add a new React component?" → Use xray explore
 - User asks: "How is the authentication system structured?" → Use xray map + explore
-- User asks: "What files handle payments?" → Use xray scan + map
-- User asks: "Is there a logger I can use?" → Use xray scan + explore
+- User asks: "What files handle payments?" → Use xray explore + map
+- User asks: "Is there a logger I can use?" → Use xray explore --search logger
 - User asks: "Find all API routes" → Use xray explore
 - User asks: "How do requests flow through the app?" → Use xray map + graph
 - User asks: "What does the project look like?" → Use xray strategy detect + map
@@ -131,7 +131,7 @@ Agent recognizes a user request that would benefit from xray before user explici
    ```
 
 2. **Gather Context**
-   - `xray scan --match "*payment*"` or `--match "*api*"` (narrow scope)
+   - `xray explore --match "*payment*"` or `--match "*api*"` (narrow scope)
    - `xray explore <framework>:<relevant-command>` (find related code)
    - `xray map --anchor <key-file> --with incs` (understand dependencies)
 
@@ -199,7 +199,7 @@ Turn 1: User says "I need to add authentication"
   → Result: User understands architecture, knows pattern
 
 Turn 2: User asks "Where would the login form go?"
-  → Action: xray scan + map with appropriate filters
+  → Action: xray explore --match + map with appropriate filters
   → Result: User knows file locations and patterns
 
 Turn 3: User implements based on findings
@@ -333,12 +333,12 @@ CATCH error:
 
 ```
 User: "Analyze the payment flow"
-Agent: Run xray scan --match "*payment*"
+Agent: Run xray explore --match "*payment*"
   → ERROR: "Invalid path"
 
 Recovery:
   1. Check if path exists
-  2. Rerun xray with correct path: xray scan --path ./src --match "*payment*"
+  2. Rerun xray with correct path: xray explore --path ./src --match "*payment*"
 
 If still fails:
   3. Fall back: Ask user "What files are related to payments?"

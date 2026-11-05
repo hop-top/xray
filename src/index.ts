@@ -72,7 +72,7 @@ function nearestCommand(input: string, candidates: string[]): string | null {
     if (best === null || d < best.d) best = { name: c, d };
   }
   // Tolerance: short tokens (<=6 chars) → 2 edits (catches typos like
-  // 'scna' vs 'scan' which Levenshtein scores at 2). Longer tokens →
+  // 'mpa' vs 'map' which Levenshtein scores at 2). Longer tokens →
   // length/4.
   const tol = input.length <= 6 ? 2 : Math.floor(input.length / 4);
   return best && best.d <= Math.max(1, tol) ? best.name : null;

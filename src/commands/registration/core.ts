@@ -20,7 +20,6 @@ import { declareEffect } from '../side-effect';
 // fall into kit's default section.
 const CORE_GROUPS: Record<string, HelpGroupId> = {
   map: 'analyze',
-  scan: 'analyze',
   graph: 'analyze',
   query: 'analyze',
   impact: 'analyze',
@@ -43,14 +42,10 @@ const POSITIONAL_ROOTS = 'Root directories to analyze (same as --path; not combi
  */
 export function registerCoreCommands(program: Command): void {
   // Analysis commands
-  // All four write the analysis output (`.xray_*.md` chunks, or the file
+  // All three write the analysis output (`.xray_*.md` chunks, or the file
   // `-o` names) into the project; re-running rewrites the same files.
   declareEffect(addCommonOptions(program.command('map').argument('[paths...]', POSITIONAL_ROOTS))
     .description('Generate visual map of codebase')
-    .action(handleGenerateCommand), 'write-local', 'conditional');
-
-  declareEffect(addCommonOptions(program.command('scan').argument('[paths...]', POSITIONAL_ROOTS))
-    .description('Scan and discover files in codebase')
     .action(handleGenerateCommand), 'write-local', 'conditional');
 
   declareEffect(addCommonOptions(program.command('graph').argument('[paths...]', POSITIONAL_ROOTS))

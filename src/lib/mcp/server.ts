@@ -136,7 +136,7 @@ async function runTool(
   };
   const withFlag = (flag: string) => [...def.path, flag, ...argv.slice(def.path.length)];
 
-  // map/scan/graph write files: point them at a private dir and return its content.
+  // map/graph write files: point them at a private dir and return its content.
   if (def.fileOutput) {
     return withOutputDir(async (dir) => {
       const r = await runChild(withFlag(`--output=${path.join(dir, 'xray')}`), run);

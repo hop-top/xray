@@ -28,7 +28,7 @@ const PKG_VERSION: string = require('../../package.json').version;
 // commands (generate, clear-cache) included on purpose.
 const COMMANDS: string[][] = [
   [],
-  ['map'], ['scan'], ['graph'], ['generate'], ['query'], ['explore'], ['imports'],
+  ['map'], ['graph'], ['generate'], ['query'], ['explore'], ['imports'],
   ['strategy'],
   ['strategy', 'list'], ['strategy', 'detect'], ['strategy', 'info'],
   ['strategy', 'create'], ['strategy', 'install'], ['strategy', 'remove'],
@@ -61,7 +61,8 @@ const COMMANDS: string[][] = [
 
 const ERROR_CASES: string[][] = [
   ['nosuchcmd-x'], // unknown command (hyphenated)
-  ['scna'], // near-miss typo
+  ['mpa'], // near-miss typo
+  ['scan'], // removed command
   ['--bogus'], // unknown root flag
   ['map', '--bogus'], // unknown subcommand flag
   ['query'], // missing optional-but-required query

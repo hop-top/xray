@@ -1,5 +1,5 @@
 /**
- * CSV / XML renderers for map / scan / graph: node/edge counts equal the JSON
+ * CSV / XML renderers for map / graph: node/edge counts equal the JSON
  * graph's; outputs parse with real parsers and are deterministic.
  */
 import { spawnSync } from 'child_process';
@@ -44,7 +44,7 @@ function xmlDoc(file: string) {
   return doc;
 }
 
-describe('graph outputs (map / scan / graph)', () => {
+describe('graph outputs (map / graph)', () => {
   beforeAll(() => {
     work = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-gout-'));
     fs.mkdirSync(path.join(work, 'alpha'));
@@ -67,7 +67,7 @@ describe('graph outputs (map / scan / graph)', () => {
   afterEach(() => fs.rmSync(outDir, { recursive: true, force: true }));
   afterAll(() => fs.rmSync(work, { recursive: true, force: true }));
 
-  describe.each(['map', 'scan', 'graph'])('%s --format csv / xml', cmd => {
+  describe.each(['map', 'graph'])('%s --format csv / xml', cmd => {
     test('csv: nodes + edges tables with the JSON graph\'s counts', () => {
       const json = path.join(outDir, 'g.json');
       mapTo(cmd, ['--format', 'json'], json, 'alpha', 'beta');

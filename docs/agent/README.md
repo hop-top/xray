@@ -39,7 +39,7 @@ This documentation is specifically designed for AI coding agents (Claude, GPT, C
 ### What xray Does (for agents)
 
 xray analyzes source code to answer structural questions about codebases:
-- **What files exist?** (scan)
+- **What files exist?** (explore --match)
 - **How is code organized?** (map)
 - **What patterns are used?** (explore with strategies)
 - **What are the dependencies?** (map with --with incs)
@@ -67,7 +67,7 @@ Unlike humans who view xray output directly, agents:
 
 | Command | Purpose | Token Cost | When to Use |
 |---------|---------|-----------|-----------|
-| `scan` | Find files matching pattern | Low | Narrow search space, verify file existence |
+| `explore --match` | Find files matching pattern | Low | Narrow search space, verify file existence |
 | `map` | Get code structure/organization | Medium | Understand architecture, find key files |
 | `explore` | Find framework-specific patterns | Low | Discover components, routes, hooks |
 | `strategy detect` | Identify frameworks in use | Low | First step in new codebase |
@@ -85,7 +85,7 @@ Unlike humans who view xray output directly, agents:
 - Buffer for parsing/refinement: ~50 tokens
 
 ### Debugging Issue (300-600 tokens)
-- `scan --match <pattern>`: ~50 tokens (find relevant files)
+- `explore --match <pattern>`: ~50 tokens (find relevant files)
 - `map --anchor <file>`: ~200 tokens (understand context)
 - `map --with incs`: ~100 tokens (dependencies)
 - Buffer: ~50 tokens
@@ -218,7 +218,7 @@ docs/agent/
 ### Discovery
 ```bash
 xray strategy detect                    # What frameworks are used?
-xray scan --path ./src                 # What files exist?
+xray explore --path ./src                 # What files exist?
 ```
 
 ### Understanding
@@ -231,7 +231,7 @@ xray impact createSession               # Who calls this, transitively?
 
 ### Investigation
 ```bash
-xray scan --match "*.ts" --match "!*.test.ts"  # Filter files
+xray explore --type ts --match "!*.test.ts"  # Filter files
 xray map --anchor <file> --with cf --with df  # Control/data flow
 ```
 

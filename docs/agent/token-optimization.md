@@ -15,7 +15,7 @@ Optimize this ratio at every decision point.
 | Command | Base Cost | With Options | Notes |
 |---------|-----------|--------------|-------|
 | `strategy detect` | 50t | 50-70t | Very cheap, always do first |
-| `scan <pattern>` | 50-100t | 50-150t | Cheap for focused scans |
+| `explore --match <pattern>` | 50-100t | 50-150t | Cheap for focused file lists |
 | `map --depth 1` | 150-200t | 200-300t | Good for high-level |
 | `map --depth 2` | 250-350t | 350-500t | Good balance |
 | `map (full)` | 400-800t | 500-1000t | Very expensive |
@@ -67,7 +67,7 @@ Do I NEED this information?
 
 ```
 Step 1: Cheap discovery (100-150 tokens)
-  COMMAND: xray strategy detect + xray scan
+  COMMAND: xray strategy detect + xray explore
   RESULT: Know what exists, frameworks
 
 Step 2: If more needed (200-350 tokens)
@@ -108,7 +108,7 @@ EXPENSIVE:
   = 400-800 tokens
 
 CHEAPER (find relevant files first):
-  xray scan --match "*api*"
+  xray explore --match "*api*"
   = 50 tokens
   THEN:
   xray map --path ./src/api
@@ -204,7 +204,7 @@ Available: 300 tokens
 
 Allocation:
   - strategy detect: 50 tokens
-  - scan --match pattern: 50 tokens
+  - explore --match pattern: 50 tokens
   - explore framework:command: 100 tokens
   - Buffer: 100 tokens
 
@@ -253,7 +253,7 @@ Available: 100 tokens
 
 Allocation:
   - strategy detect: 50 tokens
-  - scan or explore: 50 tokens
+  - explore: 50 tokens
 
 Approach: Answer: "Does this exist?" or "What frameworks?"
 Result: Very limited, directional info only
@@ -372,7 +372,7 @@ RESULT: Complete understanding
 BUDGET: 150 tokens
 
 Step 1: Search by pattern (50t)
-  xray scan --match "*<name-pattern>*"
+  xray explore --match "*<name-pattern>*"
 
 Step 2: If needed, understand area (100t)
   xray map --path <found-directory> --depth 1
@@ -427,7 +427,7 @@ Before each xray command, ask:
 2. Use `--match` to narrow scope (saves 100-300t)
 3. Use `--depth 1` for overview instead of full map (saves 200-300t)
 4. Use `explore` instead of `map` for patterns (saves 200-300t)
-5. Use `scan` to find files, then focused `map` (saves 100-200t)
+5. Use `explore --match` to find files, then focused `map` (saves 100-200t)
 6. Reference previous results instead of re-running (saves 100%+)
 7. Use `--anchor` for focused analysis (saves 100-300t)
 8. Skip unnecessary features (saves 50-150t each)
@@ -447,7 +447,7 @@ Turn 1: Understand framework
   Notes: React + Express confirmed
 
 Turn 2: Find similar auth
-  Command: scan --match "*auth*"
+  Command: explore --match "*auth*"
   Cost: 50 tokens
   Remaining: 900 tokens
 

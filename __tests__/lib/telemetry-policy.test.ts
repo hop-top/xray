@@ -27,7 +27,7 @@ describe('telemetry policy: commands whose default format is machine-readable', 
 
   it.each([
     [['map']],
-    [['scan', 'imports']],
+    [['map', 'imports']],
     [['--', 'imports']],
     [[]],
   ])('xray %j is not a machine-default command', (args) => {

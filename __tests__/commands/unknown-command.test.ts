@@ -39,14 +39,20 @@ describe('unknown-subcommand guard', () => {
   });
 
   it('rejects near-miss typo with did-you-mean hint (exit 2)', () => {
-    const r = run(['scna']);
+    const r = run(['mpa']);
     expect(r.status).toBe(2);
-    expect(r.stderr).toMatch(/scna/);
-    expect(r.stderr).toMatch(/did you mean 'scan'/);
+    expect(r.stderr).toMatch(/mpa/);
+    expect(r.stderr).toMatch(/did you mean 'map'/);
+  });
+
+  it('rejects the removed scan command with exit 2', () => {
+    const r = run(['scan']);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/unknown command 'scan'/);
   });
 
   it('rejects unknown flags on registered subcommand (exit 2)', () => {
-    const r = run(['scan', '--bogus-flag']);
+    const r = run(['map', '--bogus-flag']);
     expect(r.status).toBe(2);
     expect(r.stderr).toMatch(/unknown option '--bogus-flag'/);
   });
@@ -63,7 +69,7 @@ describe('unknown-subcommand guard', () => {
   });
 
   it('preserves registered subcommands', () => {
-    const r = run(['scan', '--help']);
+    const r = run(['map', '--help']);
     expect(r.status).toBe(0);
   });
 });

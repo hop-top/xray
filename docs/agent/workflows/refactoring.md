@@ -27,8 +27,8 @@ User specifies what to refactor:
 
 ```bash
 # Find files with refactoring keywords
-xray scan --match "*auth*"  # for auth consolidation
-xray scan --match "*component*"  # for component refactoring
+xray explore --match "*auth*"  # for auth consolidation
+xray explore --match "*component*"  # for component refactoring
 ```
 
 **Success Criteria:**
@@ -54,7 +54,7 @@ For each file being refactored:
 
 ```bash
 # Find everywhere this code is used
-xray scan --match "*" --match "!*.test.ts"
+xray explore --match "!*.test.ts"
 
 # Manually check what depends on it (from previous map output)
 ```
@@ -69,7 +69,7 @@ xray scan --match "*" --match "!*.test.ts"
 If consolidating code:
 
 ```bash
-xray scan --match "*similar-pattern*"
+xray explore --match "*similar-pattern*"
 ```
 
 **Success Criteria:**
@@ -121,7 +121,7 @@ TESTING STRATEGY:
 
 ```bash
 # Get list of all references
-xray scan --match "*"
+xray explore --match "*"
 
 # From earlier map, understand all dependencies
 ```
@@ -134,7 +134,7 @@ Check:
 #### Step 4.2: Plan Tests
 
 ```bash
-xray scan --match "*.test.ts"
+xray explore --match "*.test.ts"
 ```
 
 Identify tests that cover:
@@ -205,7 +205,7 @@ Before proceeding, verify:
 GOAL: Remove duplicate auth logic in 3 places
 
 STEPS:
-1. xray scan --match "*auth*" (find all auth code)
+1. xray explore --match "*auth*" (find all auth code)
 2. Compare the 3 implementations
 3. xray map to understand dependencies
 4. Create consolidated version
@@ -234,7 +234,7 @@ STEPS:
 GOAL: Reduce number of service files
 
 STEPS:
-1. xray scan --match "*.service.ts" (list all services)
+1. xray explore --match "*.service.ts" (list all services)
 2. xray map on each service (understand dependencies)
 3. Identify which can be consolidated
 4. Create consolidated service
@@ -254,7 +254,7 @@ STEPS:
 - Verify: All tests should pass unchanged
 
 **Pitfall 3: Not updating all references**
-- Fix: Use xray scan to find all references
+- Fix: Use xray explore to find all references
 - Verify: Build should work after changes
 
 **Pitfall 4: Breaking public API**

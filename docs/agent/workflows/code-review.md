@@ -41,7 +41,7 @@ Deleted:
 
 ```bash
 # Find what type of changes
-xray scan --match "*.tsx" --match "*.ts"
+xray explore --match "*.tsx" --match "*.ts"
 ```
 
 Categorize:
@@ -71,7 +71,7 @@ xray map --anchor src/api/routes.ts --with incs
 
 ```bash
 # Find other code that might be affected
-xray scan --match "*auth*" --match "*login*"
+xray explore --match "*auth*" --match "*login*"
 
 # See what patterns are used
 xray explore <framework>:components  # for React changes
@@ -130,7 +130,7 @@ High risk areas to review carefully:
 Check if changes are in these areas:
 
 ```bash
-xray scan --match "*auth*" --match "*validate*" --match "*db*"
+xray explore --match "*auth*" --match "*validate*" --match "*db*"
 ```
 
 #### Step 3.3: Check for Side Effects
@@ -151,7 +151,7 @@ Questions to ask:
 #### Step 4.1: Find Related Tests
 
 ```bash
-xray scan --match "*.test.ts" --match "*.spec.ts"
+xray explore --match "*.test.ts" --match "*.spec.ts"
 ```
 
 Check:
@@ -163,7 +163,7 @@ Check:
 
 ```bash
 # Look for test patterns
-xray scan --match "*.test.ts"
+xray explore --match "*.test.ts"
 
 # Check if tests follow established patterns
 ```

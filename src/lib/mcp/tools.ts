@@ -60,11 +60,11 @@ export interface ToolPolicy {
   root: RootScope;
   /**
    * The command loads xray config by walking up from its `--path`
-   * (map/scan/graph): every such directory must resolve to the server
+   * (map/graph): every such directory must resolve to the server
    * root's config, never one of its own.
    */
   configFromPath: boolean;
-  /** Keep auto-detection when `root` becomes `--path` (map/scan/graph). */
+  /** Keep auto-detection when `root` becomes `--path` (map/graph). */
   detectOnRoot: boolean;
   /** Tool description for agents; default: the command's own description. */
   description?: string;
@@ -79,7 +79,7 @@ const EXTENSION_OVERRIDES: Record<string, ParamKind> = {
   'extension-threshold': 'value',
 };
 
-/** map / scan / graph. Not offered: --output (runner-owned), --share, --config. */
+/** map / graph. Not offered: --output (runner-owned), --share, --config. */
 const ANALYSIS: ToolPolicy = {
   options: {
     path: 'path',
@@ -119,7 +119,6 @@ const scoped = (options: Record<string, ParamKind>, root: RootScope = 'path'): T
 /** Core commands exposed as tools, keyed by tool name. */
 const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
   map: ANALYSIS,
-  scan: ANALYSIS,
   graph: ANALYSIS,
   explore: {
     ...scoped({
@@ -176,7 +175,7 @@ const STRATEGY_NOUN_EXTRA: Readonly<Record<string, Record<string, ParamKind>>> =
 };
 
 /** Commands whose CLI result is files (`-o`), collected by the runner. */
-const FILE_OUTPUT_TOOLS = new Set(['map', 'scan', 'graph']);
+const FILE_OUTPUT_TOOLS = new Set(['map', 'graph']);
 
 /** One exposed tool: MCP name, command path, policy and parameter kinds. */
 export interface ToolDef {
@@ -443,7 +442,7 @@ export function buildArgv(
   if (scope.explicit && policy.root === 'path' && projectDirs.length === 0) {
     opts.unshift(`--path=${scope.dir}`);
     projectDirs.push(scope.dir);
-    // map/scan/graph auto-detect only without --path; keep the default.
+    // map/graph auto-detect only without --path; keep the default.
     if (policy.detectOnRoot && given.detect === undefined && given['skip-detect'] !== true) opts.push('--detect');
   }
 

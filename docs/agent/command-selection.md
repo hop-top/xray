@@ -7,7 +7,7 @@ Use this document to determine which xray command to run for any given scenario.
 | Command | Best For | Token Cost | Speed |
 |---------|----------|-----------|-------|
 | `strategy detect` | Identify frameworks | Low (50t) | Fast |
-| `scan` | Find files by pattern | Low (50-100t) | Fast |
+| `explore --match` | Find files by pattern | Low (50-100t) | Fast |
 | `map` | Understand structure | Medium (300-500t) | Medium |
 | `explore` | Find patterns (React components, routes, etc.) | Low-Med (100-200t) | Fast |
 | `graph` | Analyze code flow | High (500-800t) | Slow |
@@ -26,17 +26,17 @@ WHAT DO YOU WANT TO UNDERSTAND?
 │
 ├─ "What files exist matching criteria X?"
 │   ├─ "By filename pattern" (*.ts, *.tsx, etc.)
-│   │   └─ COMMAND: xray scan --match "*.ts"
+│   │   └─ COMMAND: xray explore --match "*.ts"
 │   │       TOKENS: ~50-100
 │   │       TIME: ~2s
 │   │
 │   ├─ "By folder"
-│   │   └─ COMMAND: xray scan --path ./src
+│   │   └─ COMMAND: xray explore --path ./src
 │   │       TOKENS: ~50-100
 │   │       TIME: ~2s
 │   │
 │   └─ "Excluding certain patterns"
-│       └─ COMMAND: xray scan --match "*.ts" --match "!*.test.ts"
+│       └─ COMMAND: xray explore --type ts --match "!*.test.ts"
 │           TOKENS: ~50-100
 │           TIME: ~2s
 │
@@ -84,7 +84,7 @@ WHAT DO YOU WANT TO UNDERSTAND?
 │   │       TIME: ~3s
 │   │
 │   └─ "Custom patterns"
-│       └─ COMMAND: xray scan --match "<pattern>"
+│       └─ COMMAND: xray explore --match "<pattern>"
 │           TOKENS: ~50-100
 │           TIME: ~2s
 │
@@ -179,7 +179,7 @@ RESULT: You now understand architecture and key areas
 
 ```
 1. Find related files
-   COMMAND: xray scan --match "*<feature-name>*"
+   COMMAND: xray explore --match "*<feature-name>*"
    WHY: Narrow down where bug might be
    TOKENS: ~50
    OUTPUT: List of relevant files
@@ -191,7 +191,7 @@ RESULT: You now understand architecture and key areas
    OUTPUT: Structure of relevant area, what it imports/exports
 
 3. Find patterns
-   COMMAND: xray scan --path <specific-dir> --match "*.ts"
+   COMMAND: xray explore --path <specific-dir> --match "*.ts"
    WHY: Verify all files in that area
    TOKENS: ~50
    OUTPUT: Complete list of files in this area
@@ -309,7 +309,7 @@ Full protocol: [Impact Analysis workflow](workflows/impact-analysis.md).
 
 ```
 1. Find all uses
-   COMMAND: xray scan --match "<pattern>"
+   COMMAND: xray explore --match "<pattern>"
    WHY: Find all files that might be affected
    TOKENS: ~50
 
@@ -456,7 +456,7 @@ Single File Output:
 | Question | Scenario | Command |
 |----------|----------|---------|
 | What frameworks? | Unknown | `strategy detect` |
-| What files exist? | Need specific files | `scan` |
+| What files exist? | Need specific files | `explore --match <pattern>` |
 | How organized? | Understanding structure | `map --depth 2` |
 | Find components? | React/Vue project | `explore <framework>:components` |
 | Find routes? | Express/Next.js/etc | `explore <framework>:routes` |
@@ -474,7 +474,7 @@ Single File Output:
 ### Budget: 100-200 tokens
 ```
 BEST: Quick discovery
-COMMAND: strategy detect + scan
+COMMAND: strategy detect + explore --match <pattern>
 RESULT: Know frameworks and file list
 ```
 

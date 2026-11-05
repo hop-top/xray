@@ -44,7 +44,7 @@ describe('default output path (no -o)', () => {
   });
   afterEach(() => fs.rmSync(sandbox, { recursive: true, force: true }));
 
-  const cmds = ['map', 'scan', 'graph'];
+  const cmds = ['map', 'graph'];
 
   describe.each(cmds)('%s', (cmd) => {
     it.each([

@@ -8,7 +8,7 @@ Complete guide to every xray command and option. Start with the decision tree to
 
 - **Understand your codebase structure** → [`xray map`](#xray-map)
 - **Find something specific (components, routes, functions)** → [`xray <strategy> <command>`](#xray-strategy-command)
-- **Scan for files matching a pattern** → [`xray scan`](#xray-scan)
+- **Find files matching a pattern** → [`xray explore`](#xray-explore)
 - **See control flow or data flow** → [`xray graph`](#xray-graph)
 - **See what breaks if you change a function** → [`xray impact`](#xray-impact)
 - **List every file's imports as a stable JSON contract** → [`xray imports`](#xray-imports)
@@ -33,7 +33,7 @@ xray map [paths...] [options]
 `[paths...]` are root directories, exactly like `--path`: `xray map src` is
 `xray map --path src`. Giving both is a usage error (exit 2); a root that
 does not exist fails as a missing `--path` does. The same applies to
-`xray scan` and `xray graph`.
+`xray graph`.
 
 **Examples:**
 ```bash
@@ -50,21 +50,38 @@ xray map --anchor src/main.ts --with vars --with incs --with cost
 xray map --path ./src --path ./lib --depth 3 --output analysis.txt
 ```
 
-### `xray scan`
+### `xray explore`
 
-Scan and discover files in your codebase.
+Find files by pattern, search code for keywords, or show codebase
+statistics. Prints to stdout; writes nothing.
 
 ```bash
-xray scan [paths...] [options]
+xray explore [query] [options]
 ```
+
+| Option | Description |
+|--------|-------------|
+| `-p, --path <path>` | Root directory to explore (repeatable; default: current directory) |
+| `-m, --match <pattern>` | Find files matching a pattern, e.g. `"*.ts"` (repeatable) |
+| `-t, --type <ext>` | Filter by file extension (repeatable) |
+| `-s, --search <keyword>` | Search for a keyword in code (repeatable) |
+| `--stats` | Show codebase statistics |
+| `--format <fmt>` | `text` (default), `json`, `yaml`, `table`, `csv` |
+
+Repeated `--match` patterns combine with OR. A `!` pattern matches every
+file the pattern does not, so use it alone or together with `--type` to
+exclude files.
 
 **Examples:**
 ```bash
-# Scan specific directory
-xray scan --path ./src
+# List files under a directory
+xray explore --path ./src
 
-# Filter by file patterns
-xray scan --path ./src --match "*.ts" --match "!*.test.ts"
+# Find files by pattern
+xray explore --match "*.test.ts" --match "*.spec.ts"
+
+# TypeScript files except tests
+xray explore --path ./src --type ts --match "!*.test.ts"
 ```
 
 ### `xray graph`
@@ -269,7 +286,7 @@ xray imports [paths...] [-p <root>] [--lang <list>] [--format <fmt>] [--cols <li
 | `--no-ignore` | List every source under the root: git-ignored files, nested repos and vendored dirs (`node_modules`, `dist`, `build`) included; only `.git` is skipped, directory symlinks are not followed. Languages outside the contract show as `unsupported-language`. `package.json` files under `node_modules` are not read for resolution |
 | `--no-cache` | Parse every file; neither read nor write the per-file cache. The cache is keyed per file, so runs with and without `--no-ignore` share it safely |
 
-Files are listed as `xray scan` lists them (`git ls-files`, else the
+Files are listed as `xray explore` lists them (`git ls-files`, else the
 root's `.gitignore`), plus `.mjs`/`.cjs`/`.mts`/`.cts`. `--lang` and
 `[paths...]` select the files reported; manifests (`go.mod`, `go.work`,
 every `package.json`, `Cargo.toml`) anywhere under the root (not
@@ -480,7 +497,7 @@ xray map --catch "User*" --catch "!UserTest"
 
 ### Output Formats
 
-Select the output with `--format <fmt>` (available on `map`, `scan`, `graph`):
+Select the output with `--format <fmt>` (available on `map` and `graph`):
 
 **Formats** (`--format txt|csv|xml|json`, one at a time):
 - `txt` - Text format (default)
@@ -489,7 +506,7 @@ Select the output with `--format <fmt>` (available on `map`, `scan`, `graph`):
   not apply; identical with or without `--no-chunk`), are sorted
   deterministically (nodes by `id`; edges by `source`, `target`, `type`),
   and accept several `--path` roots (merged, see below).
-  `map`, `scan` and `graph` run the same analysis, so their graph outputs
+  `map` and `graph` run the same analysis, so their graph outputs
   are identical.
 
 | Format | Files written (`-o <out>`) |
@@ -627,7 +644,7 @@ Use `--cols=a,b` (with `=`) on commands that take a positional argument: the
 space form takes every following word as a column. Graph strategy commands
 (`build graph`, `cicd graph`, `infrastructure graph`) also accept
 `--format dot`. `go-cli commands` keeps its own `--format text|json`.
-`map`/`scan`/`graph` keep their own `--format`/`-o` (above).
+`map`/`graph` keep their own `--format`/`-o` (above).
 
 ### Advanced
 

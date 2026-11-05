@@ -1,5 +1,5 @@
 /**
- * `map`/`scan`/`graph [paths...]`: a positional path is exactly `--path`.
+ * `map`/`graph [paths...]`: a positional path is exactly `--path`.
  * Spawns the built CLI (`npm run build` first).
  */
 import { spawnSync } from 'child_process';
@@ -57,7 +57,7 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-describe.each(['map', 'scan', 'graph'])('%s [paths...]', (cmd) => {
+describe.each(['map', 'graph'])('%s [paths...]', (cmd) => {
   const json = (extra: string[], name: string) => {
     const out = path.join(tmp, name);
     const r = run([cmd, ...extra, '--format', 'json', '-o', out]);

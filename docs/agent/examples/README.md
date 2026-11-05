@@ -44,7 +44,7 @@ Agent: Writes code following discovered patterns
 ```
 User: "The payment page is broken"
 Agent: "Let me find and understand that code"
-Agent: runs xray scan --match "*payment*"
+Agent: runs xray explore --match "*payment*"
 Agent: runs xray map --anchor <payment-file> --with incs
 Agent: "Found the issue in the payment flow..."
 ```
@@ -56,7 +56,7 @@ Agent: "Found the issue in the payment flow..."
 **What happens:**
 ```
 User: "Find duplicate code we can consolidate"
-Agent: runs xray scan and xray explore
+Agent: runs xray explore --match and xray explore --search
 Agent: "Found duplicate auth patterns in 3 places..."
 Agent: Suggests consolidation strategy
 ```
@@ -105,7 +105,7 @@ USER: "Users are getting 500 errors when uploading files"
 
 AGENT: "Let me find the file upload code"
 
-[Agent runs: xray scan --match "*upload*"]
+[Agent runs: xray explore --match "*upload*"]
 Output: Found 5 files related to upload
 
 [Agent runs: xray map --anchor src/api/upload.ts --with incs]
@@ -131,7 +131,7 @@ USER: [Provides pull request with code changes]
 AGENT: "Let me understand the impact of these changes"
 
 [Agent runs: xray map for changed areas]
-[Agent runs: xray scan for related code]
+[Agent runs: xray explore --match for related code]
 [Agent runs: xray explore for patterns]
 
 AGENT REVIEW:
@@ -181,7 +181,7 @@ AGENT REVIEW:
 
 **Common Flow:**
 1. User has file open in editor
-2. Copilot runs xray scan or xray explore
+2. Copilot runs xray explore
 3. Copilot suggests completions based on discovered patterns
 4. User accepts/modifies suggestions
 
@@ -196,7 +196,7 @@ Tokens: 50
 Command: xray react components
 Tokens: 100
 
-Command: xray scan --match "*auth*"
+Command: xray explore --match "*auth*"
 Tokens: 50
 
 Total: 200 tokens

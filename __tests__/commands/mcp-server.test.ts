@@ -148,10 +148,10 @@ describe('xray mcp over stdio', () => {
     const r = await client.request('tools/list');
     const tools = r.result.tools as Array<{ name: string; description?: string; inputSchema: any }>;
     const names = tools.map((t) => t.name);
-    for (const n of ['map', 'scan', 'graph', 'explore', 'query', 'impact', 'strategy_list', 'strategy_detect', 'react_hooks', 'markdown_toc']) {
+    for (const n of ['map', 'graph', 'explore', 'query', 'impact', 'strategy_list', 'strategy_detect', 'react_hooks', 'markdown_toc']) {
       expect(names).toContain(n);
     }
-    for (const n of ['cache_clear', 'alias_set', 'alias_remove', 'strategy_create', 'strategy_install', 'strategy_remove', 'lang_add', 'mcp', 'describe', 'completion']) {
+    for (const n of ['scan', 'cache_clear', 'alias_set', 'alias_remove', 'strategy_create', 'strategy_install', 'strategy_remove', 'lang_add', 'mcp', 'describe', 'completion']) {
       expect(names).not.toContain(n);
     }
     expect(names.every((n) => /^[A-Za-z0-9_-]+$/.test(n))).toBe(true);
@@ -218,7 +218,7 @@ describe('xray mcp over stdio', () => {
     expect(text(r)).toMatch(/unknown argument "graph"/);
   });
 
-  it.each(['map', 'scan', 'graph'])('%s offers no positional paths: only the contained path option', async name => {
+  it.each(['map', 'graph'])('%s offers no positional paths: only the contained path option', async name => {
     const r = await client.request('tools/list');
     const tool = (r.result.tools as Array<{ name: string; inputSchema: any }>).find(t => t.name === name)!;
     expect(tool.inputSchema.properties.paths).toBeUndefined();
@@ -570,7 +570,7 @@ describe('xray mcp with a server root config', () => {
 
   beforeEach(clearMarks);
 
-  it.each(['map', 'scan', 'graph'])(
+  it.each(['map', 'graph'])(
     '%s scopes a sub-root with its own .xrayrc.json; the root config applies, not the sub one',
     async (tool) => {
       const r = await client.call(tool, { root: 'pkg', 'skip-detect': true, 'no-chunk': true });

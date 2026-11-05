@@ -623,7 +623,7 @@ done
 
 ```bash
 # Find test files
-xray scan --match "*.test.ts" --match "*.spec.ts"
+xray explore --match "*.test.ts" --match "*.spec.ts"
 
 # Get test coverage map
 xray map --match "*.test.ts" --with incs
@@ -663,7 +663,7 @@ xray map --with vars | grep -E "async|await"
 
 ```bash
 # Config files
-xray scan --match "*.config.*" --match "*rc*" --match "*.env*"
+xray explore --match "*.config.*" --match "*rc*" --match "*.env*"
 
 # Configuration imports
 xray map --with incs | grep -i "config"

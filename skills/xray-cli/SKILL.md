@@ -235,7 +235,7 @@ xray infrastructure summary
 ```
 
 ## MCP server
-Goal: expose xray commands as MCP tools (map, scan, graph, query, impact,
+Goal: expose xray commands as MCP tools (map, graph, query, impact,
 explore, strategy list/detect, `<strategy>_<noun>`).
 
 Commands:

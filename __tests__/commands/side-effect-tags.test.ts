@@ -77,7 +77,7 @@ describe('side-effect declarations', () => {
 
     // The walk sees what it must: strategy commands and aliases are in it.
     expect(all).toEqual(expect.arrayContaining([
-      'map', 'scan', 'strategy remove', 'cache clear', 'mcp', 'help', 'completion bash',
+      'map', 'strategy remove', 'cache clear', 'mcp', 'help', 'completion bash',
       'react components', 'express routes', 'comps', 'routes',
     ]));
     expect(undeclared(program)).toEqual([]);

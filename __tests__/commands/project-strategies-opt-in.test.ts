@@ -96,7 +96,6 @@ describe('off by default', () => {
     ['map', ['map', '-o', 'out']],
     ['imports', ['imports']],
     ['describe', ['describe']],
-    ['scan', ['scan', '-o', 'out']],
     ['strategy list', ['strategy', 'list']],
     ['strategy detect', ['strategy', 'detect']],
     ['strategy path', ['strategy', 'path']],

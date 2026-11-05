@@ -22,7 +22,7 @@ describe('Dynamic Command Registration', () => {
     });
 
     it('should register core static commands', () => {
-      const coreCommands = ['map', 'scan', 'graph', 'query', 'cache', 'completion'];
+      const coreCommands = ['map', 'graph', 'query', 'cache', 'completion'];
 
       for (const cmdName of coreCommands) {
         const cmd = program.commands.find(c => c.name() === cmdName);
@@ -62,8 +62,7 @@ describe('Dynamic Command Registration', () => {
       const mapCmd = program.commands.find(c => c.name() === 'map');
       expect(mapCmd?.description()).toBe('Generate visual map of codebase');
 
-      const scanCmd = program.commands.find(c => c.name() === 'scan');
-      expect(scanCmd?.description()).toBe('Scan and discover files in codebase');
+      expect(program.commands.find(c => c.name() === 'scan')).toBeUndefined();
 
       const graphCmd = program.commands.find(c => c.name() === 'graph');
       expect(graphCmd?.description()).toBe('Generate control flow (CFG) and data flow (DFG) graphs');

@@ -131,11 +131,10 @@ describe('what keeps working', () => {
 
   it.each([
     ['map', ['map', 'd1', 'd2', '-o', 'out']],
-    ['scan', ['scan', 'd1', 'd2']],
     ['graph', ['graph', 'd1', 'd2', '-o', 'out']],
     ['imports', ['imports', 'd1', 'd2']],
     ['hidden generate', ['generate', 'd1', 'd2', '-o', 'out']],
-    ['scan after --', ['scan', '--', 'd1', 'd2']],
+    ['map after --', ['map', '-o', 'out', '--', 'd1', 'd2']],
   ])('variadic paths: %s takes several', (_n, args) => {
     const r = run(args);
     expect(r.stderr).not.toMatch(/too many arguments/);

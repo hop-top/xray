@@ -59,12 +59,12 @@ WHAT DOES USER WANT TO UNDERSTAND?
     │
     ├─ "What files exist [with pattern]?"
     │   ├─ Specific filename pattern
-    │   │   └─ COMMAND: xray scan --match "pattern"
+    │   │   └─ COMMAND: xray explore --match "pattern"
     │   │       TOKENS: 50-100
     │   │       NEXT: Found files or no matches
     │   │
     │   └─ All files in directory
-    │       └─ COMMAND: xray scan --path ./dir
+    │       └─ COMMAND: xray explore --path ./dir
     │           TOKENS: 50
     │           NEXT: Understand what exists
     │
@@ -246,12 +246,12 @@ HOW MANY TOKENS AVAILABLE?
     │
     ├─ < 100 tokens
     │   ├─ Can only afford: ONE cheap command
-    │   ├─ Recommendation: xray strategy detect OR xray scan
+    │   ├─ Recommendation: xray strategy detect OR xray explore
     │   └─ Limitation: Very limited analysis possible
     │
     ├─ 100-200 tokens
     │   ├─ Can afford: Discovery + limited exploration
-    │   ├─ Recommendation: strategy detect + scan
+    │   ├─ Recommendation: strategy detect + explore --match
     │   └─ Limitation: No deep analysis
     │
     ├─ 200-500 tokens
@@ -373,7 +373,7 @@ AFTER XRAY ANALYSIS COMPLETE
 ```
 CHEAP (50-100 tokens)        MEDIUM (200-400 tokens)     EXPENSIVE (500+ tokens)
 ├─ strategy detect           ├─ map --depth 2             ├─ graph commands
-├─ scan --match pattern      ├─ map --anchor file         ├─ complete map
+├─ explore --match pattern   ├─ map --anchor file         ├─ complete map
 ├─ explore framework         └─ map with features         └─ multiple commands
 
 USE WHEN: Quick answer    USE WHEN: Good            USE WHEN: Deep

@@ -7,7 +7,7 @@ How to parse and interpret xray output as an agent. Includes common patterns, ex
 1. [Output Formats](#output-formats)
 2. [Map Output Structure](#map-output-structure)
 3. [Explore Output Structure](#explore-output-structure)
-4. [Scan Output Structure](#scan-output-structure)
+4. [File Match Output Structure](#file-match-output-structure)
 5. [Graph Output Structure](#graph-output-structure)
 6. [Error Messages](#error-messages)
 7. [Parsing Strategies](#parsing-strategies)
@@ -20,7 +20,6 @@ xray produces output in different formats based on command:
 |---------|----------------|---------------|
 | `map` | Markdown tree | JSON, CSV (nodes+edges files), XML |
 | `explore` | Plain text list | Plain text |
-| `scan` | Plain text list | Plain text |
 | `graph` | Mermaid | DOT, TXT |
 | `strategy *` | Plain text | Plain text |
 
@@ -288,59 +287,39 @@ items = extract_explore_items(output)
 # ]
 ```
 
-## Scan Output Structure
+## File Match Output Structure
 
-### Example Scan Output
+### Example `explore --match` Output
+
+stdout carries one absolute path per line, indented two spaces. The
+`Found N file(s) matching pattern(s):` line goes to stderr.
 
 ```
-Scanned: src/
-Matched: 24 files
+stderr: ℹ Found 3 file(s) matching pattern(s):
 
-Found files:
-  src/index.ts
-  src/main.ts
-  src/App.tsx
-  src/components/Button.tsx
-  src/components/Card.tsx
-  src/services/api.ts
-  src/services/auth.ts
-  src/utils/helpers.ts
-  (18 more files)
+stdout:
+  /repo/src/index.ts
+  /repo/src/App.tsx
+  /repo/src/components/Button.tsx
 ```
 
-### Parsing Scan Output
+With `--format json`, stdout is an array of `{"path": ...}` objects.
 
-**Extract File Count:**
-
-```python
-def extract_scan_count(output: str):
-    """Extract number of matched files"""
-    match = re.search(r'Matched:\s+(\d+)\s+files', output)
-    if match:
-        return int(match.group(1))
-    return 0
-```
+### Parsing File Match Output
 
 **Extract File List:**
 
 ```python
-def extract_file_list(output: str):
-    """Extract list of found files"""
-    files = []
-    in_list = False
+def extract_file_list(stdout: str):
+    """Paths from `xray explore --match ...` (stdout only)"""
+    return [line.strip() for line in stdout.splitlines() if line.strip()]
+```
 
-    for line in output.split('\n'):
-        if 'Found files:' in line:
-            in_list = True
-        elif in_list:
-            line = line.strip()
-            if line.startswith('src/') or line.startswith('/'):
-                files.append(line)
-            elif '(... more files)' in line:
-                # Truncated list
-                break
+**Extract File Count:**
 
-    return files
+```python
+def extract_match_count(files: list):
+    return len(files)
 ```
 
 ## Graph Output Structure
@@ -567,7 +546,7 @@ def validate_output(output: str, expected_format: str):
 | `map` | Directory sections `##` | File organization |
 | `map` | Dependencies table | External imports |
 | `explore` | List items with `-` | Components, routes, hooks |
-| `scan` | Count and file list | Total files matched |
+| `explore --match` | Absolute paths, one per line (stdout) | Files matched; the count is on stderr |
 | `graph` | Arrows `-->` or `->` | Relationships and flow |
 | `strategy detect` | Strategy names | Detected frameworks |
 

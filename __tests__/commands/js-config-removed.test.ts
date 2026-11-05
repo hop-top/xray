@@ -70,7 +70,6 @@ describe.each(['.xrayrc.js', 'xray.config.js'])('a project %s', (name) => {
     ['map', ['map', '-o', 'out']],
     ['describe', ['describe']],
     ['--version', ['--version']],
-    ['scan', ['scan', '-o', 'out']],
   ])('%s from inside the repo never runs it', (_label, args) => {
     const r = run(args, repo);
     expect(r.status).toBe(0);
@@ -80,7 +79,6 @@ describe.each(['.xrayrc.js', 'xray.config.js'])('a project %s', (name) => {
   it.each([
     ['imports', ['imports']],
     ['map', ['map', '-o', path.join('out', 'm')]],
-    ['scan', ['scan', '-o', path.join('out', 's')]],
   ])('%s with -p from another directory never runs it', (_label, args) => {
     const r = run([...args, '-p', repo], other);
     expect(r.status).toBe(0);

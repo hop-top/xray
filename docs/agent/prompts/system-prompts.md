@@ -21,7 +21,7 @@ Basic commands:
 - `xray strategy detect` - Identify frameworks
 - `xray map --path ./src --depth 2` - See structure
 - `xray explore <framework>:<command>` - Find patterns
-- `xray scan --match "*.ts"` - Find files
+- `xray explore --match "*.ts"` - Find files
 - `xray impact <symbol>` - Who calls this, transitively (before changing it)
 
 When calling xray: Always include full command with `--path` if needed.
@@ -59,7 +59,7 @@ Don't use xray for:
 **Discovery:**
 ```bash
 xray strategy detect                    # What frameworks?
-xray scan --match "*.component.ts"      # Find components
+xray explore --match "*.component.ts"      # Find components
 ```
 
 **Understanding:**
@@ -104,14 +104,14 @@ If xray fails:
 
 **Implementing feature:**
 ```
-1. xray scan to find similar features
+1. xray explore to find similar features
 2. xray map --anchor on similar file
 3. Follow the pattern you found
 ```
 
 **Debugging:**
 ```
-1. xray scan to find related files
+1. xray explore to find related files
 2. xray map on that area
 3. Read specific files to understand
 ```
@@ -127,12 +127,12 @@ If xray fails:
 
 Each xray command costs tokens. Estimate:
 - strategy detect: ~50 tokens
-- scan: ~50-100 tokens
+- explore --match: ~50-100 tokens
 - map --depth 2: ~300-400 tokens
-- explore command: ~100-150 tokens
+- explore <framework>:<command>: ~100-150 tokens
 - impact <symbol>: ~50-200 tokens
 
-Start cheap (scan + explore), only use map when needed.
+Start cheap (explore), only use map when needed.
 
 ### Important Notes
 
@@ -168,7 +168,7 @@ understand code before implementing changes.
 - User says: "Use xray to show me the structure"
   → Run requested xray commands
 - User says: "Find all components"
-  → Use xray explore or scan
+  → Use xray explore
 
 ### Decision Tree: Should I Use xray?
 
@@ -193,7 +193,7 @@ xray strategy detect
 # Detects frameworks (React, Express, Vue, etc.)
 # Always run this first for unknown codebase
 
-xray scan --match "*.component.ts"
+xray explore --match "*.component.ts"
 # Finds files matching pattern
 # Good for locating specific file types
 ```
@@ -319,7 +319,7 @@ Ready for implementation with high confidence
 
 ```
 STEP 1: Find related code (50 tokens)
-→ xray scan --match "*feature-name*"
+→ xray explore --match "*feature-name*"
 ← Result: Locate relevant files
 
 STEP 2: Understand context (400 tokens)
@@ -360,7 +360,7 @@ TOTAL TOKENS: ~450
 **Plan token usage based on available budget:**
 
 ```
-< 200 tokens   → Discovery only (detect + scan)
+< 200 tokens   → Discovery only (detect + explore --match)
 200-500 tokens → Basic understanding (detect + map)
 500-1000 tokens → Good understanding (detect + map + explore)
 1000+ tokens   → Deep analysis (add graph commands)
@@ -430,7 +430,7 @@ User asks to work on code
 Before production deployment:
 
 - [ ] Understand when to invoke xray (discovery, structure, patterns)
-- [ ] Know command selection (strategy detect, scan, map, explore, impact, graph)
+- [ ] Know command selection (strategy detect, map, explore, impact, graph)
 - [ ] Can parse all output formats (markdown, lists, tables)
 - [ ] Have error recovery procedures
 - [ ] Know token costs and optimize
@@ -485,7 +485,7 @@ Use the xray tool with these commands:
 1. **Detect frameworks:** xray strategy detect
 2. **Find structure:** xray map --path ./src --depth 2
 3. **Find patterns:** xray explore <framework>:<type>
-4. **Find files:** xray scan --match "<pattern>"
+4. **Find files:** xray explore --match "<pattern>"
 5. **Analyze flow:** xray graph --with cf --with df
 6. **Find callers before a change:** xray impact <symbol>
 
@@ -511,7 +511,7 @@ Copilot benefits from inline context and rapid iteration:
 When suggesting code, can use `xray` to:
 - xray strategy detect - Know what framework
 - xray react components - Find React patterns
-- xray scan --match "*.ts" - Find TypeScript files
+- xray explore --match "*.ts" - Find TypeScript files
 - xray map --anchor file.ts - Understand file context
 - xray impact <symbol> - Find callers before changing a function
 

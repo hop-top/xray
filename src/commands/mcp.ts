@@ -70,7 +70,7 @@ export function applyMcpChdir(argv: string[], req: McpRequest): string[] {
   return out;
 }
 
-const HELP_AFTER = `Serves map, scan, graph, explore, query, strategy list/detect and every
+const HELP_AFTER = `Serves map, graph, explore, query, strategy list/detect and every
 <strategy> <noun> command as MCP tools over stdin/stdout. Each call runs
 the CLI command in a child process inside the server root (the working
 directory, or -C <dir>); the optional "root" tool argument selects a

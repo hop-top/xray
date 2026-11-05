@@ -1,5 +1,5 @@
 # MCP server
-Goal: xray commands as MCP tools over stdio (map, scan, graph, query, impact, explore, strategy list/detect, `<strategy>_<noun>`).
+Goal: xray commands as MCP tools over stdio (map, graph, query, impact, explore, strategy list/detect, `<strategy>_<noun>`).
 
 ```bash
 xray -C <project> mcp

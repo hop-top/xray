@@ -213,7 +213,7 @@ When: You need to understand what exists
 
 Steps:
 1. xray strategy detect (if framework unknown)
-2. xray scan (if file list needed)
+2. xray explore (if file list needed)
 3. xray explore <framework>:<command> (if patterns needed)
 
 Use in:
@@ -346,7 +346,7 @@ Workflows are templates. Adapt as needed for your context:
 
 ### If token budget is low
 - Skip detailed steps
-- Use simpler commands (scan instead of map)
+- Use simpler commands (explore instead of map)
 - Focus on essentials only
 
 ### If you have plenty of tokens

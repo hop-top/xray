@@ -23,9 +23,9 @@ function makeProgram(): Command {
     .option('-o, --output <file>', 'Output path')
     .action(() => {}), 'write-local', 'conditional');
   declareEffect(root
-    .command('scan')
-    .description('Scan and discover')
-    .argument('[path]', 'Path to scan')
+    .command('explore')
+    .description('Explore and discover')
+    .argument('[path]', 'Path to explore')
     .option('--list-strategies', 'List strategies')
     .action(() => {}), 'read', 'yes');
   const cache = root.command('cache').description('Cache management');
@@ -95,11 +95,11 @@ describe('xray describe', () => {
   });
 
   it('classifies a leaf by what it declares', () => {
-    const scan = doc.commands.find((c) => c.name === 'scan')!;
-    expect(scan).toBeDefined();
-    expect(scan.sideEffect).toBe('read');
-    expect(scan.idempotent).toBe('yes');
-    expect(scan.exitCodes).toEqual([0, 1, 2]);
+    const explore = doc.commands.find((c) => c.name === 'explore')!;
+    expect(explore).toBeDefined();
+    expect(explore.sideEffect).toBe('read');
+    expect(explore.idempotent).toBe('yes');
+    expect(explore.exitCodes).toEqual([0, 1, 2]);
   });
 
   it('classifies map as write-local / conditional', () => {
@@ -124,15 +124,15 @@ describe('xray describe', () => {
     expect(limit.type).toBe('number');
     expect(limit.default).toBe('4000');
 
-    const scan = doc.commands.find((c) => c.name === 'scan')!;
-    const listFlag = scan.options.find((o) => o.name === '--list-strategies')!;
+    const explore = doc.commands.find((c) => c.name === 'explore')!;
+    const listFlag = explore.options.find((o) => o.name === '--list-strategies')!;
     expect(listFlag.type).toBe('boolean');
   });
 
   it('parses positional arguments with required/variadic', () => {
-    const scan = doc.commands.find((c) => c.name === 'scan')!;
-    expect(scan.arguments.length).toBe(1);
-    expect(scan.arguments[0]).toMatchObject({
+    const explore = doc.commands.find((c) => c.name === 'explore')!;
+    expect(explore.arguments.length).toBe(1);
+    expect(explore.arguments[0]).toMatchObject({
       name: 'path',
       required: false,
       variadic: false,
@@ -184,7 +184,7 @@ describe('xray describe', () => {
     expect(schema.properties.schema.const).toBe(IMPORTS_SCHEMA_ID);
     expect(require('../../package.json').files).toContain(imports.output!.path.split('/')[0]);
     // Only commands with a versioned document carry `output`.
-    expect(doc.commands.find((c) => c.name === 'scan')!.output).toBeUndefined();
+    expect(doc.commands.find((c) => c.name === 'explore')!.output).toBeUndefined();
   });
 
   it('exposes the describe command itself', () => {

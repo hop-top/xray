@@ -135,7 +135,7 @@ docs/agent/
 **[output-interpretation.md](output-interpretation.md)**
 - How to parse map output
 - How to parse explore output
-- How to parse scan output
+- How to parse `explore --match` output
 - How to parse graph output
 - Parsing strategies (line-by-line, regex, structured)
 - Validation procedures
@@ -314,7 +314,7 @@ After xray, validate results are useful before proceeding.
 See: [command-selection.md](command-selection.md#quick-command-reference)
 
 ```
-Discover:      strategy detect, scan
+Discover:      strategy detect, explore --match
 Understand:    map --depth 1/2, explore
 Deep Dive:     graph, map --with incs
 Impact:        impact <symbol> [--strict] [--lens <name>]
@@ -324,7 +324,7 @@ Impact:        impact <symbol> [--strict] [--lens <name>]
 See: [token-optimization.md](token-optimization.md#token-cost-reference)
 
 ```
-Cheap:   50-150 tokens (detect, scan, explore)
+Cheap:   50-150 tokens (detect, explore)
 Medium:  200-500 tokens (map --depth 2)
 Expensive: 500+ tokens (graph, complete map)
 ```

@@ -185,9 +185,9 @@ describe('--dry-run previews writers and never acts', () => {
     return r.out;
   };
 
-  it('map, scan, graph: lists the files, writes none', () => {
+  it('map, graph: lists the files, writes none', () => {
     fs.writeFileSync(path.join(proj, 'a.ts'), 'export const a = 1;\n');
-    for (const cmd of ['map', 'scan', 'graph']) {
+    for (const cmd of ['map', 'graph']) {
       expect(planOf([cmd, '.'])).toMatch(/\.xray_\*\.md/);
     }
     expect(outputs()).toEqual([]);

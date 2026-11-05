@@ -69,7 +69,7 @@ xray/
 │   ├── commands/                   # Command definitions
 │   │   ├── index.ts               # Command registration
 │   │   ├── common.ts              # Shared utilities
-│   │   ├── generate.ts            # map, scan, graph commands
+│   │   ├── generate.ts            # map, graph commands
 │   │   ├── explore.ts             # explore command
 │   │   ├── strategy.ts            # strategy * commands
 │   │   ├── strategy-cmd.ts        # Strategy execution

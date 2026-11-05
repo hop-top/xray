@@ -132,13 +132,6 @@ test('renders app', () => {
       expect(output).not.toContain('Auto-configured paths');
     });
 
-    test('should work with scan command', () => {
-      const output = runCli(`scan`, reactProject);
-
-      expect(output).toMatch(/Detected strategies: .*\breact\b/);
-      expect(output).toContain('Auto-configured paths from detected strategies');
-    });
-
     test('should work with graph command', () => {
       const output = runCli(`graph --no-chunk`, reactProject);
 

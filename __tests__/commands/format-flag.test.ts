@@ -51,7 +51,7 @@ describe('--format', () => {
 
   const args = (cmd: string, ...extra: string[]) => [cmd, '-p', repo, '--skip-detect', '--no-chunk', '-o', out, ...extra];
 
-  test.each(['map', 'scan', 'graph'])('%s --format json writes a JSON graph', cmd => {
+  test.each(['map', 'graph'])('%s --format json writes a JSON graph', cmd => {
     const r = run(args(cmd, '--format', 'json'));
     expect(r.status).toBe(0);
     expect(isJson(out)).toBe(true);

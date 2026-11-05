@@ -176,14 +176,14 @@ No files found matching: *.nonexistent
 
 4. VERIFY location
    Question: Are files in specified --path?
-   TRY: xray scan --path ./src
+   TRY: xray explore --path ./src
    Result: Shows what files exist
    ACTION: Based on results, adjust --path or pattern
 
 5. FALLBACK
    IF still no files: "Cannot find files matching criteria.
                       Here's what exists in [path]:
-                      [list from scan]"
+                      [list from explore]"
 ```
 
 ### Protocol: Command Timeout
@@ -385,7 +385,7 @@ Error might be: Strategy not found, no matches, etc.
 
 Solution:
 1. Start with xray strategy detect (safe)
-2. If fails: Use xray scan (fallback)
+2. If fails: Use xray explore (fallback)
 3. If fails: Ask user for guidance
 4. Proceed with whatever information available
 ```
@@ -417,7 +417,7 @@ Solution:
 
 **Prevention Checklist:**
 
-- [ ] Start with simple commands (strategy detect, scan) before complex ones
+- [ ] Start with simple commands (strategy detect, explore) before complex ones
 - [ ] Use --depth limits on large codebases
 - [ ] Use --path to narrow scope when possible
 - [ ] Check path exists before running (or handle error gracefully)

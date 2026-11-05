@@ -105,7 +105,7 @@ xray glossary scan --disable-surface glossary:export
 
 These flags layer on top of config file settings with runtime precedence.
 They work for:
-- analysis commands such as `map`, `scan`, `graph`, and `generate`
+- analysis commands such as `map`, `graph`, and `generate`
 - dynamic extension command groups such as `react ...`, `express ...`, and future
   glossary commands
 

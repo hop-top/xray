@@ -120,7 +120,7 @@ Cost: 400 tokens
 Result: Mostly irrelevant info
 
 NARROW ANALYSIS (efficient):
-→ xray scan --match "*auth*" (find relevant files)
+→ xray explore --match "*auth*" (find relevant files)
 Cost: 50 tokens
 → xray map --path ./src/auth
 Cost: 200 tokens
@@ -236,7 +236,7 @@ Order commands to maximize early learning.
 ```
 EFFICIENT SEQUENCE:
 1. xray strategy detect           (learn frameworks)
-2. xray scan --match "*pattern*"  (narrow scope)
+2. xray explore --match "*pattern*"  (narrow scope)
 3. xray explore <framework>       (find patterns)
 4. xray map on narrow area        (deep dive)
 
@@ -251,10 +251,10 @@ INEFFICIENT SEQUENCE:
 **Optimal ordering:**
 
 ```
-For discovery:      detect → scan → explore
+For discovery:      detect → explore --match → explore
 For understanding:  detect → map --depth 1 → map deeper
-For implementation: detect → explore → map --anchor → scan
-For debugging:      scan → map --anchor → graph
+For implementation: detect → explore → map --anchor → explore --match
+For debugging:      explore --match → map --anchor → graph
 ```
 
 ## Integration Patterns
@@ -416,7 +416,7 @@ SOLUTION: Present findings as information, not contradiction
 ```
 PHASE 1: Discovery (100-150 tokens)
   xray strategy detect
-  xray scan --match "*similar-feature*"
+  xray explore --match "*similar-feature*"
 
 PHASE 2: Understanding (200-300 tokens)
   xray explore <framework>
@@ -436,7 +436,7 @@ Result: High-quality implementation matching patterns
 
 ```
 PHASE 1: Locating (50 tokens)
-  xray scan --match "*bug-related*"
+  xray explore --match "*bug-related*"
 
 PHASE 2: Understanding Context (200-300 tokens)
   xray map --anchor <suspected-file> --with incs

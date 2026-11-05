@@ -113,7 +113,7 @@ export function pinnedConfigArgs(serverRoot: string, serverConfig: string | null
 }
 
 /**
- * Guard for map, scan and graph when the server root has no config to
+ * Guard for map and graph when the server root has no config to
  * pin. They look for config by walking up from their `--path`, so a
  * directory inside the server root with its own `.xrayrc*` (or a
  * package.json `xray` key) would load that file in place of the server's

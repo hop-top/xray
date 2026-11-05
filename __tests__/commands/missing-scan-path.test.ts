@@ -87,7 +87,7 @@ describe('missing scan roots', () => {
     expect(r.stderr.split('\n').find((l) => l.includes(file) && l.includes(cfgFile))).toBeDefined();
   });
 
-  it.each(['map', 'scan'])('%s: all config roots missing -> config error, non-zero, no map', (cmd) => {
+  it.each(['map', 'graph'])('%s: all config roots missing -> config error, non-zero, no map', (cmd) => {
     writeConfig([gone]);
     const out = path.join(tmp, 'out.txt');
     const r = run([cmd, '--no-chunk', '-o', out]);

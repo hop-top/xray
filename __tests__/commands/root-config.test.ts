@@ -87,14 +87,14 @@ afterEach(() => {
 });
 
 describe('root --config with --path into a sub-project', () => {
-  it.each(['map', 'scan', 'graph'])('%s: sub .xrayrc.json does not load', (cmd) => {
+  it.each(['map', 'graph'])('%s: sub .xrayrc.json does not load', (cmd) => {
     const out = path.join(tmp, 'out', cmd);
     const r = run(['--config', explicit, cmd, '--path', subJson, '-o', out]);
     expect(r.stderr).not.toContain('cobol');
     expect(r.status).toBe(0);
   });
 
-  it.each(['map', 'scan', 'graph'])('%s: sub .xrayrc.js does not run', (cmd) => {
+  it.each(['map', 'graph'])('%s: sub .xrayrc.js does not run', (cmd) => {
     const out = path.join(tmp, 'out', cmd);
     const r = run(['--config', explicit, cmd, '--path', subJs, '-o', out]);
     expect(fs.existsSync(marker)).toBe(false);
@@ -251,11 +251,11 @@ describe('root --config scan agrees with commander', () => {
   it('nothing after -- is read as a root option', () => {
     // A config naming an unknown language fails any run that loads it.
     const bad = write(path.join(tmp, 'bad.json'), { languages: ['cobol'] });
-    const control = run(['scan', `--config=${bad}`, '.']);
+    const control = run(['map', `--config=${bad}`, '.']);
     expect(control.status).toBe(2);
     expect(control.stderr).toContain('cobol');
     // After --, the token is a (missing) path operand, not a config.
-    const r = run(['scan', '.', '--', `--config=${bad}`]);
+    const r = run(['map', '.', '--', `--config=${bad}`]);
     expect(r.stderr).not.toContain('cobol');
     expect(r.stderr).toContain('Path does not exist');
   });

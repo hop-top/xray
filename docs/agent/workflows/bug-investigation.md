@@ -24,21 +24,21 @@ From user's bug report, extract keywords:
 User says: "Payment page is showing wrong total"
 Keywords: "payment", "total", "calculation"
 
-Use these in scan patterns below
+Use these in explore --match patterns below
 ```
 
 #### Step 1.2: Find Related Files
 
 ```bash
-xray scan --match "*payment*" --match "*total*"
+xray explore --match "*payment*" --match "*total*"
 ```
 
 Or multiple separate scans if needed:
 
 ```bash
-xray scan --match "*payment*"
-xray scan --match "*checkout*"
-xray scan --match "*order*"
+xray explore --match "*payment*"
+xray explore --match "*checkout*"
+xray explore --match "*order*"
 ```
 
 **Success Criteria:**
@@ -51,13 +51,13 @@ xray scan --match "*order*"
 If too many files found:
 
 ```bash
-xray scan --match "*.service.ts" --match "*payment*"
+xray explore --match "*.service.ts" --match "*payment*"
 ```
 
 If too few files found:
 
 ```bash
-xray scan --match "*payment*"  # Broader pattern
+xray explore --match "*payment*"  # Broader pattern
 ```
 
 ### Phase 2: Context Analysis (Token Budget: 400)
@@ -117,11 +117,11 @@ For each hypothesis, gather evidence:
 
 ```bash
 # Check if hypothesis 1 is likely
-xray scan --match "*calculation*"
+xray explore --match "*calculation*"
 xray map --anchor src/payment/calculation.ts --with incs
 
 # Check imports to see if discount service is used
-xray scan --match "*discount*"
+xray explore --match "*discount*"
 ```
 
 ### Phase 5: Implementation Planning (Token Budget: 0)
@@ -151,20 +151,20 @@ You've succeeded when:
 
 ```bash
 STEP 1: Find configuration-related files
-→ xray scan --match "*config*" --match "*env*"
+→ xray explore --match "*config*" --match "*env*"
 
 STEP 2: Find initialization code
 → xray map --anchor src/index.ts --with incs
 
 STEP 3: Look for environment-dependent code
-→ xray scan --match "*process.env*" --match "*if*"
+→ xray explore --match "*process.env*" --match "*if*"
 ```
 
 ### Scenario 2: Feature Works in Some Cases But Not Others
 
 ```bash
 STEP 1: Find feature code
-→ xray scan --match "*feature-name*"
+→ xray explore --match "*feature-name*"
 
 STEP 2: Look at conditional logic
 → xray graph --with cf on that file
@@ -177,7 +177,7 @@ STEP 3: Identify which branch is broken
 
 ```bash
 STEP 1: Identify slow operation
-→ xray scan --match "*slow-operation*"
+→ xray explore --match "*slow-operation*"
 
 STEP 2: Find what it calls
 → xray map --anchor <operation-file> --with incs
@@ -213,7 +213,7 @@ User provides file → Read file → Debug from there
 - Fix: Form multiple hypotheses, test each one
 
 **Pitfall 2: Wrong scope**
-- Fix: Start broad with scan, narrow with map
+- Fix: Start broad with explore --match, narrow with map
 
 **Pitfall 3: Ignoring dependencies**
 - Fix: Always use --with incs to see what's involved

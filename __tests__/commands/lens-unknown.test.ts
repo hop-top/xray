@@ -66,7 +66,6 @@ afterEach(() => {
 describe('unknown --lens name', () => {
   const commands: Array<[string, (out: string) => string[]]> = [
     ['map', (out) => ['map', '--no-chunk', '-o', out]],
-    ['scan', (out) => ['scan', '--no-chunk', '-o', out]],
     ['graph', (out) => ['graph', '-o', out]],
     ['impact', () => ['impact', 'a']],
   ];

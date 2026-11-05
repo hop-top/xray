@@ -14,7 +14,7 @@ Technical overview of xray's design and implementation.
        │               │               │
        ▼               ▼               ▼
 ┌────────────┐  ┌────────────┐  ┌────────────┐
-│    Map     │  │   Scan     │  │  Explore   │
+│    Map     │  │   Graph    │  │  Explore   │
 │  Command   │  │  Command   │  │  Command   │
 └─────┬──────┘  └─────┬──────┘  └─────┬──────┘
       │               │               │
@@ -53,7 +53,7 @@ Modern command-based architecture using Commander.js. Commands are organized in 
 - `src/index.ts` - Lightweight CLI bootstrap
 - `src/commands/index.ts` - Command registration
 - `src/commands/common.ts` - Shared CLI utilities and common options
-- `src/commands/generate.ts` - Map, scan, graph commands
+- `src/commands/generate.ts` - Map, graph commands
 - `src/commands/explore.ts` - Strategy-based exploration
 - `src/commands/strategy.ts` - Strategy system commands
 - `src/commands/strategy-cmd.ts` - Strategy command runner

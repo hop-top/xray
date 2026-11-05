@@ -127,7 +127,7 @@ its imports with 1-based line/column (UTF-16 columns), normalized module,
 package and locality, plus parse errors and constructs xray cannot follow.
 Languages: python, go, rust, typescript (ts), javascript (js), php.
 
-Files are listed as \`scan\` lists them (git ls-files, else .gitignore),
+Files are listed as \`explore\` lists them (git ls-files, else .gitignore),
 relative to the root (-p, default: current directory). [paths...] narrow
 the scan to files or directories inside the root (relative to the current
 directory). --lang and [paths...] select the files reported; manifests

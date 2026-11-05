@@ -12,7 +12,7 @@ xray uses a modular command architecture built on Commander.js. Commands are org
 src/commands/
 ├── index.ts              # Command registration and setup
 ├── common.ts            # Shared utilities and common options
-├── generate.ts          # map, scan, graph, generate commands
+├── generate.ts          # map, graph, generate commands
 ├── explore.ts           # explore command with strategy support
 ├── strategy.ts          # strategy * commands and routing
 ├── strategy-cmd.ts      # Strategy command execution engine
@@ -114,27 +114,7 @@ xray rest-api endpoints          # List REST endpoints
 4. Execute strategy command handler
 5. Format and display results
 
-### 3. Scan Command (`generate.ts`)
-
-Discovers and lists files matching patterns.
-
-**Command Definition:**
-```
-xray scan [options]
-```
-
-**Features:**
-- Glob pattern matching
-- File type filtering
-- Path filtering
-- Displays total count and file list
-
-**Implementation:**
-```bash
-xray scan --path ./src --match "*.ts" --match "!*.test.ts"
-```
-
-### 4. Graph Command (`generate.ts`)
+### 3. Graph Command (`generate.ts`)
 
 Generates control flow and data flow graphs.
 
@@ -151,7 +131,7 @@ xray graph [options]
 **Supported Languages:**
 C, C++, C#, Go, Java, Rust, Swift
 
-### 5. Strategy Commands (`strategy.ts`)
+### 4. Strategy Commands (`strategy.ts`)
 
 Framework detection and exploration.
 
@@ -167,7 +147,7 @@ xray strategy info      # Show strategy information
 - Uses `StrategyDetector` and `StrategyLoader`
 - Displays detection results and metadata
 
-### 6. Clear Cache Command (`clear-cache.ts`)
+### 5. Clear Cache Command (`clear-cache.ts`)
 
 Cache management utilities.
 
@@ -183,7 +163,7 @@ xray cache clear    # Clear the AST cache (`xray clear-cache` is a hidden legacy
 - Auto-invalidated on file changes
 - Manual clear available for troubleshooting
 
-### 7. Completion Command (`completion.ts`)
+### 6. Completion Command (`completion.ts`)
 
 Shell completion for bash, zsh, fish and powershell via kit's dynamic
 completion: generated scripts call back into the hidden `xray __complete`
@@ -250,7 +230,7 @@ Commands are registered with the main program:
 
 ```typescript
 export const registerCommands = (program: Command) => {
-  // Generate commands (map, scan, graph)
+  // Generate commands (map, graph)
   registerGenerateCommands(program);
 
   // Explore and strategy commands

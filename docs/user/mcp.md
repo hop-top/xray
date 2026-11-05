@@ -61,7 +61,6 @@ Any other stdio client: run `xray -C <project> mcp`.
 | Tool | CLI equivalent | Result |
 |------|----------------|--------|
 | `map` | `xray map` | map text (or the `--format` output) |
-| `scan` | `xray scan` | scan output |
 | `graph` | `xray graph` | CFG/DFG output |
 | `explore` | `xray explore [query]` | match / search / stats rows |
 | `query` | `xray query <query>` | call-graph query result |
@@ -103,7 +102,7 @@ code or reveal secrets: `--output`, `--share`, `--template`, `--preset`,
 
 Behaviour per tool:
 
-- `map`, `scan`, `graph` write their output to a private temp directory;
+- `map`, `graph` write their output to a private temp directory;
   the tool result is that output (chunked runs return every chunk with a
   `== <file> ==` header), and the temp directory is removed.
 - `query` without `graph` first builds one (`xray map --format json`) in
@@ -149,21 +148,21 @@ directory, and `xray mcp` fixes the trusted directory at startup:
 - `root` selects the project directory a tool analyzes, inside the
   server root (absolute, or relative to the server root); anything
   outside, including through symlinks, is refused. It never becomes the
-  working directory: it reaches the command as its `--path` (map, scan,
+  working directory: it reaches the command as its `--path` (map,
   graph, explore, impact, imports, strategy detect, `<strategy>_<noun>`), and `query`
   builds its graph over it. `strategy_list` has no project scope and
   takes no `root`. Relative path arguments resolve against `root`.
 - Sub-roots with their own config (`.xrayrc`, `.xrayrc.json`, `xray.config.json`, a
   `package.json` `xray` key), such as monorepo packages:
 
-  | Server config | Sub-root config | map / scan / graph / query / impact on it |
+  | Server config | Sub-root config | map / graph / query / impact on it |
   |---------------|-----------------|----------------------------------|
   | yes | no  | runs with the server config |
   | yes | yes | runs with the server config; the sub-root's never loads |
   | no  | no  | runs with no project config |
   | no  | yes | refused |
 
-  Without `--config`, map, scan, graph and impact look for config by walking up
+  Without `--config`, map, graph and impact look for config by walking up
   from their `--path`, so with no server config to pin, a sub-root's
   own file would load in place of the server's; that case is refused.
   Add a config file to the server root, or start the server with

@@ -747,7 +747,7 @@ export const resolveRunOptions = (
 };
 
 /**
- * Commander action for `map|scan|graph [paths...]`: positional roots are
+ * Commander action for `map|graph [paths...]`: positional roots are
  * `--path` roots, so config discovery from the first root, the existence
  * check and multi-root merging all see one input shape. Both forms
  * together are ambiguous: usage error.
