@@ -79,6 +79,18 @@ you trust. xray does NOT sandbox custom presets. This is a developer
 CLI running locally; the threat model matches `require('./any-file')`
 from any Node script.
 
+## Cache
+
+A run with `--preset` does not read or write the per-file parse cache, and
+skips the multi-root graph cache. Presets can edit tags, so their results
+must not reach runs without that preset, or with another one. Editing a
+local preset file takes effect on the next run for the same reason.
+
+Cost: every file is parsed on every preset run, as after `xray cache
+clear`. On a large repo that is the full cold-parse time each run. Runs
+without `--preset` keep the cache and its speed, and are unaffected by
+earlier preset runs.
+
 ## Bad presets fail the run
 
 A `--preset` that cannot be used stops the command before any analysis or

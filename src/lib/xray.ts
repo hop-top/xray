@@ -76,6 +76,7 @@ export interface XrayConfig {
 export class Xray extends AsyncEventEmitter<XrayEvents> {
   private config: XrayConfig;
   private cache: SqliteCache;
+  private useFileCache = true;
   private pluginManager: PluginManager;
   private lastGraph?: XrayGraph;
   private lastRankedNodes?: RankedNode[];
@@ -133,6 +134,14 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
 
   plugins(): XrayPlugin[] {
     return this.pluginManager.list();
+  }
+
+  /**
+   * Stop reading and writing the persistent per-file cache for this run.
+   * Plugins may edit tags, and the cache is shared by every later run.
+   */
+  disableFileCache(): void {
+    this.useFileCache = false;
   }
 
   /** Parse coverage of the last pipeline run (files parsed, grammars skipped). */
@@ -394,7 +403,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       // root scanned from it, so a root-relative key lets `a/main.ts` and
       // `b/main.ts` (same relative path, equal mtime) serve each other's tags.
       const cacheKey = absPath;
-      const cached = this.cache.get(cacheKey, stats.mtimeMs, includeDocs, includeVars);
+      const cached = this.useFileCache ? this.cache.get(cacheKey, stats.mtimeMs, includeDocs, includeVars) : null;
 
       if (cached) {
         // Event: Cache hit - use sequential since listeners can modify cached data
@@ -452,7 +461,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           // installing it later must take effect without touching the file.
           if (!skipped) {
             parsed++;
-            this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars, records);
+            if (this.useFileCache) this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars, records);
           }
         } catch (error) {
           // Event: Parse error

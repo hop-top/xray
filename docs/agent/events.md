@@ -95,12 +95,13 @@ Consequences:
 
 - `scan:file` fires after `scan:complete`, once per file as it is processed.
 - `parse:before`, `parse:after` and `graph:add-file` never fire for files
-  served from the cache.
+  served from the cache. With `--preset` the per-file cache is bypassed:
+  they fire for every file on every run, `cache:hit` never fires, and
+  nothing is stored.
 - `render:complete` does not fire in the default chunked output.
 - `progress` fires with stages `scan` and `parsing`.
-- Edits made in `parse:after` are written to the per-file cache and persist
-  for later runs without the preset until the file changes or
-  `xray cache clear --confirm=yes` runs.
+- Runs with `--preset` neither read nor write the per-file cache, so edits
+  made in `parse:after` by a preset never reach later runs.
 
 ## Patterns
 

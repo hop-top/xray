@@ -53,6 +53,8 @@ const applyPresetFlags = async (
   currentPath: string
 ): Promise<void> => {
   if (!specs || specs.length === 0) return;
+  // Presets may edit tags; keep those out of the cache every other run shares.
+  xray.disableFileCache();
   for (const spec of specs) {
     const preset = await resolvePreset(spec);
     try {

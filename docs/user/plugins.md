@@ -98,11 +98,12 @@ Behaviors observed when running `xray map`:
 
 - `scan:complete` fires before the per-file `scan:file` events.
 - `parse:before`, `parse:after` and `graph:add-file` fire only for files
-  missing from the cache; unchanged files fire `cache:hit` instead.
+  missing from the cache; unchanged files fire `cache:hit` instead. With
+  `--preset` the per-file cache is bypassed, so they fire for every file
+  on every run.
 - `render:complete` fires only with `--no-chunk`.
-- Changes made in `parse:after` are written to the per-file cache. A later
-  run without your preset keeps seeing the modified tags until the file
-  changes or you run `xray cache clear` (`--confirm=yes` when non-interactive).
+- Runs with `--preset` neither read nor write the per-file cache, so edits
+  made by a preset never reach later runs.
 
 ## Not supported
 
