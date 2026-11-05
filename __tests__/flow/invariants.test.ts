@@ -39,8 +39,12 @@ function violations(cfg: Cfg, where: string): string[] {
   for (const n of cfg.nodes) {
     const outs = out.get(n.id) ?? [];
     const normal = outs.filter(e => e.label !== 'throw');
-    if (!fromEntry.has(n.id)) bad.push(`${where}: ${n.id} ${n.kind} unreachable from entry`);
-    if (!toExit.has(n.id)) bad.push(`${where}: ${n.id} ${n.kind} cannot reach exit`);
+    // An endless loop (`for {}`, `select {}`) never reaches exit: its nodes are trapped (all successors trapped too), and so is exit's reachability.
+    const trapped = (id: string): boolean => !toExit.has(id) && (out.get(id) ?? []).length > 0 &&
+      (out.get(id) ?? []).every(e => !toExit.has(e.to));
+    const endless = toExit.size === 1 && !fromEntry.has('n1');
+    if (!fromEntry.has(n.id) && !(endless && n.kind === 'exit')) bad.push(`${where}: ${n.id} ${n.kind} unreachable from entry`);
+    if (!toExit.has(n.id) && !trapped(n.id)) bad.push(`${where}: ${n.id} ${n.kind} cannot reach exit`);
     if (n.kind === 'exit' && outs.length) bad.push(`${where}: exit has successors`);
     if (n.kind === 'entry' && (inn.get(n.id) ?? []).length) bad.push(`${where}: entry has predecessors`);
     if (n.kind === 'rethrow' && (normal.length || outs.length !== 1)) bad.push(`${where}: rethrow must leave by one throw edge`);
@@ -61,6 +65,7 @@ const CORPORA: Array<{ lang: Lang; ext: string; roots: string[]; ok: (n: string)
   { lang: 'ts', ext: '.ts', roots: ['src'], ok: n => n.endsWith('.ts') && !n.endsWith('.d.ts'), min: 500 },
   { lang: 'js', ext: '.js', roots: ['bin', 'jest.config.js', '__tests__'], ok: n => /\.(js|mjs|cjs|jsx)$/.test(n), min: 5 },
   { lang: 'py', ext: '.py', roots: ['__tests__/fixtures'], ok: n => n.endsWith('.py'), min: 15 },
+  { lang: 'go', ext: '.go', roots: ['__tests__/fixtures'], ok: n => n.endsWith('.go'), min: 10 },
 
 
 ];

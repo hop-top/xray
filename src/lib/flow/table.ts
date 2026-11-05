@@ -120,11 +120,11 @@ export interface FlowTable {
   /** Comment / noise node types ignored in statement lists. */
   ignore: string[];
   /**
-   * switch clauses: case clause types, the default clause, field of the case
-   * value(s), field of the body statements ('': the clause's other children)
+   * switch clauses: case clause types, the default clause, fields of the case
+   * value(s) (one per clause type), field of the body statements ('': the clause's other children)
    * and whether a clause runs into the next one (`fallthrough` jumps otherwise).
    */
-  switchClauses: { cases: string[]; default: string; value: string; body: string; fallsThrough: boolean };
+  switchClauses: { cases: string[]; default: string; value: string[]; body: string; fallsThrough: boolean };
   /** catch clause type and the field of its parameter, for scoping. */
   catchClause?: { type: string; param: string };
   expr: {
@@ -173,6 +173,8 @@ export interface FlowTable {
     classScopes?: boolean;
     /** Name that binds nothing (`_`). */
     blank?: string;
+    /** Nodes that are never read as variables (a struct literal's `key:`). */
+    skipNode?: (n: Node) => boolean;
     /** Child fields that are names but not variable references (`a.b`'s `b`, `f(k=1)`'s `k`). */
     nonRef?: Record<string, string[]>;
     /** `for (const k of o)` keyword tokens that declare the loop variable, and which scope they bind in. */

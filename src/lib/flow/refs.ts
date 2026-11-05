@@ -128,6 +128,9 @@ export class RefScanner {
       this.member(p, acc);
     } else if (t.expr.parens.includes(ty)) {
       this.bind(p.namedChild(0), kind, mode, acc);
+    } else {
+      // `*p = v`, `f().x = v`: nothing to bind, but the target reads names.
+      this.walk(p, acc);
     }
   }
 

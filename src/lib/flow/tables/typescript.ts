@@ -59,7 +59,7 @@ export const typescriptTable: FlowTable = {
     labeled_statement: { kind: 'labeled', label: 'label', body: 'body' },
   },
   ignore: ['comment'],
-  switchClauses: { cases: ['switch_case'], default: 'switch_default', value: 'value', body: 'body', fallsThrough: true },
+  switchClauses: { cases: ['switch_case'], default: 'switch_default', value: ['value'], body: 'body', fallsThrough: true },
   catchClause: { type: 'catch_clause', param: 'parameter' },
   expr: {
     parens: ['parenthesized_expression'],

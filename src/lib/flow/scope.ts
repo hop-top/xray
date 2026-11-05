@@ -38,7 +38,7 @@ export function pickAll(n: Node | null | undefined, spec: Spec | undefined): Nod
 /** Child nodes of `n` that can hold variable references (not `a.b`'s `b`, not `f(k=1)`'s `k`). */
 export function refKids(n: Node, table: FlowTable): Node[] {
   const skip = table.data.nonRef?.[n.type];
-  const all = kids(n, table);
+  const all = kids(n, table).filter(c => !table.data.skipNode?.(c));
   if (!skip) return all;
   const ids = new Set(skip.flatMap(f => pickAll(n, f)).map(c => c.id));
   return all.filter(c => !ids.has(c.id));
@@ -193,7 +193,7 @@ export class Scopes {
         }
       }
     }
-    this.bind(n, scope, fscope);
+    this.bind(n, inner, fscope);
     const rule = t.stmts[n.type];
     if (rule && rule.kind === 'match') {
       for (const c of rule.cases(n)) for (const b of c.binds) this.declare(fscope, b, fscope, true);

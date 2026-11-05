@@ -126,7 +126,7 @@ xray graph [paths...] [options]
 
 **Support today:** TypeScript (`.ts`, `.tsx`), JavaScript (`.js`, `.jsx`;
 the same builder with a JavaScript table, also wired for `.mjs` / `.cjs`),
-Python (`.py`). Go is coming. For any other language the run still succeeds, prints one stderr
+Python (`.py`), Go (`.go`). For any other language the run still succeeds, prints one stderr
 notice (`cf/df: no flow graphs for python (3 files) yet ...`) and its
 functions carry no graphs.
 
@@ -173,7 +173,7 @@ a successor `n4:true` is an edge labelled `true`, `false` or `throw`. Kinds:
 `entry`, `exit` (always `n1`), `stmt`, `expr` (an operand on one branch),
 `cond` (an `if` / ternary / `&&` `||` `??` operand), `loop` (a loop test or
 `for-of`/`for-in` head), `switch`, `case`, `return`, `throw`, `break`,
-`continue`, `catch`, `rethrow` (where an exception leaves a `finally` copy;
+`continue`, `goto`, `catch`, `rethrow` (where an exception leaves a `finally` copy;
 its one edge is `throw`). Source text is one line, capped at 60 characters.
 
 One line per definition in the DFG: `<id> <name> <kind> L<line> → <reading CFG nodes>`.
@@ -250,6 +250,29 @@ without these fields work with `query --graph` and `impact --graph`.
   free), `nonlocal x` marks the outer variable captured. Chained comparisons
   (`a < b < c`) are one test. `exec`, `eval`, `globals()` and `setattr` are
   not modelled.
+- Go: `defer` is a node where it is registered and a `deferred ...` node on
+  every way out that comes after it in the source (each `return`, the end of
+  the function, a panic), last registered first; a `defer` in a branch or
+  loop counts as registered for every exit that follows it in the source, and
+  a loop registers once. Only calls and an explicit `panic(...)` panic:
+  index out of range, a nil dereference or a division by zero are not
+  modelled. A deferred function literal that calls `recover()` adds a
+  `recovered` node (the function returns normally) next to the `rethrow`; a
+  `recover()` in something that literal calls is not seen. `os.Exit`,
+  `log.Fatal` and `runtime.Goexit` are ordinary calls here. Named results are
+  defined at entry, assigned by `return a, b` and read at the exit node (the
+  exit node's reads show which assignments reach the caller); writes to them
+  from a deferred closure are not tracked (`captured`). `go f(x)` is one node:
+  its arguments are read there, the call is not part of this graph; a
+  function literal is a closure with its own graph. `select` enters exactly
+  one communication (an edge from the `select` node to each, no condition);
+  `select {}` and `for {}` without `break` leave the exit with no incoming
+  edge. `goto` links to the first node of its label; each `case` list is one
+  test. In a type switch the alias is defined at the switch node. `range`
+  defines its variables at the loop head, so an empty range still counts as
+  having assigned them; range over a function is an ordinary range. A struct
+  literal key (`T{name: v}`) is a field name, not a read; a map literal key
+  is. A write through a pointer (`*p = v`) reads `p`.
 
 ### `xray impact`
 

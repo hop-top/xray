@@ -9,6 +9,7 @@ import { computeDfg } from './dfg';
 import { typescriptTable } from './tables/typescript';
 import { javascriptTable } from './tables/javascript';
 import { pythonTable } from './tables/python';
+import { goTable } from './tables/go';
 
 export * from './types';
 export type { FlowTable } from './table';
@@ -26,6 +27,7 @@ const TABLES: Record<string, FlowTable> = {
   '.mjs': javascriptTable,
   '.cjs': javascriptTable,
   '.py': pythonTable,
+  '.go': goTable,
 };
 
 export const flowTableFor = (file: string): FlowTable | undefined => TABLES[path.extname(file)];

@@ -215,7 +215,9 @@ export class CfgBuilder extends BranchFlow {
     this.gotos.delete(label);
     const start = [...ins, ...jumpIns];
     if (start.length === 0) return [];
+    // The label is its statement's first node, known before the statement is built (a `goto` inside it comes back here).
     const mark = this.total;
+    this.labelEntry.set(label, `n${mark}`);
     const k = this.ruleOf(body)?.kind;
     let outs: End[];
     if (k === 'for' || k === 'foreach' || k === 'while' || k === 'do' || k === 'switch' || k === 'select') {
@@ -228,7 +230,7 @@ export class CfgBuilder extends BranchFlow {
       this.frames.pop();
       outs = [...inner, ...frame.breaks];
     }
-    if (this.total > mark) this.labelEntry.set(label, `n${mark}`);
+    if (this.total === mark) this.labelEntry.delete(label);
     return outs;
   }
 

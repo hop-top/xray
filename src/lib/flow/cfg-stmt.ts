@@ -30,8 +30,13 @@ export abstract class BranchFlow extends ExprFlow {
   private clauseBody(cl: Node): Node[] {
     const sc = this.table.switchClauses;
     if (sc.body) return cl.childrenForFieldName(sc.body);
-    const values = new Set(pickAll(cl, sc.value).map(v => v.id));
+    const values = new Set(this.values(cl).map(v => v.id));
     return kids(cl, this.table).filter(c => !values.has(c.id));
+  }
+
+  /** What a clause tests (`case 1, 2`, `case int, string`, `case <-ch`). */
+  private values(cl: Node): Node[] {
+    return this.table.switchClauses.value.flatMap(f => cl.childrenForFieldName(f));
   }
 
   private clauses(n: Node, rule: Extract<StmtRule, { kind: 'switch' }>): Node[] {
@@ -63,7 +68,7 @@ export abstract class BranchFlow extends ExprFlow {
     const tests = new Map<number, string>();
     for (const cl of clauses) {
       if (cl.type === sc.default) continue;
-      const vs = pickAll(cl, sc.value);
+      const vs = this.values(cl);
       const cpre = vs.length > 0 ? this.chainAll(vs, fails) : fails;
       const crefs = this.scanner.scanAll(vs);
       const text = vs.length > 0 ? cl.text.slice(vs[0].startIndex - cl.startIndex, vs[vs.length - 1].endIndex - cl.startIndex) : 'case';
@@ -109,7 +114,7 @@ export abstract class BranchFlow extends ExprFlow {
       if (!sc.cases.includes(cl.type) && cl.type !== sc.default) continue;
       let cur: End[] = [{ from: sw.id }];
       if (cl.type !== sc.default) {
-        const comm = pickAll(cl, sc.value)[0];
+        const comm = this.values(cl)[0];
         const pre = comm ? this.chain(comm, cur) : cur;
         const refs = this.scanner.scan(comm ?? null);
         const cn = this.mk('stmt', `case ${comm?.text ?? ''}`, comm ?? cl, refs, pre);

@@ -146,7 +146,7 @@ export const pythonTable: FlowTable = {
     continue_statement: { kind: 'continue', label: '' },
   },
   ignore: ['comment'],
-  switchClauses: { cases: [], default: '', value: '', body: '', fallsThrough: false },
+  switchClauses: { cases: [], default: '', value: [], body: '', fallsThrough: false },
   expr: {
     parens: ['parenthesized_expression'],
     logical: { type: 'boolean_operator', left: 'left', right: 'right', and: ['and'], or: ['or'], nullish: [] },
