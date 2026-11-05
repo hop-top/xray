@@ -139,9 +139,37 @@ xray explore --path ./src --match "*.ts" --match "!*.test.ts"
 
 ### `xray graph` - Control/Data Flow
 
+`graph` is `map` with control flow (`cf`) and data flow (`df`) on: one CFG and
+one DFG per function and method, under the function. TypeScript only for now;
+other languages get one stderr notice and no graphs.
+
 ```bash
-xray graph --with cf --with df --output graphs.txt
+xray graph --path ./src --no-chunk --output flow.txt
 ```
+
+```text
+a.ts (L1-L8):
+│ [L1-L8] function sum(xs: number[], limit: number) : number
+│   cfg
+│     n0 entry L1 → n2
+│     n1 exit L8
+│     n2 stmt L2 let total = 0 → n3
+│     n3 loop L3 for (const x of xs) → n4:true n7:false
+│     n4 cond L4 x > limit → n5:true n6:false
+│     n5 break L4 break → n7
+│     n6 stmt L5 total += x → n3
+│     n7 return L7 return total → n1
+│   dfg
+│     d0 xs param L1 → n3
+│     d1 limit param L1 → n4
+│     d2 total decl L2 → n6 n7
+│     d3 x loop L3 → n4 n6
+│     d4 total update L5 → n6 n7
+```
+
+`--with cf` or `--with df` narrows to that one. `map --with cf` gives the same
+graphs on a plain map. See [`docs/user/commands.md`](docs/user/commands.md#xray-graph)
+for the format and its limits.
 
 ### `xray impact` - What breaks if I change this?
 
@@ -350,8 +378,8 @@ declarative YAML strategies always load.
 | `incs` | Include imports and dependencies |
 | `docs` | Include docstrings |
 | `cost` | Estimate AI cost (requires `OPENAI_API_KEY`) |
-| `cf` | Control Flow Graph |
-| `df` | Data Flow Graph |
+| `cf` | Control Flow Graph per function (TypeScript only for now) |
+| `df` | Data Flow Graph per function (TypeScript only for now) |
 
 ### Filtering
 
@@ -481,25 +509,22 @@ Bash needs bash-completion v2. Scripts call back into `xray __complete` on each 
 
 ## Advanced Features
 
-### Control Flow Graph (CFG)
+### Control and Data Flow Graphs (CFG, DFG)
 
-Available for: C, C++, C#, Go, Java, Rust, Swift
-
-```bash
-xray graph --with cf --path ./src
-```
-
-Analyzes function entry/exit, conditional branches, loops, and try/catch blocks.
-
-### Data Flow Graph (DFG)
-
-Available for: C, C++, C#, Go, Java, Rust, Swift
+Available for: TypeScript (`.ts`, `.tsx`). JavaScript, Python and Go are
+next; other languages produce no graphs and say so on stderr.
 
 ```bash
-xray graph --with df --path ./src
+xray graph --path ./src            # both
+xray graph --with cf --path ./src  # control flow only
+xray graph --with df --path ./src  # data flow only
+xray graph --format json -o g.json # cfg / dfg fields on each function node
 ```
 
-Tracks variable definitions, usage, data dependencies, and assignment flows.
+Intra-procedural, per function and method: branches, loops, `switch`,
+`try`/`catch`/`finally`, labelled `break`/`continue`, short-circuit operators
+and ternaries; definitions reaching each use, across branches and loops,
+with scoping and destructuring. Nested functions get their own graphs.
 
 ### Custom Queries
 

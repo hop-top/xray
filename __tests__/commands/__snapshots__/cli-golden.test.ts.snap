@@ -982,7 +982,9 @@ FLAGS:
                                       <out>.nodes.csv and <out>.edges.csv]
   -l, --limit <number>                Token limit per chunk [default: 4096]
   -w, --with <feature>                Include feature: vars, incs, cost, docs,
-                                      df, cf (repeatable) (default: [])
+                                      df, cf (repeatable); cf and df are on
+                                      unless one is named, then only those
+                                      [TypeScript only for now] (default: [])
   -a, --anchor <path>                 Focus on specific file (Personalized
                                       PageRank)
   -d, --depth <number>                Maximum depth of tree to render
@@ -1417,7 +1419,8 @@ FLAGS:
                                       <out>.nodes.csv and <out>.edges.csv]
   -l, --limit <number>                Token limit per chunk [default: 4096]
   -w, --with <feature>                Include feature: vars, incs, cost, docs,
-                                      df, cf (repeatable) (default: [])
+                                      df, cf (repeatable) [df, cf: TypeScript
+                                      only for now] (default: [])
   -a, --anchor <path>                 Focus on specific file (Personalized
                                       PageRank)
   -d, --depth <number>                Maximum depth of tree to render
@@ -2421,7 +2424,8 @@ FLAGS:
                                       <out>.nodes.csv and <out>.edges.csv]
   -l, --limit <number>                Token limit per chunk [default: 4096]
   -w, --with <feature>                Include feature: vars, incs, cost, docs,
-                                      df, cf (repeatable) (default: [])
+                                      df, cf (repeatable) [df, cf: TypeScript
+                                      only for now] (default: [])
   -a, --anchor <path>                 Focus on specific file (Personalized
                                       PageRank)
   -d, --depth <number>                Maximum depth of tree to render
@@ -3916,7 +3920,7 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": [],
-          "description": "Include feature: vars, incs, cost, docs, df, cf (repeatable)"
+          "description": "Include feature: vars, incs, cost, docs, df, cf (repeatable) [df, cf: TypeScript only for now]"
         },
         {
           "name": "--anchor",
@@ -4196,7 +4200,7 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": [],
-          "description": "Include feature: vars, incs, cost, docs, df, cf (repeatable)"
+          "description": "Include feature: vars, incs, cost, docs, df, cf (repeatable); cf and df are on unless one is named, then only those [TypeScript only for now]"
         },
         {
           "name": "--anchor",

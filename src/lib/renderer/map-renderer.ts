@@ -1,6 +1,7 @@
 import { XrayGraph, RankedNode, RankedTagNode, isRankedTagNode } from '../../types/graph';
 import type { Insight } from './insight';
 import { terminalSafe, terminalSafeBlock } from '../terminal-safe';
+import { flowLines } from '../flow/format';
 import { collectCrossFileCallers, formatCallerLines } from './callers';
 export type { Insight } from './insight';
 
@@ -213,6 +214,12 @@ export class MapRenderer {
 
         outputLines.push(line);
         currentTokens += await this.estimateTokens(line);
+        // `--with cf|df`: the function's flow graphs, indented under it.
+        for (const flowLine of flowLines(tag.attributes)) {
+          const text = `│ ${flowLine}`;
+          outputLines.push(text);
+          currentTokens += await this.estimateTokens(text);
+        }
 
         // Display cross-file references (who calls this tag)
         const tagId = `${tag.attributes.file}::${tag.attributes.label}`;

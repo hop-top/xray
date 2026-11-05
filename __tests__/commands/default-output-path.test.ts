@@ -66,8 +66,13 @@ describe('default output path (no -o)', () => {
       }
     });
 
-    it('--format csv writes .xray.nodes.csv and .xray.edges.csv', () => {
+    it('--format csv writes .xray.nodes.csv and .xray.edges.csv (graph: usage error, flow has no csv form)', () => {
       const r = run([cmd, '--format', 'csv']);
+      if (cmd === 'graph') {
+        expect(r.status).toBe(2);
+        expect(names().filter(n => n.startsWith('.xray'))).toEqual([]);
+        return;
+      }
       expect(r.status).toBe(0);
       expect(noFileAt('.xray')).toBe(true);
       expect(names()).toEqual(expect.arrayContaining(['.xray.nodes.csv', '.xray.edges.csv']));

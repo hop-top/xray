@@ -1,4 +1,5 @@
 import type { Confidence } from '../../types/graph';
+import type { Cfg, Dfg } from '../flow/types';
 
 /**
  * Import specification for a module
@@ -29,6 +30,10 @@ export interface SerializedNode {
    * graphs serialized for a multi-root merge; stripped from merged output.
    */
   references?: string[];
+  /** Control flow graph of a function/method; only with `--with cf` (graph, or map with cf). */
+  cfg?: Cfg;
+  /** Data flow graph of a function/method; only with `--with df`. */
+  dfg?: Dfg;
 }
 
 /**

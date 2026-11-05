@@ -274,7 +274,7 @@ Use flags that help AI understand context:
 xray map --with incs --with vars --with docs
 
 # For bug hunting
-xray map --with incs --with df  # Data flow shows variable mutations
+xray map --with incs --with df  # Data flow: which assignment reaches which use (TypeScript only for now)
 
 # For architecture questions
 xray map --depth 2 --with incs

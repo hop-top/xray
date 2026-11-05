@@ -1,3 +1,5 @@
+import type { Cfg, Dfg } from '../flow/types';
+
 export interface Tag {
   file: string;
   name: string;
@@ -8,8 +10,8 @@ export interface Tag {
   signature?: string; // Optional signature for functions/methods
   doc?: string; // Optional docstring
   references?: string[]; // Function names called by this tag
-  cfg?: any; // Optional Control Flow Graph
-  dfg?: any; // Optional Data Flow Graph
+  cfg?: Cfg; // Control flow graph (functions/methods, `--with cf`)
+  dfg?: Dfg; // Data flow graph (functions/methods, `--with df`)
 }
 
 /**

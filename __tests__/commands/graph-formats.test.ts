@@ -69,6 +69,14 @@ describe('graph outputs (map / graph)', () => {
 
   describe.each(['map', 'graph'])('%s --format csv / xml', cmd => {
     test('csv: nodes + edges tables with the JSON graph\'s counts', () => {
+      if (cmd === 'graph') {
+        // graph carries control/data flow, which csv has no form for.
+        const r = run([cmd, ...base('alpha'), '--format', 'csv', '-o', path.join(outDir, 'g')]);
+        expect(r.status).toBe(2);
+        expect(r.stderr).toContain('no csv form');
+        expect(fs.readdirSync(outDir)).toEqual([]);
+        return;
+      }
       const json = path.join(outDir, 'g.json');
       mapTo(cmd, ['--format', 'json'], json, 'alpha', 'beta');
       const g = JSON.parse(fs.readFileSync(json, 'utf-8'));

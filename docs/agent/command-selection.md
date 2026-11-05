@@ -10,7 +10,7 @@ Use this document to determine which xray command to run for any given scenario.
 | `explore --match` | Find files by pattern | Low (50-100t) | Fast |
 | `map` | Understand structure | Medium (300-500t) | Medium |
 | `explore` | Find patterns (React components, routes, etc.) | Low-Med (100-200t) | Fast |
-| `graph` | Analyze code flow | High (500-800t) | Slow |
+| `graph` | Control/data flow per function (TypeScript only for now) | Grows with function size: roughly 1-2 output lines per source line | Medium |
 | `map --with incs` | Understand dependencies | Medium-High (400-600t) | Medium |
 | `impact <symbol>` | What breaks if a function changes (transitive callers) | Low-Med (150-750t) | Medium |
 
@@ -111,21 +111,19 @@ WHAT DO YOU WANT TO UNDERSTAND?
 │           TOKENS: ~150-750
 │           TIME: ~3s for ~300 files (graph built in memory)
 │
-├─ "How does data/control flow through code?"
-│   ├─ "Control flow (if/else, loops, function calls)"
+├─ "How does data/control flow through code?" (TypeScript only for now)
+│   ├─ "Control flow (if/else, loops, try/finally, switch)"
 │   │   └─ COMMAND: xray graph --with cf
-│   │       TOKENS: ~500-700
-│   │       TIME: ~15s
+│   │       OUTPUT: one CFG per function under it: nodes + labelled edges
+│   │       COST: about one line per statement; capped at 500 nodes per function
 │   │
-│   ├─ "Data flow (variable assignments, transformations)"
+│   ├─ "Data flow (which assignment reaches which use)"
 │   │   └─ COMMAND: xray graph --with df
-│   │       TOKENS: ~500-700
-│   │       TIME: ~15s
+│   │       OUTPUT: one line per definition → the nodes reading it
 │   │
 │   └─ "Both control and data flow"
-│       └─ COMMAND: xray graph --with cf --with df
-│           TOKENS: ~800-1000
-│           TIME: ~20s
+│       └─ COMMAND: xray graph
+│           (cf and df are on by default; --with cf / --with df narrows)
 │
 ├─ "I want ALL the details"
 │   └─ COMMAND: xray map --with vars --with incs --with docs
@@ -319,8 +317,8 @@ Full protocol: [Impact Analysis workflow](workflows/impact-analysis.md).
    TOKENS: ~400
    OUTPUT: All files that import/use this
 
-3. Analyze data flow
-   COMMAND: xray graph --with cf --anchor <file-to-refactor>
+3. Analyze control and data flow (TypeScript files)
+   COMMAND: xray graph --anchor <file-to-refactor>
    WHY: Understand how data flows through this code
    TOKENS: ~600
    OUTPUT: What changes would affect
@@ -388,14 +386,15 @@ Default (no --with flags):
 ├─ Tokens: +100-200
 └─ Use when: Need to understand purpose/usage
 
---with cf (control flow):
-├─ Adds: Control flow graphs
-├─ Tokens: +300-400
+--with cf (control flow, TypeScript only for now):
+├─ Adds: one CFG per function: entry/exit, branches, loops, switch, try/finally
+├─ Tokens: about one output line per statement of each function
+├─ Other languages: one stderr notice, no graphs (never wrong ones)
 └─ Use when: Need to understand logic flow
 
---with df (data flow):
-├─ Adds: Data flow graphs
-├─ Tokens: +300-400
+--with df (data flow, TypeScript only for now):
+├─ Adds: one DFG per function: each definition → the nodes that read it
+├─ Tokens: about one output line per variable definition
 └─ Use when: Need to understand data transformations
 
 Combinations:

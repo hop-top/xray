@@ -112,7 +112,9 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
             line: tag.line,
             endLine: tag.endLine,
             signature: tag.signature,
-            doc: tag.doc
+            doc: tag.doc,
+            ...(tag.cfg ? { cfg: tag.cfg } : {}),
+            ...(tag.dfg ? { dfg: tag.dfg } : {})
           },
           skip: false
         });

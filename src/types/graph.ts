@@ -14,6 +14,7 @@
 
 import Graph from 'graphology';
 import { Import } from '../lib/parser/types';
+import type { Cfg, Dfg } from '../lib/flow/types';
 
 /**
  * Base attributes for file nodes in the graph.
@@ -60,6 +61,10 @@ export interface BaseTagNodeAttributes {
    * to nothing in this graph. Input of the cross-root pass of merged graphs.
    */
   references?: string[];
+  /** Control flow graph of a function/method (`--with cf`). */
+  cfg?: Cfg;
+  /** Data flow graph of a function/method (`--with df`). */
+  dfg?: Dfg;
 }
 
 /**

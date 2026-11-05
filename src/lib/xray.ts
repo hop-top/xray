@@ -4,7 +4,8 @@ import { FileScanner } from './scanner';
 import { compileMatchers, quotePattern } from './path-match';
 import { ParserManager } from './parser/manager';
 import { updateLanguageQuery } from './parser/language-registry';
-import { beginLanguageRun, reportSkippedLanguages, type SkippedSummary } from './parser/grammars';
+import { flowCacheKey, flowTableFor, flowLanguages } from './flow';
+import { beginLanguageRun, packForExtension, reportSkippedLanguages, type SkippedSummary } from './parser/grammars';
 import { GraphBuilder } from './graph/builder';
 import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
@@ -391,6 +392,15 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     const includeDocs = this.config.features?.docs ? 'all' : 'none';
     const enableCfg = this.config.features?.cf || false;
     const enableDfg = this.config.features?.df || false;
+    const flowKey = flowCacheKey(enableCfg, enableDfg);
+    // Languages seen that have no flow table: reported once, after the run.
+    const noFlow = new Map<string, number>();
+    const flowOn = enableCfg || enableDfg;
+    const noteNoFlow = (file: string): void => {
+      if (!flowOn || flowTableFor(file)) return;
+      const lang = packForExtension(path.extname(file))?.name;
+      if (lang) noFlow.set(lang, (noFlow.get(lang) ?? 0) + 1);
+    };
 
     let processed = 0;
     let parsed = 0;
@@ -412,7 +422,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       // root scanned from it, so a root-relative key lets `a/main.ts` and
       // `b/main.ts` (same relative path, equal mtime) serve each other's tags.
       const cacheKey = absPath;
-      const cached = this.useFileCache ? this.cache.get(cacheKey, stats.mtimeMs, includeDocs, includeVars) : null;
+      const cached = this.useFileCache ? this.cache.get(cacheKey, stats.mtimeMs, includeDocs, includeVars, flowKey) : null;
 
       if (cached) {
         // Event: Cache hit - use sequential since listeners can modify cached data
@@ -420,6 +430,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         await this.emitAsync('cache:hit', cacheHitEvent);
         await graphBuilder.loadFromCache(file, cacheHitEvent.tags, cacheHitEvent.imports, cached.records);
         parsed++;
+        noteNoFlow(file);
       } else {
         // Event: Cache miss - use parallel for observers
         await this.emitAsyncParallel('cache:miss', { file });
@@ -470,7 +481,8 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           // installing it later must take effect without touching the file.
           if (!skipped) {
             parsed++;
-            if (this.useFileCache) this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars, records);
+            noteNoFlow(file);
+            if (this.useFileCache) this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars, records, flowKey);
           }
         } catch (error) {
           // Event: Parse error
@@ -486,6 +498,12 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     }
 
     await this.emitProgress('parsing', files.length, files.length, 'Parsing complete');
+    if (noFlow.size > 0) {
+      const langs = [...noFlow].map(([l, n]) => `${l} (${n} ${n === 1 ? 'file' : 'files'})`).join(', ');
+      Logger.warn(
+        `cf/df: no flow graphs for ${langs} yet; its functions carry none. Supported: ${flowLanguages().join(', ')}`
+      );
+    }
     const skippedGrammars = reportSkippedLanguages({ format: this.config.format });
     this.lastCoverage = { files: files.length, parsed, skipped: skippedGrammars };
 

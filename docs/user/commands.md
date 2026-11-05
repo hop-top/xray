@@ -116,20 +116,104 @@ xray explore --match "src/api/**" --stats
 
 ### `xray graph`
 
-Generate control flow (CFG) and data flow graphs (DFG).
+`map` with control flow (CFG) and data flow (DFG) graphs: one of each per
+function and method, printed under the function in the map (or as `cfg` /
+`dfg` fields on its node with `--format json`).
 
 ```bash
 xray graph [paths...] [options]
 ```
 
-**Examples:**
-```bash
-# Generate both CFG and DFG
-xray graph --with cf --with df --output graphs.txt
+**Support today:** TypeScript (`.ts`, `.tsx`). JavaScript, Python and Go are
+coming. For any other language the run still succeeds, prints one stderr
+notice (`cf/df: no flow graphs for python (3 files) yet ...`) and its
+functions carry no graphs.
 
-# Focus on specific directory
-xray graph --path ./src/services --with cf --with df
+**Flags:** `graph` turns `cf` and `df` on. Naming either under `--with`
+narrows to those (`--with cf`, `--with df`); other `--with` features add to
+the default. `xray map --with cf` / `--with df` produce the same graphs on a
+plain map; plain `map` is unchanged and does no flow work. Flow has no CSV
+form: `--format csv` with cf/df exits 2. `--format xml` carries it as
+`<cfg>` / `<dfg>` children of the function's `<node>`.
+
+```bash
+xray graph --path ./src --no-chunk --output flow.txt
+xray graph --with cf --path ./src
+xray graph --format json --output graph.json
 ```
+
+Output of the first command for a small function:
+
+```text
+a.ts (L1-L8):
+│ [L1-L8] function sum(xs: number[], limit: number) : number
+│   cfg
+│     n0 entry L1 → n2
+│     n1 exit L8
+│     n2 stmt L2 let total = 0 → n3
+│     n3 loop L3 for (const x of xs) → n4:true n7:false
+│     n4 cond L4 x > limit → n5:true n6:false
+│     n5 break L4 break → n7
+│     n6 stmt L5 total += x → n3
+│     n7 return L7 return total → n1
+│   dfg
+│     d0 xs param L1 → n3
+│     d1 limit param L1 → n4
+│     d2 total decl L2 → n6 n7
+│     d3 x loop L3 → n4 n6
+│     d4 total update L5 → n6 n7
+```
+
+**Reading it.** One line per CFG node: `<id> <kind> L<line> <source> → <successors>`;
+a successor `n4:true` is an edge labelled `true`, `false` or `throw`. Kinds:
+`entry`, `exit` (always `n1`), `stmt`, `expr` (an operand on one branch),
+`cond` (an `if` / ternary / `&&` `||` `??` operand), `loop` (a loop test or
+`for-of`/`for-in` head), `switch`, `case`, `return`, `throw`, `break`,
+`continue`, `catch`. Source text is one line, capped at 60 characters.
+
+One line per definition in the DFG: `<id> <name> <kind> L<line> → <reading CFG nodes>`.
+Definition kinds: `param`, `decl`, `assign`, `update` (`++`, `+=`), `loop`
+(`for-of` variable), `catch`, `function`, `class`, `member` (`o.p = v`, weak),
+`maybe` (`||=` `&&=` `??=`, weak). A weak definition adds itself without
+replacing earlier ones. `captured` marks a variable a nested function
+references. With `--with df` alone, the reading nodes are listed first
+(`n6 L5 total += x`) so the output stands on its own.
+
+JSON fields (optional; absent without cf/df and on non-functions):
+
+```json
+"cfg": { "nodes": [{ "id": "n2", "kind": "stmt", "label": "let total = 0", "line": 1 }],
+         "edges": [{ "from": "n3", "to": "n4", "label": "true" }],
+         "closures": [{ "name": "inc", "line": 2, "nodes": [], "edges": [] }],
+         "truncated": { "nodes": 812, "limit": 500 } },
+"dfg": { "nodes": [{ "id": "d0", "name": "xs", "kind": "param", "line": 0, "at": "n0" }],
+         "edges": [{ "from": "d0", "to": "n3" }],
+         "sites": [{ "id": "n3", "line": 2, "label": "for (const x of xs)" }] }
+```
+
+Lines are 0-based like every line in the JSON graph. Saved graphs with or
+without these fields work with `query --graph` and `impact --graph`.
+
+**Limits** (what the graphs do not know):
+
+- Per function; calls are listed per node (`calls` in JSON), not followed.
+  Nested functions and closures have their own graphs (`closures`).
+- A function with more than 500 CFG nodes keeps its first 500 and says so
+  (`truncated` / `(truncated: 500 of 812 nodes)`).
+- Only `throw`, calls, `new` and `await` may throw: a `try` body with none
+  of them has no edge into its `catch`, which is then left out. A `finally`
+  is copied once per way into it (normal, `return`, `break`/`continue`,
+  exception).
+- Code after `return`, `throw`, `break` or `continue` is unreachable and
+  omitted. `?.` optional chaining is not a branch. A `ternary` or `&&` inside
+  a nested function belongs to that function's graph.
+- Data flow is variable rebinding only. A call never defines anything: a
+  call that mutates its argument or receiver (`xs.push(1)`) changes nothing
+  in the DFG, and `o.p = v` is a weak definition of `o` (aliases are not
+  tracked). Reads and writes of a captured variable inside a closure are not
+  tracked; the variable is flagged `captured`, and the closure counts as a
+  read of it where it is created. Hoisted function declarations are defined
+  at entry. Globals and imports have no definition (no edge).
 
 ### `xray impact`
 
@@ -502,8 +586,8 @@ Enable additional analysis features (repeatable):
 | `incs` | Include imports and dependency table |
 | `docs` | Include docstrings |
 | `cost` | Estimate and display cost (requires `OPENAI_API_KEY`) |
-| `cf` | Enable Control Flow Graph (CFG) |
-| `df` | Enable Data Flow Graph (DFG) |
+| `cf` | Control Flow Graph per function (TypeScript only for now; see [`xray graph`](#xray-graph)) |
+| `df` | Data Flow Graph per function (TypeScript only for now; see [`xray graph`](#xray-graph)) |
 
 **Example:**
 ```bash

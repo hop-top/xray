@@ -205,6 +205,26 @@ const featuresOf = (mergedOptions: any) => {
   };
 };
 
+/**
+ * `graph` is `map` with control and data flow on: `--with` naming cf and/or
+ * df narrows to those, otherwise both are added to what was asked for.
+ */
+export const withGraphFlow = <T extends { with?: string[] }>(options: T): T => {
+  const asked = options.with ?? [];
+  return asked.includes('cf') || asked.includes('df') ? options : { ...options, with: [...asked, 'cf', 'df'] };
+};
+
+/** Flow data has no CSV form: asking for it there is a usage error, never a silent omission. */
+const assertFlowFormat = (mergedOptions: any, format: string): void => {
+  const f = featuresOf(mergedOptions);
+  if (format === 'csv' && (f.cf || f.df)) {
+    throw new UsageError(
+      'cf/df data has no csv form (nodes and edges only): use --format json, xml or txt; ' +
+      '`xray map --format csv` writes the graph tables without flow'
+    );
+  }
+};
+
 export interface BuiltGraph {
   /** One graph merged across every root (single root: unprefixed). */
   graph: SerializedGraph;
@@ -385,6 +405,8 @@ export const runSingleXray = async (
     (mergedOptions.json ? 'json' :
      mergedOptions.csv ? 'csv' :
      mergedOptions.xml ? 'xml' : 'txt');
+
+  assertFlowFormat(mergedOptions, format);
 
   const outputPath = resolveOutputPath(mergedOptions.output, format, mergedOptions.chunked !== false);
 
@@ -765,6 +787,7 @@ export const handleGenerateCommand = async (
     }
     options = { ...options, path: [...paths] };
   }
+  if (cmd?.name() === 'graph') options = withGraphFlow(options);
   return handleGenerateAction(options, cmd && previewing(cmd) ? cmd : undefined);
 };
 

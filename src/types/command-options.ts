@@ -64,7 +64,7 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
   /** Token limit per chunk (default: 4096) */
   limit?: string | number;
 
-  /** Include features: vars, incs, cost, docs, df, cf (repeatable) */
+  /** Include features: vars, incs, cost, docs, df, cf (repeatable); df/cf: TypeScript only for now */
   with?: string[];
 
   /** Focus on specific file (Personalized PageRank) */

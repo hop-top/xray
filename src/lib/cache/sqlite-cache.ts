@@ -56,6 +56,8 @@ interface TagsEntry {
   mtime: number;
   docConfig: string;
   includeVariables: boolean;
+  /** Flow selection the tags were parsed with (flowCacheKey); absent or '' = none. */
+  flow?: string;
   tags: Tag[];
   imports: Import[];
   /** Imports contract records (contract languages only). */
@@ -114,17 +116,20 @@ export class SqliteCache {
     }
   }
 
-  get(file: string, mtime: number, docConfig: string, includeVariables: boolean): { tags: Tag[], imports: Import[], records?: ImportRecord[] } | null {
+  get(file: string, mtime: number, docConfig: string, includeVariables: boolean, flow: string = ''): { tags: Tag[], imports: Import[], records?: ImportRecord[] } | null {
     const entry = this.read<TagsEntry>(TAGS_PREFIX + file, file);
     if (
       !entry ||
       entry.mtime !== mtime ||
       entry.docConfig !== docConfig ||
       entry.includeVariables !== includeVariables ||
+      (entry.flow ?? '') !== flow ||
       entry.extractor !== IMPORTS_EXTRACTOR_VERSION
     ) {
       return null;
     }
+    // Entries from before `flow` was recorded may hold flow stubs: no flow asked, none served.
+    if (!flow && Array.isArray(entry.tags) && entry.tags.some(t => t.cfg || t.dfg)) return null;
     if (!Array.isArray(entry.tags) || !Array.isArray(entry.imports) ||
         (entry.records !== undefined && !Array.isArray(entry.records))) {
       Logger.warn(`Corrupted cache entry for ${terminalSafe(file)}, treating as cache miss`);
@@ -133,8 +138,9 @@ export class SqliteCache {
     return entry.records ? { tags: entry.tags, imports: entry.imports, records: entry.records } : { tags: entry.tags, imports: entry.imports };
   }
 
-  set(file: string, mtime: number, tags: Tag[], imports: Import[], docConfig: string, includeVariables: boolean, records?: ImportRecord[]) {
+  set(file: string, mtime: number, tags: Tag[], imports: Import[], docConfig: string, includeVariables: boolean, records?: ImportRecord[], flow: string = '') {
     const entry: TagsEntry = { mtime, docConfig, includeVariables, tags, imports: imports ?? [], extractor: IMPORTS_EXTRACTOR_VERSION };
+    if (flow) entry.flow = flow;
     if (records) entry.records = records;
     try {
       this.store.put(TAGS_PREFIX + file, entry);

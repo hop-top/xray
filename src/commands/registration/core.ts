@@ -49,9 +49,16 @@ export function registerCoreCommands(program: Command): void {
     .description('Generate visual map of codebase')
     .action(handleGenerateCommand), 'write-local', 'conditional');
 
-  declareEffect(addCommonOptions(program.command('graph').argument('[paths...]', POSITIONAL_ROOTS))
+  const graphCmd = addCommonOptions(program.command('graph').argument('[paths...]', POSITIONAL_ROOTS))
     .description('Generate control flow (CFG) and data flow (DFG) graphs')
-    .action(handleGenerateCommand), 'write-local', 'conditional');
+    .action(handleGenerateCommand);
+  // `graph` is `map` with cf and df on; naming either under --with narrows to those.
+  const withOption = graphCmd.options.find(o => o.long === '--with');
+  if (withOption) {
+    withOption.description =
+      'Include feature: vars, incs, cost, docs, df, cf (repeatable); cf and df are on unless one is named, then only those [TypeScript only for now]';
+  }
+  declareEffect(graphCmd, 'write-local', 'conditional');
 
   // Query command - call graph queries
   declareEffect(addQueryOutputFlags(

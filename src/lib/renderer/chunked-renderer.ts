@@ -3,6 +3,7 @@ import { terminalSafe, terminalSafeBlock } from '../terminal-safe';
 import { CLUSTER_SENTINEL } from '../graph/cluster';
 import { Logger } from '../logger';
 import type { Insight } from './insight';
+import { flowLines } from '../flow/format';
 import { collectCrossFileCallers, formatCallerLines } from './callers';
 export type { Insight } from './insight';
 import * as path from 'path';
@@ -373,6 +374,12 @@ export class ChunkedRenderer {
 
         outputLines.push(line);
         currentTokens += await this.estimateTokens(line);
+        // `--with cf|df`: the function's flow graphs, indented under it.
+        for (const flowLine of flowLines(tag.attributes)) {
+          const text = `│ ${flowLine}`;
+          outputLines.push(text);
+          currentTokens += await this.estimateTokens(text);
+        }
 
         // Display cross-file references
         const tagId = `${tag.attributes.file}::${tag.attributes.label}`;
@@ -605,6 +612,12 @@ export class ChunkedRenderer {
         }
         outputLines.push(line);
         currentTokens += await this.estimateTokens(line);
+        // `--with cf|df`: the function's flow graphs, indented under it.
+        for (const flowLine of flowLines(tag.attributes)) {
+          const text = `│ ${flowLine}`;
+          outputLines.push(text);
+          currentTokens += await this.estimateTokens(text);
+        }
 
         if (currentTokens >= this.tokenLimit) {
           truncated = true;

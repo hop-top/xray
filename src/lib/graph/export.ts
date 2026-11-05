@@ -8,10 +8,12 @@
  *
  * Both are deterministic for a given graph and carry the same node/edge
  * sets as the JSON form (CSV omits `imports`, which the `imports` edges
- * already express).
+ * already express). XML also carries a function's `cfg` / `dfg` (`--with
+ * cf|df`); CSV has no form for them (the run refuses cf/df with csv).
  */
 import { stringify } from 'csv-stringify/sync';
 import type { SerializedGraph, SerializedNode, SerializedEdge } from '../query/types';
+import type { Cfg, Dfg } from '../flow/types';
 
 export const NODE_COLUMNS = [
   'id', 'type', 'label', 'kind', 'file', 'line', 'endLine', 'signature', 'doc', 'rank', 'root',
@@ -72,6 +74,37 @@ const attrs = (pairs: Attr[]): string =>
     .map(([k, v]) => ` ${k}="${escapeXmlAttr(String(v))}"`)
     .join('');
 
+const truncation = (t: { nodes: number; limit: number } | undefined): Attr[] =>
+  t ? [['truncated', true], ['total', t.nodes], ['limit', t.limit]] : [];
+
+/** `<cfg>`: `<step>` per CFG node, `<next>` per edge, `<closure>` per nested function. */
+function cfgXml(cfg: Cfg, indent: string, out: string[], name: string, extra: Attr[] = []): void {
+  out.push(`${indent}<${name}${attrs([...extra, ...truncation(cfg.truncated)])}>`);
+  for (const n of cfg.nodes) {
+    out.push(`${indent}  <step${attrs([
+      ['id', n.id], ['kind', n.kind], ['line', n.line], ['label', n.label], ['calls', n.calls?.join(', ')],
+    ])}/>`);
+  }
+  for (const e of cfg.edges) out.push(`${indent}  <next${attrs([['from', e.from], ['to', e.to], ['label', e.label]])}/>`);
+  for (const c of cfg.closures ?? []) cfgXml(c, indent + '  ', out, 'closure', [['name', c.name], ['line', c.line]]);
+  out.push(`${indent}</${name}>`);
+}
+
+/** `<dfg>`: `<def>` per definition, `<use>` per def-use edge, `<site>` per reading CFG node. */
+function dfgXml(dfg: Dfg, indent: string, out: string[], name: string, extra: Attr[] = []): void {
+  out.push(`${indent}<${name}${attrs([...extra, ...truncation(dfg.truncated)])}>`);
+  for (const d of dfg.nodes) {
+    out.push(`${indent}  <def${attrs([
+      ['id', d.id], ['name', d.name], ['kind', d.kind], ['line', d.line], ['at', d.at],
+      ['weak', d.weak], ['captured', d.captured],
+    ])}/>`);
+  }
+  for (const e of dfg.edges) out.push(`${indent}  <use${attrs([['from', e.from], ['to', e.to]])}/>`);
+  for (const s of dfg.sites) out.push(`${indent}  <site${attrs([['id', s.id], ['line', s.line], ['label', s.label]])}/>`);
+  for (const c of dfg.closures ?? []) dfgXml(c, indent + '  ', out, 'closure', [['name', c.name], ['line', c.line]]);
+  out.push(`${indent}</${name}>`);
+}
+
 export function graphToXml(g: SerializedGraph): string {
   const out: string[] = ['<?xml version="1.0" encoding="UTF-8"?>', '<graph>'];
   const m = g.metadata;
@@ -98,7 +131,7 @@ export function graphToXml(g: SerializedGraph): string {
       ['root', rootOf(g, n.id) || undefined],
     ]);
     const imports = n.imports ?? [];
-    if (n.doc === undefined && imports.length === 0) {
+    if (n.doc === undefined && imports.length === 0 && !n.cfg && !n.dfg) {
       out.push(`    <node${a}/>`);
       continue;
     }
@@ -111,6 +144,8 @@ export function graphToXml(g: SerializedGraph): string {
       }
       out.push('      </imports>');
     }
+    if (n.cfg) cfgXml(n.cfg, '      ', out, 'cfg');
+    if (n.dfg) dfgXml(n.dfg, '      ', out, 'dfg');
     out.push('    </node>');
   }
   out.push('  </nodes>', '  <edges>');

@@ -3,40 +3,13 @@ import Parser from 'tree-sitter';
 import { getLanguageConfig, CallShape } from './language-registry';
 import { isUnavailable } from './grammars';
 import { Tag, Import } from './types';
+import type { Cfg, Dfg } from '../flow/types';
 import { Logger } from '../logger';
 import { extractTreeImports } from '../imports/tree';
 import type { ImportRecord } from '../imports/types';
 
-import { graphManager } from './flow-analysis';
-import { CGraphGenerator } from './graphs/c';
-import { CPPGraphGenerator } from './graphs/cpp';
-import { CSharpGraphGenerator } from './graphs/csharp';
-import { GoGraphGenerator } from './graphs/go';
-import { JavaGraphGenerator } from './graphs/java';
-import { RustGraphGenerator } from './graphs/rust';
-import { SwiftGraphGenerator } from './graphs/swift';
-import { PythonGraphGenerator } from './graphs/python';
-import { JavaScriptGraphGenerator } from './graphs/javascript';
-import { TypeScriptGraphGenerator } from './graphs/typescript';
+import { buildFlow, flowTableFor, functionOfName } from '../flow';
 import { terminalSafe } from '../terminal-safe';
-
-// Register Generators
-graphManager.register('.c', 'internal', new CGraphGenerator());
-graphManager.register('.h', 'internal', new CGraphGenerator());
-graphManager.register('.cpp', 'internal', new CPPGraphGenerator());
-graphManager.register('.hpp', 'internal', new CPPGraphGenerator());
-graphManager.register('.cc', 'internal', new CPPGraphGenerator());
-graphManager.register('.cxx', 'internal', new CPPGraphGenerator());
-graphManager.register('.cs', 'internal', new CSharpGraphGenerator());
-graphManager.register('.go', 'internal', new GoGraphGenerator());
-graphManager.register('.java', 'internal', new JavaGraphGenerator());
-graphManager.register('.rs', 'internal', new RustGraphGenerator());
-graphManager.register('.swift', 'internal', new SwiftGraphGenerator());
-graphManager.register('.py', 'internal', new PythonGraphGenerator());
-graphManager.register('.js', 'internal', new JavaScriptGraphGenerator());
-graphManager.register('.jsx', 'internal', new JavaScriptGraphGenerator());
-graphManager.register('.ts', 'internal', new TypeScriptGraphGenerator());
-graphManager.register('.tsx', 'internal', new TypeScriptGraphGenerator());
 
 export class ParserManager {
   private root: string;
@@ -149,22 +122,16 @@ export class ParserManager {
             doc = this.extractDoc(node, content);
           }
 
-          // Generate CFG/DFG for functions/methods
-          let cflogram: any;
-          let dflogram: any;
+          // CFG/DFG of functions/methods, for languages with a flow table.
+          let cflogram: Cfg | undefined;
+          let dflogram: Dfg | undefined;
           if ((enableCfg || enableDfg) && (kind === 'function' || kind === 'method')) {
-            // Find the function definition node (parent of the name usually)
-            // The capture is on the *name*, so we need the parent which is the function_definition
-            let defNode = node.parent;
-            while (defNode && !defNode.type.includes('definition') && !defNode.type.includes('declaration')) {
-              defNode = defNode.parent;
-            }
-            if (defNode) {
-              const ext = path.extname(file);
-              // Use internal strategy by default for now
-              const graphs = await graphManager.generateGraphs(ext, { node: defNode, file, code: content }, 'internal', enableCfg, enableDfg);
-              cflogram = graphs.cfg;
-              dflogram = graphs.dfg;
+            const table = flowTableFor(file);
+            const fnNode = table ? functionOfName(node, table) : null;
+            if (table && fnNode) {
+              const flow = buildFlow(fnNode, table, { cfg: enableCfg, dfg: enableDfg });
+              cflogram = flow.cfg;
+              dflogram = flow.dfg;
             }
           }
 
