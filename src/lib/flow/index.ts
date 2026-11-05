@@ -1,7 +1,7 @@
 import * as path from 'path';
 import type Parser from 'tree-sitter';
 import type { Cfg, Dfg, FlowResult } from './types';
-import { MAX_FLOW_NODES } from './types';
+import { MAX_FLOW_NODES, MAX_FILE_FLOW_NODES, MAX_FLOW_SOURCE_BYTES, flowWorkCap } from './types';
 import type { FlowTable } from './table';
 import { Scopes } from './scope';
 import { CfgBuilder, nestedFunctions } from './cfg';
@@ -72,14 +72,23 @@ function closureName(n: Node, table: FlowTable): string {
   return table.anonymous;
 }
 
-function analyze(fn: Node, table: FlowTable, scopes: Scopes, want: { cfg: boolean; dfg: boolean }, max: number): FlowResult {
-  const built = new CfgBuilder(fn, table, scopes, max).build();
-  const truncated = built.total > built.nodes.length ? { nodes: built.total, limit: built.nodes.length } : undefined;
+/** Nodes a file may still spend on flow graphs (shared by all its functions and closures). */
+export interface FlowBudget { left: number }
+
+function analyze(
+  fn: Node, table: FlowTable, scopes: Scopes, want: { cfg: boolean; dfg: boolean }, max: number, budget: FlowBudget
+): FlowResult {
+  if (budget.left <= 0) return { skipped: 'budget' };
+  const built = new CfgBuilder(fn, table, scopes, max, Math.min(flowWorkCap(max), budget.left)).build();
+  budget.left -= built.total;
+  const truncated = built.total > built.nodes.length || built.partial
+    ? { nodes: built.total, limit: built.nodes.length, ...(built.partial ? { partial: true as const } : {}) }
+    : undefined;
   const result: FlowResult = {};
   const closures = nestedFunctions(fn, table).map(n => ({
     name: closureName(n, table),
     line: n.startPosition.row,
-    res: analyze(n, table, scopes, want, max),
+    res: analyze(n, table, scopes, want, max, budget),
   }));
   if (want.cfg) {
     const cfg: Cfg = {
@@ -109,7 +118,15 @@ export function buildFlow(
   fn: Node,
   table: FlowTable,
   want: { cfg: boolean; dfg: boolean },
-  maxNodes: number = MAX_FLOW_NODES
+  maxNodes: number = MAX_FLOW_NODES,
+  budget: FlowBudget = { left: MAX_FILE_FLOW_NODES }
 ): FlowResult {
-  return analyze(fn, table, new Scopes(fn, table), want, maxNodes);
+  if (fn.endIndex - fn.startIndex > MAX_FLOW_SOURCE_BYTES) return { skipped: 'size' };
+  // Whatever the source does (nesting that overflows the stack, a builder
+  // bug), one function never fails the run: it just has no graph.
+  try {
+    return analyze(fn, table, new Scopes(fn, table), want, maxNodes, budget);
+  } catch (e) {
+    return { skipped: e instanceof RangeError ? 'depth' : 'error' };
+  }
 }

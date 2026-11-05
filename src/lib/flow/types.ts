@@ -40,8 +40,10 @@ export interface CfgEdge {
 
 /** Set when a function is larger than the node cap: the graph is a prefix. */
 export interface FlowTruncation {
-  /** Nodes the full graph has. */
+  /** Nodes the full graph has (when `partial`: at least this many; construction stopped here). */
   nodes: number;
+  /** The function is so large that building stopped at a work budget before it ended. */
+  partial?: true;
   /** Nodes kept. */
   limit: number;
 }
@@ -100,10 +102,34 @@ export interface Dfg {
   closures?: Array<Dfg & { name: string; line: number }>;
 }
 
+/**
+ * `skipped`: no graph was built. `depth`: syntax nested too deeply for the
+ * builder; `budget`: the file's flow budget was already spent; `size`: the
+ * function's source is longer than `MAX_FLOW_SOURCE_BYTES`; `error`: the
+ * builder failed on this function.
+ */
 export interface FlowResult {
   cfg?: Cfg;
   dfg?: Dfg;
+  skipped?: 'depth' | 'budget' | 'size' | 'error';
 }
 
 /** Most CFG nodes kept per function (nested functions count separately). */
 export const MAX_FLOW_NODES = 500;
+
+/**
+ * Work bound per function: construction stops after this many nodes were
+ * created (kept or not), so copies of `finally` / `defer` / `with` exits can
+ * never cost more than this, whatever the input.
+ */
+export const flowWorkCap = (maxNodes: number): number => maxNodes * 2;
+
+/** A function whose source is longer than this (bytes) gets no graph: reading it alone would cost more than the graph is worth. */
+export const MAX_FLOW_SOURCE_BYTES = 256 * 1024;
+
+/** Nodes built across all functions of one file before the rest are skipped. */
+export const MAX_FILE_FLOW_NODES = 50_000;
+
+/** Definitions and def-use edges kept per function's data flow. */
+export const MAX_FLOW_DEFS = 2000;
+export const MAX_FLOW_EDGES = 20_000;

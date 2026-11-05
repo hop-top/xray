@@ -4,7 +4,7 @@ import type { Scopes, Binding } from './scope';
 import { kids, pick, pickAll } from './scope';
 import { emptyRefs } from './refs';
 import { BranchFlow } from './cfg-stmt';
-import { BuiltCfg, Cleanup, End, FlowNode, Frame, Node, labelOf, nestedFunctions } from './cfg-core';
+import { BudgetExceeded, BuiltCfg, Cleanup, End, FlowNode, Frame, Node, labelOf, nestedFunctions } from './cfg-core';
 
 export { labelOf, nestedFunctions };
 export type { BuiltCfg, FlowNode };
@@ -29,8 +29,8 @@ export class CfgBuilder extends BranchFlow {
   private deferFrame: Cleanup | null = null;
   private results: Binding[] = [];
 
-  constructor(fn: Node, table: FlowTable, scopes: Scopes, maxNodes: number) {
-    super(fn, table, scopes, maxNodes);
+  constructor(fn: Node, table: FlowTable, scopes: Scopes, maxNodes: number, workCap?: number) {
+    super(fn, table, scopes, maxNodes, workCap);
   }
 
   build(): BuiltCfg {
@@ -53,19 +53,27 @@ export class CfgBuilder extends BranchFlow {
     const exit = this.mk('exit', 'exit', this.fn, exitRefs, [], this.fn.endPosition.row);
     if (Object.values(t.stmts).some(r => r.kind === 'defer')) this.pushDeferFrame();
     const body = this.fn.childForFieldName(t.fn.body);
-    let outs: End[] = [{ from: entry.id }];
-    if (body) {
-      const rule = t.stmts[body.type];
-      if (rule && rule.kind === 'block') outs = this.block(body, outs);
-      else outs = this.returnLike(body, outs);
+    let partial = false;
+    try {
+      let outs: End[] = [{ from: entry.id }];
+      if (body) {
+        const rule = t.stmts[body.type];
+        if (rule && rule.kind === 'block') outs = this.block(body, outs);
+        else outs = this.returnLike(body, outs);
+      }
+      if (this.deferFrame && this.deferFrame.active()) outs = this.deferFrame.run(outs);
+      this.link(outs, exit.id);
+    } catch (e) {
+      // Work cap reached: what is built so far is the (truncated) graph.
+      if (!(e instanceof BudgetExceeded)) throw e;
+      partial = true;
     }
-    if (this.deferFrame && this.deferFrame.active()) outs = this.deferFrame.run(outs);
-    this.link(outs, exit.id);
     const kept = new Set(this.nodes.map(n => n.id));
     return {
       nodes: this.nodes,
       edges: this.edges.filter((e: CfgEdge) => kept.has(e.from) && kept.has(e.to)),
       total: this.total,
+      partial,
     };
   }
 

@@ -27,6 +27,9 @@ export interface Refs {
 export const emptyRefs = (): Refs => ({ uses: [], defs: [], calls: [], throws: false, reads: false });
 
 const CALL_CAP = 40;
+/** Per CFG node: reads and callee names kept (a generated 50k-name expression must not cost n squared). */
+const USES_PER_NODE = 500;
+const CALLS_PER_NODE = 200;
 const collapse = (s: string): string => s.replace(/\s+/g, ' ').trim();
 
 /**
@@ -143,7 +146,7 @@ export class RefScanner {
 
   private use(id: Node, acc: Refs): void {
     const b = this.scopes.resolve(id);
-    if (b && b.owner === this.fn.id && !acc.uses.includes(b)) acc.uses.push(b);
+    if (b && b.owner === this.fn.id && acc.uses.length < USES_PER_NODE && !acc.uses.includes(b)) acc.uses.push(b);
   }
 
   /** `o.p = v` / `o[i]++`: uses `o` (and `i`), weakly defines the root variable. */
@@ -167,7 +170,7 @@ export class RefScanner {
       const b = this.scopes.resolve(n);
       if (b && b.owner === this.fn.id) {
         b.captured = true;
-        if (!acc.uses.includes(b)) acc.uses.push(b);
+        if (acc.uses.length < USES_PER_NODE && !acc.uses.includes(b)) acc.uses.push(b);
       }
       return;
     }
@@ -202,7 +205,7 @@ export class RefScanner {
       const callee = n.childForFieldName(isNew ? t.expr.calls.newCallee : t.expr.calls.callee);
       const text = this.calleeText(callee);
       const name = isNew ? `new ${text}` : text;
-      if (!acc.calls.includes(name)) acc.calls.push(name);
+      if (acc.calls.length < CALLS_PER_NODE && !acc.calls.includes(name)) acc.calls.push(name);
       acc.throws = true;
     } else if (t.expr.throwing.includes(ty)) {
       acc.throws = true;

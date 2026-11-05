@@ -1,5 +1,9 @@
 import type { CfgEdge, Dfg, DfgDef, DfgEdge, DfgSite } from './types';
 import type { FlowNode } from './cfg';
+import { MAX_FLOW_DEFS, MAX_FLOW_EDGES } from './types';
+
+/** Passes over the CFG before the fixpoint is given up (loops nest a handful deep; this is generous). */
+const MAX_PASSES = 64;
 
 /**
  * Def-use edges from reaching definitions over the CFG.
@@ -21,9 +25,11 @@ export function computeDfg(nodes: FlowNode[], edges: CfgEdge[], captured: (bindi
   const kill: Array<Set<number>> = nodes.map(() => new Set());
   const byBinding = new Map<number, number[]>();
 
+  let capped = false;
   nodes.forEach((n, i) => {
     const last = new Map<number, number>();
     for (const d of n.refs.defs) {
+      if (defs.length >= MAX_FLOW_DEFS) { capped = true; break; }
       const id = defs.length;
       defs.push({
         id: `d${id}`, name: d.binding.name, kind: d.kind, line: d.line, at: n.id,
@@ -56,7 +62,9 @@ export function computeDfg(nodes: FlowNode[], edges: CfgEdge[], captured: (bindi
     return o;
   };
   let changed = true;
+  let passes = 0;
   while (changed) {
+    if (++passes > MAX_PASSES) { capped = true; break; }
     changed = false;
     for (let i = 0; i < nodes.length; i++) {
       const next = new Set<number>();
@@ -78,9 +86,15 @@ export function computeDfg(nodes: FlowNode[], edges: CfgEdge[], captured: (bindi
   nodes.forEach((n, i) => {
     // Entry reads its own parameters (defaults like `(a, b = a)`), bound left to right.
     const reaching = i === 0 ? out[0] : inn[i];
+    if (n.refs.uses.length === 0 || reaching.size === 0) return;
+    const byBinding = new Map<number, number[]>();
+    for (const d of [...reaching].sort((x, y) => x - y)) {
+      const list = byBinding.get(defs[d].binding);
+      if (list) list.push(d); else byBinding.set(defs[d].binding, [d]);
+    }
     for (const b of n.refs.uses) {
-      for (const d of [...reaching].sort((x, y) => x - y)) {
-        if (defs[d].binding !== b.id) continue;
+      for (const d of byBinding.get(b.id) ?? []) {
+        if (dfgEdges.length >= MAX_FLOW_EDGES) { capped = true; return; }
         dfgEdges.push({ from: defs[d].id, to: n.id });
         sites.add(i);
       }
@@ -91,5 +105,7 @@ export function computeDfg(nodes: FlowNode[], edges: CfgEdge[], captured: (bindi
     captured(binding) ? { ...d, captured: true as const } : d);
   const siteList: DfgSite[] = [...sites].sort((a, b) => a - b)
     .map(i => ({ id: nodes[i].id, line: nodes[i].line, label: nodes[i].label }));
-  return { nodes: outDefs, edges: dfgEdges, sites: siteList };
+  const dfg: Dfg = { nodes: outDefs, edges: dfgEdges, sites: siteList };
+  if (capped) dfg.truncated = { nodes: outDefs.length, limit: outDefs.length, partial: true };
+  return dfg;
 }

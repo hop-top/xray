@@ -42,14 +42,20 @@ export interface BuiltCfg {
   edges: CfgEdge[];
   /** Nodes the function has (more than `nodes.length` when capped). */
   total: number;
+  /** Construction stopped at the work cap: `total` is a lower bound. */
+  partial: boolean;
 }
 
 const LABEL_CAP = 60;
+
+/** Thrown by `mk` when the function used up its work cap; caught where the graph is assembled. */
+export class BudgetExceeded extends Error {}
 const EVALUATES: CfgKind[] = ['stmt', 'expr', 'cond', 'loop', 'switch', 'case'];
 
 /** Source text as a one-line label. */
 export function labelOf(s: string): string {
-  const one = s.replace(/\s+/g, ' ').trim().replace(/;$/, '');
+  // Only the head can show: do not normalise a megabyte of source for a 60 character label.
+  const one = s.slice(0, LABEL_CAP * 4).replace(/\s+/g, ' ').trim().replace(/;$/, '');
   return one.length > LABEL_CAP ? one.slice(0, LABEL_CAP - 1) + '…' : one;
 }
 
@@ -87,12 +93,15 @@ export class FlowCore {
     protected readonly fn: Node,
     protected readonly table: FlowTable,
     protected readonly scopes: Scopes,
-    protected readonly maxNodes: number
+    protected readonly maxNodes: number,
+    /** Nodes that may be created in all (see `flowWorkCap`). */
+    protected readonly workCap: number = Infinity
   ) {
     this.scanner = new RefScanner(table, scopes, fn, this.claimed);
   }
 
   protected mk(kind: CfgKind, label: string, ast: Node | null, refs: Refs, ins: End[], line?: number): FlowNode {
+    if (this.total >= this.workCap && kind !== 'exit') throw new BudgetExceeded();
     const id = `n${this.total++}`;
     const node: FlowNode = {
       id, kind, label: labelOf(label),

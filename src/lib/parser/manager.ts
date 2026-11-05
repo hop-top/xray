@@ -8,11 +8,14 @@ import { Logger } from '../logger';
 import { extractTreeImports } from '../imports/tree';
 import type { ImportRecord } from '../imports/types';
 
-import { buildFlow, flowTableFor, functionOfName } from '../flow';
+import { buildFlow, flowTableFor, functionOfName, MAX_FILE_FLOW_NODES } from '../flow';
+import type { FlowResult } from '../flow';
 import { terminalSafe } from '../terminal-safe';
 
 export class ParserManager {
   private root: string;
+  /** Functions without flow graphs, by why (see FlowResult.skipped); reported once after a run. */
+  readonly flowSkipped: Partial<Record<NonNullable<FlowResult['skipped']>, number>> = {};
 
   constructor(root: string) {
     this.root = root;
@@ -68,6 +71,7 @@ export class ParserManager {
 
   private async extractTags(tree: Parser.Tree, language: any, queryStr: string, file: string, content: string, includeVariables: boolean, docConfig: string, enableCfg: boolean, enableDfg: boolean, calls?: CallContext): Promise<Tag[]> {
     const tags: Tag[] = [];
+    const flowBudget = { left: MAX_FILE_FLOW_NODES };
     if (!queryStr) {
       return tags;
     }
@@ -129,7 +133,8 @@ export class ParserManager {
             const table = flowTableFor(file);
             const fnNode = table ? functionOfName(node, table) : null;
             if (table && fnNode) {
-              const flow = buildFlow(fnNode, table, { cfg: enableCfg, dfg: enableDfg });
+              const flow = buildFlow(fnNode, table, { cfg: enableCfg, dfg: enableDfg }, undefined, flowBudget);
+              if (flow.skipped) this.flowSkipped[flow.skipped] = (this.flowSkipped[flow.skipped] ?? 0) + 1;
               cflogram = flow.cfg;
               dflogram = flow.dfg;
             }

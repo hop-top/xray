@@ -218,6 +218,24 @@ describe('map / graph flow flags through the built CLI', () => {
     });
   });
 
+  describe('pathological functions', () => {
+    it('a function too large to read is skipped with one stderr line; the run and its neighbours are fine', () => {
+      const big = path.join(proj, 'big.ts');
+      fs.writeFileSync(big, `export function huge(a: number) {\n${'  a = a + 1;\n'.repeat(30000)}  return a;\n}\nexport function small(b: number) { return b; }\n`);
+      try {
+        const { r, g } = json(['graph']);
+        expect(r.status).toBe(0);
+        expect(r.stderr).toContain('cf/df: skipped 1 function (source too large for flow)');
+        const huge = g.nodes.find((n: any) => n.id === 'big.ts::huge');
+        const small = g.nodes.find((n: any) => n.id === 'big.ts::small');
+        expect(huge.cfg).toBeUndefined();
+        expect(small.cfg).toBeDefined();
+      } finally {
+        fs.rmSync(big, { force: true });
+      }
+    });
+  });
+
   describe('cache across flag sets', () => {
     it('map -> map --with cf -> map -> graph -> map --with df, cold and warm, each correct', () => {
       const has = (t: any) => [t.cfg !== undefined, t.dfg !== undefined];
@@ -280,7 +298,7 @@ describe('map / graph flow flags through the built CLI', () => {
       const cmds: any[] = doc.commands ?? doc.tools ?? [];
       const graph = cmds.find((c: any) => c.name === 'graph' || c.path?.join(' ') === 'graph');
       expect(JSON.stringify(graph)).toContain('cf and df are on unless one is named');
-      expect(JSON.stringify(graph)).toContain('TypeScript only for now');
+      expect(JSON.stringify(graph)).toContain('TypeScript, JavaScript, Python, Go');
     });
   });
 });

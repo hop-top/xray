@@ -26,7 +26,7 @@ function cfgLines(cfg: Cfg, indent: string, out: string[]): void {
     list.push(e.label ? `${e.to}:${e.label}` : e.to);
     succ.set(e.from, list);
   }
-  out.push(`${indent}cfg${cfg.truncated ? ` (truncated: ${cfg.truncated.limit} of ${cfg.truncated.nodes} nodes)` : ''}`);
+  out.push(`${indent}cfg${cfg.truncated ? ` (truncated: ${cfg.truncated.limit} of ${cfg.truncated.nodes}${cfg.truncated.partial ? '+' : ''} nodes)` : ''}`);
   for (const n of cfg.nodes) {
     const label = n.kind === 'entry' || n.kind === 'exit' ? '' : ` ${n.label}`;
     const next = succ.get(n.id);
@@ -47,7 +47,7 @@ function dfgLines(dfg: Dfg, indent: string, out: string[], withSites: boolean): 
     list.push(e.to);
     uses.set(e.from, list);
   }
-  out.push(`${indent}dfg${dfg.truncated ? ` (truncated: ${dfg.truncated.limit} of ${dfg.truncated.nodes} nodes)` : ''}`);
+  out.push(`${indent}dfg${dfg.truncated ? ` (truncated: ${dfg.truncated.limit} of ${dfg.truncated.nodes}${dfg.truncated.partial ? '+' : ''} nodes)` : ''}`);
   if (withSites) for (const s of dfg.sites) out.push(`${indent}${indent}${s.id} L${s.line + 1} ${s.label}`);
   for (const d of dfg.nodes) {
     const flags = `${d.weak ? ' weak' : ''}${d.captured ? ' captured' : ''}`;

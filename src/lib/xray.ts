@@ -504,6 +504,11 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         `cf/df: no flow graphs for ${langs} yet; its functions carry none. Supported: ${flowLanguages().join(', ')}`
       );
     }
+    const skippedFlow = Object.entries(parser.flowSkipped);
+    if (skippedFlow.length > 0) {
+      const why: Record<string, string> = { depth: 'nested too deeply', budget: 'file too large for flow', size: 'source too large for flow', error: 'flow failed' };
+      Logger.warn(`cf/df: skipped ${skippedFlow.map(([k, n]) => `${n} ${n === 1 ? 'function' : 'functions'} (${why[k] ?? k})`).join(', ')}; no graphs for them`);
+    }
     const skippedGrammars = reportSkippedLanguages({ format: this.config.format });
     this.lastCoverage = { files: files.length, parsed, skipped: skippedGrammars };
 
