@@ -1,9 +1,12 @@
 # MCP server
 
-`xray mcp` serves xray's read-only analysis commands as
+`xray mcp` serves xray's analysis commands as
 [Model Context Protocol](https://modelcontextprotocol.io) tools over
 stdin/stdout, so an MCP client (Claude Code, Cursor, any stdio MCP host)
-can map, search and query a codebase without shelling out.
+can map, search and query a codebase without shelling out. No tool writes
+into the project: `map` and `graph`, which the CLI runs by writing
+`.xray_*.md` files next to the code, write to a private temp directory
+under MCP and return its content (details under Tools).
 
 ```bash
 xray mcp                       # serve the current directory
@@ -77,8 +80,9 @@ arrays, positional arguments are properties named after the argument
 (`query`), and every tool with a project scope takes an optional `root`.
 `tools/list` shows the exact schemas, including any project strategies.
 
-Options are allowlisted per tool: a tool exposes only the options vetted
-as read-only, and a call with any other argument is a tool error.
+Options are allowlisted per tool: a tool exposes only the options on its
+list (none writes into the project, loads code or reveals secrets), and a
+call with any other argument is a tool error.
 Built-in strategy nouns get `path`, `format` and the extension-override
 flags, plus the options vetted per noun (`config list --pattern`,
 `config keys|values --file`, `build run --target`, `markdown toc
@@ -102,9 +106,11 @@ code or reveal secrets: `--output`, `--share`, `--template`, `--preset`,
 
 Behaviour per tool:
 
-- `map`, `graph` write their output to a private temp directory;
-  the tool result is that output (chunked runs return every chunk with a
-  `== <file> ==` header), and the temp directory is removed.
+- `map`, `graph` write their output to a private temp directory, not the
+  project (the CLI writes `.xray_*.md` next to the code); the tool result
+  is that output (chunked runs return every chunk with a `== <file> ==`
+  header), and the temp directory is removed. Running both over a project
+  leaves its tree byte-identical.
 - `query` without `graph` first builds one (`xray map --format json`) in
   a temp directory, then runs the query against it.
 - `impact` builds its graph in memory over the call root (same config,
@@ -178,9 +184,10 @@ directory, and `xray mcp` fixes the trusted directory at startup:
 - Each call runs the CLI command in a child process with
   `--no-telemetry --offline`: no consent prompt, no consent
   write, no upgrade check. The analysis cache lives in the user cache dir (keyed by
-  the server root), not in the root; `.xray/` files are written in the server
-  root exactly as the same CLI command run there would write them.
-- No tool writes outside those caches or deletes anything.
+  the server root), not in the root; nothing is written into the server
+  root.
+- No tool writes outside those caches and the per-call temp directory, or
+  deletes anything.
 
 The server runs with your user's permissions; tools read whatever the
 CLI command reads under the server root. Serve only projects you would

@@ -41,7 +41,7 @@ cat .xray_root.md
 - 🔗 **Dependency Tracking** - Shows imports, exports, and cross-file relationships
 - 💥 **Impact Analysis** - `xray impact <symbol>` answers "what breaks if I change this?" with AST-resolved callers, grouped by package, across one repo or your whole workspace
 - ⚙️  **Automation Ready** - GitHub Actions and pre-commit hooks included
-- 🔌 **Plugin System** - Extensible event-driven architecture for custom workflows (NEW!)
+- 🔌 **Custom Strategies** - Add framework-specific analysis and commands with `@hop-top/xray/strategy`; see [docs/dev/strategy-development.md](docs/dev/strategy-development.md)
 - 🧭 **Logical Clustering** - Group chunks by graph community with `--group community` (NEW!)
 - 🎛️ **Plugin Presets** - Apply curated plugin bundles via `--preset insights|onboarding|exploration`, or load your own from a local path / npm package. See [docs/user/presets.md](docs/user/presets.md). (NEW!)
 
@@ -271,61 +271,64 @@ Now just run `xray map` - no flags needed!
 
 [Configuration guide →](docs/user/configuration.md)
 
-## Plugin System
+## Presets and Strategies
 
-**NEW:** xray now features an event-driven plugin system that lets you hook into the analysis pipeline and customize behavior.
+### Presets
 
-### Using Plugins
+`--preset` wires a curated bundle of analysis plugins into `xray map`:
 
-```typescript
-import { Xray } from '@hop-top/xray';
-import { ProgressLoggerPlugin, FilterPrivatePlugin } from '@hop-top/xray/plugins';
-
-const xray = new Xray({ path: './src' });
-
-// Register plugins
-await xray.use(new ProgressLoggerPlugin());
-await xray.use(new FilterPrivatePlugin());
-
-// Run analysis with plugins active
-await xray.run();
+```bash
+xray map --preset insights
+xray map --preset onboarding --preset exploration   # repeatable; plugins already applied are skipped
 ```
 
-### Built-in Plugins
+| Preset | Adds |
+|--------|------|
+| `insights` | confidence, clustering, surprise, questions |
+| `onboarding` | confidence, clustering, questions |
+| `exploration` | confidence, surprise |
 
-- **ProgressLoggerPlugin** - Colored console output with progress bars and timing
-- **FilterPrivatePlugin** - Filters underscore-prefixed private functions
-- **SkipTestsPlugin** - Skips test files using glob patterns
-- **MetricsCollectorPlugin** - Comprehensive metrics tracking
-- **SanitizerPlugin** - Redacts sensitive information (tokens, API keys, passwords)
+`--preset ./my-preset.js` or `--preset @scope/pkg` loads your own preset
+from a local path or npm package; it runs as code in the xray process, so
+load only what you trust.
 
-### Creating Custom Plugins
+[Presets guide →](docs/user/presets.md)
+
+### Extending with strategies
+
+Strategies are the extension route: a strategy detects a framework or
+file convention, tags files during analysis and adds its own
+`xray <strategy> <noun>` commands. Put one in `.xray/strategies/` (or
+ship it as an npm package) and type it from the public entry:
 
 ```typescript
-import { XrayPlugin } from '@hop-top/xray';
+import type { Strategy, StrategyContext, FileMetadata } from '@hop-top/xray/strategy';
 
-export class MyPlugin implements XrayPlugin {
-  name = 'my-plugin';
+export default class VueStrategy implements Strategy {
+  name = 'vue';
   version = '1.0.0';
 
-  apply(xray: Xray): void {
-    // Listen to lifecycle events
-    xray.on('scan:complete', (event) => {
-      console.log(`Found ${event.files.length} files`);
-    });
+  async detect(ctx: StrategyContext): Promise<boolean> {
+    return ctx.hasDependency('vue');
+  }
 
-    // Transform data during analysis
-    xray.on('parse:after', (event) => {
-      event.tags = event.tags.filter(tag => tag.exported);
-    });
+  fileTypes(): string[] {
+    return ['.vue'];
+  }
+
+  async analyze(file: string, ctx: StrategyContext): Promise<FileMetadata> {
+    const content = await ctx.readFile(file);
+    return { tags: content.includes('<template>') ? ['vue:component'] : [], metadata: {} };
   }
 }
 ```
 
+Strategy code in a project loads only with `XRAY_ALLOW_PROJECT_STRATEGIES=1`;
+declarative YAML strategies always load.
+
 **Learn more:**
-- [Plugin Development Guide](docs/dev/extensions.md) - Complete guide to creating plugins
-- [Event Reference](docs/dev/events.md) - All lifecycle events and their payloads
-- [Plugin Examples](examples/README.md) - Working examples and patterns
+- [Strategy Development Guide](docs/dev/strategy-development.md) - Interface, context, commands, testing
+- [Strategies guide](docs/user/strategies.md) - Using and configuring strategies
 
 ## Options & Flags
 
@@ -470,14 +473,11 @@ Bash needs bash-completion v2. Scripts call back into `xray __complete` on each 
 
 ### Developer Documentation
 - [Architecture](docs/dev/architecture.md) - System design and internals
-- [Plugin Development Guide](docs/dev/extensions.md) - **NEW:** Creating custom plugins
+- [Extension System](docs/dev/extensions.md) - Extension contract and runtime overrides
 - [Event Reference](docs/dev/events.md) - **NEW:** Complete lifecycle event documentation
 - [Strategy Development](docs/dev/strategy-development.md) - Creating custom strategies
 - [Strategy API](docs/dev/strategy-api.md) - Strategy command reference
 - [Contributing](docs/dev/contributing.md) - Development setup and workflow
-
-### Plugin Examples
-- [Usage Examples](examples/README.md) - **NEW:** Plugin examples and patterns
 
 ## Advanced Features
 
