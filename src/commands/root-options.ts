@@ -113,27 +113,70 @@ export function rootConfigFromArgv(
   return path.resolve(base, config);
 }
 
-/**
- * Operands (command word or query, then its arguments) in argv after the
- * root options, classified by commander like `rootConfigFromArgv`, so
- * `xray --offline name go` and `xray name go` agree. Empty when argv has
- * none or commander would reject it.
- */
-export function operandsFromArgv(
-  program: Command,
-  argv: readonly string[]
-): string[] {
+/** What commander makes of argv before any command is chosen. */
+interface ArgvScan {
+  /** Operands after the root options (command word, then its arguments). */
+  operands: string[];
+  /** Tokens from the first option root does not own, in argv order. */
+  unknown: string[];
+  /** `-C/--chdir` as given, if any. */
+  chdir?: string;
+}
+
+/** Classify argv with `program`'s root options plus those of `extra`. */
+function scanArgv(program: Command, argv: readonly string[], extra?: Command): ArgvScan {
   const scan = new Command()
     .allowUnknownOption()
     .allowExcessArguments()
     .exitOverride()
     .configureOutput({ writeOut: () => {}, writeErr: () => {}, outputError: () => {} });
   for (const o of program.options) scan.addOption(new Option(o.flags));
+  for (const o of extra?.options ?? []) scan.addOption(new Option(o.flags));
   try {
-    return scan.parseOptions(argv.slice(2)).operands;
+    const { operands, unknown } = scan.parseOptions(argv.slice(2));
+    const chdir = scan.opts<{ chdir?: unknown }>().chdir;
+    return { operands, unknown, chdir: typeof chdir === 'string' && chdir !== '' ? chdir : undefined };
   } catch {
-    return [];
+    return { operands: [], unknown: [] };
   }
+}
+
+/**
+ * What argv asks for, once root options are set aside.
+ *
+ * Commander hands everything from the first option the root does not own
+ * to the default command, so `xray --format json alias list` reaches
+ * explore with `alias list` as its query instead of running `alias`. When
+ * that happens `stray` is the offending option (without any `=value`) and
+ * `word` / `rest` are what explore's own options leave over.
+ */
+export interface DefaultRoute {
+  /** The would-be command word or query; undefined for bare `xray`. */
+  word?: string;
+  /** Operands after `word`. */
+  rest: string[];
+  /** Option before `word` that the root does not own, if any. */
+  stray?: string;
+  /** Directory relative paths resolve against (`-C` applied). */
+  base: string;
+}
+
+export function defaultRouteFromArgv(
+  program: Command,
+  argv: readonly string[],
+  cwd: string = process.cwd()
+): DefaultRoute {
+  const root = scanArgv(program, argv);
+  const base = root.chdir ? path.resolve(cwd, root.chdir) : cwd;
+  if (root.operands.length > 0) {
+    const [word, ...rest] = root.operands;
+    return { word, rest, base };
+  }
+  const first = root.unknown[0];
+  if (first === undefined || !first.startsWith('-')) return { rest: [], base };
+  const explore = program.commands.find((c) => c.name() === 'explore');
+  const [word, ...rest] = scanArgv(program, argv, explore).operands;
+  return { word, rest, stray: first.split('=')[0], base };
 }
 
 /**

@@ -24,6 +24,15 @@ Built-in commands available in all installations:
 | `clear-cache` | Clear SQLite cache |
 | `completion` | Generate shell completion |
 
+`explore` is the default: bare `xray` (alone or with explore's own options,
+such as `xray --stats`) runs it. Anything else must start with a command,
+an alias or an existing path. A word that is none of these (`xray upgrade`,
+`xray zzzqqq`) is a usage error (exit 2, with a did-you-mean suggestion when
+one is close), not a file listing. Options other than the root's
+(`--log-level`, `--config`, `--no-telemetry`, `-C`, `--quiet`, ...) go
+after the command: `xray alias list --format json`, not
+`xray --format json alias list` (exit 2).
+
 ### Strategy Commands
 
 Dynamically loaded based on available strategies:

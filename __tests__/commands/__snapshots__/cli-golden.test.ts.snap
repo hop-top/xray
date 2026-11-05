@@ -11472,20 +11472,11 @@ state-dir:       <TMP>/home/.local/state/xray
 `;
 
 exports[`cli golden: map / query / explore on fixture repo ["beta"] 1`] = `
-"exit: 0
+"exit: 2
 --- stdout ---
-.ts (6):
-  <TMP>/repo/a.ts
-  <TMP>/repo/b.ts
-  <TMP>/repo/c.ts
-  <TMP>/repo/imports/a.ts
-  <TMP>/repo/imports/b.ts
-  <TMP>/repo/imports/c.ts
-
 
 --- stderr ---
-ℹ Found 6 file(s):
-
+✖ unknown command 'beta'
 "
 `;
 

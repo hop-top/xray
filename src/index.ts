@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import * as fs from 'fs';
+import * as path from 'path';
 import { registerCommands } from './commands';
 import { program as rootProgram } from './commands/root-program';
 import { initializeTelemetry, shutdownTelemetry } from './lib/telemetry';
@@ -8,73 +10,58 @@ import { createXrayUpgradeChecker } from './upgrade-checker';
 import { CodedError, UsageError, EXIT_USAGE, EXIT_GENERIC } from './lib/error/types';
 import { Logger } from './lib/logger';
 import { StrategyLoader, reportSkippedProjectCode } from './lib/strategy/loader';
-import { operandsFromArgv, resolveLogLevel, rootConfigFromArgv } from './commands/root-options';
+import { defaultRouteFromArgv, resolveLogLevel, rootConfigFromArgv } from './commands/root-options';
 import { isCompletionRequest } from './commands/completion';
 import { applyMcpChdir, parseMcpRequest } from './commands/mcp';
 
 /**
- * Reject argv whose first positional looks command-shaped but isn't a
- * registered subcommand or alias.
+ * Reject input that would otherwise fall through to the default command.
  *
- * With explore registered as the default (isDefault:true), commander
- * happily routes any unknown bareword into explore as the query, hiding
- * typos like `xray scna` (meant: `scan`) behind silent fallthrough. This
- * scanner intercepts those cases before parseAsync.
- *
- * Heuristic: the token is "command-shaped" if it's alphanumeric with
- * hyphens/underscores, no slashes/dots/parens/whitespace, and length
- * <30. That excludes legitimate explore queries (`"calls(main)"`,
- * `/tmp/foo`, `"foo bar baz"`) and lets them fall through to explore.
+ * explore is registered with isDefault:true, so commander routes anything
+ * that is not a registered command (or follows an option the root does not
+ * own, e.g. `--format` before the subcommand) into explore, which lists
+ * files and ignores it. A bare `xray` keeps that default; otherwise the
+ * first operand must be a registered command or alias (strategy commands
+ * included), or an existing path (a query for the default command).
+ * Anything else is a usage error, exit 2.
  */
-function rejectUnknownSubcommand(program: any, argv: string[]): void {
-  // argv shape from process.argv: [node, script, maybeSubcommand, ...]
-  const positional = argv[2];
-  if (!positional || positional.startsWith('-')) return;
+function rejectUnknownInput(program: any, argv: string[]): void {
+  const { word, rest, stray, base } = defaultRouteFromArgv(program, argv);
+  if (!word) return;
 
-  // Reject only tokens that LOOK like a command attempt. Heuristic:
-  // alphanumeric + hyphens/underscores, no slashes/dots/parens/spaces.
-  const COMMAND_SHAPE = /^[a-zA-Z][a-zA-Z0-9_-]{0,29}$/;
-  if (!COMMAND_SHAPE.test(positional)) return;
-
-  // Collect registered names + aliases (incl. dynamic strategy commands).
-  const known = new Set<string>();
+  // Registered names + aliases (incl. dynamic strategy commands) and
+  // commander's implicit `help`.
+  const known = new Set<string>(['help']);
   for (const cmd of program.commands as any[]) {
     known.add(cmd.name());
     for (const alias of cmd.aliases?.() ?? []) known.add(alias);
   }
-  if (known.has(positional)) return;
 
-  // Disambiguate "typo" vs "bare query word":
-  //   - contains '-' → definitely command-shaped (xray's commands use
-  //     hyphens, queries don't). Reject.
-  //   - close edit-distance to a registered name → likely typo. Reject.
-  //   - otherwise → treat as a bare explore query (preserve UX).
-  const suggestion = nearestCommand(positional, [...known]);
-  const hasHyphen = positional.includes('-');
-  if (!hasHyphen && !suggestion) return;
+  if (known.has(word)) {
+    // `explore` after a leading option is the default command itself.
+    if (!stray || word === 'explore') return;
+    throw new UsageError(
+      `option '${stray}' belongs after the command, not before it (xray ${word} ... ${stray})`
+    );
+  }
 
-  const hint = suggestion ? ` (did you mean '${suggestion}'?)` : '';
-  throw new UsageError(`unknown command '${positional}'${hint}`);
-}
+  if (fs.existsSync(path.resolve(base, word))) return;
 
-/**
- * An unknown command word may name a command of a strategy that was not
- * loaded (project code is opt-in): say so rather than let it fall through
- * to explore as a query. A bare query word is only worth the notice when
- * it matches a skipped strategy's file or package name, or when more
- * words follow (`xray name command`); the strategy's own name lives in
- * code that is not run, so the file and package names are all there is.
- */
-function noteSkippedForUnknownCommand(program: any, argv: string[]): void {
-  const [word, ...rest] = operandsFromArgv(program, argv);
-  if (!word || !/^[a-zA-Z][a-zA-Z0-9_-]{0,29}$/.test(word)) return;
-  const known = (program.commands as any[]).some(
-    (cmd) => cmd.name() === word || (cmd.aliases?.() ?? []).includes(word)
-  );
-  if (known) return;
-  if (rest.length > 0 || new StrategyLoader().skippedProjectCodeMayBeNamed(word)) {
+  // An unknown word may name a command of a strategy that was not loaded
+  // (project code is opt-in): say so. A bare word is only worth the notice
+  // when it matches a skipped strategy's file or package name, or when
+  // more words follow (`xray name command`); the strategy's own name lives
+  // in code that is not run, so the file and package names are all there is.
+  if (
+    /^[a-zA-Z][a-zA-Z0-9_-]{0,29}$/.test(word) &&
+    (rest.length > 0 || new StrategyLoader().skippedProjectCodeMayBeNamed(word))
+  ) {
     reportSkippedProjectCode('warn');
   }
+
+  const suggestion = nearestCommand(word, [...known]);
+  const hint = suggestion ? ` (did you mean '${suggestion}'?)` : '';
+  throw new UsageError(`unknown command '${word}'${hint}`);
 }
 
 /** Levenshtein-1 nearest neighbour for did-you-mean. Cheap and good enough. */
@@ -258,10 +245,10 @@ export async function main() {
   };
   applyParseSettings(program);
 
-  // The default command takes a free-form query: `xray foo bar` and an
-  // unloaded strategy's `xray <strategy> <noun>` arrive as extra operands,
-  // the first being the query. Set after applyParseSettings, since
-  // copyInheritedSettings overwrites the flag from the parent.
+  // explore takes extra operands (`xray explore <framework>:<cmd>`). Set
+  // after applyParseSettings, since copyInheritedSettings overwrites the
+  // flag from the parent. Words that reach it by default routing are
+  // vetted by rejectUnknownInput below.
   program.commands.find((c) => c.name() === 'explore')?.allowExcessArguments();
 
   // `completion <shell>`: kit's command takes the shell as an operand that
@@ -271,18 +258,9 @@ export async function main() {
   // Surface "Did you mean?" hints on unknown commands.
   program.showSuggestionAfterError(true);
 
-  // Pre-parse guard for unknown subcommands.
-  //
-  // explore is registered with isDefault:true so bare `xray <query>` works
-  // as a shortcut. But that means commander silently routes UNKNOWN command
-  // names (e.g. `xray totallt-not-a-command`) into explore as the query,
-  // hiding typos. Walk registered command names + aliases; if argv[2] is a
-  // non-flag positional that LOOKS command-shaped (alphanumeric + hyphens,
-  // no slashes/dots/parens/spaces) and isn't a registered name, throw a
-  // UsageError before commander parses. Query strings (`"calls(main)"`),
-  // file paths (`/tmp/foo`), and `--flag` values still fall through.
-  rejectUnknownSubcommand(program, argv);
-  noteSkippedForUnknownCommand(program, argv);
+  // Pre-parse guard: an unknown word or an option the root does not own
+  // must not fall through to the default command (see rejectUnknownInput).
+  rejectUnknownInput(program, argv);
 
   try {
     await program.parseAsync(argv);

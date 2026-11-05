@@ -5,8 +5,8 @@
  * as a shortcut. But that means commander silently routes UNKNOWN
  * command names into explore as the query, hiding typos. The guard in
  * src/index.ts intercepts command-shaped tokens that aren't registered
- * and throws UsageError (exit 2). Single-word queries that don't
- * resemble any registered command still fall through to explore.
+ * and throws UsageError (exit 2). So does every other word that is not a
+ * command or an existing path (see unknown-input.test.ts).
  */
 import { execFileSync } from 'child_process';
 import * as path from 'path';
@@ -51,12 +51,10 @@ describe('unknown-subcommand guard', () => {
     expect(r.stderr).toMatch(/unknown option '--bogus-flag'/);
   });
 
-  it('preserves bare-query explore shortcut for unrelated bare words', () => {
-    // `helloquery` does not match any registered name, has no hyphen,
-    // and is far from any registered command in edit distance. Should
-    // fall through to explore (exit 0).
+  it('rejects an unrelated bare word too (exit 2)', () => {
     const r = run(['helloquery']);
-    expect(r.status).toBe(0);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/unknown command 'helloquery'/);
   });
 
   it('preserves explicit explore subcommand', () => {

@@ -338,7 +338,7 @@ describe('cli golden: map / query / explore on fixture repo', () => {
     [['explore', '-s', 'alpha']],
     [['explore', '-m', '*.ts']],
     [['explore', 'beta']],
-    [['beta']], // bare query -> default explore command
+    [['beta']], // not a command: usage error, never the default command
   ])('%j', async (args) => {
     const r = await run(args, repo);
     expect(golden(r)).toMatchSnapshot();

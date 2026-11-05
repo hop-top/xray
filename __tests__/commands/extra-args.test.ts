@@ -117,13 +117,13 @@ describe('surplus positionals are a usage error', () => {
 
 describe('what keeps working', () => {
   it.each([
-    ['one word', ['foo']],
-    ['two words', ['foo', 'bar']],
-    ['three words', ['foo', 'bar', 'baz']],
-    ['after --', ['--', 'foo', 'bar']],
+    ['explore, one word', ['explore', 'foo']],
     ['explore, two words', ['explore', 'foo', 'bar']],
-    ['an option, then words', ['--stats', 'foo', 'bar']],
-  ])('bare query: %s exits 0', (_n, args) => {
+    ['explore, three words', ['explore', 'foo', 'bar', 'baz']],
+    ['explore after --', ['explore', '--', 'foo', 'bar']],
+    ['an existing path', ['d1']],
+    ['an option, then a path', ['--stats', 'd1']],
+  ])('explore query: %s exits 0', (_n, args) => {
     const r = run(args);
     expect(r.stderr).not.toMatch(/too many arguments/);
     expect(r.status).toBe(0);
@@ -194,7 +194,8 @@ describe('what keeps working', () => {
     );
     for (const args of [['vecs', 'go'], ['vecs', 'go', 'more']]) {
       const r = run(args);
-      expect(r.status).toBe(0);
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain("unknown command 'vecs'");
       expect(r.stderr).toContain('not loaded');
     }
   });
