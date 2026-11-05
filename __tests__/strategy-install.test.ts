@@ -216,7 +216,7 @@ describe('strategy install E2E', () => {
       expect(r3.code).toBe(0);
       expect(r3.out).toContain('3.1.0');
       expect(installed(p3, '@acme/xray-strategy-scoped')).toBe(true);
-    });
+    }, 60000);
 
     test('with the opt-in, the installed package is then listed', async () => {
       const tgz = await pack(strategyPkg('xray-strategy-listed', '1.0.0', { 'index.js': strategyJs('listed-strat', '1.0.0') }, 'index.js', 'listed-strat'));

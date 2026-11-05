@@ -236,18 +236,8 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
     .action(async (name) => {
       const loader = new StrategyLoader();
 
-      // Local file: <name>.{ts,js,yml,yaml} in a strategy directory.
-      let removedFile: string | undefined;
-      for (const searchPath of loader.getStrategyPaths()) {
-        if (!fs.existsSync(searchPath)) continue;
-        const strategyFile = fs.readdirSync(searchPath).find(f =>
-          f === `${name}.ts` || f === `${name}.js` || f === `${name}.yml` || f === `${name}.yaml`
-        );
-        if (strategyFile) {
-          removedFile = path.join(searchPath, strategyFile);
-          break;
-        }
-      }
+      // Local file in a user-managed directory; never built-in, never node_modules.
+      const removedFile = loader.findRemovableStrategyFile(name);
 
       // Installed package: by package name or strategy name, from package.json only.
       const { found, refused } = findInstalledStrategyPackage(name);
@@ -284,6 +274,9 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
 
       if (refused) {
         throw new UsageError(`${refused}; nothing was removed.`);
+      }
+      if (loader.isBuiltinStrategyFile(name)) {
+        throw new UsageError(`"${name}" is a built-in strategy and cannot be removed.`);
       }
       reportSkippedProjectCode('warn');
       throw new NotFoundError(

@@ -277,15 +277,15 @@ export class StrategyLoader {
     }
   }
 
-  getStrategyPaths(): string[] {
+  /** Directories the user manages: `XRAY_STRATEGIES_PATH`, `.xray/strategies`, the XDG data dir. */
+  userStrategyDirs(): string[] {
     const paths: string[] = [];
     // Without project code, a relative entry would resolve against cwd.
     const usable = (p: string) => p !== '' && (this.projectCode || path.isAbsolute(p));
 
     // 1. XRAY_STRATEGIES_PATH (highest priority)
     if (process.env.XRAY_STRATEGIES_PATH) {
-      const customPaths = process.env.XRAY_STRATEGIES_PATH.split(':');
-      paths.push(...customPaths.filter(usable));
+      paths.push(...process.env.XRAY_STRATEGIES_PATH.split(':').filter(usable));
     }
 
     // 2. Local project strategies
@@ -299,6 +299,120 @@ export class StrategyLoader {
       ? envDataHome
       : this.getDefaultDataHome();
     paths.push(path.join(xdgDataHome, 'xray/strategies'));
+    return paths;
+  }
+
+  /** xray's own strategies directory, if found. Never a place to delete from. */
+  builtinStrategyDir(): string | undefined {
+    // When running from bin/strategy/loader.js, __dirname is bin/strategy/
+    // When running from src (TypeScript/tests), __dirname is src/lib/strategy/
+    const possiblePaths = [
+      path.join(__dirname, '../strategies'),           // From dist/lib/strategy -> dist/strategies
+      path.join(__dirname, '../../strategies'),        // From src/lib/strategy -> src/strategies (doesn't exist)
+      path.join(__dirname, '../../../strategies'),     // From src/lib/strategy -> strategies (source)
+      path.join(__dirname, '../../../dist/strategies') // From src/lib/strategy -> dist/strategies (compiled)
+    ];
+    return possiblePaths.find((p) => fs.existsSync(p));
+  }
+
+  /**
+   * The removable local file for a strategy name: `<name>.{ts,js,yml,yaml}`
+   * directly inside a user-managed directory. Never the built-in directory
+   * and never `node_modules`.
+   */
+  findRemovableStrategyFile(name: string): string | undefined {
+    const wanted = new Set(['ts', 'js', 'yml', 'yaml'].map((e) => `${name}.${e}`));
+    const inside = (child: string, parent: string): boolean => {
+      const rel = path.relative(parent, child);
+      return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+    };
+    let builtinReal: string | undefined;
+    const builtin = this.builtinStrategyDir();
+    if (builtin) {
+      try {
+        builtinReal = fs.realpathSync.native(builtin);
+      } catch {
+        // unreadable built-in dir: nothing to compare against
+      }
+    }
+
+    for (const dir of this.userStrategyDirs()) {
+      // Resolve symlinks first: a directory can point anywhere.
+      let real: string;
+      try {
+        real = fs.realpathSync.native(dir);
+      } catch {
+        continue;
+      }
+      if (real.split(path.sep).some((seg) => seg.toLowerCase() === 'node_modules')) {
+        Logger.debug(`not removing from ${dir}: resolves into node_modules (${real})`);
+        continue;
+      }
+      if (builtinReal && inside(real, builtinReal)) {
+        Logger.debug(`not removing from ${dir}: resolves into the built-in strategies (${real})`);
+        continue;
+      }
+      // Any entry that lies under the project (by location, not spelling) must stay inside it.
+      let cwdReal: string;
+      try {
+        cwdReal = fs.realpathSync.native(process.cwd());
+      } catch {
+        continue;
+      }
+      if (this.underProject(dir, cwdReal, inside)) {
+        if (!inside(real, cwdReal)) {
+          Logger.debug(`not removing from ${dir}: resolves outside the project (${real})`);
+          continue;
+        }
+      }
+      let files: string[];
+      try {
+        files = fs.readdirSync(real);
+      } catch {
+        continue;
+      }
+      const hit = files.find((f) => wanted.has(f));
+      if (hit) return path.join(dir, hit);
+    }
+    return undefined;
+  }
+
+  /**
+   * Whether `dir` lies under the project: it is relative, or it or one of
+   * its ancestors resolves into the real working directory. An absolute
+   * entry elsewhere (set by the user) is not under it.
+   */
+  private underProject(
+    dir: string,
+    cwdReal: string,
+    inside: (child: string, parent: string) => boolean
+  ): boolean {
+    if (!path.isAbsolute(dir)) return true;
+    for (let cur = path.resolve(dir); ; cur = path.dirname(cur)) {
+      try {
+        if (inside(fs.realpathSync.native(cur), cwdReal)) return true;
+      } catch {
+        // not resolvable: try the parent
+      }
+      if (path.dirname(cur) === cur) return false;
+    }
+  }
+
+  /** Whether xray ships a built-in strategy file named `name`. */
+  isBuiltinStrategyFile(name: string): boolean {
+    const dir = this.builtinStrategyDir();
+    if (!dir) return false;
+    let files: string[];
+    try {
+      files = fs.readdirSync(dir);
+    } catch {
+      return false;
+    }
+    return files.some((f) => f === `${name}.ts` || f === `${name}.js`);
+  }
+
+  getStrategyPaths(): string[] {
+    const paths = this.userStrategyDirs();
 
     // 4. NPM packages (will scan node_modules); code there loads only when opted in
     if (this.projectCode) {
@@ -306,22 +420,8 @@ export class StrategyLoader {
     }
 
     // 5. Built-in strategies
-    // When running from bin/strategy/loader.js, __dirname is bin/strategy/
-    // When running from src (TypeScript/tests), __dirname is src/lib/strategy/
-    // Try multiple locations:
-    const possiblePaths = [
-      path.join(__dirname, '../strategies'),           // From dist/lib/strategy -> dist/strategies
-      path.join(__dirname, '../../strategies'),        // From src/lib/strategy -> src/strategies (doesn't exist)
-      path.join(__dirname, '../../../strategies'),     // From src/lib/strategy -> strategies (source)
-      path.join(__dirname, '../../../dist/strategies') // From src/lib/strategy -> dist/strategies (compiled)
-    ];
-
-    for (const strategiesPath of possiblePaths) {
-      if (fs.existsSync(strategiesPath)) {
-        paths.push(strategiesPath);
-        break; // Use the first one found
-      }
-    }
+    const builtin = this.builtinStrategyDir();
+    if (builtin) paths.push(builtin);
 
     return paths;
   }
