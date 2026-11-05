@@ -10,18 +10,21 @@ import {
   strategyToExtension,
 } from './types';
 import { StrategyLoader } from './loader';
-import { FileReadError, FileWriteError } from '../error/types';
+import { cachePath, ensurePrivateDir, ensurePrivateFile, projectKey } from '../storage';
 import { Logger } from '../logger';
 
 export class StrategyDetector {
   private loader: StrategyLoader;
   private context: StrategyContext;
-  private detectionFile: string;
+  /** Undefined when there is no usable cache dir: nothing is cached. */
+  private detectionFile: string | undefined;
 
   constructor(loader: StrategyLoader, context: StrategyContext) {
     this.loader = loader;
     this.context = context;
-    this.detectionFile = path.join(context.getProjectRoot(), '.xray/detected-strategies.json');
+    this.detectionFile = cachePath(
+      'strategies', projectKey(context.getProjectRoot()), 'detected-strategies.json'
+    );
   }
 
   async detect(strategies: Strategy[]): Promise<DetectedStrategy[]> {
@@ -52,38 +55,31 @@ export class StrategyDetector {
     const exts = extensions || await this.loader.discoverExtensions();
     const detected = await this.detectExtensions(exts);
 
-    // Save to file
-    const xrayDir = path.join(this.context.getProjectRoot(), '.xray');
-    try {
-      if (!fs.existsSync(xrayDir)) {
-        fs.mkdirSync(xrayDir, { recursive: true });
+    // Optional cache in the user cache dir, never in the project.
+    const file = this.detectionFile;
+    if (file) {
+      try {
+        if (!ensurePrivateDir(path.dirname(file)) || !ensurePrivateFile(file)) {
+          throw new Error(`${path.dirname(file)} cannot be made private to this user`);
+        }
+        fs.writeFileSync(file, JSON.stringify(detected, null, 2), 'utf-8');
+      } catch (err: any) {
+        // Log warning but don't fail - detection cache is optional
+        Logger.warn(`Could not write strategy detection cache: ${err.message}`);
       }
-
-      fs.writeFileSync(
-        this.detectionFile,
-        JSON.stringify(detected, null, 2),
-        'utf-8'
-      );
-    } catch (err: any) {
-      // Log warning but don't fail - detection cache is optional
-      Logger.warn(
-        err?.code === 'ENOTDIR' || (fs.existsSync(xrayDir) && !fs.statSync(xrayDir).isDirectory())
-          ? `.xray is a file, but xray keeps its cache in a .xray directory: ${xrayDir}. ` +
-            `The detection cache was not written; remove or rename the file to enable it.`
-          : `Could not write strategy detection cache: ${err.message}`
-      );
     }
 
     return detected;
   }
 
   getDetectedStrategies(): DetectedStrategy[] | null {
-    if (!fs.existsSync(this.detectionFile)) {
+    const file = this.detectionFile;
+    if (!file || !fs.existsSync(file)) {
       return null;
     }
 
     try {
-      const content = fs.readFileSync(this.detectionFile, 'utf-8');
+      const content = fs.readFileSync(file, 'utf-8');
       return JSON.parse(content);
     } catch (err: any) {
       Logger.warn(`Failed to read detected strategies: ${err.message}`);
@@ -92,11 +88,12 @@ export class StrategyDetector {
   }
 
   needsRefresh(): boolean {
-    if (!fs.existsSync(this.detectionFile)) {
+    const file = this.detectionFile;
+    if (!file || !fs.existsSync(file)) {
       return true;
     }
 
-    const stats = fs.statSync(this.detectionFile);
+    const stats = fs.statSync(file);
     const age = Date.now() - stats.mtimeMs;
 
     // Refresh if older than 1 hour (will be handled by pre-commit hook normally)

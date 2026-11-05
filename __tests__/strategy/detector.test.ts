@@ -3,24 +3,28 @@ import { StrategyDetector } from '../../src/lib/strategy/detector';
 import { StrategyLoader } from '../../src/lib/strategy/loader';
 import { StrategyContextImpl } from '../../src/lib/strategy/context';
 import { Extension } from '../../src/lib/strategy/types';
+import { projectKey } from '../../src/lib/storage';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 
 describe('StrategyDetector', () => {
   const testRoot = path.join(__dirname, 'fixtures/test-project');
-  const detectionFile = path.join(testRoot, '.xray/detected-strategies.json');
+  let cacheHome: string;
+  let detectionFile: string;
   const originalCwd = process.cwd();
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
+    cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-detect-cache-'));
+    process.env.XDG_CACHE_HOME = cacheHome;
+    detectionFile = path.join(
+      cacheHome, 'xray', 'strategies', projectKey(testRoot), 'detected-strategies.json'
+    );
     // Change to test project directory for strategy discovery
     process.chdir(testRoot);
     // Point to fixtures strategies directory
     process.env.XRAY_STRATEGIES_PATH = path.join(__dirname, 'fixtures/strategies');
-    // Clean up detection file before each test
-    if (fs.existsSync(detectionFile)) {
-      fs.unlinkSync(detectionFile);
-    }
   });
 
   afterEach(() => {
@@ -28,10 +32,7 @@ describe('StrategyDetector', () => {
     process.chdir(originalCwd);
     // Restore original environment
     process.env = { ...originalEnv };
-    // Clean up detection file after each test
-    if (fs.existsSync(detectionFile)) {
-      fs.unlinkSync(detectionFile);
-    }
+    fs.rmSync(cacheHome, { recursive: true, force: true });
   });
 
   it('should detect applicable strategies', async () => {
@@ -71,6 +72,20 @@ describe('StrategyDetector', () => {
     const content = fs.readFileSync(detectionFile, 'utf-8');
     const parsed = JSON.parse(content);
     expect(Array.isArray(parsed)).toBe(true);
+  });
+
+  it('keeps the detection file private and out of the project tree', async () => {
+    const loader = new StrategyLoader();
+    const context = new StrategyContextImpl(testRoot);
+    const detector = new StrategyDetector(loader, context);
+
+    await detector.runDetection();
+
+    expect(fs.existsSync(path.join(testRoot, '.xray', 'detected-strategies.json'))).toBe(false);
+    if (process.platform !== 'win32') {
+      expect(fs.statSync(detectionFile).mode & 0o777).toBe(0o600);
+      expect(fs.statSync(path.dirname(detectionFile)).mode & 0o777).toBe(0o700);
+    }
   });
 
   it('should return null when no detection file exists', () => {

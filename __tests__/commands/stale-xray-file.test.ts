@@ -1,8 +1,8 @@
 /**
- * A regular file named `.xray` where xray keeps its directory: detection
- * cannot write its cache. The command still works; the warning must say
- * what the file is and what to do. Spawns the built CLI (`npm run build`
- * first) in a temp dir.
+ * A regular file named `.xray` in the project (left by an old version):
+ * detection keeps its cache outside the project, so the command works with
+ * no warning and leaves the file alone. Spawns the built CLI (`npm run
+ * build` first) in a temp dir.
  */
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
@@ -27,7 +27,7 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-it('strategy detect with a .xray file warns what it is and how to fix it, and still works', () => {
+it('strategy detect with a .xray file works without a warning and leaves it alone', () => {
   const home = path.join(tmp, 'home');
   const r = spawnSync(process.execPath, [ENTRY, '--no-telemetry', '--offline', 'strategy', 'detect'], {
     cwd: repo,
@@ -47,10 +47,9 @@ it('strategy detect with a .xray file warns what it is and how to fix it, and st
   });
   expect(r.status).toBe(0);
   expect(r.stderr).toContain('Detecting strategies for');
-  expect(r.stderr).toContain('.xray is a file');
-  expect(r.stderr).toMatch(/directory/);
-  expect(r.stderr).toMatch(/remove or rename/);
+  expect(r.stderr).not.toContain('.xray');
   expect(r.stderr).not.toContain('ENOTDIR');
+  expect(r.stderr).not.toMatch(/Could not write/);
   // nothing deleted
   expect(fs.readFileSync(path.join(repo, '.xray'), 'utf-8')).toBe('left by an old version\n');
 });
