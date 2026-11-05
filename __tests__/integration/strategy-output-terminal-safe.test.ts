@@ -75,3 +75,32 @@ describe('strategy and lang text output carries no raw control sequences', () =>
     expect(() => JSON.parse(r.stdout)).not.toThrow();
   });
 });
+
+describe('config strategy text: newlines in repo fields cannot forge lines', () => {
+  let dir: string;
+  beforeAll(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-config-safe-'));
+    fs.writeFileSync(path.join(dir, 'package.json'), '{"name":"p"}');
+    fs.writeFileSync(path.join(dir, 'c.config.json'), JSON.stringify({ 'k\nFORGED_KEY': 'v\nFORGED_VALUE' }));
+    fs.writeFileSync(path.join(dir, 'app\nFORGED_FILE.config.json'), '{"a":1}');
+  });
+  afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  const lines = (...args: string[]) => {
+    const r = spawnSync(process.execPath, [CLI, '--no-telemetry', ...args], { cwd: dir, encoding: 'utf-8', env, timeout: 60000 });
+    return r.stdout.split('\n');
+  };
+
+  it('config list: a filename stays on one line', () => {
+    const out = lines('config', 'list');
+    expect(out).toContain('  app\\nFORGED_FILE.config.json');
+    for (const l of out) expect(l).not.toMatch(/^FORGED/);
+  });
+
+  it('config values: filename, key and value stay on one line', () => {
+    const out = lines('config', 'values');
+    expect(out).toContain('  k\\nFORGED_KEY = v\\nFORGED_VALUE');
+    expect(out).toContain('app\\nFORGED_FILE.config.json:');
+    for (const l of out) expect(l).not.toMatch(/^FORGED/);
+  });
+});

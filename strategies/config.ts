@@ -3,7 +3,7 @@ import { Strategy, StrategyContext, FileMetadata, StrategyCommand } from '../src
 import { ParserFactory } from '../src/lib/config/parser-factory';
 import { Logger } from '../src/lib/logger';
 import * as path from 'path';
-import { terminalSafe, terminalSafeBlock } from '../src/lib/terminal-safe';
+import { terminalSafe } from '../src/lib/terminal-safe';
 
 /**
  * Human headings and lines only in text mode: with `--format json` (or any
@@ -83,7 +83,7 @@ export default class ConfigStrategy implements Strategy {
         const files = this.findConfigFiles(ctx, pattern);
 
         const text = isTextFormat(opts);
-        const out = (line: string) => { if (text) Logger.output(terminalSafeBlock(line)); };
+        const out = (line: string) => { if (text) Logger.output(line); };
 
         out('\nConfiguration Files:\n');
 
@@ -91,14 +91,14 @@ export default class ConfigStrategy implements Strategy {
 
         for (const [type, typeFiles] of Object.entries(grouped)) {
           if (typeFiles.length > 0) {
-            out(`\n${type.toUpperCase()} Files:`);
+            out(`\n${terminalSafe(type.toUpperCase())} Files:`);
             for (const file of typeFiles) {
               // globFiles() yields project-relative paths; path.relative() would
               // resolve those against process.cwd() instead of the project root.
               const relativePath = path.isAbsolute(file)
                 ? path.relative(ctx.getProjectRoot(), file)
                 : file;
-              out(`  ${relativePath}`);
+              out(`  ${terminalSafe(relativePath)}`);
             }
           }
         }
@@ -167,7 +167,7 @@ export default class ConfigStrategy implements Strategy {
         const showSecrets = opts?.['show-secrets'] === true || opts?.['showSecrets'] === true || opts?.showSecrets === true;
 
         const text = isTextFormat(opts);
-        const out = (line: string) => { if (text) Logger.output(terminalSafeBlock(line)); };
+        const out = (line: string) => { if (text) Logger.output(line); };
 
         out('\nConfiguration Values:\n');
 
@@ -184,7 +184,7 @@ export default class ConfigStrategy implements Strategy {
             const relativePath = path.relative(ctx.getProjectRoot(), file);
 
             if (files.length > 1) {
-              out(`\n${relativePath}:`);
+              out(`\n${terminalSafe(relativePath)}:`);
             }
 
             for (const entry of parsed.entries) {
@@ -202,7 +202,7 @@ export default class ConfigStrategy implements Strategy {
                 displayValue = JSON.stringify(displayValue);
               }
 
-              out(`  ${entry.key} = ${displayValue}`);
+              out(`  ${terminalSafe(String(entry.key))} = ${terminalSafe(String(displayValue))}`);
             }
           } catch (err: any) {
             Logger.error(`Error parsing ${file}: ${err.message}`);
