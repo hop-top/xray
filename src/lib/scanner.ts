@@ -75,23 +75,23 @@ export class FileScanner {
    * not list (`.env`, anything under `.git`), are not followed: reading
    * through them would disclose files the scan never meant to cover.
    */
-  private dropEscapingLinks(files: string[], exts: ReadonlySet<string>): string[] {
+  private dropEscapingLinks(files: string[]): string[] {
     let realRoot: string;
     try {
       realRoot = fs.realpathSync(this.root);
     } catch {
       return files;
     }
+    const listed = new Set(files.map((f) => f.split(path.sep).join('/')));
     return files.filter((f) => {
       const abs = path.join(this.root, f);
       try {
         if (!fs.lstatSync(abs).isSymbolicLink()) return true;
-        const real = fs.realpathSync(abs);
-        const rel = path.relative(realRoot, real);
+        const rel = path.relative(realRoot, fs.realpathSync(abs));
         if (rel.startsWith('..') || path.isAbsolute(rel)) return false;
-        const parts = rel.split(path.sep);
-        if (parts.includes('.git')) return false;
-        return exts.has(path.extname(real));
+        // Followed only when the target is itself a listed file: not
+        // ignored, not under .git, of a supported extension.
+        return listed.has(rel.split(path.sep).join('/'));
       } catch {
         return false;
       }
@@ -114,7 +114,7 @@ export class FileScanner {
       return this.dropEscapingLinks(files.filter(f => {
         const ext = path.extname(f);
         return supportedExts.has(ext);
-      }), supportedExts);
+      }));
     } catch (error) {
       Logger.warn('Not a git repository or git is not available. Falling back to manual file scanning. This might be slower and include files ignored by git.');
 
@@ -135,7 +135,7 @@ export class FileScanner {
           if (this.ig.ignores(f)) return false;
           const ext = path.extname(f);
           return supportedExts.has(ext);
-        }), supportedExts)
+        }))
         .sort();
     }
   }
