@@ -643,7 +643,7 @@ d(`trust model: only graphs save-graph.sh wrote reach the model${skipNote}`, () 
     silent(core({ XRAY_GRAPH: g, GIT_CEILING_DIRECTORIES: path.dirname(out) }, out));
   });
 
-  test('control characters and ANSI escapes in graph text are stripped; newlines kept', () => {
+  test('control characters in graph text reach the context only as escaped plain text; newlines kept', () => {
     const ESC = '\u001b';
     const evil = tag(`cmd/${ESC}[2J${ESC}]0;title\u0007re\rplay.go`, `Rep${ESC}[31mlay\u0000\u0008\u009b6n\u0085`, 12);
     const evil2 = tag('internal/dispatch/dispatch.go', `Disp${ESC}]8;;http://x${ESC}\\atch\u007f\t`, 85, 'func\u0007tion');
@@ -654,12 +654,32 @@ d(`trust model: only graphs save-graph.sh wrote reach the model${skipNote}`, () 
     expect(r.stdout).toMatch(MARKER);
     // eslint-disable-next-line no-control-regex
     expect(r.stdout).not.toMatch(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/);
-    expect(r.stdout).toContain('Replay');
-    expect(r.stdout).toContain('Dispatch');
-    expect(r.stdout).toContain('cmd/replay.go'); // CSI and BEL-terminated OSC removed whole
-    expect(r.stdout).not.toMatch(/title|http|\[2J|\[31m/);
+    // xray escapes before the hook sees it: the text is readable, not stripped
+    expect(r.stdout).toContain('\\x1b[2J');
+    expect(r.stdout).toContain('\\x07');
+    expect(r.stdout).toContain('\\r');
     expect(r.stdout).toContain('2 callers across 2 groups');
     expect(r.stdout.split('\n').length).toBeGreaterThan(3);
+  });
+
+  test('the hook still strips raw control input by itself (stub xray emitting raw sequences)', () => {
+    const stub = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-stub-'));
+    try {
+      const ESC = '\u001b';
+      fs.writeFileSync(path.join(stub, 'xray'),
+        `#!/bin/sh\nprintf 'RunHooks (a.go:L1) \\033[2J\\033]0;title\\007 -- 1 caller\\r\\n  x: y\\n'\n`, { mode: 0o755 });
+      const e = env();
+      e.PATH = `${stub}${path.delimiter}${e.PATH}`;
+      const r = run(CORE, { args: ['RunHooks'], env: e });
+      expect(r.status).toBe(0);
+      expect(r.stdout).toMatch(MARKER);
+      // eslint-disable-next-line no-control-regex
+      expect(r.stdout).not.toMatch(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/);
+      expect(r.stdout).not.toMatch(/title|\[2J/);
+      expect(ESC).toBe('\u001b');
+    } finally {
+      fs.rmSync(stub, { recursive: true, force: true });
+    }
   });
 });
 

@@ -229,19 +229,15 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
  */
 export const editorLine = (line: number | undefined) => (line == null ? undefined : line + 1);
 
-/** Text escaper: terminal-safe for `text`, identity for `brief` (hook scripts strip control sequences themselves). */
-type Esc = (s: string) => string;
-const RAW: Esc = (s) => s;
-
 /** `file:Lline` (editor line), the form callers and the tree use. */
-function locationOf(file: string, line: number | undefined, esc: Esc = terminalSafe): string {
+function locationOf(file: string, line: number | undefined): string {
   const l = editorLine(line);
-  return esc(l != null ? `${file}:L${l}` : file);
+  return terminalSafe(l != null ? `${file}:L${l}` : file);
 }
 
-function definedAt(s: ImpactSymbol, esc: Esc = terminalSafe): string {
-  const loc = s.file ? locationOf(s.file, s.line, esc) : '';
-  return [esc(String(s.kind ?? '')), loc].filter(Boolean).join(', ');
+function definedAt(s: ImpactSymbol): string {
+  const loc = s.file ? locationOf(s.file, s.line) : '';
+  return [terminalSafe(String(s.kind ?? '')), loc].filter(Boolean).join(', ');
 }
 
 /**
@@ -252,21 +248,21 @@ const confidenceNote = (c: Confidence): string | undefined =>
   c === 'EXTRACTED' ? undefined : c.toLowerCase();
 
 /** `fn (file:Ldef)`: callers are reported with their definition line. */
-function callerRef(n: ImpactNode, esc: Esc = terminalSafe): string {
-  const name = esc(n.name);
-  const ref = n.file ? `${name} (${locationOf(n.file, n.line, esc)})` : name;
+function callerRef(n: ImpactNode): string {
+  const name = terminalSafe(n.name);
+  const ref = n.file ? `${name} (${locationOf(n.file, n.line)})` : name;
   const note = confidenceNote(n.confidence);
   return note ? `${ref} (${note})` : ref;
 }
 
 /** `<symbol> (<where>) — N callers across M groups`: first line of text and brief. */
-function headerLine(r: ImpactResult, s: Styles | undefined, esc: Esc = terminalSafe): string {
+function headerLine(r: ImpactResult, s: Styles | undefined): string {
   const { matches, query } = r.symbol;
   const bold = (t: string) => (s ? s.bold(t) : t);
   const head =
     matches.length === 1
-      ? `${bold(esc(matches[0].name))}${definedAt(matches[0], esc) ? ' (' + definedAt(matches[0], esc) + ')' : ''}`
-      : `${bold(esc(query))} (${matches.length} definitions)`;
+      ? `${bold(terminalSafe(matches[0].name))}${definedAt(matches[0]) ? ' (' + definedAt(matches[0]) + ')' : ''}`
+      : `${bold(terminalSafe(query))} (${matches.length} definitions)`;
   const tail = r.counts.callers === 0
     ? plural(0, 'caller', 'callers')
     : `${plural(r.counts.callers, 'caller', 'callers')} across ${plural(r.counts.groups, 'group', 'groups')}`;
@@ -331,12 +327,12 @@ const BRIEF_PER_GROUP = 3;
 export function renderImpactBrief(r: ImpactResult): string {
   if (r.symbol.matches.length === 0 || r.counts.callers === 0) return '';
 
-  const lines = [headerLine(r, undefined, RAW)];
+  const lines = [headerLine(r, undefined)];
   for (const g of r.groups) {
     const members = r.nodes.filter(n => n.group === g.name);
-    const listed = members.slice(0, BRIEF_PER_GROUP).map((n) => callerRef(n, RAW));
+    const listed = members.slice(0, BRIEF_PER_GROUP).map((n) => callerRef(n));
     if (members.length > BRIEF_PER_GROUP) listed.push(`…and ${members.length - BRIEF_PER_GROUP} more`);
-    lines.push(`  ${g.name}: ${plural(members.length, 'caller', 'callers')} — ${listed.join(', ')}`);
+    lines.push(`  ${terminalSafe(g.name)}: ${plural(members.length, 'caller', 'callers')} — ${listed.join(', ')}`);
   }
   lines.push(edgesLine(r));
 

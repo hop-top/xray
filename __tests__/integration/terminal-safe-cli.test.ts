@@ -91,8 +91,7 @@ describe('no control sequence from repo text reaches a terminal', () => {
     expect(q.status).toBe(0);
     expect(residue(q.stdout + q.stderr)).not.toMatch(BAD);
     expect(q.stdout).toContain('\\x1b[2Jevil');
-    // brief stays raw: the hook scripts that consume it strip control sequences themselves.
-    for (const fmt of ['text', 'tree']) {
+    for (const fmt of ['text', 'brief', 'tree']) {
       const i = run(['impact', 'target', '--graph', graph(), '--format', fmt]);
       expect(i.status).toBe(0);
       expect(residue(i.stdout + i.stderr)).not.toMatch(BAD);
