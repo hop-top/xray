@@ -125,8 +125,8 @@ xray graph [paths...] [options]
 ```
 
 **Support today:** TypeScript (`.ts`, `.tsx`), JavaScript (`.js`, `.jsx`;
-the same builder with a JavaScript table, also wired for `.mjs` / `.cjs`).
-Python and Go are coming. For any other language the run still succeeds, prints one stderr
+the same builder with a JavaScript table, also wired for `.mjs` / `.cjs`),
+Python (`.py`). Go is coming. For any other language the run still succeeds, prints one stderr
 notice (`cf/df: no flow graphs for python (3 files) yet ...`) and its
 functions carry no graphs.
 
@@ -230,6 +230,26 @@ without these fields work with `query --graph` and `impact --graph`.
   analysed as a closure of anything). `.mjs` and `.cjs` files are not scanned
   by `map` at all today, so they never reach the flow builder; JSX tags are
   ordinary reads of the tag identifier. `for await` is a plain loop head.
+- Python: anything that reads a name may raise, so inside a `try` or `with`
+  every node that reads a variable has a `throw` edge (a node of literals,
+  `x = 1`, has none). A `with` exit runs once per way out like a `finally`
+  (`end with ...` nodes, then `rethrow`); a context manager that swallows
+  the exception (`suppress`, `__exit__` returning true) is not modelled: the
+  exception is assumed to continue. `except` clauses are tried in order
+  (`true` / `false` edges); an exception no clause takes continues through a
+  `rethrow` node. `match`: one `case` node per case (a `true` / `false` pair),
+  guards are `cond` nodes, the names a pattern binds are weak (`maybe`)
+  definitions at the test, `case _` and a bare name take everything left.
+  Comprehensions and generator expressions are one node: their variables are
+  their own scope, not tracked, and the tests inside them do not branch.
+  `yield` may raise (the caller can throw into it) but a generator's
+  suspension is not modelled. `del x` is a read, not a kill. A `def` binds its
+  name and reads what it captures at the `def` node; decorators and defaults
+  run there too. Class bodies are one node; names bound in a class body are
+  not visible to its methods. `global x` has no definition here (globals are
+  free), `nonlocal x` marks the outer variable captured. Chained comparisons
+  (`a < b < c`) are one test. `exec`, `eval`, `globals()` and `setattr` are
+  not modelled.
 
 ### `xray impact`
 

@@ -27,7 +27,8 @@ function findFunction(root: Parser.SyntaxNode, name: string, lang: Lang): Parser
   const find = (n: Parser.SyntaxNode): Parser.SyntaxNode | null => {
     if (table.functions.includes(n.type)) {
       const nm = n.childForFieldName('name');
-      const decl = n.parent && n.parent.type === 'variable_declarator' ? n.parent.childForFieldName('name') : null;
+      const decl = n.parent && n.parent.type === 'variable_declarator' ? n.parent.childForFieldName('name')
+        : n.parent && n.parent.type === 'assignment' ? n.parent.childForFieldName('left') : null;
       if ((nm && nm.text === name) || (decl && decl.text === name)) return n;
     }
     for (const c of n.namedChildren) {

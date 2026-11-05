@@ -36,7 +36,7 @@ describe('map / graph flow flags through the built CLI', () => {
     home = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-cli-home-'));
     proj = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-cli-proj-'));
     fs.writeFileSync(path.join(proj, 'a.ts'), SUM);
-    fs.writeFileSync(path.join(proj, 'b.py'), 'def py_fn(x):\n    return x\n');
+    fs.writeFileSync(path.join(proj, 'b.rs'), 'fn rs_fn(x: i32) -> i32 {\n    x\n}\n');
   });
   afterAll(() => {
     fs.rmSync(home, { recursive: true, force: true });
@@ -203,12 +203,12 @@ describe('map / graph flow flags through the built CLI', () => {
       expect(r.status).toBe(0);
       const notices = r.stderr.split('\n').filter(l => l.includes('no flow graphs'));
       expect(notices).toHaveLength(1);
-      expect(notices[0]).toContain('python (1 file)');
-      expect(notices[0]).toContain('Supported: typescript');
-      const py = g.nodes.find((n: any) => n.id === 'b.py::py_fn');
-      expect(py).toBeDefined();
-      expect('cfg' in py).toBe(false);
-      expect('dfg' in py).toBe(false);
+      expect(notices[0]).toContain('rust (1 file)');
+      expect(notices[0]).toContain('Supported: typescript, javascript, python');
+      const rs = g.nodes.find((n: any) => n.id === 'b.rs::rs_fn');
+      expect(rs).toBeDefined();
+      expect('cfg' in rs).toBe(false);
+      expect('dfg' in rs).toBe(false);
     });
 
     it('stays quiet when flow is off, and on a warm cache it still notices', () => {

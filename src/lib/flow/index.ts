@@ -8,6 +8,7 @@ import { CfgBuilder, nestedFunctions } from './cfg';
 import { computeDfg } from './dfg';
 import { typescriptTable } from './tables/typescript';
 import { javascriptTable } from './tables/javascript';
+import { pythonTable } from './tables/python';
 
 export * from './types';
 export type { FlowTable } from './table';
@@ -24,6 +25,7 @@ const TABLES: Record<string, FlowTable> = {
   '.jsx': javascriptTable,
   '.mjs': javascriptTable,
   '.cjs': javascriptTable,
+  '.py': pythonTable,
 };
 
 export const flowTableFor = (file: string): FlowTable | undefined => TABLES[path.extname(file)];
@@ -56,6 +58,8 @@ export function functionOfName(name: Node, table: FlowTable): Node | null {
 function closureName(n: Node, table: FlowTable): string {
   const own = n.childForFieldName(table.fn.name);
   if (own) return own.text;
+  const named = table.nameOf?.(n);
+  if (named) return named;
   const p = n.parent;
   if (p) {
     if (p.type === table.data.declarator.type) return p.childForFieldName(table.data.declarator.name)?.text ?? table.anonymous;

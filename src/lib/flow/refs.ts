@@ -1,7 +1,7 @@
 import type Parser from 'tree-sitter';
 import type { DefKind } from './types';
 import type { FlowTable } from './table';
-import { Scopes, Binding, kids, paramNodes, paramPattern } from './scope';
+import { Scopes, Binding, kids, pick, pickAll, refKids, paramNodes, paramPatterns, importedNames } from './scope';
 
 type Node = Parser.SyntaxNode;
 
@@ -20,9 +20,11 @@ export interface Refs {
   calls: string[];
   /** Evaluates something that may throw (call, `new`, `await`). */
   throws: boolean;
+  /** Names something (a variable, a free name): where anything may raise, this can; a bare literal cannot. */
+  reads: boolean;
 }
 
-export const emptyRefs = (): Refs => ({ uses: [], defs: [], calls: [], throws: false });
+export const emptyRefs = (): Refs => ({ uses: [], defs: [], calls: [], throws: false, reads: false });
 
 const CALL_CAP = 40;
 const collapse = (s: string): string => s.replace(/\s+/g, ' ').trim();
@@ -54,15 +56,49 @@ export class RefScanner {
     return acc;
   }
 
-  /** Parameters (defaults are uses; names are `param` defs) of the analysed function. */
+  /** Parameters (defaults are uses; names are `param` defs) and named results (`decl`, zero valued) of the analysed function. */
   scanParams(): Refs {
     const acc = emptyRefs();
     for (const p of paramNodes(this.fn, this.table)) {
       const value = p.childForFieldName('value');
       if (value) this.walk(value, acc);
-      this.bind(paramPattern(p, this.table), 'param', 'declare', acc);
+      for (const pat of paramPatterns(p, this.table)) this.bind(pat, 'param', 'declare', acc);
+    }
+    for (const p of paramNodes(this.fn, this.table, this.table.fn.results ?? [])) {
+      for (const pat of paramPatterns(p, this.table)) this.bind(pat, 'decl', 'declare', acc);
     }
     return acc;
+  }
+
+  /** Bindings of the named results, in order (read where the function returns). */
+  resultBindings(): Binding[] {
+    const out: Binding[] = [];
+    for (const p of paramNodes(this.fn, this.table, this.table.fn.results ?? [])) {
+      for (const pat of paramPatterns(p, this.table)) {
+        const b = this.scopes.declared.get(pat.id);
+        if (b && b.owner === this.fn.id) out.push(b);
+      }
+    }
+    return out;
+  }
+
+  /** Scan several pieces into one `Refs`. */
+  scanAll(nodes: Array<Node | null>): Refs {
+    const acc = emptyRefs();
+    for (const n of nodes) {
+      if (!n) continue;
+      this.walk(n, acc);
+      this.claimed.add(n.id);
+    }
+    return acc;
+  }
+
+  /** Record a read of the variable `id` names. */
+  useOf(id: Node, acc: Refs): void { this.use(id, acc); }
+
+  /** Record a write of the variable declared (or, `assign`, resolved) at `id`. */
+  defOf(id: Node, kind: DefKind, mode: 'declare' | 'assign', acc: Refs, weak = false): void {
+    this.define(id, kind, mode, acc, weak);
   }
 
   /** Mark every binding a function nested in the analysed one references as captured. */
@@ -78,7 +114,7 @@ export class RefScanner {
     const ty = p.type;
     if (t.data.identifiers.includes(ty) || pt.shorthand.includes(ty)) {
       this.define(p, kind, mode, acc);
-    } else if (ty === pt.object || ty === pt.array || ty === pt.rest) {
+    } else if (ty === pt.object || pt.array.includes(ty) || pt.rest.includes(ty)) {
       for (const c of p.namedChildren) this.bind(c, kind, mode, acc);
     } else if (ty === pt.pair.type) {
       const key = p.childForFieldName(pt.pair.key);
@@ -132,7 +168,7 @@ export class RefScanner {
       }
       return;
     }
-    for (const c of n.namedChildren) this.capture(c, acc);
+    for (const c of refKids(n, t)) this.capture(c, acc);
   }
 
   private calleeText(n: Node | null): string {
@@ -155,7 +191,7 @@ export class RefScanner {
       return;
     }
     if (d.identifiers.includes(ty)) {
-      if (!this.scopes.isDeclaration(n)) this.use(n, acc);
+      if (!this.scopes.isDeclaration(n)) { acc.reads = true; this.use(n, acc); }
       return;
     }
     if (ty === t.expr.calls.call || ty === t.expr.calls.new) {
@@ -176,23 +212,29 @@ export class RefScanner {
       if (value || !isVar) this.bind(n.childForFieldName(d.declarator.name), 'decl', 'declare', acc);
       return;
     }
-    if (ty === d.assignment.type) {
+    const op = ty === d.assignment.type ? this.operatorOf(n) : '=';
+    if (ty === d.assignment.type && (op === '=' || op === ':=')) {
       const right = n.childForFieldName(d.assignment.right);
       if (right) this.walk(right, acc);
-      this.bind(n.childForFieldName(d.assignment.left), 'assign', 'assign', acc);
+      // `x: int` (no value) binds nothing yet; `a, b := f()` declares.
+      if (right) this.bind(n.childForFieldName(d.assignment.left), 'assign', op === ':=' ? 'declare' : 'assign', acc);
       return;
     }
-    if (ty === d.augmented.type || ty === d.update.type) {
-      const isAug = ty === d.augmented.type;
-      const target = n.childForFieldName(isAug ? d.augmented.left : d.update.argument);
+    if (ty === d.augmented.type || ty === d.assignment.type || d.update.types.includes(ty)) {
+      const isAug = ty === d.augmented.type || ty === d.assignment.type;
+      const side = ty === d.assignment.type ? d.assignment : d.augmented;
+      const target = isAug ? n.childForFieldName(side.left) : pick(n, d.update.argument);
       if (isAug) {
-        const right = n.childForFieldName(d.augmented.right);
+        const right = n.childForFieldName(side.right);
         if (right) this.walk(right, acc);
       }
-      const op = isAug ? n.children.find(c => !c.isNamed && c.type.endsWith('=') && c.type.length > 1)?.type ?? '' : '';
-      const weak = isAug && d.augmented.weakOps.includes(op);
+      const aop = isAug ? (ty === d.assignment.type ? op : this.operatorOf(n)) : '';
+      const weak = isAug && d.augmented.weakOps.includes(aop);
       let tg = target;
-      while (tg && t.expr.parens.includes(tg.type)) tg = tg.namedChild(0);
+      // `x += 1`, `(x) += 1`, and Go's `x += 1` whose target is a one-name list.
+      while (tg && (t.expr.parens.includes(tg.type) || (t.data.patterns.array.includes(tg.type) && tg.namedChildCount === 1))) {
+        tg = tg.namedChild(0);
+      }
       if (tg && d.identifiers.includes(tg.type)) {
         this.use(tg, acc);
         this.define(tg, weak ? 'maybe' : 'update', 'assign', acc, weak);
@@ -201,6 +243,23 @@ export class RefScanner {
       }
       return;
     }
-    for (const c of kids(n, t)) this.walk(c, acc);
+    if (d.imports?.types.includes(ty)) {
+      for (const id of importedNames(n, t)) this.define(id, 'decl', 'declare', acc);
+      return;
+    }
+    const binder = d.binders.find(b => b.type === ty && (!b.when || n.children.some(c => !c.isNamed && c.type === b.when)));
+    if (binder) {
+      const targets = pickAll(n, binder.field);
+      const ids = new Set(targets.map(x => x.id));
+      for (const c of refKids(n, t)) if (!ids.has(c.id)) this.walk(c, acc);
+      for (const tg of targets) this.bind(tg, binder.kind ?? 'decl', 'declare', acc);
+      return;
+    }
+    for (const c of refKids(n, t)) this.walk(c, acc);
+  }
+
+  /** The `=` / `+=` / `:=` token of an assignment. */
+  private operatorOf(n: Node): string {
+    return n.children.find(c => !c.isNamed && c.type.endsWith('=') && !['==', '!=', '<=', '>=', '==='].includes(c.type))?.type ?? '=';
   }
 }

@@ -11,13 +11,13 @@
  * - stmt: a statement or declaration; expr: an operand evaluated on one branch
  * - cond: a test (`if`, `?:`, one operand of `&&` `||` `??`); loop: a loop test or head
  * - switch: the discriminant; case: one `case` test (`default` has no node)
- * - return / throw / break / continue: the jump statement itself
+ * - return / throw / break / continue / goto: the jump statement itself
  * - catch: entry of a `catch` clause
  * - rethrow: where an exception leaves a `finally` copy (always `throw`-labelled out)
  */
 export type CfgKind =
   | 'entry' | 'exit' | 'stmt' | 'expr' | 'cond' | 'loop' | 'switch' | 'case'
-  | 'return' | 'throw' | 'break' | 'continue' | 'catch' | 'rethrow';
+  | 'return' | 'throw' | 'break' | 'continue' | 'goto' | 'catch' | 'rethrow';
 
 export type CfgEdgeLabel = 'true' | 'false' | 'throw';
 
@@ -58,7 +58,8 @@ export interface Cfg {
  * param: formal parameter (defined at entry); decl: declaration; assign: `=`;
  * update: `++`, `--`, `+=` ...; loop: `for-in/of` variable; catch: catch
  * parameter; function / class: declaration binding; member: `o.p = v` (weak:
- * may change `o`, kills nothing); maybe: `||=` `&&=` `??=` (weak).
+ * may change `o`, kills nothing); maybe: `||=` `&&=` `??=`, names a `match`
+ * pattern binds (weak: the test may fail).
  */
 export type DefKind =
   | 'param' | 'decl' | 'assign' | 'update' | 'loop' | 'catch' | 'function' | 'class'

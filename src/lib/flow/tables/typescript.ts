@@ -1,4 +1,26 @@
-import type { FlowTable } from '../table';
+import type Parser from 'tree-sitter';
+import type { FlowTable, TryParts } from '../table';
+
+type Node = Parser.SyntaxNode;
+
+/** `try` / `catch` / `finally` as the ECMAScript grammars shape them. */
+export const ecmaTry = (n: Node): TryParts => {
+  const h = n.childForFieldName('handler');
+  const hb = h?.childForFieldName('body') ?? null;
+  const fin = n.childForFieldName('finalizer');
+  return {
+    body: n.childForFieldName('body'),
+    handlers: h ? [{
+      node: h,
+      head: hb ? h.text.slice(0, hb.startIndex - h.startIndex) : h.text,
+      types: null,
+      param: h.childForFieldName('parameter'),
+      body: hb,
+    }] : [],
+    orelse: null,
+    finalizer: fin ? fin.childForFieldName('body') : null,
+  };
+};
 
 /**
  * TypeScript / TSX (tree-sitter-typescript). JavaScript shares every
@@ -29,7 +51,7 @@ export const typescriptTable: FlowTable = {
     while_statement: { kind: 'while', cond: 'condition', body: 'body' },
     do_statement: { kind: 'do', body: 'body', cond: 'condition' },
     switch_statement: { kind: 'switch', value: 'value', body: 'body' },
-    try_statement: { kind: 'try', body: 'body', handler: 'handler', finalizer: 'finalizer' },
+    try_statement: { kind: 'try', parts: ecmaTry },
     return_statement: { kind: 'return' },
     throw_statement: { kind: 'throw' },
     break_statement: { kind: 'break', label: 'label' },
@@ -37,12 +59,11 @@ export const typescriptTable: FlowTable = {
     labeled_statement: { kind: 'labeled', label: 'label', body: 'body' },
   },
   ignore: ['comment'],
-  switchClauses: { case: 'switch_case', default: 'switch_default', value: 'value', body: 'body' },
-  catchClause: { param: 'parameter', body: 'body' },
-  finallyBody: 'body',
+  switchClauses: { cases: ['switch_case'], default: 'switch_default', value: 'value', body: 'body', fallsThrough: true },
+  catchClause: { type: 'catch_clause', param: 'parameter' },
   expr: {
     parens: ['parenthesized_expression'],
-    logical: { type: 'binary_expression', left: 'left', right: 'right', ops: ['&&', '||'], nullish: ['??'] },
+    logical: { type: 'binary_expression', left: 'left', right: 'right', and: ['&&'], or: ['||'], nullish: ['??'] },
     ternary: { type: 'ternary_expression', cond: 'condition', then: 'consequence', else: 'alternative' },
     not: { type: 'unary_expression', op: '!', operand: 'argument' },
     calls: { call: 'call_expression', callee: 'function', new: 'new_expression', newCallee: 'constructor' },
@@ -54,18 +75,19 @@ export const typescriptTable: FlowTable = {
     declarator: { type: 'variable_declarator', name: 'name', value: 'value' },
     assignment: { type: 'assignment_expression', left: 'left', right: 'right' },
     augmented: { type: 'augmented_assignment_expression', left: 'left', right: 'right', weakOps: ['||=', '&&=', '??='] },
-    update: { type: 'update_expression', argument: 'argument' },
+    update: { types: ['update_expression'], argument: 'argument' },
     members: [
       { type: 'member_expression', object: 'object' },
       { type: 'subscript_expression', object: 'object' },
     ],
     patterns: {
-      object: 'object_pattern', array: 'array_pattern', rest: 'rest_pattern',
+      object: 'object_pattern', array: ['array_pattern'], rest: ['rest_pattern'],
       withDefault: ['assignment_pattern', 'object_assignment_pattern'],
       pair: { type: 'pair_pattern', key: 'key', value: 'value' },
       shorthand: ['shorthand_property_identifier_pattern'],
       defaultLeft: 'left', defaultRight: 'right',
     },
+    binders: [],
     loopDecl: { const: 'block', let: 'block', var: 'function' },
     blockScopes: ['statement_block', 'for_statement', 'for_in_statement', 'switch_body', 'catch_clause'],
     namedDecls: { function_declaration: 'name', generator_function_declaration: 'name', class_declaration: 'name' },

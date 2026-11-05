@@ -60,6 +60,7 @@ function violations(cfg: Cfg, where: string): string[] {
 const CORPORA: Array<{ lang: Lang; ext: string; roots: string[]; ok: (n: string) => boolean; min: number }> = [
   { lang: 'ts', ext: '.ts', roots: ['src'], ok: n => n.endsWith('.ts') && !n.endsWith('.d.ts'), min: 500 },
   { lang: 'js', ext: '.js', roots: ['bin', 'jest.config.js', '__tests__'], ok: n => /\.(js|mjs|cjs|jsx)$/.test(n), min: 5 },
+  { lang: 'py', ext: '.py', roots: ['__tests__/fixtures'], ok: n => n.endsWith('.py'), min: 15 },
 
 
 ];
