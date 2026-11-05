@@ -28,7 +28,7 @@ import { ChunkedRenderer } from '../lib/renderer/chunked-renderer';
 import { applyStashedInsights } from '../lib/renderer/insight';
 import { buildShareSummary, resolveShareOutputPath } from '../lib/share-summary';
 import { CommonAnalysisOptions } from '../types/command-options';
-import { applyPreset, resolvePreset } from '../lib/plugins/presets';
+import { applyPreset, assertPresetSpec, resolvePreset, PresetResolutionError } from '../lib/plugins/presets';
 import { openCacheDbPath } from '../lib/storage';
 import type { Xray as XrayType, ParseCoverage } from '../lib/xray';
 import { emitPlan, previewing } from './side-effect';
@@ -41,9 +41,10 @@ import type { Command } from 'commander';
  * flags compose via `applyPreset`'s `useIfAbsent` path so duplicate
  * plugins across presets register exactly once.
  *
- * A single failing preset is logged as a warning and skipped — the
- * map command must still render the default graph output even if a
- * user-supplied preset is broken (spec C-2 + C-5 back-compat).
+ * A preset that cannot be applied fails the run (PresetResolutionError:
+ * usage 2 or not-found 3); the map never runs without a preset the caller
+ * asked for. Individual plugin failures inside a preset stay isolated
+ * (see `applyPreset`).
  */
 const applyPresetFlags = async (
   xray: XrayType,
@@ -52,16 +53,30 @@ const applyPresetFlags = async (
 ): Promise<void> => {
   if (!specs || specs.length === 0) return;
   for (const spec of specs) {
+    const preset = await resolvePreset(spec);
     try {
-      const preset = await resolvePreset(spec);
       await applyPreset(xray as unknown as Parameters<typeof applyPreset>[0], preset, {
         root: currentPath,
       }, { presetName: spec });
     } catch (err) {
-      Logger.warn(
-        `[presets] failed to apply "${spec}": ${(err as Error).message}`
+      if (err instanceof CodedError) throw err;
+      throw new PresetResolutionError(
+        `Preset "${spec}" failed to apply: ${(err as Error).message}`,
+        spec
       );
     }
+  }
+};
+
+/**
+ * Fail on a bad `--preset` before any analysis or write. With `load`,
+ * path and package presets are loaded too; without it (preview) only
+ * unknown names are rejected and no preset code runs.
+ */
+const preflightPresets = async (specs: string[] | undefined, load: boolean): Promise<void> => {
+  for (const spec of specs ?? []) {
+    if (load) await resolvePreset(spec);
+    else assertPresetSpec(spec);
   }
 };
 
@@ -789,6 +804,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions, previ
     Logger.debug('Generate action started', { options: normalizedOptions });
 
     assertLensNotScoped(normalizedOptions);
+    await preflightPresets(normalizedOptions.preset, !previewOf);
 
     // Load config file
     const config = loadConfig(

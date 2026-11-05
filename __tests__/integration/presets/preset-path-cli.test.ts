@@ -111,11 +111,86 @@ export function myPreset() {
     expect(marks()).toEqual([id]);
   });
 
-  it('still warns and continues when a preset path does not exist', () => {
-    const r = run('map', '--preset', './nope.js');
-    expect(r.status).toBe(0);
-    expect(r.stderr).toContain('failed to apply "./nope.js"');
-    expect(marks()).toEqual([]);
+  describe('a preset that cannot be used fails the run', () => {
+    const outFile = () => path.join(home, 'graph.json');
+    const bad = (...specs: string[]) =>
+      run('map', '--format', 'json', '--output', outFile(),
+        ...specs.flatMap((s) => ['--preset', s]));
+    const noStack = (stderr: string) => expect(stderr).not.toMatch(/\n\s+at /);
+
+    beforeEach(() => fs.rmSync(outFile(), { force: true }));
+
+    it('unknown built-in name: exit 2, valid names listed, nothing written', () => {
+      const r = bad('nope');
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain('Unknown preset "nope"');
+      for (const n of ['insights', 'onboarding', 'exploration']) expect(r.stderr).toContain(n);
+      expect(fs.existsSync(outFile())).toBe(false);
+      noStack(r.stderr);
+    });
+
+    it('near-miss built-in name gets a did-you-mean', () => {
+      const r = bad('insight');
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain("did you mean 'insights'?");
+    });
+
+    it('missing path: exit 3, nothing written', () => {
+      const r = bad('./nope.js');
+      expect(r.status).toBe(3);
+      expect(r.stderr).toContain('not found');
+      expect(r.stderr).toContain('./nope.js');
+      expect(fs.existsSync(outFile())).toBe(false);
+      noStack(r.stderr);
+    });
+
+    it('missing package: exit 3', () => {
+      const r = bad('@scope/not-installed');
+      expect(r.status).toBe(3);
+      expect(r.stderr).toContain('@scope/not-installed');
+      expect(fs.existsSync(outFile())).toBe(false);
+      noStack(r.stderr);
+    });
+
+    it('file that throws on load: exit 2, message, no stack', () => {
+      fs.writeFileSync(path.join(proj, 'throws.js'), "throw new Error('boom at load');\n");
+      const r = bad('./throws.js');
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain('boom at load');
+      expect(fs.existsSync(outFile())).toBe(false);
+      noStack(r.stderr);
+    });
+
+    it('file with the wrong shape: exit 2', () => {
+      fs.writeFileSync(path.join(proj, 'shape.js'), 'module.exports = { x: 1 };\n');
+      const r = bad('./shape.js');
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain('does not export a function');
+      expect(fs.existsSync(outFile())).toBe(false);
+      noStack(r.stderr);
+    });
+
+    it('preset factory that throws: exit 2, no stack', () => {
+      fs.writeFileSync(path.join(proj, 'factory.js'),
+        "module.exports = () => { throw new Error('factory boom'); };\n");
+      const r = bad('./factory.js');
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain('factory boom');
+      expect(fs.existsSync(outFile())).toBe(false);
+      noStack(r.stderr);
+    });
+
+    it('a bad preset after a valid one runs nothing', () => {
+      const r = bad('./p.js', 'nope');
+      expect(r.status).toBe(2);
+      expect(marks()).toEqual([]);
+      expect(fs.existsSync(outFile())).toBe(false);
+    });
+
+    it('--all-scopes does not skip the check', () => {
+      const r = run('map', '--all-scopes', '--preset', 'nope');
+      expect(r.status).toBe(2);
+    });
   });
 
   it('a config key cannot name a preset', () => {

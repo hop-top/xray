@@ -29,7 +29,7 @@ export { createOnboardingPreset } from './onboarding';
 export { createExplorationPreset } from './exploration';
 export { applyPreset } from './apply';
 export type { ApplyPresetOptions } from './apply';
-export { resolvePreset, PresetResolutionError } from './resolve';
+export { resolvePreset, assertPresetSpec, PresetResolutionError } from './resolve';
 export type {
   Preset,
   PresetContext,

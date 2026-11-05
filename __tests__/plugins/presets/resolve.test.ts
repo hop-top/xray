@@ -6,6 +6,7 @@ import * as path from 'path';
 import {
   resolvePreset,
   PresetResolutionError,
+  assertPresetSpec,
 } from '../../../src/lib/plugins/presets/resolve';
 import { BUILTIN_PRESETS } from '../../../src/lib/plugins/presets/index';
 
@@ -79,5 +80,23 @@ describe('resolvePreset', () => {
       name: 'PresetResolutionError',
       message: expect.stringMatching(/npm package/),
     });
+  });
+
+  it('classifies failures: unknown name usage (2), missing path/package not-found (3)', async () => {
+    await expect(resolvePreset('bogus')).rejects.toMatchObject({ exitCode: 2, code: 'USAGE' });
+    await expect(resolvePreset('./does-not-exist.js')).rejects.toMatchObject({ exitCode: 3, code: 'NOT_FOUND' });
+    await expect(resolvePreset('@scope/not-installed-xyz')).rejects.toMatchObject({ exitCode: 3, code: 'NOT_FOUND' });
+  });
+
+  it('suggests the nearest built-in for a typo', async () => {
+    await expect(resolvePreset('insight')).rejects.toThrow(/did you mean 'insights'/);
+  });
+
+  it('assertPresetSpec rejects unknown names without loading, passes paths and packages', () => {
+    expect(() => assertPresetSpec('nope')).toThrow(PresetResolutionError);
+    expect(() => assertPresetSpec('')).toThrow(PresetResolutionError);
+    expect(() => assertPresetSpec('insights')).not.toThrow();
+    expect(() => assertPresetSpec('./never-loaded.js')).not.toThrow();
+    expect(() => assertPresetSpec('@scope/never-loaded')).not.toThrow();
   });
 });

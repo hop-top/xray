@@ -36,14 +36,28 @@ import * as path from 'path';
 import { createRequire } from 'module';
 import type { Preset } from './types';
 import { BUILTIN_PRESETS, BUILTIN_PRESET_NAMES } from './index';
+import { CodedError, EXIT_NOT_FOUND, EXIT_USAGE } from '../../error/types';
+import { nearestMatch } from '../../did-you-mean';
 
-export class PresetResolutionError extends Error {
+/**
+ * Why a `--preset` spec failed. `not-found`: the named path or package
+ * does not exist (exit 3). `usage`: unknown built-in name, empty spec, or
+ * a module that exists but throws or has the wrong shape (exit 2).
+ */
+export type PresetFailure = 'usage' | 'not-found';
+
+export class PresetResolutionError extends CodedError {
   constructor(
     message: string,
     public readonly spec: string,
-    public readonly resolvedPath?: string
+    public readonly resolvedPath?: string,
+    failure: PresetFailure = 'usage'
   ) {
-    super(message);
+    super(
+      message,
+      failure === 'not-found' ? EXIT_NOT_FOUND : EXIT_USAGE,
+      failure === 'not-found' ? 'NOT_FOUND' : 'USAGE'
+    );
     this.name = 'PresetResolutionError';
   }
 }
@@ -125,6 +139,16 @@ export async function resolvePreset(spec: string): Promise<Preset> {
     const resolvedPath = path.isAbsolute(spec)
       ? spec
       : path.resolve(process.cwd(), spec);
+    try {
+      require.resolve(resolvedPath);
+    } catch {
+      throw new PresetResolutionError(
+        `Preset "${spec}" not found (resolved to ${resolvedPath}).`,
+        spec,
+        resolvedPath,
+        'not-found'
+      );
+    }
     let mod: unknown;
     try {
       mod = require(resolvedPath);
@@ -141,9 +165,22 @@ export async function resolvePreset(spec: string): Promise<Preset> {
 
   // 3. Package form, resolved from the working directory.
   if (looksLikePackage(spec)) {
+    const req = createRequire(path.join(process.cwd(), 'noop.js'));
+    try {
+      req.resolve(spec);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND') {
+        throw new PresetResolutionError(
+          `Preset npm package "${spec}" not found (resolved from ${process.cwd()}).`,
+          spec,
+          spec,
+          'not-found'
+        );
+      }
+    }
     let mod: unknown;
     try {
-      mod = createRequire(path.join(process.cwd(), 'noop.js'))(spec);
+      mod = req(spec);
     } catch (err) {
       throw new PresetResolutionError(
         `Failed to load preset from npm package "${spec}": ${(err as Error).message}`,
@@ -155,9 +192,32 @@ export async function resolvePreset(spec: string): Promise<Preset> {
   }
 
   // 4. Bogus bare name.
-  throw new PresetResolutionError(
-    `Unknown preset "${spec}". Built-ins: ${BUILTIN_PRESET_NAMES.join(', ')}. ` +
+  throw unknownPresetError(spec);
+}
+
+function unknownPresetError(spec: string): PresetResolutionError {
+  const near = nearestMatch(spec, [...BUILTIN_PRESET_NAMES]);
+  const hint = near ? ` (did you mean '${near}'?)` : '';
+  return new PresetResolutionError(
+    `Unknown preset "${spec}"${hint}. Built-ins: ${BUILTIN_PRESET_NAMES.join(', ')}. ` +
       `For custom presets use a prefixed form: ./relative/path.js, /absolute/path.js, or @scope/pkg.`,
     spec
   );
+}
+
+/**
+ * Cheap pre-flight for `--preset` specs: rejects an empty spec or an
+ * unknown bare name without loading any module code. Path and package
+ * specs pass; `resolvePreset` is what loads (and can fail on) them.
+ */
+export function assertPresetSpec(spec: string): void {
+  if (typeof spec !== 'string' || spec.length === 0) {
+    throw new PresetResolutionError(
+      `Preset spec must be a non-empty string (got ${typeof spec}).`,
+      String(spec)
+    );
+  }
+  if (!isBuiltin(spec) && !looksLikePath(spec) && !looksLikePackage(spec)) {
+    throw unknownPresetError(spec);
+  }
 }

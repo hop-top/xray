@@ -79,6 +79,19 @@ you trust. xray does NOT sandbox custom presets. This is a developer
 CLI running locally; the threat model matches `require('./any-file')`
 from any Node script.
 
+## Bad presets fail the run
+
+A `--preset` that cannot be used stops the command before any analysis or
+write:
+
+| Case | Exit |
+|------|------|
+| Unknown built-in name (valid names listed, nearest suggested) | 2 |
+| Path or package that does not exist | 3 |
+| Module that throws on load, has no preset function, or whose factory throws | 2 |
+
+Presets come from the command line only; a config file cannot name one.
+
 ## `--preset` vs `--lens`
 
 These are two distinct mechanisms. Do not confuse them.

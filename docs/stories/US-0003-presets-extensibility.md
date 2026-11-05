@@ -41,8 +41,8 @@ The preset primitive ships:
 
 - given `xray map --preset bogus-name`
 - when the resolver runs
-- then it throws a `PresetResolutionError` whose message lists all
-  built-in names
+- then it throws a `PresetResolutionError` (exit 2) whose message lists
+  all built-in names, and the command analyzes and writes nothing
 
 ## non-regression invariants
 
