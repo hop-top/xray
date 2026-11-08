@@ -6,7 +6,7 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import GoCliStrategy from '../../../strategies/go-cli';
 import { StrategyContextImpl } from '../../../src/lib/strategy/context';
-import { detectSandbox, obtainToolspec, runProcess, wrapSandbox } from '../../../src/lib/strategy/go-cli/binary';
+import { detectSandbox, obtainToolspec, runProcess, sandboxProfile, wrapSandbox } from '../../../src/lib/strategy/go-cli/binary';
 
 const FIX = path.join(__dirname, '..', '..', 'fixtures', 'go-cli');
 const sandbox = detectSandbox();
@@ -178,5 +178,13 @@ describe('bwrap argument order', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('macOS profile: no write to the shared xcrun cache', () => {
+  it('never allows writes under /var/folders (the cgo build keeps its xcrun cache in private tmp)', () => {
+    const profile = sandboxProfile({ work: '/w', home: '/h', readDenyHome: true });
+    expect(profile).not.toContain('xcrun_db');
+    expect(profile).not.toMatch(/file-write[^\n]*var\/folders/);
   });
 });

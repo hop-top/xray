@@ -406,6 +406,10 @@ export async function obtainToolspec(root: string, opts: ToolspecOptions = {}): 
         TMPDIR: tmp,
         GOPATH: path.join(work, 'gopath'),
         CGO_ENABLED: opts.allowCgo ? '1' : '0',
+        // macOS: xcrun/clang/dsymutil keep a toolchain lookup cache (xcrun_db)
+        // in the per-user temp dir, which the sandbox denies and unsandboxed
+        // tools later trust. Point it at the build's private tmp instead.
+        xcrun_db: path.join(tmp, 'xcrun_db'),
       };
       if (goInfo.modcache) env.GOMODCACHE = goInfo.modcache;
       if (opts.allowCgo) {
