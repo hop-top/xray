@@ -1,6 +1,6 @@
 // src/commands/registration/core.ts
 import { Command } from 'commander';
-import { addCommonOptions } from '../common';
+import { addCommonOptions, graphFileArg } from '../common';
 import { handleGenerateCommand } from '../generate';
 import { handleClearCacheAction } from '../clear-cache';
 import { bindFlag, registerCompletionCommand, staticValues } from '../completion';
@@ -66,7 +66,7 @@ export function registerCoreCommands(program: Command): void {
       .command('query')
       .description('Query call graph using function-based syntax')
       .argument('[query]', 'Query string (e.g., "calls(main)", "callers(processData)")')
-      .option('--graph <file>', 'Path to saved graph JSON file')
+      .option('--graph <file>', 'Path to saved graph JSON file', graphFileArg)
   )
     .option('--list-adapters', 'List available query adapters')
     .action(runQueryCommand), 'read', 'yes');

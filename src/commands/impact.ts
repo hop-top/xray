@@ -18,6 +18,7 @@ import {
   outputRegistry, textFormatter,
 } from '../lib/output';
 import { formatTree, readSerializedGraph } from './query';
+import { graphFileArg } from './common';
 import { declareEffect } from './side-effect';
 import { buildGraphForRoots, cacheLine, confineFor, resolveRunOptions, validateRunRoots, type BuiltGraph } from './generate';
 
@@ -175,7 +176,7 @@ export function registerImpactCommand(program: Command): Command {
     .argument('<symbol>', 'Symbol name or glob (e.g. "createSession", "New*")')
     .option('--depth <n>', `Caller levels to follow (default: ${DEFAULT_IMPACT_DEPTH})`)
     .option('--strict', 'Follow EXTRACTED call edges only (drop INFERRED)')
-    .option('--graph <file>', 'Read a saved graph (map --format json) instead of building one')
+    .option('--graph <file>', 'Read a saved graph (map --format json) instead of building one', graphFileArg)
     .option('-p, --path <path>', 'Root directory to analyze (repeatable) [default: config paths or current directory]',
       (value: string, previous: string[]) => previous.concat([value]), [])
     .option('--lens <name>', 'Use named lens (config-file option overlay)')

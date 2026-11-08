@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, InvalidArgumentError } from 'commander';
 import { BUILTIN_PRESET_NAMES } from '../lib/plugins/presets';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { ExtensionOverrideCommandOptions } from '../types/command-options';
@@ -10,6 +10,18 @@ const appendOptionValue = (
   value: string,
   previous: string[] = []
 ): string[] => previous.concat([value]);
+
+/**
+ * Parser for `--graph <file>`: commander hands a value-taking option the
+ * next token whatever it looks like, so `--graph --format json` would eat
+ * `--format`. A flag-shaped token is a missing file, not a file name.
+ */
+export const graphFileArg = (value: string): string => {
+  if (value.startsWith('-') && value !== '-') {
+    throw new InvalidArgumentError('requires a graph file (got the option ' + value + ')');
+  }
+  return value;
+};
 
 // Helper to resolve paths relative to PWD
 export const resolvePath = (p: string | undefined): string | undefined => {
