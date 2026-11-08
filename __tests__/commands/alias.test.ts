@@ -11,6 +11,15 @@ jest.mock('../../src/lib/config');
 const mockLoadConfig = loadConfig as jest.MockedFunction<typeof loadConfig>;
 const mockSaveConfig = saveConfig as jest.MockedFunction<typeof saveConfig>;
 
+/** Stub strategy commands, so alias targets resolve like in the real tree. */
+const withStrategies = (root: Command): Command => {
+  for (const [strategy, commands] of [['react', ['components', 'hooks']], ['vue', ['components']]] as const) {
+    const s = root.command(strategy);
+    for (const c of commands) s.command(c);
+  }
+  return root;
+};
+
 describe('Alias Commands', () => {
   const testDir = path.join(__dirname, '../fixtures/alias-test');
   const testConfigPath = path.join(testDir, '.xrayrc.json');
@@ -87,7 +96,7 @@ describe('Alias Commands', () => {
       mockLoadConfig.mockReturnValue({ paths: ['./src'] });
       const consoleLogSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      const program = registerAliasCommand();
+      const program = withStrategies(registerAliasCommand());
       await program.parseAsync(['node', 'test', 'set', 'comp', 'react components']);
 
       expect(mockSaveConfig).toHaveBeenCalledWith({
@@ -109,7 +118,7 @@ describe('Alias Commands', () => {
       });
       const consoleLogSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      const program = registerAliasCommand();
+      const program = withStrategies(registerAliasCommand());
       await program.parseAsync(['node', 'test', 'set', 'comp', 'vue components']);
 
       expect(mockSaveConfig).toHaveBeenCalledWith({
@@ -139,6 +148,7 @@ describe('Alias Commands', () => {
       const root = new Command('xray');
       root.exitOverride();
       registerCoreCommands(root);
+      withStrategies(root);
       return root;
     };
 
@@ -211,5 +221,30 @@ describe('Alias Commands', () => {
 
       expect(mockSaveConfig).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('alias set target and paths', () => {
+  const unknown = (target: string) => withStrategies(registerAliasCommand()).exitOverride();
+
+  it.each([
+    ['nosuch thing', /Unknown strategy "nosuch"/],
+    ['react nosuchcmd', /Unknown command "nosuchcmd" in strategy "react"/],
+  ])('refuses unknown target %s (NotFoundError, exit 3)', async (target, msg) => {
+    mockLoadConfig.mockReturnValue({ paths: ['./src'] });
+    await expect(
+      unknown(target).parseAsync(['node', 'test', 'set', 'zz', target])
+    ).rejects.toMatchObject({ exitCode: 3, message: expect.stringMatching(msg) });
+    expect(mockSaveConfig).not.toHaveBeenCalled();
+  });
+
+  it('new config gets a project-relative path, not the absolute cwd', async () => {
+    mockLoadConfig.mockReturnValue(undefined as any);
+    const err = jest.spyOn(console, 'error').mockImplementation();
+    await withStrategies(registerAliasCommand()).parseAsync(['node', 'test', 'set', 'comp', 'react components']);
+    expect(mockSaveConfig).toHaveBeenCalledWith(
+      { paths: ['.'], aliases: { comp: 'react components' } }
+    );
+    err.mockRestore();
   });
 });

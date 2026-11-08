@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import * as path from 'path';
 import { declareEffect, emitPlan, previewing } from './side-effect';
 import { assertDataConfig, isWritableConfigFile, loadConfig, saveConfig } from '../lib/config';
-import { isAliasTarget, kitAlias, reservedAliasNames, rootCommand, usableAliases } from '../lib/alias-resolver';
+import { isAliasTarget, kitAlias, reservedAliasNames, rootCommand, splitAliasTarget, usableAliases } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
 import { hintsEnabled } from './kit-cli';
 import { ConflictError, NotFoundError, UsageError, withHelp } from '../lib/error/types';
@@ -102,7 +102,7 @@ export function registerAliasCommand(): Command {
       let config = loadConfig(configPath);
       if (!config) {
         // Create default config if none exists
-        config = { paths: [process.cwd()] };
+        config = { paths: ['.'] };
       }
 
       // Validate target format
@@ -128,6 +128,18 @@ export function registerAliasCommand(): Command {
           );
         }
         throw new UsageError(`Invalid alias name "${name}": ${err.message}`);
+      }
+
+      // The target must be a registered `<strategy> <command>`: an alias that
+      // cannot run is refused here instead of warned about on every run.
+      const { strategyName, commandName } = splitAliasTarget(target);
+      const strategyCmd = rootCommand(cmd).commands.find((c) => c.name() === strategyName);
+      if (!strategyCmd?.commands.some((c) => c.name() === commandName)) {
+        throw new NotFoundError(
+          strategyCmd
+            ? `Unknown command "${commandName}" in strategy "${strategyName}"`
+            : `Unknown strategy "${strategyName}"`
+        );
       }
 
       // Update config
