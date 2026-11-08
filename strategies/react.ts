@@ -102,7 +102,7 @@ export default class ReactStrategy implements Strategy {
 
     if (hasJSX) {
       // Detect function components
-      const functionMatch = content.match(/(?:export\s+)?(?:default\s+)?function\s+([A-Z]\w*)\s*\([^)]*\)/);
+      const functionMatch = content.match(/(?:export\s+)?(?:default\s+)?function\s+([A-Z]\w*)\s*\(/);
       if (functionMatch) {
         tags.push('react:component');
         metadata.componentName = functionMatch[1];
@@ -110,7 +110,7 @@ export default class ReactStrategy implements Strategy {
       }
 
       // Detect arrow function components
-      const arrowMatch = content.match(/(?:export\s+)?const\s+([A-Z]\w*)\s*=\s*\([^)]*\)\s*=>/);
+      const arrowMatch = content.match(/(?:export\s+)?const\s+([A-Z]\w*)\s*=\s*\([^)]{0,1000}\)\s*=>/);
       if (arrowMatch && !metadata.componentName) {
         tags.push('react:component');
         metadata.componentName = arrowMatch[1];
@@ -127,13 +127,13 @@ export default class ReactStrategy implements Strategy {
     }
 
     // Detect custom hooks
-    const funcHookMatch = content.match(/(?:export\s+)?(?:default\s+)?function\s+(use[A-Z]\w*)\s*\([^)]*\)/);
+    const funcHookMatch = content.match(/(?:export\s+)?(?:default\s+)?function\s+(use[A-Z]\w*)\s*\(/);
     if (funcHookMatch) {
       tags.push('react:hook');
       metadata.hookName = funcHookMatch[1];
     }
 
-    const arrowHookMatch = content.match(/(?:export\s+)?const\s+(use[A-Z]\w*)\s*=\s*\([^)]*\)\s*=>/);
+    const arrowHookMatch = content.match(/(?:export\s+)?const\s+(use[A-Z]\w*)\s*=\s*\([^)]{0,1000}\)\s*=>/);
     if (arrowHookMatch && !metadata.hookName) {
       tags.push('react:hook');
       metadata.hookName = arrowHookMatch[1];

@@ -153,7 +153,7 @@ export default class RestApiStrategy implements Strategy {
     }
 
     // Pattern 2: .Methods("GET") - extract method from chained Methods() call
-    const methodsPattern = /\.HandleFunc\s*\(\s*"([^"]+)"\s*,[^)]+\)\s*\.Methods\s*\(\s*"(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)"/g;
+    const methodsPattern = /\.HandleFunc\s*\(\s*"([^"]+)"\s*,[^)]{1,1000}\)\s*\.Methods\s*\(\s*"(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)"/g;
     while ((match = methodsPattern.exec(content)) !== null) {
       const path = match[1];
       const method = match[2];
