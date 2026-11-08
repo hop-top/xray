@@ -102,8 +102,9 @@ describe('relative config paths resolve against the config file directory', () =
   });
 
   it('explicit --config elsewhere', () => {
-    const cfgDir = path.join(tmp, 'cfgs');
-    write(path.join(cfgDir, 'xray.json'), JSON.stringify({ skipDetect: true, paths: ['../proj/src/core'] }));
+    // The config file's directory is its project: it may name only paths under it.
+    const cfgDir = tmp;
+    write(path.join(cfgDir, 'xray.json'), JSON.stringify({ skipDetect: true, paths: ['proj/src/core'] }));
     const r = run(['--config', path.join(cfgDir, 'xray.json'), 'map', '--no-chunk', '-o', out], sub);
     expect(r.stderr).not.toMatch(/does not exist/);
     expect(r.status).toBe(0);

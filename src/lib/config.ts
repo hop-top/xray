@@ -8,6 +8,8 @@ import {
   XrayExtensionConfig,
 } from '../types/xray-config';
 import { assertPatternLengths, quotePattern } from './path-match';
+import { isWithin, realpathLoose } from './confine';
+import { terminalSafe } from './terminal-safe';
 import { FileReadError, FileWriteError, NotFoundError, UsageError } from './error/types';
 
 // require(): tsconfig moduleResolution 'node' ignores the kit exports map.
@@ -305,19 +307,122 @@ export function resolveConfigPaths(config: XrayConfig, filepath: string): XrayCo
 }
 
 /**
+ * What `assertConfigConfined` checks. A key is true when the run uses the
+ * value and the command line does not override it; a value the command
+ * line supplies is the user's own and is never checked.
+ */
+export interface ConfineOptions {
+  paths: boolean;
+  output: boolean;
+  queries: boolean;
+  share: boolean;
+  /** `--lens <name>`: only that lens is checked, besides the top level. */
+  lens?: string;
+  /** `--scope <name>`: only that scope is checked, besides the top level. */
+  scope?: string;
+  /** `--all-scopes`: every scope is checked. */
+  allScopes?: boolean;
+}
+
+/** Whether `file` is the user's own global config (their choice; never confined). */
+function isUserGlobalConfig(file: string): boolean {
+  const global = findGlobalConfigPath();
+  return global !== null && realpathLoose(path.resolve(global)) === realpathLoose(path.resolve(file));
+}
+
+/** Local paths named by `queries` entries: `<path>`, `.ext:<path>`, comma lists; URLs are not paths. */
+function localQueryPaths(entries: unknown[]): Array<{ index: number; value: string }> {
+  const found: Array<{ index: number; value: string }> = [];
+  entries.forEach((entry, index) => {
+    if (typeof entry !== 'string') return;
+    for (const part of entry.split(',')) {
+      let value = part.trim();
+      if (!value) continue;
+      const colon = value.indexOf(':');
+      if (colon > 0 && value.startsWith('.')) value = value.slice(colon + 1);
+      if (value.startsWith('http://') || value.startsWith('https://')) continue;
+      found.push({ index, value });
+    }
+  });
+  return found;
+}
+
+/**
+ * A config file may not point a run outside its project: the project root
+ * is the directory of the file that supplies the value, symlinks resolved.
+ * `paths` (scan roots), `output` and `share` (files written) and `queries`
+ * (files read) that resolve elsewhere are a usage error unless the command
+ * line gives the value. The user's own global config is exempt. `config`
+ * is as loaded; `paths` are already absolute (see resolveConfigPaths).
+ * Relative `output`, `share` and `queries` are judged where the run would
+ * use them, against the working directory.
+ */
+export function assertConfigConfined(config: XrayConfig, file: string, o: ConfineOptions): void {
+  if (!config || typeof config !== 'object') return;
+  const root = realpathLoose(path.dirname(path.resolve(file)));
+
+  const refuse = (key: string, value: string, flag: string): never => {
+    throw new UsageError(
+      `config ${terminalSafe(file)}: ${terminalSafe(key)} resolves to ${terminalSafe(value)}, ` +
+      `outside the project ${terminalSafe(root)}; pass ${flag} on the command line to use it`
+    );
+  };
+  const check = (key: string, value: string, flag: string): void => {
+    const real = realpathLoose(path.resolve(value));
+    if (!isWithin(root, real)) refuse(key, real, flag);
+  };
+
+  const scopeLevel = (prefix: string, c: XrayScopeConfig | undefined): void => {
+    if (!c || typeof c !== 'object') return;
+    const at = (k: string) => `${prefix}${k}`;
+    if (o.paths && Array.isArray(c.paths)) {
+      c.paths.forEach((p, i) => {
+        if (typeof p === 'string' && p !== '') check(at(`paths[${i}]`), p, '--path');
+      });
+    }
+    if (o.output && typeof c.output === 'string' && c.output !== '') {
+      check(at('output'), c.output, '-o/--output');
+    }
+    if (o.share && typeof c.share === 'string' && c.share.trim() !== '') {
+      check(at('share'), c.share, '--share <path>');
+    }
+    if (o.queries && Array.isArray(c.queries)) {
+      for (const { index, value } of localQueryPaths(c.queries)) {
+        check(at(`queries[${index}]`), value, '--query');
+      }
+    }
+  };
+
+  scopeLevel('', config);
+  const named = (group: Record<string, XrayScopeConfig> | undefined, kind: string, only?: string, all?: boolean) => {
+    if (!group || typeof group !== 'object') return;
+    for (const [name, entry] of Object.entries(group)) {
+      if (all || name === only) scopeLevel(`${kind}.${name}.`, entry);
+    }
+  };
+  named(config.lenses, 'lenses', o.lens);
+  named(config.scopes, 'scopes', o.scope, o.allScopes);
+}
+
+/**
  * Load configuration from the project directory
  * Supports directory tree walking and global config merging.
  * `resolvePaths`: absolutize config scan paths against their defining
  * file's directory (see resolveConfigPaths). Off by default so callers
  * that load-modify-save a config (aliases) keep the file's own paths.
+ * `confine`: refuse scan roots, outputs and query files that leave the
+ * project of the file supplying them (see assertConfigConfined).
  */
 export function loadConfig(
   configPath?: string,
   searchPath?: string,
-  options: { resolvePaths?: boolean } = {}
+  options: { resolvePaths?: boolean; confine?: ConfineOptions } = {}
 ): XrayConfig | null {
-  const load = (file: string): XrayConfig =>
-    options.resolvePaths ? resolveConfigPaths(loadConfigFile(file), file) : loadConfigFile(file);
+  const load = (file: string): XrayConfig => {
+    const config = options.resolvePaths ? resolveConfigPaths(loadConfigFile(file), file) : loadConfigFile(file);
+    if (options.confine && !isUserGlobalConfig(file)) assertConfigConfined(config, file, options.confine);
+    return config;
+  };
 
   // If explicit path provided, use it (no merging)
   if (configPath) {

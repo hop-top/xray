@@ -178,6 +178,13 @@ directory, and `xray mcp` fixes the trusted directory at startup:
   map's `query` (`path`, `.ext:path`, comma lists). URLs are refused
   wherever a path is expected; the server never makes the CLI fetch a
   remote query file.
+- Config is held inside the root too. The server config's `paths`,
+  `queries` and the like that resolve outside the root (symlinks
+  resolved) are refused, as for any run of `xray` (see
+  [configuration](configuration.md#paths-stay-inside-the-project)); its
+  `output` and `share` never apply, because every call writes to its own
+  temp directory. A cloned repo's config cannot make a call read or
+  write outside the server root.
 - So project code only ever loads from the tree you started the server
   in, and only from its root. A client cannot point the server at
   another checkout, or at a subtree's own strategies or config.

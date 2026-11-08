@@ -33,8 +33,8 @@ module.exports = () => [{ name: 'scope-logger', version: '0.0.0', apply(xray) {
 `);
     fs.writeFileSync(path.join(proj, '.xrayrc.json'), JSON.stringify({
       scopes: {
-        one: { paths: ['one'], output: path.join(home, 'one.txt') },
-        two: { paths: ['two'], output: path.join(home, 'two.txt') },
+        one: { paths: ['one'], output: path.join(proj, 'one.txt') },
+        two: { paths: ['two'], output: path.join(proj, 'two.txt') },
       },
     }));
   });

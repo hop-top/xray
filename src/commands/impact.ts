@@ -11,6 +11,7 @@ import type { SerializedGraph } from '../lib/query/types';
 import type { ParseCoverage } from '../lib/xray';
 import { quotePattern } from '../lib/path-match';
 import { Logger } from '../lib/logger';
+import { loadConfig } from '../lib/config';
 import { UsageError } from '../lib/error/types';
 import {
   adaptFormatter, addOutputFlags, assertFormat, colsRequested, columns, emit, formatterOf,
@@ -18,7 +19,7 @@ import {
 } from '../lib/output';
 import { formatTree, readSerializedGraph } from './query';
 import { declareEffect } from './side-effect';
-import { buildGraphForRoots, cacheLine, resolveRunOptions, validateRunRoots, type BuiltGraph } from './generate';
+import { buildGraphForRoots, cacheLine, confineFor, resolveRunOptions, validateRunRoots, type BuiltGraph } from './generate';
 
 export interface ImpactCommandOptions {
   depth?: string;
@@ -99,7 +100,9 @@ async function obtainGraph(options: ImpactCommandOptions): Promise<SerializedGra
     return readSerializedGraph(options.graph);
   }
   const cli = { path: options.path ?? [], lens: options.lens, scope: options.scope, lang: options.lang ?? [], config: options.config };
-  const { mergedOptions } = resolveRunOptions(cli);
+  // impact writes no output file: only scan roots and query files must stay in their project.
+  const config = loadConfig(cli.config, cli.path[0], { resolvePaths: true, confine: confineFor(cli, false) });
+  const { mergedOptions } = resolveRunOptions(cli, config);
   validateRunRoots(mergedOptions, options.config);
   const note = matchNote(mergedOptions.match);
   if (note) Logger.info(note);

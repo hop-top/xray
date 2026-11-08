@@ -108,6 +108,39 @@ resolves against the global config directory; with `--config`, against
 that file's directory. Absolute paths are used as-is. `--path` on the
 command line stays relative to the current directory.
 
+### Paths Stay Inside the Project
+
+A config file cannot point a run outside its own project. The project is
+the directory of the file that supplies the value (for `package.json`,
+that directory; with `--config`, the directory of that file), with
+symlinks resolved. A value that resolves elsewhere is a usage error
+(exit 2) naming the file, the key and the resolved path, and nothing
+runs or is written:
+
+```
+config /repo/.xrayrc.json: output resolves to /tmp/evil.sh, outside the project /repo; pass -o/--output on the command line to use it
+```
+
+| Key (top level, `lenses.<name>`, `scopes.<name>`) | Use | Checked |
+|-----|-----|---------|
+| `paths` | scan roots | resolved against the config file's directory, then confined |
+| `output` | file written | resolved against the working directory (where it is written), then confined |
+| `share` (a path string) | file written | same as `output` |
+| `queries` (local paths, `.ext:path`; URLs are not paths) | files read | resolved against the working directory, then confined |
+| `anchor` | node name for ranking; no file is opened | not checked |
+| `aliases`, `languages`, `telemetry`, `extensions`, other keys | not paths | not checked |
+
+Only the values a run uses are checked: the top level, the selected
+`--lens` or `--scope`, every scope under `--all-scopes`. A value given on
+the command line (`--path`, a positional root, `-o`/`--output`,
+`--share <path>`, `--query`) is yours, never checked, and replaces the
+config value. `--all-scopes` ignores those flags, so it checks every
+scope's values.
+
+Your own global config (`<config-dir>/config.json`, `~/.xrayrc.json`,
+`~/.xrayrc`) is exempt: it is your choice, and its paths may point
+anywhere.
+
 ## Basic Configuration
 
 ### JSON Example (.xrayrc.json)

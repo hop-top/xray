@@ -157,8 +157,9 @@ describe('config `match`', () => {
   });
 
   it('scope match applies, with --scope and --all-scopes', () => {
-    const jsOut = path.join(outDir, 'js.json');
-    const apiOut = path.join(outDir, 'api.json');
+    // A config output must stay inside the project.
+    const jsOut = path.join(repo, 'js.json');
+    const apiOut = path.join(repo, 'api.json');
     writeConfig({
       format: 'json',
       scopes: { js: { match: ['*.js'], output: jsOut }, api: { match: ['src/**'], output: apiOut } },
@@ -173,6 +174,8 @@ describe('config `match`', () => {
     expect(run(['map', '--skip-detect', '--all-scopes']).status).toBe(0);
     expect(filesOf(jsOut)).toEqual(['lib/x.js']);
     expect(filesOf(apiOut)).toEqual(['src/api/h.ts']);
+    fs.rmSync(jsOut, { force: true });
+    fs.rmSync(apiOut, { force: true });
   });
 });
 

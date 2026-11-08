@@ -52,8 +52,9 @@ beforeEach(() => {
   tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'xray-missing-root-')));
   home = path.join(tmp, 'home');
   root = path.join(tmp, 'proj');
-  good = path.join(tmp, 'good');
-  gone = path.join(tmp, 'renamed-away');
+  // Config roots must stay inside the project (the config file's directory).
+  good = path.join(root, 'good');
+  gone = path.join(root, 'renamed-away');
   fs.mkdirSync(home, { recursive: true });
   fs.mkdirSync(root, { recursive: true });
   fs.mkdirSync(good, { recursive: true });
@@ -131,12 +132,12 @@ describe('missing scan roots', () => {
   it('scope paths partly missing: --all-scopes warns and maps the good root', () => {
     fs.writeFileSync(cfgFile, JSON.stringify({
       skipDetect: true,
-      scopes: { api: { paths: [gone, good], output: path.join(tmp, 'api.txt'), chunked: false } },
+      scopes: { api: { paths: [gone, good], output: path.join(root, 'api.txt'), chunked: false } },
     }));
     const r = run(['map', '--all-scopes']);
     expect(r.status).toBe(0);
     expect(r.stderr.split('\n').find((l) => l.includes(gone) && l.includes(cfgFile))).toBeDefined();
-    expect(fs.readFileSync(path.join(tmp, 'api.txt'), 'utf-8')).toContain('a.py');
+    expect(fs.readFileSync(path.join(root, 'api.txt'), 'utf-8')).toContain('a.py');
   });
 
   it('missing --path -> error, non-zero, no map', () => {

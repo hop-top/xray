@@ -5,7 +5,7 @@ import { styles, fileProgress } from '../lib/tui';
 import { QueryResolver } from '../lib/query-resolver';
 import { Logger, LogLevel } from '../lib/logger';
 import { reportFailure } from '../lib/error/report';
-import { loadConfig, mergeConfig, getScopes, getScope, mergeScopeWithBase, validateScanRoots } from '../lib/config';
+import { loadConfig, mergeConfig, type ConfineOptions, getScopes, getScope, mergeScopeWithBase, validateScanRoots } from '../lib/config';
 import { CodedError, FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
 import { resolveFormatFlags } from '../lib/output-format';
 import { GraphSerializer } from '../lib/graph/serializer';
@@ -748,6 +748,28 @@ export const assertLensNotScoped = (options: { lens?: string; scope?: string; al
 };
 
 /**
+ * Which config values must stay inside their project for this run: those
+ * it uses and the command line does not give. `--all-scopes` ignores the
+ * command line's paths, output, queries and share, so it checks them all.
+ * `writes: false` is for a run that writes no output file (impact).
+ */
+export const confineFor = (
+  options: { path?: string[]; output?: string; query?: string[]; share?: unknown; lens?: string; scope?: string; allScopes?: boolean },
+  writes = true
+): ConfineOptions => {
+  const cli = !options.allScopes;
+  return {
+    paths: !(cli && options.path && options.path.length > 0),
+    output: writes && !(cli && options.output),
+    queries: !(cli && options.query && options.query.length > 0),
+    share: writes && !(cli && options.share !== undefined),
+    lens: options.lens,
+    scope: options.scope,
+    allScopes: options.allScopes,
+  };
+};
+
+/**
  * Merge config with CLI options the way `map` does: `--scope <name>`
  * (scope over base config; NotFoundError when undefined) or the regular
  * flow (config, `--lens` overlay, CLI options on top). `config` defaults
@@ -755,7 +777,11 @@ export const assertLensNotScoped = (options: { lens?: string; scope?: string; al
  */
 export const resolveRunOptions = (
   normalizedOptions: any,
-  config: ReturnType<typeof loadConfig> = loadConfig(normalizedOptions.config, normalizedOptions.path?.[0], { resolvePaths: true })
+  config: ReturnType<typeof loadConfig> = loadConfig(
+    normalizedOptions.config,
+    normalizedOptions.path?.[0],
+    { resolvePaths: true, confine: confineFor(normalizedOptions) }
+  )
 ): { mergedOptions: any; scopeName?: string } => {
   assertLensNotScoped(normalizedOptions);
   if (normalizedOptions.scope) {
@@ -822,7 +848,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions, previ
     const config = loadConfig(
       normalizedOptions.config,
       normalizedOptions.path?.[0],
-      { resolvePaths: true }
+      { resolvePaths: true, confine: confineFor(normalizedOptions) }
     );
 
     // Handle --all-scopes flag
