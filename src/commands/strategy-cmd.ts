@@ -5,13 +5,13 @@ import { styles } from '../lib/tui';
 import { Command } from 'commander';
 import { declareEffect, emitPlan, previewing } from './side-effect';
 import { Logger } from '../lib/logger';
-import { reportFailure } from '../lib/error/report';
+import { jsonErrorsEnabled, reportFailure } from '../lib/error/report';
 import { StrategyLoader, PROJECT_STRATEGIES_ENV, projectStrategiesAllowed, reportSkippedProjectCode } from '../lib/strategy/loader';
 import { installStrategy, findInstalledStrategyPackage, planStrategyInstall, uninstallStrategyPackage } from './strategy-install';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { normalizeDetectedStrategy } from '../lib/strategy/types';
-import { CodedError, ConflictError, FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
+import { CodedError, ConflictError, FileWriteError, NotFoundError, UsageError, withHelp } from '../lib/error/types';
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
@@ -167,9 +167,13 @@ export function registerStrategyCommand(): Command {
 
       if (!strategy) {
         reportSkippedProjectCode('warn');
-        Logger.info('\nAvailable strategies:');
-        strategies.forEach(s => Logger.info(`  - ${s.name}`));
-        throw new NotFoundError(`Strategy "${name}" not found.`);
+        // The list is help, not a log: text mode prints it, JSON mode
+        // carries it in the envelope.
+        if (!jsonErrorsEnabled()) {
+          Logger.info('\nAvailable strategies:');
+          strategies.forEach(s => Logger.info(`  - ${s.name}`));
+        }
+        throw withHelp(new NotFoundError(`Strategy "${name}" not found.`), { alternatives: strategies.map(s => s.name) });
       }
 
       const context = new StrategyContextImpl(process.cwd());

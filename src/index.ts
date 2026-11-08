@@ -7,8 +7,9 @@ import { initializeTelemetry, shutdownTelemetry } from './lib/telemetry';
 import { loadConfig } from './lib/config';
 import { handleFirstRunConsent } from './lib/telemetry-consent';
 import { createXrayUpgradeChecker } from './upgrade-checker';
-import { CodedError, UsageError, EXIT_USAGE, EXIT_GENERIC } from './lib/error/types';
+import { CodedError, UsageError, withHelp, EXIT_USAGE, EXIT_GENERIC } from './lib/error/types';
 import { Logger } from './lib/logger';
+import { aliasProblemsFor } from './lib/alias-resolver';
 import { nearestMatch as nearestCommand } from './lib/did-you-mean';
 import {
   jsonRequested, setJsonErrors, jsonErrorsEnabled, toCliError, usageEnvelope, valueOptionNames, writeEnvelope,
@@ -76,7 +77,11 @@ function rejectUnknownInput(program: any, argv: string[]): void {
 
   const suggestion = nearestCommand(word, [...known]);
   const hint = suggestion ? ` (did you mean '${suggestion}'?)` : '';
-  throw new UsageError(`unknown command '${word}'${hint}`);
+  // An alias that failed validation was never registered: say why.
+  const why = aliasProblemsFor(word);
+  throw withHelp(new UsageError(`unknown command '${word}'${hint}`), {
+    suggestedFix: why.length > 0 ? why.join('; ') : undefined,
+  });
 }
 
 /**

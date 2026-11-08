@@ -1,9 +1,10 @@
 import { Command } from 'commander';
 import {
-  aliasTargetErrors, circularAliases, kitAlias, reservedAliasNames, splitAliasTarget, usableAliases,
+  aliasTargetErrors, circularAliases, kitAlias, warnAlias, reservedAliasNames, splitAliasTarget, usableAliases,
 } from '../../lib/alias-resolver';
 import { CodeLoadingOptions, StrategyLoader, reportSkippedProjectCode } from '../../lib/strategy/loader';
 import { Logger } from '../../lib/logger';
+import { jsonErrorsEnabled } from '../../lib/error/report';
 import { loadConfig } from '../../lib/config';
 import { AliasCommandOptions } from '../../types/command-options';
 import { addResultFormat } from '../../lib/result-format';
@@ -25,15 +26,15 @@ export async function registerAliases(
 
   const errors = aliasTargetErrors(aliases, strategies);
   if (errors.length > 0) {
-    Logger.warn('Alias validation errors:');
-    errors.forEach(err => Logger.warn(`  - ${err}`));
+    if (!jsonErrorsEnabled()) Logger.warn('Alias validation errors:');
+    errors.forEach(err => warnAlias(err, `  - ${err}`));
     // An alias may target a command of a strategy that was not loaded.
     reportSkippedProjectCode('warn', options);
   }
 
   const circular = circularAliases(aliases);
   if (circular.length > 0) {
-    Logger.warn(`Circular alias references detected: ${circular.join(', ')}`);
+    warnAlias(`Circular alias references detected: ${circular.join(', ')}`);
     return;
   }
 

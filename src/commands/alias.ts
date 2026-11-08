@@ -5,7 +5,8 @@ import { declareEffect, emitPlan, previewing } from './side-effect';
 import { assertDataConfig, isWritableConfigFile, loadConfig, saveConfig } from '../lib/config';
 import { isAliasTarget, kitAlias, reservedAliasNames, rootCommand, usableAliases } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
-import { ConflictError, NotFoundError, UsageError } from '../lib/error/types';
+import { ConflictError, NotFoundError, UsageError, withHelp } from '../lib/error/types';
+import { jsonErrorsEnabled } from '../lib/error/report';
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
@@ -98,8 +99,9 @@ export function registerAliasCommand(): Command {
 
       // Validate target format
       if (!isAliasTarget(target)) {
-        Logger.info('Example: xray alias set comp "react components"');
-        throw new UsageError('Target must be in format "<strategy> <command>"');
+        const example = 'xray alias set comp "react components"';
+        if (!jsonErrorsEnabled()) Logger.info(`Example: ${example}`);
+        throw withHelp(new UsageError('Target must be in format "<strategy> <command>"'), { suggestedFix: `Example: ${example}` });
       }
 
       // Initialize aliases object if needed

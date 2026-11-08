@@ -94,7 +94,10 @@ export function jsonRequested(argv: readonly string[], valueOptions: ReadonlySet
  */
 export function toCliError(err: unknown): CliError {
   if (err instanceof CodedError) {
-    return kit.wrapError(err, err.code, err.exitCode) as CliError;
+    const env = kit.wrapError(err, err.code, err.exitCode) as CliError;
+    if (err.suggestedFix) env.suggested_fix = err.suggestedFix;
+    if (err.alternatives && err.alternatives.length > 0) env.alternatives = [...err.alternatives];
+    return env;
   }
   const message = err && (err as Error).message ? (err as Error).message : String(err);
   return kit.wrapError(message, kit.CODE_GENERIC, EXIT_GENERIC) as CliError;

@@ -272,6 +272,10 @@ export class CodedError extends Error {
   readonly exitCode: number;
   readonly code: string;
   cause?: Error;
+  /** Valid names to retry with: the envelope's `alternatives`. */
+  alternatives?: string[];
+  /** One line of what to do instead: the envelope's `suggested_fix`. */
+  suggestedFix?: string;
 
   constructor(message: string, exitCode: number, code: string, cause?: Error) {
     super(message);
@@ -285,6 +289,16 @@ export class CodedError extends Error {
       Error.captureStackTrace(this, this.constructor);
     }
   }
+}
+
+/**
+ * Attach machine-readable help to a coded error. It travels in the JSON
+ * envelope (`alternatives`, `suggested_fix`); text mode prints its own.
+ */
+export function withHelp<E extends CodedError>(err: E, help: { alternatives?: string[]; suggestedFix?: string }): E {
+  if (help.alternatives && help.alternatives.length > 0) err.alternatives = [...help.alternatives];
+  if (help.suggestedFix) err.suggestedFix = help.suggestedFix;
+  return err;
 }
 
 /**

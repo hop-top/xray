@@ -2,7 +2,8 @@ import * as fs from 'fs';
 import { styles } from '../lib/tui';
 import { Logger } from '../lib/logger';
 import type { Command } from 'commander';
-import { NotFoundError, UsageError } from '../lib/error/types';
+import { NotFoundError, UsageError, withHelp } from '../lib/error/types';
+import { jsonErrorsEnabled } from '../lib/error/report';
 import { runStrategyList } from './strategy-cmd';
 import { StrategyLoader, reportSkippedProjectCode } from '../lib/strategy/loader';
 import { StrategyDetector } from '../lib/strategy/detector';
@@ -44,9 +45,13 @@ export const handleMetaStrategyCommand = async (commandName: string, options: St
     }
 
   } else {
-    Logger.info('\nAvailable meta-strategy commands:');
-    Logger.info('  - strategy list   - List all available strategies');
-    Logger.info('  - strategy detect - Detect applicable strategies');
-    throw new UsageError(`Unknown meta-strategy command: "${commandName}"`);
+    if (!jsonErrorsEnabled()) {
+      Logger.info('\nAvailable meta-strategy commands:');
+      Logger.info('  - strategy list   - List all available strategies');
+      Logger.info('  - strategy detect - Detect applicable strategies');
+    }
+    throw withHelp(new UsageError(`Unknown meta-strategy command: "${commandName}"`), {
+      alternatives: ['strategy list', 'strategy detect'],
+    });
   }
 };

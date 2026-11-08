@@ -12,6 +12,7 @@
 import type { Command } from 'commander';
 import type * as KitAlias from '@hop-top/kit/dist/alias';
 import { Logger } from './logger';
+import { jsonErrorsEnabled } from './error/report';
 import { XrayConfig } from '../types/xray-config';
 import { Strategy } from './strategy/types';
 
@@ -59,6 +60,31 @@ export function isAliasTarget(target: string): boolean {
   return target.includes(' ');
 }
 
+const problems: string[] = [];
+
+/**
+ * Alias problems found while registering, in order. They are config help
+ * for a human: text mode warns on stderr, JSON mode keeps stderr to the
+ * error envelope and surfaces them there (see `aliasProblemsFor`).
+ */
+export function aliasProblems(): readonly string[] {
+  return problems;
+}
+
+/** What went wrong for one alias name, for an unknown-command envelope. */
+export function aliasProblemsFor(name: string): string[] {
+  return problems.filter((p) => {
+    const cycle = /^Circular alias references detected: (.*)$/.exec(p);
+    return cycle ? cycle[1].split(', ').includes(name) : p.includes(`"${name}"`);
+  });
+}
+
+/** Record an alias problem; warn on stderr unless JSON errors are on. */
+export function warnAlias(problem: string, shown: string = problem): void {
+  problems.push(problem);
+  if (!jsonErrorsEnabled()) Logger.warn(shown);
+}
+
 /** Split a target into its strategy and (possibly multi-word) command. */
 export function splitAliasTarget(target: string): { strategyName: string; commandName: string } {
   const [strategyName, ...commandParts] = target.split(' ');
@@ -76,14 +102,14 @@ export function usableAliases(config: XrayConfig, reserved: readonly string[]): 
       kitAlias.validateAliasName(alias, { builtins: reserved });
     } catch (err) {
       if (!(err instanceof kitAlias.AliasNameError)) throw err;
-      Logger.warn(err.kind === 'builtin'
+      warnAlias(err.kind === 'builtin'
         ? `Alias "${alias}" conflicts with built-in command, skipping`
         : `Invalid alias name "${alias}" (${err.message}), skipping`);
       continue;
     }
 
     if (!isAliasTarget(target)) {
-      Logger.warn(`Invalid alias target "${target}" for "${alias}" (must be "<strategy> <command>")`);
+      warnAlias(`Invalid alias target "${target}" for "${alias}" (must be "<strategy> <command>")`);
       continue;
     }
 
