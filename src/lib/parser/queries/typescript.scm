@@ -6,6 +6,7 @@
 
 ; Functions
 (function_declaration name: (identifier) @name.definition.function)
+(generator_function_declaration name: (identifier) @name.definition.function)
 (method_definition name: (property_identifier) @name.definition.method)
 
 ; Exported declarations
@@ -15,6 +16,8 @@
   (interface_declaration name: (type_identifier) @name.definition.interface))
 (export_statement 
   (function_declaration name: (identifier) @name.definition.function))
+(export_statement
+  (generator_function_declaration name: (identifier) @name.definition.function))
 (export_statement
   (type_alias_declaration name: (type_identifier) @name.definition.type))
 (export_statement

@@ -3,10 +3,13 @@
 
 ; Functions
 (function_declaration name: (identifier) @name.definition.function)
+(generator_function_declaration name: (identifier) @name.definition.function)
 
 ; Exported functions
 (export_statement 
   (function_declaration name: (identifier) @name.definition.function))
+(export_statement
+  (generator_function_declaration name: (identifier) @name.definition.function))
 
 ; Variable declarations with arrow functions or function expressions
 (lexical_declaration

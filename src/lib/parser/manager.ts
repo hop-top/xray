@@ -243,39 +243,20 @@ export class ParserManager {
   }
 
   private extractSignature(nameNode: Parser.SyntaxNode, content: string): string {
-    // Traverse up to find the function/method declaration
-    let parent = nameNode.parent;
+    const fn = signatureNode(nameNode);
+    if (!fn) return '()';
 
-    while (parent) {
-      const type = parent.type;
+    // `x => x` carries a bare `parameter` field instead of a list.
+    const params = fn.childForFieldName('parameters');
+    const single = params ? null : fn.childForFieldName('parameter');
+    let sig = params ? params.text : single ? `(${single.text})` : '()';
 
-      // Check if this is a function-like node
-      if (type === 'function_declaration' ||
-        type === 'method_definition' ||
-        type === 'arrow_function' ||
-        type === 'function_signature' ||
-        type === 'method_signature') {
-
-        // Find parameters and return type
-        const params = parent.childForFieldName('parameters');
-        const returnType = parent.childForFieldName('return_type');
-
-        let sig = '';
-        if (params) {
-          sig = params.text;
-        }
-        if (returnType) {
-          // Return type text includes the colon, so just append it
-          sig += ' ' + returnType.text;
-        }
-
-        return sig;
-      }
-
-      parent = parent.parent;
+    // Python: `-> T`; Go: `result` (bare type or tuple); TS: text already has the colon.
+    const returnType = fn.childForFieldName('return_type') ?? fn.childForFieldName('result');
+    if (returnType) {
+      sig += fn.type === 'function_definition' ? ' -> ' + returnType.text : ' ' + returnType.text;
     }
-
-    return '()';
+    return sig;
   }
 
   private isLocalVariable(nameNode: Parser.SyntaxNode): boolean {
@@ -446,6 +427,26 @@ function legacyImports(records: readonly ImportRecord[], file: string): Import[]
 
 // Definition nodes whose type names say neither "definition" nor "declaration".
 const NAMED_DEFINITIONS = new Set(['function_item', 'method', 'singleton_method']); // rust, ruby
+
+// Function-like nodes that carry parameters, across the supported grammars.
+const SIGNATURE_NODES = new Set([
+  'function_declaration', 'generator_function_declaration', 'method_definition',
+  'arrow_function', 'function_expression', 'generator_function',
+  'function_signature', 'method_signature',
+  'function_definition', // python, c-family
+  'method_declaration',  // go, java
+]);
+
+/** The function node a definition name belongs to, or null. Never an enclosing function. */
+function signatureNode(nameNode: Parser.SyntaxNode): Parser.SyntaxNode | null {
+  let node = nameNode.parent;
+  // `const f = (a) => ...`: the function is the declarator's value, not an ancestor.
+  if (node?.type === 'variable_declarator') {
+    const value = node.childForFieldName('value');
+    return value && SIGNATURE_NODES.has(value.type) ? value : null;
+  }
+  return node && SIGNATURE_NODES.has(node.type) ? node : null;
+}
 
 function isDefinitionNode(type: string): boolean {
   return type.includes('definition') || type.includes('declaration') || NAMED_DEFINITIONS.has(type);
