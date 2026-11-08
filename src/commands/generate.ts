@@ -185,6 +185,23 @@ export const validateRunRoots = (mergedOptions: any, configPath?: string): void 
       configPath
     );
   }
+  validateAnchor(mergedOptions.anchor);
+};
+
+/**
+ * `--anchor` names the file the ranking centers on. One that is not an
+ * existing file would silently rank nothing differently: NotFoundError.
+ */
+const validateAnchor = (anchor: string | undefined): void => {
+  const resolved = resolvePath(anchor);
+  if (resolved === undefined) return;
+  let isFile = false;
+  try {
+    isFile = fs.statSync(resolved).isFile();
+  } catch {
+    // absent: falls through to the error
+  }
+  if (!isFile) throw new NotFoundError(`Anchor file not found: ${terminalSafe(anchor!)}`);
 };
 
 /** Scan roots to analyze: resolved `path` entries, or the cwd. */
