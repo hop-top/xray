@@ -4,6 +4,7 @@ import { Logger } from '../lib/logger';
 import { NotFoundError } from '../lib/error/types';
 import { FileScanner } from '../lib/scanner';
 import { terminalSafe } from '../lib/terminal-safe';
+import { readTextSafe } from '../lib/safe-read';
 import { assertPatternLengths, compileMatchers } from '../lib/path-match';
 import { resolvePath } from './common';
 import { UsageError } from '../lib/error/types';
@@ -135,18 +136,18 @@ export const handleExploreAction = async (
     }
 
     // Scan all paths and collect files, keeping each one's path under its root
-    const scanned: { abs: string; rel: string }[] = [];
+    const scanned: { abs: string; rel: string; root: string }[] = [];
     for (const p of paths) {
       // A file as the path is that one file (matched by its name), if the
       // scanner would have listed it: never `.git`, ignored or unsupported files.
       if (fs.statSync(p).isFile()) {
         const why = FileScanner.skipReason(p);
         if (why) Logger.warn(`skipped ${terminalSafe(p)}: it ${why}; explore only reads files the scanner lists`);
-        else scanned.push({ abs: p, rel: path.basename(p) });
+        else scanned.push({ abs: p, rel: path.basename(p), root: path.dirname(p) });
         continue;
       }
       const scanner = new FileScanner(p);
-      for (const f of scanner.scan()) scanned.push({ abs: path.join(p, f), rel: f.split(path.sep).join('/') });
+      for (const f of scanner.scan()) scanned.push({ abs: path.join(p, f), rel: f.split(path.sep).join('/'), root: p });
     }
     let entries = scanned;
 
@@ -165,6 +166,9 @@ export const handleExploreAction = async (
     }
 
     const files = entries.map(e => e.abs);
+    // Reads stay inside each file's root, regular files only, within the size cap.
+    const rootOf = new Map(entries.map(e => [e.abs, e.root]));
+    const readText = (file: string): string => readTextSafe(rootOf.get(file) ?? path.dirname(file), file);
 
     // Find files by pattern, against the path under each explore root
     if (matching && !searching && !options.stats) {
@@ -182,7 +186,7 @@ export const handleExploreAction = async (
 
       for (const file of files) {
         try {
-          const content = fs.readFileSync(file, 'utf-8');
+          const content = readText(file);
           const lines = content.split('\n');
 
           lines.forEach((line, idx) => {
@@ -194,7 +198,7 @@ export const handleExploreAction = async (
             });
           });
         } catch (error) {
-          // Skip files that can't be read
+          // Skip files that can't be read or are refused (tallied for the exit notice)
         }
       }
 
@@ -218,10 +222,10 @@ export const handleExploreAction = async (
         row.files++;
 
         try {
-          const content = fs.readFileSync(file, 'utf-8');
+          const content = readText(file);
           row.lines += content.split('\n').length;
         } catch (error) {
-          // Skip files that can't be read
+          // Skip files that can't be read or are refused (tallied for the exit notice)
         }
       });
 
