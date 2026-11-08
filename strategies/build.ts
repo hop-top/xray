@@ -1,4 +1,5 @@
 // strategies/build.ts
+import * as path from 'path';
 import { NotFoundError, UsageError } from '../src/lib/error/types';
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import { BuildTool } from '../src/lib/strategy/build/types';
@@ -61,8 +62,12 @@ export default class BuildStrategy implements Strategy {
   async analyze(file: string, ctx: StrategyContext): Promise<FileMetadata> {
     const content = await ctx.readFile(file);
 
+    // The loader passes absolute paths; tool detection is project-relative.
+    const root = ctx.getProjectRoot?.();
+    const rel = root && path.isAbsolute(file) ? path.relative(root, file) : file;
+
     // Find matching tool for this file
-    const tool = this.buildTools.find(t => t.detect([file]) === file);
+    const tool = this.buildTools.find(t => t.detect([rel]) === rel);
     if (!tool) {
       return { tags: [], metadata: {} };
     }
