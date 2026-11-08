@@ -4154,7 +4154,8 @@ exports[`cli golden: introspection describe 1`] = `
       "exitCodes": [
         0,
         1,
-        2
+        2,
+        3
       ]
     },
     {
@@ -4434,7 +4435,8 @@ exports[`cli golden: introspection describe 1`] = `
       "exitCodes": [
         0,
         1,
-        2
+        2,
+        3
       ]
     },
     {
@@ -4530,7 +4532,8 @@ exports[`cli golden: introspection describe 1`] = `
       "exitCodes": [
         0,
         1,
-        2
+        2,
+        3
       ]
     },
     {
@@ -5881,7 +5884,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -6010,7 +6014,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -6294,7 +6299,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -6423,7 +6429,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -6552,7 +6559,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -6681,7 +6689,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],
@@ -6835,7 +6844,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -6972,7 +6982,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -7117,7 +7128,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],
@@ -7263,7 +7275,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -7392,7 +7405,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -7521,7 +7535,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],
@@ -7667,7 +7682,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -7796,7 +7812,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -7925,7 +7942,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -8054,7 +8072,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],
@@ -8184,7 +8203,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],
@@ -8354,7 +8374,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -8483,7 +8504,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -8612,7 +8634,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -8741,7 +8764,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -8870,7 +8894,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],
@@ -9024,7 +9049,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -9153,7 +9179,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -9282,7 +9309,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -9411,7 +9439,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -9540,7 +9569,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -9669,7 +9699,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],
@@ -9815,7 +9846,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -9944,7 +9976,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],
@@ -10090,7 +10123,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -10219,7 +10253,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -10348,7 +10383,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],
@@ -10494,7 +10530,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -10623,7 +10660,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         },
         {
@@ -10752,7 +10790,8 @@ exports[`cli golden: introspection describe 1`] = `
           "exitCodes": [
             0,
             1,
-            2
+            2,
+            3
           ]
         }
       ],

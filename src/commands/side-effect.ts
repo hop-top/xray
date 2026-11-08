@@ -33,6 +33,25 @@ export function declareEffect<C extends Command>(cmd: C, tier: Tier, idempotent:
   return cmd;
 }
 
+export const EXIT_CODES_KEY = 'xray/exit-codes';
+
+/**
+ * Declare exit codes beyond 0/1/2 that `cmd` can produce, for commands
+ * registered in bulk (strategy commands) where `describe` has no static
+ * entry. Returns `cmd`.
+ */
+export function declareExitCodes<C extends Command>(cmd: C, codes: readonly number[]): C {
+  const target = cmd as unknown as Annotated;
+  target.annotations = { ...target.annotations, [EXIT_CODES_KEY]: codes.join(',') };
+  return cmd;
+}
+
+/** Codes `cmd` declared with {@link declareExitCodes}. */
+export function declaredExitCodes(cmd: Command): number[] {
+  const raw = (cmd as unknown as Annotated).annotations?.[EXIT_CODES_KEY];
+  return raw ? raw.split(',').map(Number).filter(Number.isInteger) : [];
+}
+
 /** What `cmd` declares; a field is undefined when not declared. */
 export function declaredEffect(cmd: Command): { tier?: string; idempotent?: string } {
   const ann = (cmd as unknown as Annotated).annotations ?? {};

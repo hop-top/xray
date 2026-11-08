@@ -92,9 +92,8 @@ describe('Strategy Command Execution (Integration)', () => {
     it('should handle invalid path gracefully', async () => {
       const { stdout, stderr, exitCode } = await runXray('react components --path /nonexistent/path/that/does/not/exist');
 
-      // React strategy may not fail on missing path if no components found
-      // Just verify it doesn't crash
-      expect([0, 1]).toContain(exitCode);
+      // A root that does not exist is not found (3), like `map`: never an empty result
+      expect(exitCode).toBe(3);
     });
 
     it('should show helpful tip when path is invalid', async () => {

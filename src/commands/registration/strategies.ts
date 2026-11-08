@@ -1,4 +1,5 @@
 // src/commands/registration/strategies.ts
+import * as fs from 'fs';
 import { terminalSafe, terminalSafeBlock } from '../../lib/terminal-safe';
 import { Command } from 'commander';
 import { CodeLoadingOptions, StrategyLoader, reportSkippedProjectCode } from '../../lib/strategy/loader';
@@ -19,9 +20,9 @@ import {
   createStrategyContext,
   normalizeExtensionOptions,
 } from '../common';
-import { CodedError, UsageError } from '../../lib/error/types';
+import { CodedError, EXIT_NOT_FOUND, NotFoundError, UsageError } from '../../lib/error/types';
 import { setCommandGroup } from '../kit-cli';
-import { declareEffect } from '../side-effect';
+import { declareEffect, declareExitCodes } from '../side-effect';
 import {
   OUTPUT_FLAG_NAMES, addOutputFlags, assertFormat, emit, outputRegistry, textFormatter,
   unionColumns,
@@ -147,6 +148,8 @@ function registerStrategyCommand(
         .description(cmdDef.description || `Execute ${cmdName} command`)
         .option('-p, --path <path>', 'Project path to analyze', process.cwd())
     ), 'read', 'yes');
+    // A --path that is not a directory is not found (see executeStrategyCommand).
+    declareExitCodes(cmd, [EXIT_NOT_FOUND]);
 
     if (cmdDef.options) {
       for (const [optName, optDef] of Object.entries(cmdDef.options)) {
@@ -240,6 +243,14 @@ const DOT_FORMATTER = textFormatter<unknown>('dot', (result, put) => {
   put(terminalSafeBlock(doc.content));
 });
 
+const isDirectory = (p: string): boolean => {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Execute an extension command
  */
@@ -250,6 +261,10 @@ async function executeStrategyCommand(
   options: StrategyCommandOptions
 ): Promise<unknown> {
   const projectPath = options.path || process.cwd();
+  // An absent root is a typo, not an empty project: fail like `map` does.
+  if (!isDirectory(projectPath)) {
+    throw new NotFoundError(`Path does not exist or is not a directory: ${projectPath}`);
+  }
   const detectionSource =
     'strategy' in extension && extension.strategy
       ? extension.strategy

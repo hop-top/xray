@@ -69,8 +69,7 @@ describe('Strategy Commands - Real Execution', () => {
   describe('Express Strategy', () => {
     const expressProjectPath = path.join(fixturesDir, 'express-project');
 
-    it('should handle missing Express project gracefully', async () => {
-      // If fixture doesn't exist, test should still pass (no crash)
+    it('should list Express routes', async () => {
       const { stdout, exitCode } = await runXray(`express routes --path ${expressProjectPath}`);
 
       expect(exitCode).toBe(0);

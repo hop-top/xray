@@ -24,7 +24,7 @@ import {
 } from '../lib/error/types';
 import { JSON_DEFAULT_COMMANDS } from '../lib/error/report';
 import { TELEMETRY_POLICY } from '../lib/telemetry-policy';
-import { declaredEffect } from './side-effect';
+import { declaredEffect, declaredExitCodes } from './side-effect';
 
 const SCHEMA_URL = 'https://hop-top.dev/schemas/cli-capabilities/v1.json';
 const SPEC = '12fc/v1';
@@ -54,6 +54,11 @@ const EXTRA_EXIT_CODES: Record<string, number[]> = {
   'strategy.install': [EXIT_NOT_FOUND],
   'strategy.create': [EXIT_CONFLICT],
   'build.run': [EXIT_NOT_FOUND],
+  // A root that does not exist (positional or --path) is not found.
+  map: [EXIT_NOT_FOUND],
+  graph: [EXIT_NOT_FOUND],
+  // --graph names a file that does not exist.
+  query: [EXIT_NOT_FOUND],
   impact: [EXIT_NOT_FOUND],
   imports: [EXIT_NOT_FOUND],
   'alias.set': [EXIT_CONFLICT],
@@ -247,7 +252,7 @@ function classify(qualifiedName: string, cmd: Command): {
     idempotent = declared.idempotent as Idempotent;
   }
   const base = [EXIT_SUCCESS, EXIT_GENERIC, EXIT_USAGE];
-  const extras = EXTRA_EXIT_CODES[qualifiedName] ?? [];
+  const extras = [...(EXTRA_EXIT_CODES[qualifiedName] ?? []), ...declaredExitCodes(cmd)];
   const exitCodes = Array.from(new Set([...base, ...extras])).sort((a, b) => a - b);
   return { sideEffect, idempotent, exitCodes };
 }
