@@ -47,12 +47,30 @@ export function isTelemetryDisabledByFlag(argv: string[]): boolean {
   return argv.includes(TELEMETRY_POLICY.flag);
 }
 
+/** Streams and wait bound for the consent prompt; defaults are the process's. */
+export interface PromptIO {
+  input?: NodeJS.ReadableStream;
+  output?: NodeJS.WritableStream;
+  /** Give up waiting for an answer after this long (default `CONSENT_PROMPT_TIMEOUT_MS`). */
+  timeoutMs?: number;
+}
+
 /**
- * Prompt user for telemetry consent
- * Returns true if user consents, false otherwise
+ * How long the prompt waits for an answer. A person answers in seconds; an
+ * agent, hook or multiplexer driving a pty never does, and must not hang.
  */
-export async function promptForConsent(): Promise<boolean> {
-  const paint = styles(process.stdout);
+export const CONSENT_PROMPT_TIMEOUT_MS = 60_000;
+
+/**
+ * Prompt user for telemetry consent.
+ * Returns true if the user consents, false if they decline, undefined when
+ * there was no answer (input ended, or none within the timeout): nothing is
+ * decided then and nothing may be saved.
+ */
+export async function promptForConsent(io: PromptIO = {}): Promise<boolean | undefined> {
+  const out = io.output ?? process.stdout;
+  const paint = styles(out as NodeJS.WriteStream);
+  const console = { log: (line = '') => { out.write(`${line}\n`); } };
 
   // Clear any existing output
   console.log('');
@@ -79,9 +97,14 @@ export async function promptForConsent(): Promise<boolean> {
   console.log(paint.muted('or per project via "telemetry" in .xrayrc.json.'));
   console.log('');
 
-  const answer = await askQuestion(
-    paint.bold('Enable telemetry?') + ' [Y/n]: '
-  );
+  const answer = await askQuestion(paint.bold('Enable telemetry?') + ' [Y/n]: ', io);
+
+  if (answer === null) {
+    console.log('');
+    console.log(paint.muted('No answer: telemetry stays off for this run. You will be asked again.'));
+    console.log('');
+    return undefined;
+  }
 
   const consent = answer.toLowerCase() !== 'n' && answer.toLowerCase() !== 'no';
 
@@ -151,6 +174,9 @@ export async function handleFirstRunConsent(argv: string[], configPath?: string)
   Logger.debug('Prompting user for telemetry consent');
   const consent = await promptForConsent();
 
+  // No answer (input ended, timed out): decide nothing, ask again next time
+  if (consent === undefined) return false;
+
   // Save decision (per user, global config)
   saveConsentDecision(consent);
 
@@ -158,18 +184,26 @@ export async function handleFirstRunConsent(argv: string[], configPath?: string)
 }
 
 /**
- * Ask user a question and return their answer
+ * Ask a question; the answer, or null when input ends or `timeoutMs` passes
+ * first. Always settles, and releases stdin so the process can exit.
  */
-function askQuestion(question: string): Promise<string> {
+function askQuestion(question: string, io: PromptIO = {}): Promise<string | null> {
   return new Promise((resolve) => {
     const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
+      input: io.input ?? process.stdin,
+      output: io.output ?? process.stdout
     });
-
-    rl.question(question, (answer) => {
+    let timer: NodeJS.Timeout | undefined;
+    let done = false;
+    const settle = (answer: string | null) => {
+      if (done) return;
+      done = true;
+      if (timer) clearTimeout(timer);
+      resolve(answer);
       rl.close();
-      resolve(answer.trim());
-    });
+    };
+    rl.once('close', () => settle(null));
+    timer = setTimeout(() => settle(null), io.timeoutMs ?? CONSENT_PROMPT_TIMEOUT_MS);
+    rl.question(question, (answer) => settle(answer.trim()));
   });
 }

@@ -16,6 +16,7 @@ const mockClose = jest.fn();
 jest.mock('readline', () => ({
   createInterface: jest.fn(() => ({
     question: mockQuestion,
+    once: jest.fn(),
     close: mockClose
   }))
 }));
@@ -74,6 +75,7 @@ describe('TelemetryConsent', () => {
     // Reset mocks (jest config resets implementations between tests)
     (readline.createInterface as jest.Mock).mockImplementation(() => ({
       question: mockQuestion,
+      once: jest.fn(),
       close: mockClose
     }));
     mockQuestion.mockClear();
