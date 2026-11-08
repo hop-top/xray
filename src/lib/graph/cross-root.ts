@@ -18,6 +18,7 @@
  * `crossRoot: true`. `references` is removed from every node afterwards.
  */
 import * as fs from 'fs';
+import { readTextSafe } from '../safe-read';
 import * as path from 'path';
 import type { SerializedGraph, SerializedNode, SerializedEdge } from '../query/types';
 import { Confidence } from '../../types/graph';
@@ -63,7 +64,7 @@ const isGoFile = (f: string) => f.endsWith('.go');
 
 function readNpmName(root: string): string | null {
   try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf-8'));
+    const pkg = JSON.parse(readTextSafe(root, 'package.json'));
     return typeof pkg?.name === 'string' && pkg.name.length > 0 ? pkg.name : null;
   } catch {
     return null;

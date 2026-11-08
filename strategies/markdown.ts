@@ -46,14 +46,18 @@ type MdqElement = MdqSection | MdqParagraph | MdqCodeBlock | MdqList;
 const DEFAULT_MDQ_TIMEOUT_MS = 30_000;
 
 /**
- * Run mdq with stdin closed (mdq reads stdin when its argv is wrong, which
- * would block forever on an open pipe) and a hard timeout that kills the child.
+ * Run mdq on `input` (fed on stdin, then closed, so it cannot block waiting
+ * for more) with a hard timeout that kills the child.
  */
-function runMdq(args: string[]): Promise<{ status: number; stdout: string; stderr: string }> {
+function runMdq(args: string[], input: string): Promise<{ status: number; stdout: string; stderr: string }> {
   const timeoutMs = Number(process.env.XRAY_MDQ_TIMEOUT_MS) || DEFAULT_MDQ_TIMEOUT_MS;
 
   return new Promise((resolve) => {
-    const child = spawn('mdq', args, { stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
+    const child = spawn('mdq', args, { stdio: ['pipe', 'pipe', 'pipe'], env: process.env });
+    // The document goes in on stdin: mdq never opens a project path itself,
+    // so a FIFO, device or link out of the root cannot reach it.
+    child.stdin.on('error', () => { /* mdq exited before reading it all */ });
+    child.stdin.end(input);
     let stdout = '';
     let stderr = '';
     let settled = false;
@@ -134,9 +138,13 @@ export default class MarkdownStrategy implements Strategy {
       throw new Error(`File not found: ${absolutePath}`);
     }
 
+    // One guarded read (regular file inside the root, size cap); the same
+    // text feeds mdq and the line mapping below.
+    const content = await ctx.readFile(file);
+
     // Parse markdown with mdq (SAFE - no shell injection)
-    // First positional of mdq is a SELECTOR (empty = whole document), then the file.
-    const result = await runMdq(['--output', 'json', '', absolutePath]);
+    // First positional of mdq is a SELECTOR (empty = whole document); the document is on stdin.
+    const result = await runMdq(['--output', 'json', ''], content);
 
     if (result.status !== 0) {
       throw new Error(`mdq failed: ${result.stderr}`);
@@ -148,9 +156,6 @@ export default class MarkdownStrategy implements Strategy {
     } catch (error) {
       throw new Error(`Failed to parse mdq output: ${error}`);
     }
-
-    // Also read the original file for line number mapping
-    const content = await ctx.readFile(file);
 
     // Extract structure
     const tags: string[] = [];

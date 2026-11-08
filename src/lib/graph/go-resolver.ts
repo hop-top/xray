@@ -9,6 +9,7 @@
  * Packages outside every module (stdlib, third-party) never resolve.
  */
 import * as fs from 'fs';
+import { readTextSafe } from '../safe-read';
 import * as path from 'path';
 import { Import } from '../parser/types';
 
@@ -124,7 +125,7 @@ export function parseGoModRequires(goMod: string): string[] {
 
 function readModule(dir: string): GoModule | null {
   try {
-    const modulePath = parseModulePath(fs.readFileSync(path.join(dir, 'go.mod'), 'utf-8'));
+    const modulePath = parseModulePath(readTextSafe(dir, 'go.mod'));
     return modulePath ? { modulePath, moduleDir: dir } : null;
   } catch {
     return null; // unreadable go.mod: treat as absent
@@ -188,7 +189,7 @@ export function detectGoModules(root: string, files?: string[]): GoModules | nul
   const workDir = findUp(absRoot, 'go.work');
   if (workDir) {
     try {
-      const uses = parseGoWorkUses(fs.readFileSync(path.join(workDir, 'go.work'), 'utf-8'), workDir);
+      const uses = parseGoWorkUses(readTextSafe(workDir, 'go.work'), workDir);
       modules = all.filter(m => uses.has(m.moduleDir));
     } catch {
       /* unreadable go.work: fall back to every discovered module */

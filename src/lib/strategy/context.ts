@@ -6,6 +6,7 @@ import type { XrayExtensionConfig } from '../../types/xray-config';
 import { StrategyContext, FileQuery, StrategyContextOptions } from './types';
 import { FileReadError } from '../error/types';
 import { Logger } from '../logger';
+import { readTextSafe, isSafeEntry, UnsafeFileError } from '../safe-read';
 
 export class StrategyContextImpl implements StrategyContext {
   private root: string;
@@ -35,10 +36,12 @@ export class StrategyContextImpl implements StrategyContext {
     const pkgPath = path.join(this.root, 'package.json');
     if (fs.existsSync(pkgPath)) {
       try {
-        const content = fs.readFileSync(pkgPath, 'utf-8');
+        const content = readTextSafe(this.root, 'package.json');
         this.packageJson = JSON.parse(content);
       } catch (err: any) {
-        // Log warning but don't fail - package.json is optional for strategy detection
+        // Log warning but don't fail - package.json is optional for strategy detection.
+        // A refused file is tallied and reported once instead.
+        if (err instanceof UnsafeFileError) return;
         Logger.warn(`Could not read package.json: ${err.message}`);
       }
     }
@@ -55,8 +58,7 @@ export class StrategyContextImpl implements StrategyContext {
   }
 
   hasFiles(pattern: string): boolean {
-    const files = globSync(pattern, { cwd: this.root });
-    return files.length > 0;
+    return globSync(pattern, { cwd: this.root }).some(f => isSafeEntry(this.root, f));
   }
 
   async parseAST(file: string): Promise<any> {
@@ -65,8 +67,8 @@ export class StrategyContextImpl implements StrategyContext {
   }
 
   async readFile(file: string): Promise<string> {
-    const filePath = path.isAbsolute(file) ? file : path.join(this.root, file);
-    return fs.promises.readFile(filePath, 'utf-8');
+    // Regular files inside the project root only, within the size cap.
+    return readTextSafe(this.root, file);
   }
 
   async findFiles(query: FileQuery): Promise<string[]> {
@@ -84,7 +86,7 @@ export class StrategyContextImpl implements StrategyContext {
       cwd: this.root,
       nodir: true,
       ignore: ['node_modules/**', '.git/**']
-    });
+    }).filter(f => isSafeEntry(this.root, f));
 
     // Only apply complex filters that can't be done by glob
     if (query.pattern || query.tagged) {
@@ -133,7 +135,7 @@ export class StrategyContextImpl implements StrategyContext {
     }
 
     // Perform glob operation
-    const files = globSync(pattern, { cwd: this.root });
+    const files = globSync(pattern, { cwd: this.root }).filter(f => isSafeEntry(this.root, f));
 
     // Cache the result
     this.globCache.set(pattern, files);

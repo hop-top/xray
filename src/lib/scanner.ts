@@ -6,6 +6,7 @@ import { execSync, execFileSync } from 'child_process';
 import { Logger } from './logger';
 import { FileReadError } from './error/types';
 import { knownExtensions } from './parser/grammars';
+import { readTextSafe, noteSkip } from './safe-read';
 
 export class FileScanner {
   private root: string;
@@ -19,7 +20,7 @@ export class FileScanner {
     const gitignorePath = path.join(root, '.gitignore');
     if (fs.existsSync(gitignorePath)) {
       try {
-        this.ig.add(fs.readFileSync(gitignorePath, 'utf-8'));
+        this.ig.add(readTextSafe(root, '.gitignore'));
       } catch (err: any) {
         // If .gitignore is unreadable, log warning but continue
         Logger.warn(`Could not read .gitignore: ${err.message}`);
@@ -73,7 +74,8 @@ export class FileScanner {
   /**
    * Symlinks that leave the root, or point at something the scanner would
    * not list (`.env`, anything under `.git`), are not followed: reading
-   * through them would disclose files the scan never meant to cover.
+   * through them would disclose files the scan never meant to cover. Entries
+   * that are not regular files (FIFOs, devices, sockets) are dropped too.
    */
   private dropEscapingLinks(files: string[]): string[] {
     let realRoot: string;
@@ -86,12 +88,22 @@ export class FileScanner {
     return files.filter((f) => {
       const abs = path.join(this.root, f);
       try {
-        if (!fs.lstatSync(abs).isSymbolicLink()) return true;
-        const rel = path.relative(realRoot, fs.realpathSync(abs));
-        if (rel.startsWith('..') || path.isAbsolute(rel)) return false;
+        const st = fs.lstatSync(abs);
+        if (!st.isSymbolicLink()) {
+          // A FIFO, socket or device would block or never end when read.
+          if (st.isFile()) return true;
+          noteSkip('not-regular', f);
+          return false;
+        }
+        const real = fs.realpathSync(abs);
+        const rel = path.relative(realRoot, real);
+        if (rel.startsWith('..') || path.isAbsolute(rel)) {
+          noteSkip('outside-root', f);
+          return false;
+        }
         // Followed only when the target is itself a listed file: not
         // ignored, not under .git, of a supported extension.
-        return listed.has(rel.split(path.sep).join('/'));
+        return listed.has(rel.split(path.sep).join('/')) && fs.statSync(real).isFile();
       } catch {
         return false;
       }

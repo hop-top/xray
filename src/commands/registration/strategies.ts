@@ -343,6 +343,7 @@ async function analyzeProjectFiles(
   }
 
   const { globSync } = await import('glob');
+  const { isSafeEntry } = await import('../../lib/safe-read');
   const path = await import('path');
 
   const fileTypes = strategy.fileTypes?.() || [];
@@ -365,8 +366,9 @@ async function analyzeProjectFiles(
       nodir: true,
       ignore: ignorePatterns
     });
+    // Regular files inside the root only: not a FIFO or device, not a link out.
     for (const file of files) {
-      seen.add(file);
+      if (isSafeEntry(projectRoot, file)) seen.add(file);
     }
   }
 

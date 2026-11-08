@@ -21,6 +21,7 @@
 //   written to the same contract but is untested on this platform.
 import { spawn, spawnSync } from 'child_process';
 import * as fs from 'fs';
+import { readTextSafe } from '../../safe-read';
 import * as crypto from 'crypto';
 import * as os from 'os';
 import * as path from 'path';
@@ -223,7 +224,7 @@ export function findMainPackages(root: string): string[] {
     return entries.some(f => {
       if (!f.endsWith('.go') || f.endsWith('_test.go')) return false;
       try {
-        return /^\s*package\s+main\b/m.test(fs.readFileSync(path.join(dir, f), 'utf-8'));
+        return /^\s*package\s+main\b/m.test(readTextSafe(dir, f));
       } catch {
         return false;
       }
@@ -242,7 +243,7 @@ export function findMainPackages(root: string): string[] {
 
 export function modulePath(root: string): string | undefined {
   try {
-    return /^\s*module\s+(\S+)/m.exec(fs.readFileSync(path.join(root, 'go.mod'), 'utf-8'))?.[1];
+    return /^\s*module\s+(\S+)/m.exec(readTextSafe(root, 'go.mod'))?.[1];
   } catch {
     return undefined;
   }

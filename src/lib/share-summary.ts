@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { readTextSafe } from './safe-read';
 import * as path from 'path';
 import { RankedNode, isRankedTagNode } from '../types/graph';
 import { ChunkMetadata } from './renderer/chunked-renderer';
@@ -114,7 +115,7 @@ const getProjectName = (projectPath: string): string => {
   try {
     const pkgPath = path.join(projectPath, 'package.json');
     if (fs.existsSync(pkgPath)) {
-      const content = fs.readFileSync(pkgPath, 'utf-8');
+      const content = readTextSafe(projectPath, 'package.json');
       const pkg = JSON.parse(content) as { name?: string };
       if (pkg.name && typeof pkg.name === 'string') {
         return pkg.name;

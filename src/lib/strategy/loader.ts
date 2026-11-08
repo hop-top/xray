@@ -13,6 +13,7 @@ import { FileReadError } from '../error/types';
 import { Logger, LogLevel } from '../logger';
 import { isGrammarAvailable } from '../parser/grammars';
 import { terminalSafe } from '../terminal-safe';
+import { readTextSafe } from '../safe-read';
 
 const warnedStrategies = new Set<string>();
 const warnedProjectCode = new Set<string>();
@@ -172,7 +173,7 @@ export interface StrategyPackage {
 export function readStrategyPackage(pkgDir: string): StrategyPackage {
   let pkg: any;
   try {
-    pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8'));
+    pkg = JSON.parse(readTextSafe(pkgDir, 'package.json'));
   } catch (err: any) {
     throw new Error(`cannot read package.json: ${err.message}`);
   }
@@ -254,7 +255,7 @@ export class StrategyLoader {
       if (base.startsWith('xray-strategy-')) {
         names.add(base.slice('xray-strategy-'.length));
         try {
-          const pkg = JSON.parse(fs.readFileSync(path.join(cwd, rel, 'package.json'), 'utf-8'));
+          const pkg = JSON.parse(readTextSafe(path.join(cwd, rel), 'package.json'));
           for (const n of [pkg?.name, pkg?.['xray-strategy']?.name]) {
             if (typeof n === 'string') names.add(n);
           }
@@ -270,7 +271,7 @@ export class StrategyLoader {
   /** A strategy package declaring a code entry; a YAML entry runs no code. */
   private packageEntryIsCode(dir: string): boolean {
     try {
-      const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8'));
+      const pkg = JSON.parse(readTextSafe(dir, 'package.json'));
       const entry = pkg?.['xray-strategy']?.entry;
       return typeof entry === 'string' && !isDeclarative(entry);
     } catch {
@@ -603,7 +604,7 @@ export class StrategyLoader {
             const pkgPath = path.join(filePath, 'package.json');
             if (fs.existsSync(pkgPath)) {
               try {
-                const content = fs.readFileSync(pkgPath, 'utf-8');
+                const content = readTextSafe(filePath, 'package.json');
                 const pkg = JSON.parse(content);
                 if (pkg['xray-strategy']) {
                   const entryPath = resolvePackageEntry(filePath, pkg['xray-strategy'].entry);

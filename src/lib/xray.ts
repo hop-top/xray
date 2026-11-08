@@ -16,6 +16,7 @@ import { contractLanguageOf } from './imports/tree';
 import type { ResolveInput } from './imports/resolve';
 import { SqliteCache } from './cache/sqlite-cache';
 import { Logger } from './logger';
+import { readTextSafe, UnsafeFileError } from './safe-read';
 import { AsyncEventEmitter } from './events/async-emitter';
 import { XrayEvents } from './events/types';
 import { PluginManager, XrayPlugin } from './events/plugin';
@@ -341,7 +342,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     const out: ResolveInput[] = [];
     for (const f of this.manifests) {
       try {
-        out.push({ path: f.split(path.sep).join('/'), content: fs.readFileSync(path.join(this.config.path, f), 'utf-8') });
+        out.push({ path: f.split(path.sep).join('/'), content: readTextSafe(this.config.path, f) });
       } catch {
         // Tracked but deleted in the working tree, or a directory: nothing to read.
       }
@@ -437,8 +438,11 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
 
         let content: string;
         try {
-          content = fs.readFileSync(absPath, 'utf-8');
+          content = readTextSafe(this.config.path, file);
         } catch (err: any) {
+          // Refused (not a regular file, outside the root, too large): tallied
+          // and reported once at exit, not as one error per file.
+          if (err instanceof UnsafeFileError) continue;
           await this.emitAsync('error', {
             event: 'file:read',
             error: new FileReadError(file, err),

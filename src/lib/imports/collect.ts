@@ -8,6 +8,7 @@
  */
 
 import * as fs from 'fs';
+import { readFileSafe, UnsafeFileError } from '../safe-read';
 import * as path from 'path';
 import { validateScanRoots } from '../config';
 import { NotFoundError, UsageError } from '../error/types';
@@ -162,11 +163,11 @@ export function collectImportFiles(root: string, opts: CollectImportsOptions = {
     if (!keep) continue;
     let content: Buffer;
     try {
-      content = fs.readFileSync(path.join(rootReal, f));
+      content = readFileSafe(rootReal, f);
     } catch (err) {
       // Tracked but deleted in the working tree, or a submodule dir: nothing to read.
       const code = (err as NodeJS.ErrnoException).code;
-      if (code === 'ENOENT' || code === 'EISDIR') continue;
+      if (code === 'ENOENT' || code === 'EISDIR' || err instanceof UnsafeFileError) continue;
       throw err;
     }
     out.push({ path: rel, content });
