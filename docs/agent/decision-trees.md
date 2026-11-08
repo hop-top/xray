@@ -99,7 +99,7 @@ WHAT DOES USER WANT TO UNDERSTAND?
     │   │   └─ TOKENS: 100
     │   │
     │   └─ Other framework
-    │       └─ COMMAND: xray explore <framework>:<type>
+    │       └─ COMMAND: xray <strategy> <command>
     │           TOKENS: 100-150
     │
     ├─ "How does [file/component] work?"
@@ -374,7 +374,7 @@ AFTER XRAY ANALYSIS COMPLETE
 CHEAP (50-100 tokens)        MEDIUM (200-400 tokens)     EXPENSIVE (500+ tokens)
 ├─ strategy detect           ├─ map --depth 2             ├─ graph commands
 ├─ explore --match pattern   ├─ map --anchor file         ├─ complete map
-├─ explore framework         └─ map with features         └─ multiple commands
+├─ <strategy> <command>      └─ map with features         └─ multiple commands
 
 USE WHEN: Quick answer    USE WHEN: Good            USE WHEN: Deep
 LIMITED INFO              understanding needed      understanding needed

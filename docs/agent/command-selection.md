@@ -160,7 +160,7 @@ WHAT DO YOU WANT TO UNDERSTAND?
 
 3. Explore patterns
    FOR EACH detected framework:
-     COMMAND: xray <framework>:components (or similar)
+     COMMAND: xray react components (or similar)
      WHY: Find key files to understand
      TOKENS: ~100 each
      OUTPUT: List of main components/routes
@@ -210,7 +210,7 @@ RESULT: You now know where the bug likely is and its context
    TOKENS: ~50
 
 2. Find similar features
-   COMMAND: xray explore <framework>:<command>
+   COMMAND: xray <strategy> <command>
    WHY: See what similar features exist
    TOKENS: ~100
    OUTPUT: Files with similar patterns
@@ -254,7 +254,7 @@ RESULT: You know where to add feature and what pattern to follow
    OUTPUT: Transitive callers by area, EXTRACTED/INFERRED edge counts
 
 4. Find patterns
-   COMMAND: xray explore <framework>:<command>
+   COMMAND: xray <strategy> <command>
    WHY: If framework patterns changed
    TOKENS: ~100
    OUTPUT: How this pattern is used elsewhere
@@ -457,8 +457,8 @@ Single File Output:
 | What frameworks? | Unknown | `strategy detect` |
 | What files exist? | Need specific files | `explore --match <pattern>` |
 | How organized? | Understanding structure | `map --depth 2` |
-| Find components? | React/Vue project | `explore <framework>:components` |
-| Find routes? | Express/Next.js/etc | `explore <framework>:routes` |
+| Find components? | React/Vue project | `react components` |
+| Find routes? | Express/Next.js/etc | `express routes` |
 | What's imported? | Understanding dependencies | `map --with incs` |
 | How does data flow? | Analyzing logic | `graph --with df` |
 | How does control flow? | Analyzing logic | `graph --with cf` |

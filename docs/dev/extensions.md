@@ -62,7 +62,7 @@ xray map --enable-extension glossary
 xray map --extension-threshold glossary=0.85
 xray map --extension-hint glossary=domain-term
 xray map --enable-surface glossary:detect
-xray glossary scan --disable-surface glossary:export
+xray react components --disable-surface glossary:export
 ```
 
 ## Strategy Context API

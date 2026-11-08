@@ -74,7 +74,7 @@ xray map --anchor src/api/routes.ts --with incs
 xray explore --match "*auth*" --match "*login*"
 
 # See what patterns are used
-xray explore <framework>:components  # for React changes
+xray react components  # for React changes
 xray express routes  # for API changes
 ```
 

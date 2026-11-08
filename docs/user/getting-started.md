@@ -49,8 +49,8 @@ cd /path/to/your/project
 # 2. Run xray
 xray map
 
-# 3. View the output (xray prints the root chunk path)
-cat .xray_root.md
+# List the chunk files; xray also prints "Root chunk: <path>" - open that one
+ls .xray_*.md
 ```
 
 That's it! You now have a hierarchical map of your codebase.
@@ -288,7 +288,7 @@ cat my-map.txt
 
 ```bash
 # Clear the cache
-xray clear-cache
+xray clear-cache --confirm=yes
 
 # Regenerate
 xray map
@@ -344,7 +344,7 @@ xray map --path ./src --depth 2       # Shallow, quick overview
 xray strategy detect                  # What frameworks here?
 xray react components                 # List React components
 xray express routes                   # List API routes
-xray clear-cache                      # Fix stale results
+xray clear-cache --confirm=yes                      # Fix stale results
 ```
 
 That's 90% of what you need daily.

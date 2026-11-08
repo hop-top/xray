@@ -20,7 +20,7 @@ and patterns. Use it when:
 Basic commands:
 - `xray strategy detect` - Identify frameworks
 - `xray map --path ./src --depth 2` - See structure
-- `xray explore <framework>:<command>` - Find patterns
+- `xray <strategy> <command>` - Find patterns
 - `xray explore --match "*.ts"` - Find files
 - `xray impact <symbol>` - Who calls this, transitively (before changing it)
 
@@ -99,7 +99,7 @@ If xray fails:
 ```
 1. xray strategy detect     (know the tech stack)
 2. xray map --depth 2       (see structure)
-3. xray explore <framework> (find patterns)
+3. xray <strategy> <command> (find patterns)
 ```
 
 **Implementing feature:**
@@ -129,7 +129,7 @@ Each xray command costs tokens. Estimate:
 - strategy detect: ~50 tokens
 - explore --match: ~50-100 tokens
 - map --depth 2: ~300-400 tokens
-- explore <framework>:<command>: ~100-150 tokens
+- <strategy> <command>: ~100-150 tokens
 - impact <symbol>: ~50-200 tokens
 
 Start cheap (explore), only use map when needed.
@@ -300,7 +300,7 @@ TOTAL TOKENS: ~500
 
 ```
 STEP 1: Find similar features (100 tokens)
-→ xray explore <framework>:<type>
+→ xray <strategy> <command>
 ← Result: List of existing similar items
 
 STEP 2: Study the pattern (400 tokens)
@@ -484,7 +484,7 @@ Use the xray tool with these commands:
 
 1. **Detect frameworks:** xray strategy detect
 2. **Find structure:** xray map --path ./src --depth 2
-3. **Find patterns:** xray explore <framework>:<type>
+3. **Find patterns:** xray <strategy> <command>
 4. **Find files:** xray explore --match "<pattern>"
 5. **Analyze flow:** xray graph --with cf --with df
 6. **Find callers before a change:** xray impact <symbol>

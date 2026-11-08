@@ -171,7 +171,8 @@ Commands:
 ```bash
 xray map --catch "*Handler" --with incs
 xray map --catch "*Controller" --with incs
-xray map --with incs | grep -i "auth\|jwt\|oauth"
+xray map --with incs --no-chunk -o map.txt
+grep -i "auth\|jwt\|oauth" map.txt
 ```
 
 ## Package dependencies

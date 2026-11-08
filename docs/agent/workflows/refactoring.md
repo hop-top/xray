@@ -82,7 +82,7 @@ xray explore --match "*similar-pattern*"
 #### Step 3.1: Study Existing Patterns
 
 ```bash
-xray explore <framework>:<type>  # See how similar code is structured
+xray <strategy> <command>  # See how similar code is structured
 xray map --anchor <similar-file>  # Understand pattern
 ```
 

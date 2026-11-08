@@ -398,7 +398,7 @@ xray User Manual
 │   ├── React (components, hooks, contexts)
 │   ├── Express (routes, middleware, error handlers)
 │   ├── REST API (endpoints across frameworks)
-│   └── Go CLI (commands, flags, hierarchy)
+│   └── Go CLI (command tree and flags)
 │
 ├── Configuration Guide (Setup once, use everywhere)
 │   ├── Basic config

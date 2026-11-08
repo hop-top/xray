@@ -14,7 +14,7 @@ Agent guidance for xray. Full guide at [`docs/agent/`](docs/agent/).
 | Framework-aware insights | `xray <strategy> <noun>` |
 | List available strategies | `xray strategy list` |
 | Detect applicable strategies | `xray strategy detect` |
-| Default search / explore | `xray [query]` |
+| Search code for a keyword | `xray explore --search <keyword>` |
 
 ## Surface
 
@@ -22,7 +22,7 @@ Agent guidance for xray. Full guide at [`docs/agent/`](docs/agent/).
 
 - Analysis: `map`, `graph`, `query`, `impact`, `explore`
 - Strategy: `strategy` + dynamic noun commands
-- Management: `alias`, `clear-cache`, `completion`, `upgrade`
+- Management: `alias`, `clear-cache`, `completion`
 - Integration: `mcp` — stdio MCP server ([`docs/user/mcp.md`](docs/user/mcp.md)); harness hooks in `hooks/harness/` push `xray impact` into Claude Code / nerv / Gemini CLI sessions ([`docs/user/harness-integration.md`](docs/user/harness-integration.md))
 
 ## Reference

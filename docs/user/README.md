@@ -238,7 +238,7 @@ cat .xray.txt | xclip  # or copy to clipboard
 
 1. **Install**: `npm install -g @hop-top/xray`
 2. **Run**: `xray map` in your project
-3. **View**: `cat .xray_root.md` or open in editor
+3. **View**: open the `Root chunk:` file xray prints (see `.xray_*.md`) in an editor
 4. **Learn**: Pick a guide from above based on your need
 
 ## Resources

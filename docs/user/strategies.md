@@ -79,7 +79,7 @@ Dynamic extension commands also accept runtime extension overrides:
 xray react components
 xray express routes
 xray rest-api endpoints -p ~/projects/my-api
-xray glossary scan --extension-threshold glossary=0.9
+xray react components --extension-threshold glossary=0.9
 xray react components --disable-extension glossary
 ```
 
@@ -100,14 +100,13 @@ xray map --extension-threshold glossary=0.85 \
 
 # Gate extension surfaces independently
 xray map --enable-surface glossary:detect
-xray glossary scan --disable-surface glossary:export
+xray react components --disable-surface glossary:export
 ```
 
 These flags layer on top of config file settings with runtime precedence.
 They work for:
 - analysis commands such as `map` and `graph`
-- dynamic extension command groups such as `react ...`, `express ...`, and future
-  glossary commands
+- dynamic extension command groups such as `react ...` and `express ...`
 
 If you are authoring an extension, the resolved values are exposed through the
 shared strategy context:
@@ -508,82 +507,31 @@ The Go CLI strategy activates when:
 
 ##### `go-cli commands`
 
-Lists all CLI commands with descriptions.
+Shows the CLI command tree: each command with its description, source
+location and flags. Persistent flags sit under their command; a subcommand's
+own flags follow it. This is the only `go-cli` command.
 
 ```bash
 xray go-cli commands
+xray go-cli commands --format json
 ```
 
 **Example Output:**
 ```
-Go CLI Commands:
-  myapp (A CLI application) - cmd/root.go
-  serve (Start the server) - cmd/serve.go
-  deploy (Deploy the application) - cmd/deploy.go
-  migrate (Run database migrations) - cmd/migrate.go
-  version (Print version information) - cmd/version.go
-
-Total: 5 command(s)
+myapp commands [source: AST (tree-sitter-go)]
+myapp  A CLI application  (cmd/root.go:5)
+│    --verbose  Enable verbose logging
+└─ serve  Start the server  (cmd/root.go:7)
+        -p, --port <int>  Server port
 ```
+
+`--format json` returns `{source, tool, commands: [{path, short, flags, file,
+line}]}`; each flag has `name`, `type`, `description`, `persistent`.
 
 **What it detects:**
-- **Cobra**: `&cobra.Command{Use: "...", Short: "..."}`
-- **urfave/cli**: `&cli.App{}`, `&cli.Command{}`
-- Command names and descriptions
-
-##### `go-cli flags`
-
-Lists all command-line flags.
-
-```bash
-xray go-cli flags
-```
-
-**Example Output:**
-```
-CLI Flags:
-  --port (Server port) - cmd/serve.go [type: int, default: 8080]
-  --host (Server host) - cmd/serve.go [type: string, default: localhost]
-  --config (Config file path) - cmd/root.go [type: string]
-  --verbose (Enable verbose logging) - cmd/root.go [type: bool]
-
-Total: 4 flag(s)
-```
-
-**What it detects:**
-- **Cobra**: `StringP`, `BoolP`, `IntP`, etc.
-- **urfave/cli**: `StringFlag`, `BoolFlag`, `IntFlag`, etc.
-- **Standard flag**: `flag.String`, `flag.Bool`, `flag.Int`, etc.
-- Flag names, types, defaults, and descriptions
-
-##### `go-cli tree`
-
-Shows command hierarchy (parent-child relationships).
-
-```bash
-xray go-cli tree
-```
-
-**Example Output:**
-```
-CLI Command Tree:
-myapp
-├── serve
-├── deploy
-│   ├── staging
-│   └── production
-├── migrate
-│   ├── up
-│   └── down
-└── version
-
-Total: 8 command(s)
-```
-
-**What it detects:**
-- Parent-child relationships via `AddCommand()`
-- Nested command structures
-- Command hierarchy visualization
+- **Cobra**: `&cobra.Command{Use: "...", Short: "..."}`, `AddCommand()` nesting,
+  `Flags()` / `PersistentFlags()` declarations
+- Command names, descriptions, flags (name, shorthand, type, default)
 
 #### Use Cases
 
@@ -591,21 +539,18 @@ Total: 8 command(s)
 ```bash
 # Generate command reference
 xray go-cli commands > CLI-COMMANDS.md
-xray go-cli flags > CLI-FLAGS.md
 ```
 
 **Command completeness check:**
 ```bash
-# Ensure all commands have descriptions
-xray go-cli commands | grep -v "(.*)$"
-# Commands without descriptions will appear
+# Commands without a description
+xray go-cli commands --format json | jq -r '.commands[] | select(.short == "" or .short == null) | .path | join(" ")'
 ```
 
 **Flag audit:**
 ```bash
-# Review all flags for consistency
-xray go-cli flags
-# Check naming conventions, required flags, defaults
+# One line per flag: command, flag, type
+xray go-cli commands --format json | jq -r '.commands[] | .path as $p | .flags[]? | "\($p | join(" ")) --\(.name) \(.type)"'
 ```
 
 ---
@@ -711,7 +656,6 @@ xray react components >> COMPONENTS.md
 # CLI Reference
 echo "# CLI Commands" > CLI.md
 xray go-cli commands >> CLI.md
-xray go-cli flags >> CLI.md
 ```
 
 ## Troubleshooting
@@ -733,7 +677,7 @@ xray go-cli flags >> CLI.md
 2. For React: Check `package.json` has `react` or `react-dom` dependency
 3. For Express: Check `express` is in dependencies (not just devDependencies)
 4. For Go CLI: Check `go.mod` includes Cobra or urfave/cli
-5. Clear cache and retry: `xray clear-cache && xray strategy detect`
+5. Clear cache and retry: `xray clear-cache --confirm=yes && xray strategy detect`
 
 ### No results from command
 
@@ -752,7 +696,7 @@ xray go-cli flags >> CLI.md
 
 **Solutions**:
 1. First run is slower (AST parsing + detection). Subsequent runs use cache.
-2. Clear stale cache if you've made many changes: `xray clear-cache`
+2. Clear stale cache if you've made many changes: `xray clear-cache --confirm=yes`
 3. Reduce project size by excluding `node_modules`, `dist`, etc. (automatically excluded)
 4. Check the cache file size (`cache-db` in `xray paths`) - delete if too large (it will regenerate)
 
@@ -762,7 +706,7 @@ xray go-cli flags >> CLI.md
 
 **Solutions**:
 1. Cache invalidates based on file modification time (should be automatic)
-2. Force cache clear: `xray clear-cache`
+2. Force cache clear: `xray clear-cache --confirm=yes`
 3. Verify files were actually saved (check file timestamps)
 
 ### Command not found

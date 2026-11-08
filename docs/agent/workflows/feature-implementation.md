@@ -36,7 +36,7 @@ xray strategy detect
 
 ```bash
 # For React/Vue projects
-xray explore <framework>:components
+xray react components
 
 # For Express/Node projects
 xray express routes

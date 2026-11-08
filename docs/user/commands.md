@@ -15,7 +15,7 @@ Complete guide to every xray command and option. Start with the decision tree to
 - **Detect what frameworks are used** → [`xray strategy detect`](#xray-strategy-detect)
 - **See all available strategies** → [`xray strategy list`](#xray-strategy-list)
 - **Create command shortcuts** → [`xray alias`](#xray-alias)
-- **Fix stale results** → [`xray clear-cache`](#xray-clear-cache)
+- **Fix stale results** → [`xray clear-cache --confirm=yes`](#xray-clear-cache)
 - **Enable shell completion** → [`xray completion`](#xray-completion)
 
 ---
@@ -732,11 +732,13 @@ See [Command Aliases Guide](aliases.md) for detailed documentation.
 
 ### `xray clear-cache`
 
-Clear the SQLite cache used for parsed AST data, for the project in the current directory (other projects' caches stay). `xray cache clear` is the same command (the `cache` group is what `xray --help` lists).
+Clear the SQLite cache used for parsed AST data, for the project in the current directory (other projects' caches stay). `xray cache clear --confirm=yes` is the same command (the `cache` group is what `xray --help` lists).
 
 ```bash
-xray clear-cache
+xray clear-cache --confirm=yes
 ```
+
+This is a destructive command: in a terminal it asks first; scripts and agents (no terminal) must pass `--confirm=yes` or it exits 5.
 
 ### `xray completion`
 
@@ -918,7 +920,7 @@ union of every root's nodes and edges.
 The per-format flags `--txt`, `--csv`, `--xml`, `--json` remain as aliases
 (`--json` = `--format json`). `--format` wins over an alias; two different
 aliases (`--json --csv`) is a usage error (exit 2), as is an unknown
-`--format` value (`--format mermaid` lists the valid ones). `xray lang list`
+`--format` value (the error lists the valid ones). `xray lang list`
 takes `--format text|json` too (`--json` alias). Machine formats
 (`json`, `csv`, `xml`) keep advisory INFO hints on stderr quiet unless
 verbose.

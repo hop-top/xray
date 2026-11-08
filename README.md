@@ -24,8 +24,8 @@ xray lang add go typescript   # grammars are opt-in; pick your languages
 cd /path/to/your/project
 xray map
 
-# View the output (xray prints the root chunk path)
-cat .xray_root.md
+# List the chunk files; xray also prints "Root chunk: <path>" - open that one
+ls .xray_*.md
 ```
 
 **That's it!** You now have a structured overview of your codebase.
@@ -117,7 +117,7 @@ xray strategy detect
 - **React** - Components, hooks, contexts
 - **Express** - Routes, routers, middleware, error handlers
 - **REST API** - Cross-framework endpoint analysis (Node.js, Python, Go)
-- **Go CLI** - Commands, flags, hierarchy (Cobra, urfave/cli)
+- **Go CLI** - Command tree and flags (Cobra)
 - **Next.js** - Pages, API routes, components
 - **Build** - Makefile, Justfile, Taskfile, npm scripts
 - **CI/CD** - GitHub Actions, GitLab CI, CircleCI

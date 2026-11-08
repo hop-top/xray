@@ -60,7 +60,7 @@ xray strategy detect
 
 ### 9. Clear Stale Cache
 ```bash
-xray clear-cache && xray map
+xray clear-cache --confirm=yes && xray map
 ```
 
 ### 10. Generate for AI
@@ -389,11 +389,14 @@ xray map --anchor src/routes/admin.ts --with incs --with vars --with df
 ### Find All Imports of a Library
 
 ```bash
+# Write the map (with imports) to one file, then search it
+xray map --with incs --no-chunk -o map.txt
+
 # Find all places using axios
-xray map --with incs | grep -i "axios"
+grep -i "axios" map.txt
 
 # Get detailed context
-xray map --with incs | grep -B 2 -A 2 "axios"
+grep -B 2 -A 2 "axios" map.txt
 
 # Now you know exactly where HTTP calls happen
 ```
@@ -402,10 +405,11 @@ xray map --with incs | grep -B 2 -A 2 "axios"
 
 ```bash
 # Find all files using database
-xray map --with incs | grep -E "database|db|prisma|mongoose"
+xray map --with incs --no-chunk -o map.txt
+grep -E "database|db|prisma|mongoose" map.txt
 
 # Enumerate each file
-xray map --with incs | grep -E "database|db|prisma|mongoose" | cut -d' ' -f1 | sort | uniq
+grep -E "database|db|prisma|mongoose" map.txt | cut -d' ' -f1 | sort | uniq
 ```
 
 ---
@@ -429,10 +433,10 @@ xray react components > refactor-audit/before/components.txt
 xray express routes > refactor-audit/before/routes.txt
 
 # Snapshot full analysis
-xray map > refactor-audit/before/map.txt
+xray map --no-chunk -o refactor-audit/before/map.txt
 
 # Snapshot module structure
-xray map --path ./src/moduleBeingRefactored > refactor-audit/before/module.txt
+xray map --path ./src/moduleBeingRefactored --no-chunk -o refactor-audit/before/module.txt
 ```
 
 ### Step 2: Do the Refactoring
@@ -448,11 +452,11 @@ git diff  # Review changes
 mkdir -p refactor-audit/after
 
 # Same snapshots
-xray clear-cache  # Important: clear cache to see fresh analysis
+xray clear-cache --confirm=yes  # Important: clear cache to see fresh analysis
 xray react components > refactor-audit/after/components.txt
 xray express routes > refactor-audit/after/routes.txt
-xray map > refactor-audit/after/map.txt
-xray map --path ./src/moduleBeingRefactored > refactor-audit/after/module.txt
+xray map --no-chunk -o refactor-audit/after/map.txt
+xray map --path ./src/moduleBeingRefactored --no-chunk -o refactor-audit/after/module.txt
 ```
 
 ### Step 4: Compare
@@ -502,7 +506,7 @@ mkdir -p docs/onboarding
 xray strategy detect > docs/onboarding/1-frameworks.txt
 
 # High-level structure
-xray map --depth 2 > docs/onboarding/2-structure.txt
+xray map --depth 2 --no-chunk -o docs/onboarding/2-structure.txt
 
 # Component inventory (if React)
 xray react components > docs/onboarding/3-components.txt
@@ -569,6 +573,8 @@ echo "Created docs/onboarding/GUIDE.md"
 
 ### Step 3: Add to README
 
+Add this to your project's own README. `docs/onboarding/GUIDE.md` is the file Step 2 creates in your project; the link resolves there.
+
 ```markdown
 # Quickstart for New Developers
 
@@ -581,9 +587,9 @@ Takes about 15 minutes to understand the basics.
 
 ```bash
 # Run this monthly to keep guides fresh
-xray clear-cache
+xray clear-cache --confirm=yes
 xray strategy detect > docs/onboarding/1-frameworks.txt
-xray map --depth 2 > docs/onboarding/2-structure.txt
+xray map --depth 2 --no-chunk -o docs/onboarding/2-structure.txt
 # etc.
 
 git add docs/onboarding/
@@ -721,7 +727,7 @@ limits: [Use case: impact analysis](use-cases.md#use-case-impact-analysis).
 
 **"No results"** → Add path: `xray express routes -p ./src`
 
-**"Stale results"** → Clear cache: `xray clear-cache`
+**"Stale results"** → Clear cache: `xray clear-cache --confirm=yes`
 
 **"Lost in output"** → Use `--depth 2` or `--limit 2000` to reduce size
 

@@ -311,7 +311,7 @@ You've successfully understood the codebase when you can:
 ### Problem: Dependencies seem random
 **Recovery:**
 - This is normal for unfamiliar codebases
-- Try `xray explore <framework>:<command>` to understand patterns
+- Try `xray <strategy> <command>` to understand patterns
 - Look at similar files (by name) to understand patterns
 - The structure will become clearer as you work
 

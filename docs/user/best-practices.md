@@ -138,33 +138,33 @@ Clear cache when:
 ```bash
 # You've made significant changes
 git status  # See many .ts/.js files changed?
-xray clear-cache
+xray clear-cache --confirm=yes
 
 # Results seem stale
 # (Cache invalidation is automatic based on file mod times, but manual clear helps)
-xray clear-cache
+xray clear-cache --confirm=yes
 
 # You suspect cache corruption
 # (Very rare, but a full cache rebuild might help)
-xray clear-cache
+xray clear-cache --confirm=yes
 
 # You've added new dependencies
 # (New frameworks need re-detection)
-xray clear-cache
+xray clear-cache --confirm=yes
 ```
 
 Clear cache before important analysis:
 ```bash
-xray clear-cache && xray map --anchor src/ImportantFile.ts --with incs
+xray clear-cache --confirm=yes && xray map --anchor src/ImportantFile.ts --with incs
 ```
 
 ### Cache Location
 
-xray stores the parse cache in the user cache dir, never in the project: `<cache-dir>/projects/<project-key>/xray_cache.db` (SQLite database; `cache-db` in `xray paths` prints the exact path). The key is derived from the project root, so two projects with the same name never share an entry. `xray cache clear` clears the current project's entry. Strategy detection results are cached separately in the user cache dir (`cache-dir` in `xray paths`).
+xray stores the parse cache in the user cache dir, never in the project: `<cache-dir>/projects/<project-key>/xray_cache.db` (SQLite database; `cache-db` in `xray paths` prints the exact path). The key is derived from the project root, so two projects with the same name never share an entry. `xray cache clear --confirm=yes` clears the current project's entry. Strategy detection results are cached separately in the user cache dir (`cache-dir` in `xray paths`).
 
 If it gets too large:
 ```bash
-xray cache clear  # Safe, will regenerate
+xray cache clear --confirm=yes  # Safe, will regenerate
 ```
 
 ---
@@ -292,7 +292,7 @@ After AI suggests changes:
 # ... make code changes ...
 
 # Regenerate map to verify
-xray clear-cache
+xray clear-cache --confirm=yes
 xray map --anchor src/changedFile.ts --with incs
 
 # Share new map with AI
@@ -492,7 +492,7 @@ xray map --path ./src/api  # Instead of all of src
 xray map --depth 2  # Instead of unlimited
 
 # Clear old cache
-xray clear-cache
+xray clear-cache --confirm=yes
 
 # Check disk space
 df -h  # Ensure > 1GB free
@@ -508,7 +508,7 @@ Keep xray working smoothly.
 
 ```bash
 # Run after major code changes
-xray clear-cache
+xray clear-cache --confirm=yes
 xray map
 ```
 
@@ -516,10 +516,11 @@ xray map
 
 ```bash
 # Update map documentation
-xray map > docs/codebase-map-$(date +%Y-%m).txt
+xray map --no-chunk -o docs/codebase-map-$(date +%Y-%m).txt
 
 # Check for unused code
-xray map --with incs | grep -v "→ used by"
+xray map --with incs --no-chunk -o map.txt
+grep -v "→ used by" map.txt
 ```
 
 ### When Adding Dependencies

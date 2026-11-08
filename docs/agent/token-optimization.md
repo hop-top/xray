@@ -19,7 +19,7 @@ Optimize this ratio at every decision point.
 | `map --depth 1` | 150-200t | 200-300t | Good for high-level |
 | `map --depth 2` | 250-350t | 350-500t | Good balance |
 | `map (full)` | 400-800t | 500-1000t | Very expensive |
-| `explore <cmd>` | 100-150t | 100-200t | Framework-specific, cheap |
+| `<strategy> <cmd>` | 100-150t | 100-200t | Framework-specific, cheap |
 | `graph --with cf` | 400-600t | 500-700t | Control flow analysis |
 | `graph --with df` | 400-600t | 500-700t | Data flow analysis |
 | `--with incs` | +100-150t | Adds to base | Always include? Maybe |
@@ -205,7 +205,7 @@ Available: 300 tokens
 Allocation:
   - strategy detect: 50 tokens
   - explore --match pattern: 50 tokens
-  - explore framework:command: 100 tokens
+  - <strategy> <command>: 100 tokens
   - Buffer: 100 tokens
 
 Approach: Answer single, focused question only
@@ -221,7 +221,7 @@ Available: 700 tokens
 Allocation:
   - strategy detect: 50 tokens
   - map --depth 2: 300 tokens
-  - explore framework:command: 150 tokens
+  - <strategy> <command>: 150 tokens
   - Buffer: 200 tokens
 
 Approach: Understand structure + patterns
@@ -357,7 +357,7 @@ Step 2: High-level map (200t)
   xray map --path ./src --depth 1
 
 Step 3: Find patterns (100t)
-  xray explore <detected-framework>:<command>
+  xray <detected-strategy> <command>
 
 Step 4: Understand dependencies (150t)
   xray map --anchor <key-file> --with incs
@@ -390,7 +390,7 @@ Step 1: Detect frameworks (50t)
   xray strategy detect
 
 Step 2: Find similar features (100t)
-  xray explore <framework>:<command>
+  xray <strategy> <command>
 
 Step 3: Understand architecture (250t)
   xray map --path ./src --depth 2

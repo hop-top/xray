@@ -214,7 +214,7 @@ When: You need to understand what exists
 Steps:
 1. xray strategy detect (if framework unknown)
 2. xray explore (if file list needed)
-3. xray explore <framework>:<command> (if patterns needed)
+3. xray <strategy> <command> (if patterns needed)
 
 Use in:
 - Codebase Understanding (early steps)

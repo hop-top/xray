@@ -432,7 +432,7 @@ that is malformed, fails its checksum or is not exactly a file entry is a
 miss and is recomputed. Output with and without the cache is
 byte-identical. `--verbose` prints hit/miss counts on stderr.
 
-Delete the directory to reset it (`xray cache clear` clears
+Delete the directory to reset it (`xray cache clear --confirm=yes` clears
 the project's analysis cache db only).
 
 Entry validation takes its enum sets (`kind`, `locality`, `confidence`,

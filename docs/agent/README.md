@@ -81,7 +81,7 @@ Unlike humans who view xray output directly, agents:
 ### Understanding New Codebase (500-1000 tokens)
 - `strategy detect`: ~50 tokens (framework detection)
 - `map --path ./src --depth 2`: ~400 tokens (structure)
-- `explore <framework>:<command>`: ~100 tokens (patterns)
+- `<strategy> <command>`: ~100 tokens (patterns)
 - Buffer for parsing/refinement: ~50 tokens
 
 ### Debugging Issue (300-600 tokens)
@@ -92,7 +92,7 @@ Unlike humans who view xray output directly, agents:
 
 ### Implementing Feature (600-1200 tokens)
 - `strategy detect`: ~50 tokens
-- `explore <command>`: ~150 tokens (find patterns)
+- `<strategy> <command>`: ~150 tokens (find patterns)
 - `map --anchor <key-file>`: ~300 tokens (understand architecture)
 - `map --with incs`: ~150 tokens (dependencies)
 - Refinement/followups: ~150 tokens

@@ -22,7 +22,7 @@ Info: Directory organization, main files
 Next: Based on structure, drill down specific areas
 
 LEVEL 3 (Patterns): Low-medium cost, pattern info
-Command: xray explore <framework>
+Command: xray <strategy> <command>
 Tokens: 100-150
 Info: Components, routes, hooks, etc.
 Next: Based on patterns, study specific implementation
@@ -132,7 +132,7 @@ Result: Only relevant info, saved 150 tokens
 ```
 By path:       xray map --path ./src/api
 By pattern:    xray map --match "*.service.ts"
-By framework:  xray explore <framework>:<type>
+By framework:  xray <strategy> <command>
 By anchor:     xray map --anchor <key-file>
 By depth:      xray map --depth 1-2
 Combination:   xray map --path ./src --depth 1 --match "*.ts"
@@ -237,7 +237,7 @@ Order commands to maximize early learning.
 EFFICIENT SEQUENCE:
 1. xray strategy detect           (learn frameworks)
 2. xray explore --match "*pattern*"  (narrow scope)
-3. xray explore <framework>       (find patterns)
+3. xray <strategy> <command>      (find patterns)
 4. xray map on narrow area        (deep dive)
 
 vs.
@@ -419,7 +419,7 @@ PHASE 1: Discovery (100-150 tokens)
   xray explore --match "*similar-feature*"
 
 PHASE 2: Understanding (200-300 tokens)
-  xray explore <framework>
+  xray <strategy> <command>
   xray map on relevant area
 
 PHASE 3: Pattern Study (300-400 tokens)

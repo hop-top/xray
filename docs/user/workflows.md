@@ -171,7 +171,8 @@ The data flow graph shows which variables are modified where, helping you spot t
 xray map --catch "handle*" --with incs
 
 # Find all files using a specific library
-xray map --with incs | grep "axios\|fetch"
+xray map --with incs --no-chunk -o map.txt
+grep "axios\|fetch" map.txt
 
 # Get detailed analysis of one function
 xray map --anchor src/buggyFunction.ts --with vars --with incs --with docs
@@ -190,13 +191,13 @@ xray map --anchor src/buggyFunction.ts --with vars --with incs --with docs
 ```bash
 # Create a snapshot before changes
 xray strategy detect > refactor-plan/detected-frameworks.txt
-xray map --path ./src/services > refactor-plan/current-services-map.txt
+xray map --path ./src/services --no-chunk -o refactor-plan/current-services-map.txt
 xray express routes > refactor-plan/current-routes.txt
 xray react components > refactor-plan/current-components.txt
 
 # If monorepo:
 for package in packages/*/; do
-  xray map -p "$package" > "refactor-plan/$(basename $package)-map.txt"
+  xray map -p "$package" --no-chunk -o "refactor-plan/$(basename $package)-map.txt"
 done
 ```
 
@@ -229,7 +230,8 @@ Generate a report showing:
 ```bash
 echo "# Refactor Impact Analysis" > refactor-plan/impact.md
 echo "## Files to Refactor" >> refactor-plan/impact.md
-xray map --path ./src/authentication >> refactor-plan/impact.md
+xray map --path ./src/authentication --no-chunk -o refactor-plan/files.txt
+cat refactor-plan/files.txt >> refactor-plan/impact.md
 echo "" >> refactor-plan/impact.md
 echo "## Callers" >> refactor-plan/impact.md
 xray impact 'Auth*' >> refactor-plan/impact.md
@@ -265,7 +267,8 @@ to name matching and grep. These find definitions and text, not callers:
 
 ```bash
 xray map --catch "*Auth*" --with incs
-xray map --with incs | grep -i "auth"
+xray map --with incs --no-chunk -o map.txt
+grep -i "auth" map.txt
 ```
 
 ### Step 5: Plan the Refactor
@@ -273,8 +276,7 @@ xray map --with incs | grep -i "auth"
 ```bash
 # After deciding on changes, create a new map to compare
 # (Do this after refactor to verify nothing broke)
-xray map --path ./src/authentication > refactor-plan/after-refactor.txt
-
+xray map --path ./src/authentication --no-chunk -o refactor-plan/after-refactor.txt
 # Compare before and after
 diff refactor-plan/current-services-map.txt refactor-plan/after-refactor.txt
 ```
@@ -362,9 +364,8 @@ For AI assistants with large context windows:
 xray map --with incs --with vars --with docs --limit 16000
 
 # Multiple chunks if needed
-xray map --path ./src/api > api-context.txt
-xray map --path ./src/ui > ui-context.txt
-
+xray map --path ./src/api --no-chunk -o api-context.txt
+xray map --path ./src/ui --no-chunk -o ui-context.txt
 # Share with AI
 ```
 
@@ -405,13 +406,13 @@ xray react hooks
 ```bash
 # Step 1: Checkout main branch and get baseline
 git checkout main
-xray map > before-pr.txt
+xray map --no-chunk -o before-pr.txt
 
 # Step 2: Checkout PR branch
 git checkout feature/awesome-feature
 
 # Step 3: Generate new map
-xray map > after-pr.txt
+xray map --no-chunk -o after-pr.txt
 
 # Step 4: See what changed
 diff before-pr.txt after-pr.txt | head -50
@@ -435,11 +436,13 @@ git diff main...HEAD --stat >> PR-SUMMARY.md
 
 echo "" >> PR-SUMMARY.md
 echo "## Architecture Impact" >> PR-SUMMARY.md
-xray map --path ./src/auth --with incs >> PR-SUMMARY.md
+xray map --path ./src/auth --with incs --no-chunk -o pr-arch.txt
+cat pr-arch.txt >> PR-SUMMARY.md
 
 echo "" >> PR-SUMMARY.md
 echo "## New Exports" >> PR-SUMMARY.md
-xray map --anchor ./src/auth/index.ts --with incs >> PR-SUMMARY.md
+xray map --anchor ./src/auth/index.ts --with incs --no-chunk -o pr-exports.txt
+cat pr-exports.txt >> PR-SUMMARY.md
 ```
 
 In PR description, add:
@@ -452,7 +455,8 @@ In PR description, add:
 xray map --path ./src/[new-subsystem]
 
 # Check for circular dependencies
-xray map --with incs | grep -E "[A-Za-z0-9_]+.*→.*[A-Za-z0-9_]+"
+xray map --with incs --no-chunk -o map.txt
+grep -E "[A-Za-z0-9_]+.*→.*[A-Za-z0-9_]+" map.txt
 
 # Verify no unintended exports
 xray map --anchor ./src/[new-module]/index.ts --with incs
@@ -472,8 +476,8 @@ xray [react components | express routes]  # before and after
 ### Architecture Documentation
 
 ```bash
-# Generate architecture diagram
-xray map --path ./src --depth 2 --output ARCHITECTURE.md
+# Generate the directory structure
+xray map --path ./src --depth 2 --no-chunk -o structure.txt
 
 # Add explanation
 cat > ARCHITECTURE.md << 'EOF'
@@ -482,7 +486,7 @@ cat > ARCHITECTURE.md << 'EOF'
 See below for directory structure and main components:
 
 EOF
-xray map --path ./src --depth 2 >> ARCHITECTURE.md
+cat structure.txt >> ARCHITECTURE.md
 ```
 
 ### API Documentation
@@ -528,16 +532,8 @@ xray react contexts >> COMPONENTS.md
 # For Go CLI apps
 echo "# CLI Reference" > CLI-REFERENCE.md
 
-echo "## Commands" >> CLI-REFERENCE.md
+echo "## Commands and flags" >> CLI-REFERENCE.md
 xray go-cli commands >> CLI-REFERENCE.md
-
-echo "" >> CLI-REFERENCE.md
-echo "## Flags" >> CLI-REFERENCE.md
-xray go-cli flags >> CLI-REFERENCE.md
-
-echo "" >> CLI-REFERENCE.md
-echo "## Command Hierarchy" >> CLI-REFERENCE.md
-xray go-cli tree >> CLI-REFERENCE.md
 ```
 
 ### Keep Documentation Current
@@ -607,7 +603,8 @@ xray rest-api endpoints | sort | uniq -d >> api-inventory.md
 # Find all external dependencies
 for project in projects/*/; do
   echo "=== $(basename $project) ==="
-  xray map -p "$project" --with incs | grep -E "External|Library"
+  xray map -p "$project" --with incs --no-chunk -o "$project/map.txt"
+  grep -E "External|Library" "$project/map.txt"
 done
 ```
 
@@ -636,7 +633,8 @@ xray map --match "*.test.ts" --with incs
 xray map --with vars
 
 # Functions not appearing in other files might be unused
-xray map --with incs | grep -v "→ used by"
+xray map --with incs --no-chunk -o map.txt
+grep -v "→ used by" map.txt
 ```
 
 ### Pattern: Find All Error Handlers
@@ -653,10 +651,12 @@ xray map --catch "*Error*" --catch "*Handler*" --with incs
 
 ```bash
 # All imports of fetch/axios/etc
-xray map --with incs | grep -i "fetch\|axios\|http"
+xray map --with incs --no-chunk -o map.txt
+grep -i "fetch\|axios\|http" map.txt
 
 # All files using async/await
-xray map --with vars | grep -E "async|await"
+xray map --with vars --no-chunk -o vars.txt
+grep -E "async|await" vars.txt
 ```
 
 ### Pattern: Find All Configuration
@@ -666,7 +666,8 @@ xray map --with vars | grep -E "async|await"
 xray explore --match "*.config.*" --match "*rc*" --match "*.env*"
 
 # Configuration imports
-xray map --with incs | grep -i "config"
+xray map --with incs --no-chunk -o map.txt
+grep -i "config" map.txt
 ```
 
 ### Pattern: Security Audit - Find All Authentication Points
@@ -676,7 +677,8 @@ xray map --with incs | grep -i "config"
 xray map --catch "*Auth*" --catch "*Login*" --catch "*Token*" --with incs
 
 # All places importing auth libraries
-xray map --with incs | grep -i "jwt\|passport\|oauth\|auth"
+xray map --with incs --no-chunk -o map.txt
+grep -i "jwt\|passport\|oauth\|auth" map.txt
 ```
 
 ---

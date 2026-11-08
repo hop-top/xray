@@ -284,8 +284,8 @@ read only with `XRAY_ALLOW_PROJECT_STRATEGIES=1`.
 a strategy name:
 
 ```bash
-xray strategy remove @acme/xray-strategy-custom   # package name
-xray strategy remove custom                       # xray-strategy.name
+xray strategy remove @acme/xray-strategy-custom --confirm=yes   # package name
+xray strategy remove custom --confirm=yes                       # xray-strategy.name
 ```
 
 - An installed strategy package is removed with `npm uninstall` in the
@@ -293,7 +293,7 @@ xray strategy remove custom                       # xray-strategy.name
   `package.json` alone, so a code strategy is removed without
   `XRAY_ALLOW_PROJECT_STRATEGIES=1` and nothing is run.
 - A package that does not declare `xray-strategy` is refused and left
-  untouched, so `xray strategy remove lodash` removes nothing.
+  untouched, so `xray strategy remove lodash --confirm=yes` removes nothing.
 - A file named `<name>.yml`, `<name>.yaml`, `<name>.js` or `<name>.ts` in
   a strategy directory is deleted. If a package has the same name, only
   the file goes; the command says the package remains.

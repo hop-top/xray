@@ -30,7 +30,7 @@ xray express routes
 xray strategy detect
 
 # 9. Clear stale cache
-xray clear-cache
+xray clear-cache --confirm=yes
 
 # 10. Help me understand this for AI
 xray map --anchor src/main --with incs --with vars --limit 4000
@@ -88,7 +88,7 @@ Do you want to...
 │  └─> xray map --with incs --with vars
 │
 └─ Fix stale results?
-   └─> xray clear-cache && xray map
+   └─> xray clear-cache --confirm=yes && xray map
 ```
 
 ---
@@ -148,9 +148,7 @@ xray rest-api middleware # All middleware
 
 ### Go CLI
 ```bash
-xray go-cli commands     # All commands
-xray go-cli flags        # All flags
-xray go-cli tree         # Command hierarchy
+xray go-cli commands     # Command tree with flags
 ```
 
 ---
@@ -211,7 +209,7 @@ xray impact createSession --strict      # scope-resolved (EXTRACTED) callers onl
 
 ### "Fix stale results"
 ```bash
-xray clear-cache && xray map
+xray clear-cache --confirm=yes && xray map
 ```
 
 ---
@@ -263,7 +261,7 @@ See [Configuration Guide](configuration.md) for more.
 
 | Problem | Solution |
 |---------|----------|
-| Stale results | `xray clear-cache` |
+| Stale results | `xray clear-cache --confirm=yes` |
 | Command not found | `npx @hop-top/xray` instead of `xray` |
 | Installation failed | `CXXFLAGS="-std=c++20" npm install` |
 | No output | `xray map -p ./src` (specify path) |

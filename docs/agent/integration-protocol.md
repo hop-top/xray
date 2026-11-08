@@ -102,7 +102,7 @@ Agent recognizes a user request that would benefit from xray before user explici
 2. **Gather Context**
    - If framework unknown: `xray strategy detect`
    - If structure unknown: `xray map --path ./src --depth 2`
-   - If looking for patterns: `xray explore <framework>:<command>`
+   - If looking for patterns: `xray <strategy> <command>`
 
 3. **Integrate Findings**
    - Extract key architectural insights
@@ -132,7 +132,7 @@ Agent recognizes a user request that would benefit from xray before user explici
 
 2. **Gather Context**
    - `xray explore --match "*payment*"` or `--match "*api*"` (narrow scope)
-   - `xray explore <framework>:<relevant-command>` (find related code)
+   - `xray <strategy> <relevant-command>` (find related code)
    - `xray map --anchor <key-file> --with incs` (understand dependencies)
 
 3. **Analyze Findings**
@@ -195,7 +195,7 @@ Complex tasks use xray multiple times across conversation turns.
 
 ```
 Turn 1: User says "I need to add authentication"
-  → Action: xray strategy detect + xray explore <framework>:components
+  → Action: xray strategy detect + xray react components
   → Result: User understands architecture, knows pattern
 
 Turn 2: User asks "Where would the login form go?"
@@ -207,7 +207,7 @@ Turn 3: User implements based on findings
   → Result: Implementation complete
 
 Turn 4: User asks "How do I integrate with API?"
-  → Action: xray explore <framework>:endpoints + map --with incs
+  → Action: xray rest-api endpoints + map --with incs
   → Result: User understands API structure
 ```
 
@@ -262,7 +262,7 @@ xray Output #1: High-level structure (map --depth 1)
   ├─ When: First step
   └─ Stored: Architectural understanding
 
-xray Output #2: Framework patterns (explore <framework>:commands)
+xray Output #2: Framework patterns (`xray <strategy> <command>`)
   ├─ What: Component/route discovery
   ├─ When: After understanding structure
   └─ Combined with #1: Now know patterns + structure
@@ -302,7 +302,7 @@ xray caches analysis results. When relevant:
 3. **If troubleshooting stale results:**
    ```
    If xray results seem old or wrong:
-   → Run: xray clear-cache
+   → Run: xray clear-cache --confirm=yes
    → Then: Rerun your xray command
    ```
 

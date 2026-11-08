@@ -315,7 +315,7 @@ Proceeding with generic analysis
 3. INFER framework manually
    IF user mentions framework:
    "You mentioned [framework]. Let me look for [framework] patterns..."
-   COMMAND: xray explore <framework>:commands
+   COMMAND: xray <strategy> <command>
    TRY with correct framework name
 
 4. PROCEED
