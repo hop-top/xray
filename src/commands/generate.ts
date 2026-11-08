@@ -741,9 +741,23 @@ export const assertLensNotScoped = (options: { lens?: string; scope?: string; al
 };
 
 /**
+ * `--all-scopes` runs every scope with that scope's own `paths` and
+ * `output`; one `-o` / `--path` for all of them would make the runs
+ * collide or silently drop the scopes' own: UsageError (exit 2).
+ */
+export const assertAllScopesStandalone = (options: { allScopes?: boolean; output?: string; path?: string[] }): void => {
+  if (!options.allScopes) return;
+  if (options.output) throw new UsageError('--all-scopes and -o/--output are exclusive: each scope writes its own output');
+  if (options.path && options.path.length > 0) {
+    throw new UsageError('--all-scopes and --path are exclusive: each scope has its own paths');
+  }
+};
+
+/**
  * Which config values must stay inside their project for this run: those
  * it uses and the command line does not give. A command-line value wins
- * over config under `--scope` and `--all-scopes` alike, so it is not checked.
+ * over config, so it is not checked (`--all-scopes` takes no `-o` /
+ * `--path`: see assertAllScopesStandalone).
  * `writes: false` is for a run that writes no output file (impact).
  */
 export const confineFor = (
@@ -781,8 +795,9 @@ const mergeScopeRun = (
  */
 export const resolveAllScopesRuns = (
   normalizedOptions: any,
-  config: ReturnType<typeof loadConfig> = loadConfig(normalizedOptions.config, normalizedOptions.path?.[0], { resolvePaths: true })
+  config: ReturnType<typeof loadConfig> = loadConfig(normalizedOptions.config, undefined, { resolvePaths: true })
 ): Array<{ scopeName: string; mergedOptions: any }> => {
+  assertAllScopesStandalone(normalizedOptions);
   const scopes = getScopes(config);
   const names = Object.keys(scopes);
   if (names.length === 0) throw new UsageError('--all-scopes: no scopes are defined in the config file');
@@ -860,6 +875,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions, previ
     Logger.debug('Generate action started', { options: normalizedOptions });
 
     assertLensNotScoped(normalizedOptions);
+    assertAllScopesStandalone(normalizedOptions);
     await preflightPresets(normalizedOptions.preset, !previewOf);
 
     // Load config file

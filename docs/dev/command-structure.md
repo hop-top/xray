@@ -214,7 +214,7 @@ addCommonOptions(cmd: Command) {
   // Configuration
   --lens <name>              // Named lens (config-file overlay)
   --scope <name>             // Config scope
-  --all-scopes               // Run all scopes
+  --all-scopes               // Run all scopes (exclusive with -o, --path, --lens)
   --detect                   // Enable strategy detection (auto when no path given)
   --skip-detect              // Skip strategy detection and auto-configuration
 }

@@ -980,7 +980,7 @@ space form takes every following word as a column. Graph strategy commands
 | `--config <path>` | Custom config file path |
 | `--lens <name>` | Use named lens (config-file option overlay) |
 | `--scope <name>` | Run specific scope from config |
-| `--all-scopes` | Run all scopes from config |
+| `--all-scopes` | Run all scopes from config; exclusive with `-o/--output`, `--path` and `--lens` (usage error) |
 
 ## Environment Variables
 

@@ -182,13 +182,28 @@ describe('config paths stay inside their project', () => {
       expect(entries(cfgout)).toEqual([]);
     });
 
-    it('--all-scopes checks every scope, and -o does not apply to it', () => {
+    it('--all-scopes checks every scope', () => {
       const { proj, cfgout } = layout();
       rc(proj, { scopes: { good: { output: 'good.json' }, bad: { output: '../cfgout/evil.sh' } } });
-      const r = run(proj, 'map', '--all-scopes', '--format', 'json', '-o', '../cfgout/mine.json');
+      const r = run(proj, 'map', '--all-scopes', '--format', 'json');
       expect(r.status).toBe(2);
       expect(r.stderr).toContain('scopes.bad.output');
       expect(entries(cfgout)).toEqual([]);
+    });
+
+    it('--all-scopes with -o or --path is a usage error, text and json', () => {
+      const { proj, cfgout } = layout();
+      rc(proj, { scopes: { good: { output: 'good.json' } } });
+      for (const [flag, value] of [['-o', '../cfgout/mine.json'], ['--output', 'x.json'], ['--path', 'src']]) {
+        const text = run(proj, 'map', '--all-scopes', flag, value);
+        expect(text.status).toBe(2);
+        expect(text.stderr).toContain('--all-scopes');
+        const json = run(proj, 'map', '--all-scopes', '--format', 'json', flag, value);
+        expect(json.status).toBe(2);
+        expect(JSON.parse(json.stderr)).toMatchObject({ code: 'USAGE', exit_code: 2 });
+      }
+      expect(entries(cfgout)).toEqual([]);
+      expect(fs.existsSync(path.join(proj, 'good.json'))).toBe(false);
     });
 
     it('--all-scopes with every scope inside the project runs', () => {

@@ -148,8 +148,8 @@ Only the values a run uses are checked: the top level, the selected
 `--lens` or `--scope`, every scope under `--all-scopes`. A value given on
 the command line (`--path`, a positional root, `-o`/`--output`,
 `--share <path>`, `--query`) is yours, never checked, and replaces the
-config value. `--all-scopes` ignores those flags, so it checks every
-scope's values.
+config value. `--all-scopes` takes no `-o/--output` or `--path` (see
+below), so it checks every scope's values.
 
 Your own global config (`<config-dir>/config.json`, `~/.xrayrc.json`,
 `~/.xrayrc`) is exempt: it is your choice, and its paths may point
@@ -407,6 +407,10 @@ An unknown lens name (or `--lens` with no config file) is a usage error:
 exit 2, naming the config file consulted and the lenses it defines.
 `--lens` cannot be combined with `--scope` or `--all-scopes` (a scope
 replaces the base config the lens would overlay): usage error, exit 2.
+`--all-scopes` cannot be combined with `-o/--output` or `--path` either:
+each scope writes its own `output` from its own `paths`, so one value for
+all of them is a usage error (exit 2; a JSON error object on stderr with
+`--format json`).
 
 **Scopes vs Lenses:**
 - **Scopes**: Multiple independent outputs, can run all at once with `--all-scopes`

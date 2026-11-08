@@ -16,8 +16,6 @@ const CLI = path.join(__dirname, '../../bin/cli.js');
 
 /** One variant per option: args that make the option visible in the output. */
 const VARIANTS: Record<string, string[]> = {
-  '--path': ['--path', 'lib'],
-  '--output': ['--output', 'custom-out'],
   '--limit': ['--limit', '40'],
   '--with': ['--with', 'vars'],
   '--anchor': ['--anchor', 'src/b.ts'],
@@ -50,8 +48,8 @@ const NOT_RUN_OPTIONS: Record<string, string> = {
   '--lens': 'overlay; exclusive with --scope/--all-scopes (UsageError)',
   '--scope': 'selects the scope; --all-scopes is its plural',
   '--all-scopes': 'the flag under test',
-  '--mermaid': 'diagram family selector (--format mermaid)',
-  '--dot': 'diagram family selector (--format dot)',
+  '--path': 'each scope has its own paths; with --all-scopes a UsageError',
+  '--output': 'each scope writes its own output; with --all-scopes a UsageError',
 };
 
 interface Described { name: string; options: Array<{ name: string }>; subcommands?: Described[] }
