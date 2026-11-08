@@ -113,15 +113,15 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
   const list = declareEffect(lang
     .command('list')
     .description('List language packs, install status, and files of each language in this repo')
-    .option('-p, --path <path>', 'Repository to inspect', process.cwd())
+    .option('-p, --path <path>', 'Repository to inspect (default: current directory)')
     .option('--format <fmt>', 'Output format: text (default) or json')
     .option('--json', 'Alias of --format json')
-    .action((opts: { path: string; json?: boolean; format?: string; config?: string }) => {
+    .action((opts: { path?: string; json?: boolean; format?: string; config?: string }) => {
       const fmt = (opts.format ?? (opts.json ? 'json' : 'text')).toLowerCase();
       if (fmt !== 'text' && fmt !== 'json') {
         throw new UsageError(`invalid --format '${opts.format}' (expected one of: text, json)`);
       }
-      const rows = collectRows(path.resolve(opts.path), opts.config);
+      const rows = collectRows(path.resolve(opts.path ?? '.'), opts.config);
       const detected = detectedNotInstalled(rows);
       if (fmt === 'json') {
         Logger.output(JSON.stringify({

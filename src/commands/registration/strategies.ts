@@ -146,7 +146,7 @@ function registerStrategyCommand(
       strategyCmd
         .command(cmdName)
         .description(cmdDef.description || `Execute ${cmdName} command`)
-        .option('-p, --path <path>', 'Project path to analyze', process.cwd())
+        .option('-p, --path <path>', 'Project path to analyze (default: current directory)')
     ), 'read', 'yes');
     // A --path that is not a directory is not found (see executeStrategyCommand).
     declareExitCodes(cmd, [EXIT_NOT_FOUND]);

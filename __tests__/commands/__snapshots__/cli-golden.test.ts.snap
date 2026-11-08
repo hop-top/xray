@@ -163,8 +163,8 @@ Usage: xray build graph [options]
 Show build dependency graph
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -195,8 +195,8 @@ Usage: xray build run [options]
 Run a specific build target
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -228,8 +228,8 @@ Usage: xray build targets [options]
 Show all build targets
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -315,8 +315,8 @@ Usage: xray cicd deploy [options]
 Show deployment workflows
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -347,8 +347,8 @@ Usage: xray cicd graph [options]
 Show CI/CD pipeline dependency graph
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -379,8 +379,8 @@ Usage: xray cicd triggers [options]
 Show what triggers each workflow
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -411,8 +411,8 @@ Usage: xray cicd workflows [options]
 Show all CI/CD workflows
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -500,8 +500,8 @@ Usage: xray config keys [options]
 List all configuration keys
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -534,8 +534,8 @@ Usage: xray config list [options]
 List all configuration files in the project
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -568,8 +568,8 @@ Usage: xray config values [options]
 Display configuration values
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -623,8 +623,8 @@ Usage: xray container analyze [options]
 Analyze container configuration
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -655,8 +655,8 @@ Usage: xray container services [options]
 Show docker-compose services
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -687,8 +687,8 @@ Usage: xray container stages [options]
 Show Dockerfile build stages
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -783,8 +783,8 @@ Usage: xray express error-handlers [options]
 List all Express error handlers
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -815,8 +815,8 @@ Usage: xray express middleware [options]
 List all Express middleware
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -847,8 +847,8 @@ Usage: xray express routers [options]
 List all Express Router instances
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -879,8 +879,8 @@ Usage: xray express routes [options]
 List all Express routes
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -930,8 +930,8 @@ Usage: xray go-cli commands [options]
 Show the CLI command tree (AST by default; toolspec via --exec-binary/--binary)
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1162,8 +1162,8 @@ Usage: xray infrastructure graph [options]
 Generate infrastructure dependency graph
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1194,8 +1194,8 @@ Usage: xray infrastructure providers [options]
 List cloud providers used
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1226,8 +1226,8 @@ Usage: xray infrastructure resources [options]
 List all infrastructure resources (options: type, tool, provider)
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1264,8 +1264,8 @@ Usage: xray infrastructure summary [options]
 Infrastructure summary
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1296,8 +1296,8 @@ Usage: xray infrastructure validate [options]
 Validate infrastructure configuration
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1368,8 +1368,7 @@ Usage: xray lang list [options]
 List language packs, install status, and files of each language in this repo
 
 FLAGS:
-  -p, --path <path>  Repository to inspect (default:
-                     "<CWD>")
+  -p, --path <path>  Repository to inspect (default: current directory)
   --format <fmt>     Output format: text (default) or json
   --json             Alias of --format json
   -h, --help         Display help
@@ -1509,8 +1508,8 @@ Usage: xray markdown code-refs [options]
 Find code references in markdown files
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1541,8 +1540,8 @@ Usage: xray markdown coverage [options]
 Show documentation coverage for source files
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1573,8 +1572,8 @@ Usage: xray markdown orphans [options]
 Find markdown files with no incoming links
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1605,8 +1604,8 @@ Usage: xray markdown refs [options]
 Show cross-references between markdown files
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1637,8 +1636,8 @@ Usage: xray markdown stale [options]
 Find broken links and references in markdown files
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1669,8 +1668,8 @@ Usage: xray markdown toc [options]
 Generate table of contents for markdown files
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1751,8 +1750,8 @@ Usage: xray package-manager list-dependencies [options]
 List all dependencies from all package managers in the project
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1783,8 +1782,8 @@ Usage: xray package-manager summary [options]
 Provide a summary of all package managers detected in the project
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1815,8 +1814,7 @@ Usage: xray paths [options]
 Show xray's active config, cache DB, and project root
 
 FLAGS:
-  -p, --path <path>  Project path to inspect (default:
-                     "<CWD>")
+  -p, --path <path>  Project path to inspect (default: current directory)
   --format <fmt>     Output format: text, json, yaml, table, csv (default:
                      "text")
   -h, --help         Display help
@@ -1876,8 +1874,8 @@ Usage: xray react components [options]
 List all React components in the project
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1908,8 +1906,8 @@ Usage: xray react contexts [options]
 List all React contexts in the project
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1940,8 +1938,8 @@ Usage: xray react hooks [options]
 List all custom React hooks in the project
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -1992,8 +1990,8 @@ Usage: xray rest-api endpoints [options]
 List all REST API endpoints across all frameworks
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -2024,8 +2022,8 @@ Usage: xray rest-api methods [options]
 List endpoints grouped by HTTP method
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -2056,8 +2054,8 @@ Usage: xray rest-api middleware [options]
 List middleware and interceptors
 
 FLAGS:
-  -p, --path <path>                   Project path to analyze (default:
-                                      "<CWD>")
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
   --enable-extension <name>           Enable an extension at runtime
                                       (repeatable) (default: [])
   --disable-extension <name>          Disable an extension at runtime
@@ -2576,8 +2574,7 @@ Usage: xray paths [options]
 Show xray's active config, cache DB, and project root
 
 FLAGS:
-  -p, --path <path>  Project path to inspect (default:
-                     "<CWD>")
+  -p, --path <path>  Project path to inspect (default: current directory)
   --format <fmt>     Output format: text, json, yaml, table, csv (default:
                      "text")
   -h, --help         Display help
@@ -5274,8 +5271,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Repository to inspect"
+              "default": null,
+              "description": "Repository to inspect (default: current directory)"
             },
             {
               "name": "--format",
@@ -5465,8 +5462,8 @@ exports[`cli golden: introspection describe 1`] = `
           "short": "-p",
           "type": "string",
           "required": false,
-          "default": "<CWD>",
-          "description": "Project path to inspect"
+          "default": null,
+          "description": "Project path to inspect (default: current directory)"
         },
         {
           "name": "--format-opt",
@@ -5729,8 +5726,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -5859,8 +5856,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -5989,8 +5986,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -6144,8 +6141,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -6274,8 +6271,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -6404,8 +6401,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -6534,8 +6531,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -6681,8 +6678,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -6819,8 +6816,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -6957,8 +6954,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -7120,8 +7117,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -7250,8 +7247,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -7380,8 +7377,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -7527,8 +7524,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -7657,8 +7654,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -7787,8 +7784,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -7917,8 +7914,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -8064,8 +8061,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -8195,8 +8192,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -8349,8 +8346,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -8479,8 +8476,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -8609,8 +8606,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -8739,8 +8736,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -8886,8 +8883,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -9024,8 +9021,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -9154,8 +9151,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -9284,8 +9281,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -9414,8 +9411,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -9544,8 +9541,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -9691,8 +9688,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -9821,8 +9818,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -9968,8 +9965,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -10098,8 +10095,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -10228,8 +10225,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -10375,8 +10372,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -10505,8 +10502,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",
@@ -10635,8 +10632,8 @@ exports[`cli golden: introspection describe 1`] = `
               "short": "-p",
               "type": "string",
               "required": false,
-              "default": "<CWD>",
-              "description": "Project path to analyze"
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
             },
             {
               "name": "--enable-extension",

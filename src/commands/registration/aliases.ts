@@ -61,7 +61,7 @@ export async function registerAliases(
   // An alias does exactly what its target does, so it declares the same.
   for (const [alias, target] of targets) {
     const proxy = addResultFormat(program.commands.find(c => c.name() === alias)!
-      .option('-p, --path <path>', 'Project path', process.cwd())
+      .option('-p, --path <path>', 'Project path (default: current directory)')
       .allowExcessArguments(false),
       'Output format, passed to the target command (default: its own)');
     const { tier, idempotent } = declaredEffect(target);

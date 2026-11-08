@@ -92,7 +92,7 @@ export function registerPathsCommand(program: Command): void {
   const cmd = program
     .command('paths')
     .description("Show xray's active config, cache DB, and project root")
-    .option('-p, --path <path>', 'Project path to inspect', process.cwd());
+    .option('-p, --path <path>', 'Project path to inspect (default: current directory)');
   addOutputFlags(cmd, registry, {
     defaultFormat: 'text',
     description: 'Output format: text, json, yaml, table, csv',
