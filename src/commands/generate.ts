@@ -749,24 +749,51 @@ export const assertLensNotScoped = (options: { lens?: string; scope?: string; al
 
 /**
  * Which config values must stay inside their project for this run: those
- * it uses and the command line does not give. `--all-scopes` ignores the
- * command line's paths, output, queries and share, so it checks them all.
+ * it uses and the command line does not give. A command-line value wins
+ * over config under `--scope` and `--all-scopes` alike, so it is not checked.
  * `writes: false` is for a run that writes no output file (impact).
  */
 export const confineFor = (
   options: { path?: string[]; output?: string; query?: string[]; share?: unknown; lens?: string; scope?: string; allScopes?: boolean },
   writes = true
 ): ConfineOptions => {
-  const cli = !options.allScopes;
   return {
-    paths: !(cli && options.path && options.path.length > 0),
-    output: writes && !(cli && options.output),
-    queries: !(cli && options.query && options.query.length > 0),
-    share: writes && !(cli && options.share !== undefined),
+    paths: !(options.path && options.path.length > 0),
+    output: writes && !options.output,
+    queries: !(options.query && options.query.length > 0),
+    share: writes && options.share === undefined,
     lens: options.lens,
     scope: options.scope,
     allScopes: options.allScopes,
   };
+};
+
+/**
+ * One scope's run options: scope over base config, every CLI option over
+ * the scope. Shared by `--scope <name>` and each `--all-scopes` run so the
+ * two cannot drift apart.
+ */
+const mergeScopeRun = (
+  config: ReturnType<typeof loadConfig>,
+  scopeConfig: any,
+  normalizedOptions: any
+): any => {
+  const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
+  return mergeConfig({ ...mergedScope } as any, normalizedOptions, undefined);
+};
+
+/**
+ * `--all-scopes`: one run per defined scope, each resolved exactly as
+ * `--scope <name>` would. No scopes defined: UsageError.
+ */
+export const resolveAllScopesRuns = (
+  normalizedOptions: any,
+  config: ReturnType<typeof loadConfig> = loadConfig(normalizedOptions.config, normalizedOptions.path?.[0], { resolvePaths: true })
+): Array<{ scopeName: string; mergedOptions: any }> => {
+  const scopes = getScopes(config);
+  const names = Object.keys(scopes);
+  if (names.length === 0) throw new UsageError('--all-scopes: no scopes are defined in the config file');
+  return names.map((scopeName) => ({ scopeName, mergedOptions: mergeScopeRun(config, scopes[scopeName], normalizedOptions) }));
 };
 
 /**
@@ -789,9 +816,8 @@ export const resolveRunOptions = (
     if (!scopeConfig) {
       throw new NotFoundError(`Scope "${normalizedOptions.scope}" not found in config file`);
     }
-    const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
     return {
-      mergedOptions: mergeConfig({ ...mergedScope } as any, normalizedOptions, undefined),
+      mergedOptions: mergeScopeRun(config, scopeConfig, normalizedOptions),
       scopeName: normalizedOptions.scope,
     };
   }
@@ -853,29 +879,10 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions, previ
 
     // Handle --all-scopes flag
     if (normalizedOptions.allScopes) {
-      const scopes = getScopes(config);
-      const scopeNames = Object.keys(scopes);
+      const runs = resolveAllScopesRuns(normalizedOptions, config);
+      Logger.info(`Running ${runs.length} scopes: ${runs.map((r) => r.scopeName).join(', ')}`);
 
-      if (scopeNames.length === 0) {
-        reportFailure(new Error('No scopes defined in config file'), () => Logger.error('No scopes defined in config file'));
-        process.exit(1);
-      }
-
-      Logger.info(`Running ${scopeNames.length} scopes: ${scopeNames.join(', ')}`);
-
-      for (const scopeName of scopeNames) {
-        const scopeConfig = scopes[scopeName];
-        const mergedScope = config ? mergeScopeWithBase(config, scopeConfig) : scopeConfig;
-        const mergedOptions = mergeConfig(
-          { ...mergedScope } as any,
-          {
-            extensions: normalizedOptions.extensions,
-            outputFormat: normalizedOptions.outputFormat,
-            outputDiagram: normalizedOptions.outputDiagram,
-            preset: normalizedOptions.preset,
-          },
-          undefined
-        );
+      for (const { scopeName, mergedOptions } of runs) {
         await runSingleXray(mergedOptions, scopeName, normalizedOptions.config, plan);
       }
 

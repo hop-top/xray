@@ -757,10 +757,12 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     // CLI choice on an axis must not be re-overridden by config booleans.
     outputFormat: cliOptions.outputFormat ?? (baseConfig.json ? 'json' : baseConfig.format),
     outputDiagram: cliOptions.outputDiagram ?? baseConfig.diagram,
-    chunked: cliOptions.chunk !== false && (cliOptions.chunk ?? (baseConfig.chunked !== false)),
+    // commander's `--no-chunk` defaults `chunk` to true: only an explicit false is a CLI choice.
+    chunked: cliOptions.chunk === false ? false : baseConfig.chunked !== false,
     detect: cliOptions.detect ?? false,
     languages: cliOptions.lang && cliOptions.lang.length > 0 ? cliOptions.lang : baseConfig.languages,
     skipDetect: cliOptions.skipDetect ?? baseConfig.skipDetect ?? false,
+    group: cliOptions.group,
     share: cliOptions.share ?? baseConfig.share ?? false,
     extensions: mergeExtensionConfigs(
       baseConfig.extensions,

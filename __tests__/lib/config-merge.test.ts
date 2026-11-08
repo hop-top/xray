@@ -252,6 +252,12 @@ describe('mergeConfig — no config file', () => {
     expect(mergeConfig(null, { chunk: false }).chunked).toBe(false);
   });
 
+  it('commander\'s default (chunk: true) does not override config chunked:false', () => {
+    expect(mergeConfig({ chunked: false } as any, { chunk: true }).chunked).toBe(false);
+    expect(mergeConfig({ chunked: false } as any, {}).chunked).toBe(false);
+    expect(mergeConfig({ chunked: true } as any, { chunk: false }).chunked).toBe(false);
+  });
+
   it('defaults to chunked output', () => {
     expect(mergeConfig(null, {}).chunked).toBe(true);
   });
