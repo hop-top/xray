@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { Logger } from '../logger';
 
 export class AsyncEventEmitter<Events extends Record<string, any>> extends EventEmitter {
   private errorDepth: number = 0;
@@ -69,14 +70,14 @@ export class AsyncEventEmitter<Events extends Record<string, any>> extends Event
   ): Promise<void> {
     // Prevent error event recursion
     if (event === 'error') {
-      console.error('Error in error handler (not re-emitting):', error);
+      Logger.error('Error in error handler (not re-emitting)', error);
       return;
     }
 
     // Track recursion depth
     this.errorDepth++;
     if (this.errorDepth > this.MAX_ERROR_DEPTH) {
-      console.error('Max error depth reached:', error);
+      Logger.error('Max error depth reached', error);
       this.errorDepth--;
       throw error;
     }
@@ -95,11 +96,11 @@ export class AsyncEventEmitter<Events extends Record<string, any>> extends Event
           // If listener returns a promise, handle it but don't await
           if (result && typeof result.catch === 'function') {
             result.catch((err: any) => {
-              console.error('Error in error handler (not re-emitting):', err);
+              Logger.error('Error in error handler (not re-emitting)', err);
             });
           }
         } catch (syncError) {
-          console.error('Error in error handler (not re-emitting):', syncError);
+          Logger.error('Error in error handler (not re-emitting)', syncError);
         }
       }
     } finally {
