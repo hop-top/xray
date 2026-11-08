@@ -3,6 +3,7 @@ import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/typ
 
 export default class RestApiStrategy implements Strategy {
   name = 'rest-api';
+  description = 'Inspect REST API endpoints and middleware across frameworks';
   version = '0.1.0';
 
   async detect(ctx: StrategyContext): Promise<boolean> {

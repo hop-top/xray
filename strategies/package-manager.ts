@@ -19,6 +19,7 @@ interface PackageManagerMetadata {
 
 export default class PackageManagerStrategy implements Strategy {
   name = 'package-manager';
+  description = 'List dependencies across package managers (npm, pip, cargo, go, ...)';
   version = '0.1.0';
 
   async detect(ctx: StrategyContext): Promise<boolean> {

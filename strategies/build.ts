@@ -21,6 +21,7 @@ import { npmScriptsTool } from '../src/lib/strategy/build/parsers/npm-scripts';
  */
 export default class BuildStrategy implements Strategy {
   name = 'build';
+  description = 'Inspect build targets and dependencies (Makefile, package.json scripts)';
   version = '0.1.0';
 
   private buildTools: BuildTool[] = [

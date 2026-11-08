@@ -18,6 +18,7 @@ import { circleCIPlatform } from '../src/lib/strategy/cicd/parsers/circleci';
  */
 export default class CICDStrategy implements Strategy {
   name = 'cicd';
+  description = 'Inspect CI/CD workflows, triggers and deployments';
   version = '0.1.0';
 
   private cicdPlatforms: CICDPlatform[] = [

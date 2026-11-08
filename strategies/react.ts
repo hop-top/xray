@@ -6,6 +6,7 @@ import { Logger } from '../src/lib/logger';
 
 export default class ReactStrategy implements Strategy {
   name = 'react';
+  description = 'Inspect React components, hooks and contexts';
   version = '0.1.0';
   // Grammar is optional (language pack): detection is skipped when absent.
   requiresLanguages = ['typescript'];

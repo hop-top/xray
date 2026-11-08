@@ -73,6 +73,8 @@ export interface Extension {
   name: string;
   version: string;
   surface: ExtensionSurface;
+  /** One-line summary shown in help/describe for the command group. */
+  description?: string;
   detect(
     ctx: StrategyContext
   ): boolean | ExtensionDetection | Promise<boolean | ExtensionDetection>;
@@ -114,6 +116,8 @@ export interface FileQuery {
 export interface Strategy {
   name: string;
   version: string;
+  /** One-line summary shown in help/describe for the command group. */
+  description?: string;
   surface?: ExtensionSurface;
   /** Language packs (grammars) this strategy needs, e.g. ['go']. Missing => not detected + one warning. */
   requiresLanguages?: string[];
@@ -175,6 +179,7 @@ export function strategyToExtension(strategy: Strategy): Extension {
     id: strategy.name,
     name: strategy.name,
     version: strategy.version,
+    description: strategy.description,
     surface: strategy.surface ?? 'strategy',
     detect: strategy.detect.bind(strategy),
     fileTypes: strategy.fileTypes?.bind(strategy),

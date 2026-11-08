@@ -16,6 +16,7 @@ function isTextFormat(opts?: { format?: unknown }): boolean {
 
 export default class ConfigStrategy implements Strategy {
   name = 'config';
+  description = 'Inspect project configuration files, keys and values';
   version = '0.1.0';
   private parserFactory: ParserFactory;
 

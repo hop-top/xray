@@ -3,6 +3,7 @@ import { Strategy, StrategyContext, FileMetadata, StrategyCommand } from '../src
 
 export default class ExpressStrategy implements Strategy {
   name = 'express';
+  description = 'Inspect Express routes, routers, middleware and error handlers';
   version = '0.1.0';
 
   commands: Record<string, StrategyCommand> = {

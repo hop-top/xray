@@ -106,6 +106,7 @@ function resolveCodeRef(ref: string, docFile: string, scanRoot: string, repoRoot
 
 export default class MarkdownStrategy implements Strategy {
   name = 'markdown';
+  description = 'Analyze markdown docs: TOC, cross-references, orphans, coverage, broken links';
   version = '0.1.0';
 
   async detect(ctx: StrategyContext): Promise<boolean> {

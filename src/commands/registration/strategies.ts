@@ -125,7 +125,7 @@ function registerStrategyCommand(
 
   const strategyCmd = program
     .command(extension.name)
-    .description(`${extension.name} commands`);
+    .description(extension.description ?? `${extension.name} commands`);
   setCommandGroup(strategyCmd, 'strategy');
 
   for (const [cmdName, cmdDef] of Object.entries(

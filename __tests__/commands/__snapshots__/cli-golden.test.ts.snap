@@ -21,17 +21,24 @@ ANALYZE:
 STRATEGY:
   strategy [command]         Manage strategies (list, create, install, remove,
                              enable, disable, info)
-  build [command]            build commands
-  cicd [command]             cicd commands
-  config [command]           config commands
-  container [command]        container commands
-  express [command]          express commands
-  go-cli [command]           go-cli commands
-  infrastructure [command]   infrastructure commands
-  markdown [command]         markdown commands
-  package-manager [command]  package-manager commands
-  react [command]            react commands
-  rest-api [command]         rest-api commands
+  build [command]            Inspect build targets and dependencies (Makefile,
+                             package.json scripts)
+  cicd [command]             Inspect CI/CD workflows, triggers and deployments
+  config [command]           Inspect project configuration files, keys and
+                             values
+  container [command]        Inspect Dockerfiles and docker-compose services
+  express [command]          Inspect Express routes, routers, middleware and
+                             error handlers
+  go-cli [command]           Show the command tree of Go CLI apps (cobra/kit)
+  infrastructure [command]   Inspect infrastructure-as-code resources, providers
+                             and dependencies
+  markdown [command]         Analyze markdown docs: TOC, cross-references,
+                             orphans, coverage, broken links
+  package-manager [command]  List dependencies across package managers (npm,
+                             pip, cargo, go, ...)
+  react [command]            Inspect React components, hooks and contexts
+  rest-api [command]         Inspect REST API endpoints and middleware across
+                             frameworks
 
 MANAGEMENT:
   alias [command]            Manage command aliases
@@ -140,7 +147,7 @@ exports[`cli golden: --help xray build --help 1`] = `
 --- stdout ---
 Usage: xray build [options] [command]
 
-build commands
+Inspect build targets and dependencies (Makefile, package.json scripts)
 
 COMMANDS:
   targets [--flags]  Show all build targets
@@ -291,7 +298,7 @@ exports[`cli golden: --help xray cicd --help 1`] = `
 --- stdout ---
 Usage: xray cicd [options] [command]
 
-cicd commands
+Inspect CI/CD workflows, triggers and deployments
 
 COMMANDS:
   workflows [--flags]  Show all CI/CD workflows
@@ -477,7 +484,7 @@ exports[`cli golden: --help xray config --help 1`] = `
 --- stdout ---
 Usage: xray config [options] [command]
 
-config commands
+Inspect project configuration files, keys and values
 
 COMMANDS:
   list [--flags]    List all configuration files in the project
@@ -600,7 +607,7 @@ exports[`cli golden: --help xray container --help 1`] = `
 --- stdout ---
 Usage: xray container [options] [command]
 
-container commands
+Inspect Dockerfiles and docker-compose services
 
 COMMANDS:
   analyze [--flags]   Analyze container configuration
@@ -759,7 +766,7 @@ exports[`cli golden: --help xray express --help 1`] = `
 --- stdout ---
 Usage: xray express [options] [command]
 
-express commands
+Inspect Express routes, routers, middleware and error handlers
 
 COMMANDS:
   routes [--flags]          List all Express routes
@@ -908,7 +915,7 @@ exports[`cli golden: --help xray go-cli --help 1`] = `
 --- stdout ---
 Usage: xray go-cli [options] [command]
 
-go-cli commands
+Show the command tree of Go CLI apps (cobra/kit)
 
 COMMANDS:
   commands [--flags]  Show the CLI command tree (AST by default; toolspec via
@@ -1136,7 +1143,7 @@ exports[`cli golden: --help xray infrastructure --help 1`] = `
 --- stdout ---
 Usage: xray infrastructure [options] [command]
 
-infrastructure commands
+Inspect infrastructure-as-code resources, providers and dependencies
 
 COMMANDS:
   resources [--flags]  List all infrastructure resources (options: type, tool,
@@ -1482,7 +1489,7 @@ exports[`cli golden: --help xray markdown --help 1`] = `
 --- stdout ---
 Usage: xray markdown [options] [command]
 
-markdown commands
+Analyze markdown docs: TOC, cross-references, orphans, coverage, broken links
 
 COMMANDS:
   toc [--flags]        Generate table of contents for markdown files
@@ -1726,7 +1733,7 @@ exports[`cli golden: --help xray package-manager --help 1`] = `
 --- stdout ---
 Usage: xray package-manager [options] [command]
 
-package-manager commands
+List dependencies across package managers (npm, pip, cargo, go, ...)
 
 COMMANDS:
   list-dependencies [--flags]  List all dependencies from all package managers
@@ -1851,7 +1858,7 @@ exports[`cli golden: --help xray react --help 1`] = `
 --- stdout ---
 Usage: xray react [options] [command]
 
-react commands
+Inspect React components, hooks and contexts
 
 COMMANDS:
   components [--flags]  List all React components in the project
@@ -1967,7 +1974,7 @@ exports[`cli golden: --help xray rest-api --help 1`] = `
 --- stdout ---
 Usage: xray rest-api [options] [command]
 
-rest-api commands
+Inspect REST API endpoints and middleware across frameworks
 
 COMMANDS:
   endpoints [--flags]   List all REST API endpoints across all frameworks
@@ -2327,17 +2334,24 @@ ANALYZE:
 STRATEGY:
   strategy [command]         Manage strategies (list, create, install, remove,
                              enable, disable, info)
-  build [command]            build commands
-  cicd [command]             cicd commands
-  config [command]           config commands
-  container [command]        container commands
-  express [command]          express commands
-  go-cli [command]           go-cli commands
-  infrastructure [command]   infrastructure commands
-  markdown [command]         markdown commands
-  package-manager [command]  package-manager commands
-  react [command]            react commands
-  rest-api [command]         rest-api commands
+  build [command]            Inspect build targets and dependencies (Makefile,
+                             package.json scripts)
+  cicd [command]             Inspect CI/CD workflows, triggers and deployments
+  config [command]           Inspect project configuration files, keys and
+                             values
+  container [command]        Inspect Dockerfiles and docker-compose services
+  express [command]          Inspect Express routes, routers, middleware and
+                             error handlers
+  go-cli [command]           Show the command tree of Go CLI apps (cobra/kit)
+  infrastructure [command]   Inspect infrastructure-as-code resources, providers
+                             and dependencies
+  markdown [command]         Analyze markdown docs: TOC, cross-references,
+                             orphans, coverage, broken links
+  package-manager [command]  List dependencies across package managers (npm,
+                             pip, cargo, go, ...)
+  react [command]            Inspect React components, hooks and contexts
+  rest-api [command]         Inspect REST API endpoints and middleware across
+                             frameworks
 
 MANAGEMENT:
   alias [command]            Manage command aliases
@@ -5709,7 +5723,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "build",
       "qualifiedName": "build",
-      "description": "build commands",
+      "description": "Inspect build targets and dependencies (Makefile, package.json scripts)",
       "hidden": false,
       "arguments": [],
       "options": [],
@@ -6124,7 +6138,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "cicd",
       "qualifiedName": "cicd",
-      "description": "cicd commands",
+      "description": "Inspect CI/CD workflows, triggers and deployments",
       "hidden": false,
       "arguments": [],
       "options": [],
@@ -6661,7 +6675,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "config",
       "qualifiedName": "config",
-      "description": "config commands",
+      "description": "Inspect project configuration files, keys and values",
       "hidden": false,
       "arguments": [],
       "options": [],
@@ -7100,7 +7114,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "container",
       "qualifiedName": "container",
-      "description": "container commands",
+      "description": "Inspect Dockerfiles and docker-compose services",
       "hidden": false,
       "arguments": [],
       "options": [],
@@ -7507,7 +7521,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "express",
       "qualifiedName": "express",
-      "description": "express commands",
+      "description": "Inspect Express routes, routers, middleware and error handlers",
       "hidden": false,
       "arguments": [],
       "options": [],
@@ -8044,7 +8058,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "go-cli",
       "qualifiedName": "go-cli",
-      "description": "go-cli commands",
+      "description": "Show the command tree of Go CLI apps (cobra/kit)",
       "hidden": false,
       "arguments": [],
       "options": [],
@@ -8175,7 +8189,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "infrastructure",
       "qualifiedName": "infrastructure",
-      "description": "infrastructure commands",
+      "description": "Inspect infrastructure-as-code resources, providers and dependencies",
       "hidden": false,
       "arguments": [],
       "options": [],
@@ -8866,7 +8880,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "markdown",
       "qualifiedName": "markdown",
-      "description": "markdown commands",
+      "description": "Analyze markdown docs: TOC, cross-references, orphans, coverage, broken links",
       "hidden": false,
       "arguments": [],
       "options": [],
@@ -9671,7 +9685,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "package-manager",
       "qualifiedName": "package-manager",
-      "description": "package-manager commands",
+      "description": "List dependencies across package managers (npm, pip, cargo, go, ...)",
       "hidden": false,
       "arguments": [],
       "options": [],
@@ -9948,7 +9962,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "react",
       "qualifiedName": "react",
-      "description": "react commands",
+      "description": "Inspect React components, hooks and contexts",
       "hidden": false,
       "arguments": [],
       "options": [],
@@ -10355,7 +10369,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "rest-api",
       "qualifiedName": "rest-api",
-      "description": "rest-api commands",
+      "description": "Inspect REST API endpoints and middleware across frameworks",
       "hidden": false,
       "arguments": [],
       "options": [],

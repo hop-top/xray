@@ -8,6 +8,7 @@ import { cloudFormationTool } from '../src/lib/strategy/infrastructure/parsers/c
 
 export default class InfrastructureStrategy implements Strategy {
   name = 'infrastructure';
+  description = 'Inspect infrastructure-as-code resources, providers and dependencies';
   version = '0.1.0';
 
   private tools: InfrastructureTool[] = [

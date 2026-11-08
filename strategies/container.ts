@@ -26,6 +26,7 @@ interface Service {
 
 export default class ContainerStrategy implements Strategy {
   name = 'container';
+  description = 'Inspect Dockerfiles and docker-compose services';
   version = '0.1.0';
 
   commands: Record<string, StrategyCommand> = {

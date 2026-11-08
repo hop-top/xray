@@ -9,6 +9,7 @@ const CLI_DEP_MARKERS = ['github.com/spf13/cobra', 'github.com/urfave/cli', 'hop
 
 export default class GoCliStrategy implements Strategy {
   name = 'go-cli';
+  description = 'Show the command tree of Go CLI apps (cobra/kit)';
   version = '0.2.0';
   // Grammar is optional (language pack): resolved lazily via the grammar registry;
   // AST extraction degrades to an empty result with a warning when absent.
