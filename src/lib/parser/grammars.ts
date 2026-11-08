@@ -40,8 +40,8 @@ export interface LanguagePack {
 }
 
 export const LANGUAGE_PACKS: LanguagePack[] = [
-  { name: 'typescript', module: 'tree-sitter-typescript', range: '^0.23.2', exportKey: 'typescript', extensionExports: { '.tsx': 'tsx' }, extensions: ['.ts', '.tsx'], query: 'typescript.scm', aliases: ['ts'] },
-  { name: 'javascript', module: 'tree-sitter-javascript', range: '^0.25.0', extensions: ['.js', '.jsx'], query: 'javascript.scm', aliases: ['js'] },
+  { name: 'typescript', module: 'tree-sitter-typescript', range: '^0.23.2', exportKey: 'typescript', extensionExports: { '.tsx': 'tsx' }, extensions: ['.ts', '.tsx', '.mts', '.cts'], query: 'typescript.scm', aliases: ['ts'] },
+  { name: 'javascript', module: 'tree-sitter-javascript', range: '^0.25.0', extensions: ['.js', '.jsx', '.mjs', '.cjs'], query: 'javascript.scm', aliases: ['js'] },
   { name: 'python', module: 'tree-sitter-python', range: '^0.25.0', extensions: ['.py'], query: 'python.scm', aliases: ['py'] },
   { name: 'java', module: 'tree-sitter-java', range: '^0.23.5', extensions: ['.java'], query: 'java.scm' },
   { name: 'csharp', module: 'tree-sitter-c-sharp', range: '0.23.1', extensions: ['.cs'], query: 'c_sharp.scm', aliases: ['c-sharp', 'cs'] },

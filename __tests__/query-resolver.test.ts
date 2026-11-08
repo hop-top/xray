@@ -47,6 +47,8 @@ describe('QueryResolver', () => {
         expect(result).toEqual({
             '.ts': 'https://example.com/queries/typescript.scm',
             '.tsx': 'https://example.com/queries/typescript.scm',
+            '.mts': 'https://example.com/queries/typescript.scm',
+            '.cts': 'https://example.com/queries/typescript.scm',
         });
     });
 
@@ -99,9 +101,9 @@ describe('QueryResolver', () => {
         mockFs.statSync.mockReturnValue({ isDirectory: () => false } as any);
 
         expect(QueryResolver.resolve(['py-tags.scm'])).toEqual({ '.py': 'py-tags.scm' });
-        expect(QueryResolver.resolve(['whatever-js.scm'])).toEqual({ '.js': 'whatever-js.scm', '.jsx': 'whatever-js.scm' });
-        expect(QueryResolver.resolve(['jsx-tags.scm'])).toEqual({ '.js': 'jsx-tags.scm', '.jsx': 'jsx-tags.scm' });
-        expect(QueryResolver.resolve(['my-ts-query.scm'])).toEqual({ '.ts': 'my-ts-query.scm', '.tsx': 'my-ts-query.scm' });
+        expect(QueryResolver.resolve(['whatever-js.scm'])).toEqual({ '.js': 'whatever-js.scm', '.jsx': 'whatever-js.scm', '.mjs': 'whatever-js.scm', '.cjs': 'whatever-js.scm' });
+        expect(QueryResolver.resolve(['jsx-tags.scm'])).toEqual({ '.js': 'jsx-tags.scm', '.jsx': 'jsx-tags.scm', '.mjs': 'jsx-tags.scm', '.cjs': 'jsx-tags.scm' });
+        expect(QueryResolver.resolve(['my-ts-query.scm'])).toEqual({ '.ts': 'my-ts-query.scm', '.tsx': 'my-ts-query.scm', '.mts': 'my-ts-query.scm', '.cts': 'my-ts-query.scm' });
         expect(QueryResolver.resolve(['rust_query.scm'])).toEqual({ '.rs': 'rust_query.scm' });
         expect(QueryResolver.resolve(['go.scm'])).toEqual({ '.go': 'go.scm' });
     });
@@ -140,6 +142,8 @@ describe('QueryResolver', () => {
         expect(result).toEqual({
             '.ts': 'https://example.com/queries/typescript.scm?raw=1',
             '.tsx': 'https://example.com/queries/typescript.scm?raw=1',
+            '.mts': 'https://example.com/queries/typescript.scm?raw=1',
+            '.cts': 'https://example.com/queries/typescript.scm?raw=1',
         });
     });
 

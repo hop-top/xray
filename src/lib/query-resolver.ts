@@ -5,8 +5,8 @@ import { Logger } from './logger';
 export class QueryResolver {
     private static EXT_MAP: Record<string, string[]> = {
         'python': ['.py'],
-        'typescript': ['.ts', '.tsx'],
-        'javascript': ['.js', '.jsx'],
+        'typescript': ['.ts', '.tsx', '.mts', '.cts'],
+        'javascript': ['.js', '.jsx', '.mjs', '.cjs'],
         'go': ['.go'],
         'rust': ['.rs'],
         'java': ['.java'],
