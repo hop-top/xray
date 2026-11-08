@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { declareEffect, emitPlan, previewing } from './side-effect';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import { gitListFiles } from '../lib/scanner';
 import { globSync } from 'glob';
 import { styles } from '../lib/tui';
 import { bindFlag, staticValues } from './completion';
@@ -47,8 +47,7 @@ function countFiles(root: string): Map<string, number> {
   const counts = new Map<string, number>();
   let files: string[];
   try {
-    files = execSync('git ls-files --cached --others --exclude-standard', { cwd: root, encoding: 'utf8', stdio: 'pipe' })
-      .split('\n').filter(Boolean);
+    files = gitListFiles(root);
   } catch {
     files = globSync('**/*', { cwd: root, nodir: true, ignore: ['**/node_modules/**', '.git/**'] });
   }

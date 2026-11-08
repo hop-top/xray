@@ -2,11 +2,27 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { globSync } from 'glob';
 import ignore from 'ignore';
-import { execSync, execFileSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { Logger } from './logger';
 import { FileReadError } from './error/types';
 import { knownExtensions } from './parser/grammars';
 import { readTextSafe, noteSkip } from './safe-read';
+
+/**
+ * Paths git lists under `cwd` (tracked, plus untracked and not ignored), as
+ * stored: NUL-separated (`-z`), so names with non-ASCII bytes, spaces,
+ * tabs or newlines are not quoted by `core.quotepath` and survive intact.
+ * Throws when `cwd` is not in a repository or git is unavailable.
+ */
+export function gitListFiles(cwd: string): string[] {
+  const out = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
+    cwd,
+    encoding: 'utf8',
+    stdio: 'pipe', // Prevent git from writing to stderr on the console
+    maxBuffer: 1024 * 1024 * 1024,
+  });
+  return out.split('\0').filter(file => file !== '');
+}
 
 export class FileScanner {
   private root: string;
@@ -115,13 +131,7 @@ export class FileScanner {
     const supportedExts = new Set(extensions);
 
     try {
-      const gitFiles = execSync('git ls-files --cached --others --exclude-standard', {
-        cwd: this.root,
-        encoding: 'utf8',
-        stdio: 'pipe' // Prevent git from writing to stderr on the console
-      });
-
-      const files = gitFiles.split('\n').filter(file => file.trim() !== '');
+      const files = gitListFiles(this.root);
 
       return this.dropEscapingLinks(files.filter(f => {
         const ext = path.extname(f);
