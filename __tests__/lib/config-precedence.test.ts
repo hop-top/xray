@@ -139,13 +139,42 @@ describe('config precedence (characterization)', () => {
       expect(() => loadConfig(path.join(home, 'nope.js'))).toThrow(/\.xrayrc\.json/);
     });
 
-    it('package.json source yields the whole manifest, not just the xray key', () => {
+    it('package.json source yields only its xray key', () => {
       const proj = path.join(home, 'p');
       write(path.join(proj, 'package.json'), { name: 'n', xray: { limit: 5 } });
       process.chdir(proj);
+      expect(loadConfig()).toEqual({ limit: 5 });
+    });
+
+    it('top-level manifest fields are not config', () => {
+      const proj = path.join(home, 'p');
+      write(path.join(proj, 'package.json'), {
+        name: 'n', output: 'manifest.txt', paths: ['./manifest'], limit: 9, xray: { limit: 5 },
+      });
+      process.chdir(proj);
       const cfg = loadConfig() as any;
-      expect(cfg.name).toBe('n');
-      expect(cfg.xray).toEqual({ limit: 5 });
+      expect(cfg.limit).toBe(5);
+      expect(cfg.output).toBeUndefined();
+      expect(cfg.paths).toBeUndefined();
+      expect(cfg.name).toBeUndefined();
+    });
+
+    it('an explicit package.json is read through its xray key too', () => {
+      const proj = path.join(home, 'p');
+      write(path.join(proj, 'package.json'), { name: 'n', output: 'm.txt', xray: { limit: 5 } });
+      expect(loadConfig(path.join(proj, 'package.json'))).toEqual({ limit: 5 });
+    });
+
+    it('an explicit package.json without an xray object is an empty config', () => {
+      const proj = path.join(home, 'p');
+      write(path.join(proj, 'package.json'), { name: 'n', output: 'm.txt' });
+      expect(loadConfig(path.join(proj, 'package.json'))).toEqual({});
+    });
+
+    it('a non-object xray key is not a project config', () => {
+      const proj = path.join(home, 'p');
+      write(path.join(proj, 'package.json'), { name: 'n', xray: true });
+      expect(findConfigPath(proj)).toBeNull();
     });
 
     it('throws on malformed JSON', () => {

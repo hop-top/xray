@@ -26,6 +26,17 @@ xray searches for project configuration by **walking up the directory tree** fro
 
 The search stops at the first config file found or at the filesystem root.
 
+In `package.json` only the `xray` object is config; the manifest's own
+top-level fields (`name`, `paths`, `output`, ...) never are. A `package.json`
+without an `xray` object is skipped by the search:
+
+```json
+{
+  "name": "my-app",
+  "xray": { "paths": ["./src"], "output": "xray.md" }
+}
+```
+
 Config is data: xray only parses JSON and never runs a config file as code.
 `--config` refuses a `.js`, `.cjs` or `.mjs` path.
 

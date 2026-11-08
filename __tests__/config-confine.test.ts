@@ -82,11 +82,23 @@ describe('config paths stay inside their project', () => {
       const { proj, cfgout } = layout();
       fs.writeFileSync(
         path.join(proj, 'package.json'),
-        JSON.stringify({ name: 'p', xray: {}, output: '../cfgout/evil.sh' })
+        JSON.stringify({ name: 'p', xray: { output: '../cfgout/evil.sh' } })
       );
       const r = run(proj, 'map');
       expect(r.status).toBe(2);
       expect(r.stderr).toContain(path.join(proj, 'package.json'));
+      expect(r.stderr).toContain('output');
+      expect(entries(cfgout)).toEqual([]);
+    });
+
+    it('package.json: a top-level output of the manifest is not config', () => {
+      const { proj, cfgout } = layout();
+      fs.writeFileSync(
+        path.join(proj, 'package.json'),
+        JSON.stringify({ name: 'p', xray: {}, output: '../cfgout/evil.sh' })
+      );
+      const r = run(proj, 'map');
+      expect(r.status).toBe(0);
       expect(entries(cfgout)).toEqual([]);
     });
 

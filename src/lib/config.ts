@@ -54,6 +54,10 @@ function noteIgnoredCodeConfigs(dir: string): void {
   }
 }
 
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
 /**
  * Find config file by walking up the directory tree
  * Stops BEFORE entering home directory to avoid treating global configs as project configs
@@ -88,7 +92,7 @@ export function findConfigPath(startDir?: string): string | null {
         try {
           const content = fs.readFileSync(packageJsonPath, 'utf-8');
           const packageJson = JSON.parse(content);
-          if (packageJson.xray) {
+          if (isPlainObject(packageJson.xray)) {
             return packageJsonPath;
           }
         } catch (err: any) {
@@ -468,7 +472,12 @@ function loadConfigFile(filepath: string): XrayConfig {
     } catch (err: any) {
       throw new FileReadError(filepath, err);
     }
-    return JSON.parse(content) as XrayConfig;
+    const parsed = JSON.parse(content);
+    // A manifest is not config: only its `xray` key is.
+    if (path.basename(filepath) === 'package.json') {
+      return (isPlainObject(parsed?.xray) ? parsed.xray : {}) as XrayConfig;
+    }
+    return parsed as XrayConfig;
   } catch (error) {
     Logger.error(`Failed to load config file: ${filepath}`, error);
     throw error;
