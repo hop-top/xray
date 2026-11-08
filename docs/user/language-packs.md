@@ -91,13 +91,6 @@ A strategy that needs a grammar declares it (`requiresLanguages = ['go']`). If t
 strategy otherwise applies to the repo but the grammar is absent, it is not
 detected and one warning explains how to add it.
 
-## Migration
-
-Previously every grammar was installed with xray. Existing users who want the old
-behaviour: `xray lang add full`. Otherwise run `xray lang list` in your repos and
-add what you need. Cached results are unaffected; files skipped for lack of a
-grammar are never cached, so adding a grammar takes effect on the next run.
-
 ## Packaging notes (maintainers)
 
 Grammars are `peerDependencies` marked optional (`peerDependenciesMeta`), plus

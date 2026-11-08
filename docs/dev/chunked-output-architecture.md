@@ -466,50 +466,6 @@ npm test -- chunked-renderer
 npm run test:coverage
 ```
 
-## Backward Compatibility
-
-### Old Behavior (Single-File)
-
-```bash
-xray map --path ./src --no-chunk
-```
-
-Produces:
-- `.xray` file (single output)
-- Same format as original MapRenderer
-- Full token limit applies to entire output
-
-### New Behavior (Chunked)
-
-```bash
-xray map --path ./src
-```
-
-Produces:
-- `.xray_root.md` (root)
-- `.xray_src.md` (src/)
-- `.xray_src_lib.md` (src/lib/)
-- etc.
-- Token limit applies per chunk
-- Navigation between chunks
-
-**Config Migration:**
-```json
-// Old config (still works)
-{
-  "paths": ["src/"],
-  "output": ".xray"
-  // chunked defaults to true
-}
-
-// Explicitly disable chunking
-{
-  "paths": ["src/"],
-  "output": ".xray",
-  "chunked": false
-}
-```
-
 ## Future Enhancements
 
 ### Planned Features

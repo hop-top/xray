@@ -154,43 +154,6 @@ try {
 }
 ```
 
-## Migration Guide
-
-### From Old Code (Pre-2026-02-09)
-
-**Before:**
-```typescript
-// Old code used async tokenization for every line
-const { inputTokens } = await tokenizeAndEstimateCost({
-  model: 'gpt-4o',
-  input: line
-});
-currentTokens += inputTokens;
-```
-
-**After (Default - Fast):**
-```typescript
-// New code uses simple estimation by default
-const renderer = new ChunkedRenderer(...);
-// No change needed - automatically uses simple estimation
-```
-
-**After (Accurate - Slower):**
-```typescript
-// Opt-in to LLM-based estimation if needed
-import { createLLMTokenEstimator } from './lib/renderer/token-estimators';
-
-const renderer = new ChunkedRenderer(
-  root,
-  rankedNodes,
-  graph,
-  tokenLimit,
-  maxDepth,
-  includeImports,
-  createLLMTokenEstimator('gpt-4o') // Explicitly opt-in
-);
-```
-
 ## Examples
 
 ### Example 1: Fast Default Rendering
