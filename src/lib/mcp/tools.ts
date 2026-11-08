@@ -97,8 +97,6 @@ const ANALYSIS: ToolPolicy = {
     json: 'value',
     csv: 'value',
     txt: 'value',
-    mermaid: 'value',
-    dot: 'value',
     'no-chunk': 'value',
     group: 'value',
     lens: 'value',

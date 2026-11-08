@@ -12,8 +12,6 @@ export interface CliOptions {
   csv?: boolean;
   xml?: boolean;
   json?: boolean;
-  mermaid?: boolean;
-  dot?: boolean;
   config?: string;
   lens?: string;
   scope?: string;

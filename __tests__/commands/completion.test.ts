@@ -226,7 +226,7 @@ describe('completion: xray __complete', () => {
 
   it('per-command --format values', () => {
     expect(values(xray(['__complete', 'map', '--format', '']).stdout)).toEqual(
-      ['txt', 'json', 'csv', 'xml', 'mermaid', 'dot']
+      ['txt', 'json', 'csv', 'xml']
     );
     expect(values(xray(['__complete', 'query', '--format', '']).stdout).sort()).toEqual(
       ['csv', 'json', 'table', 'tree', 'yaml']
@@ -400,7 +400,7 @@ const LINES = [
     expect(r.stdout.trim().split('\n')).toEqual([
       'xray rea|react',
       'xray react |components contexts hooks',
-      'xray map --format |txt json csv xml mermaid dot',
+      'xray map --format |txt json csv xml',
       'xray completion |bash fish powershell zsh',
       'xray strategy info re|react rest-api',
     ]);
@@ -425,7 +425,7 @@ const LINES = [
     expect(r.stdout.trim().split('\n')).toEqual([
       'xray rea|react',
       'xray react |components contexts hooks',
-      'xray map --format |txt json csv xml mermaid dot',
+      'xray map --format |txt json csv xml',
       'xray completion |bash fish powershell zsh',
       'xray strategy info re|react rest-api',
       'xray map -p |args: *:dirname:_files -/',
@@ -443,7 +443,7 @@ const LINES = [
     expect(r.stdout.trim().split('\n')).toEqual([
       'xray rea|react',
       'xray react |components contexts hooks',
-      'xray map --format |csv dot json mermaid txt xml',
+      'xray map --format |csv json txt xml',
       'xray completion |bash fish powershell zsh',
       'xray strategy info re|react rest-api',
     ]);

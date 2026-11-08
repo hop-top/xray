@@ -118,9 +118,6 @@ You can also specify `--config <path>` to use a custom location.
   // Output format: "txt", "csv", "xml"
   "format": "txt",
 
-  // Diagram type: "mermaid", "dot"
-  "diagram": "mermaid",
-
   // Custom Tree-sitter query paths
   "queries": ["./custom-queries"],
 

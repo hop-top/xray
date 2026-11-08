@@ -20,14 +20,14 @@ xray produces output in different formats based on command:
 |---------|----------------|---------------|
 | `map` | Markdown tree | JSON, CSV (nodes+edges files), XML |
 | `explore` | Plain text list | Plain text |
-| `graph` | Mermaid | DOT, TXT |
+| `graph` | Plain text (CFG/DFG per function) | JSON, CSV, XML |
 | `strategy *` | Plain text | Plain text |
 
 **How to Parse:**
 - Markdown: Parse heading levels, list markers, code blocks
 - Plain text: Parse lines, look for structure
 - JSON: Parse object/array structure
-- Mermaid: Visual representation, or parse as text
+- XML: One `<graph>` document
 
 ## Map Output Structure
 
@@ -324,39 +324,40 @@ def extract_match_count(files: list):
 
 ## Graph Output Structure
 
-### Example Graph Output (Mermaid)
+### Example Graph Output (text)
 
-```mermaid
-graph TD
-    A[main.ts] --> B[auth.ts]
-    A --> C[api.ts]
-    B --> D[db.ts]
-    C --> D
-    C --> E[logger.ts]
+`xray graph --no-chunk -o graph.txt` writes one block per function with its
+control-flow (`cfg`) and data-flow (`dfg`) nodes:
+
+```
+src/b.ts (L1):
+│ [L1] function b()
+│   cfg
+│     n0 entry L1 → n2
+│     n1 exit L1
+│     n2 return L1 return 1 → n1
+│   dfg
+│       → used by: [src/a.ts:L2](L2-L2)
 ```
 
 ### Parsing Graph Output
 
+For programmatic use, write JSON (`xray graph --format json --no-chunk -o graph.json`)
+and read `nodes` and `edges`.
+
 **Extract Relationships:**
 
 ```python
-def extract_graph_relationships(mermaid_output: str):
-    """Extract relationships from mermaid graph"""
-    relationships = []
+import json
 
-    # Match: A[label] --> B[label]
-    pattern = r'(\w+)\[(.+?)\]\s*-->\s*(\w+)\[(.+?)\]'
-
-    for match in re.finditer(pattern, mermaid_output):
-        from_id, from_label, to_id, to_label = match.groups()
-        relationships.append({
-            'from': from_label,
-            'to': to_label,
-            'from_id': from_id,
-            'to_id': to_id
-        })
-
-    return relationships
+def extract_graph_relationships(path: str):
+    """Edges from an xray JSON graph"""
+    with open(path) as f:
+        graph = json.load(f)
+    return [
+        {'from': e['source'], 'to': e['target'], 'type': e['type']}
+        for e in graph['edges']
+    ]
 ```
 
 ## Error Messages
@@ -524,8 +525,8 @@ def validate_output(output: str, expected_format: str):
         checks['parse_valid'] = '#' in output or '│' in output
     elif expected_format == 'list':
         checks['parse_valid'] = '-' in output or ':' in output
-    elif expected_format == 'mermaid':
-        checks['parse_valid'] = 'graph' in output or '-->' in output
+    elif expected_format == 'json':
+        checks['parse_valid'] = output.lstrip().startswith('{')
 
     checks['has_results'] = any([
         'component' in output.lower(),

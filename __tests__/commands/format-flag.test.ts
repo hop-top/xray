@@ -1,6 +1,6 @@
 /**
  * `--format <fmt>` on map/scan/graph (and lang list) with the legacy
- * --json/--csv/--xml/--txt/--mermaid/--dot flags kept as aliases.
+ * --json/--csv/--xml/--txt flags kept as aliases.
  */
 import { execFileSync, spawnSync } from 'child_process';
 import * as fs from 'fs';
@@ -66,8 +66,8 @@ describe('--format', () => {
     expect(a.edges).toEqual(b.edges);
   });
 
-  test('--format txt / csv / xml / dot / mermaid are accepted (non-JSON text)', () => {
-    for (const f of ['txt', 'csv', 'xml', 'dot', 'mermaid']) {
+  test('--format txt / csv / xml are accepted (non-JSON text)', () => {
+    for (const f of ['txt', 'csv', 'xml']) {
       const r = run(args('map', '--format', f));
       expect(r.status).toBe(0);
       expect(isJson(out)).toBe(false);
@@ -82,11 +82,27 @@ describe('--format', () => {
   });
 
   test('conflicting legacy flags -> usage error (exit 2), nothing written', () => {
-    for (const flags of [['--json', '--csv'], ['--xml', '--txt'], ['--mermaid', '--dot']]) {
+    for (const flags of [['--json', '--csv'], ['--xml', '--txt']]) {
       const r = run(args('map', ...flags));
       expect(r.status).toBe(2);
       expect(r.stderr).toMatch(/conflicting/);
       expect(fs.existsSync(out)).toBe(false);
+    }
+  });
+
+  test('--format mermaid / dot -> usage error (exit 2) listing valid formats', () => {
+    for (const f of ['mermaid', 'dot']) {
+      const r = run(args('map', '--format', f));
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain(`invalid --format '${f}' (expected one of: txt, csv, xml, json)`);
+    }
+  });
+
+  test('--mermaid / --dot flags are unknown options (exit 2)', () => {
+    for (const f of ['--mermaid', '--dot']) {
+      const r = run(args('map', f));
+      expect(r.status).toBe(2);
+      expect(r.stderr).toMatch(/unknown option/);
     }
   });
 

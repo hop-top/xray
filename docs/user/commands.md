@@ -915,14 +915,10 @@ union of every root's nodes and edges.
   `cache: <label> hit|miss` per root on stderr; see
   [`xray impact`](#xray-impact).
 
-**Diagrams** (`--format mermaid|dot`, one at a time; combine with a format):
-- `mermaid` - Mermaid diagram (default)
-- `dot` - DOT/Graphviz diagram
-
-The per-format flags `--txt`, `--csv`, `--xml`, `--json`, `--mermaid`, `--dot`
-remain as aliases (`--json` = `--format json`). `--format` wins over an alias
-on the same axis; two different aliases on one axis (`--json --csv`) is a
-usage error (exit 2), as is an unknown `--format` value. `xray lang list`
+The per-format flags `--txt`, `--csv`, `--xml`, `--json` remain as aliases
+(`--json` = `--format json`). `--format` wins over an alias; two different
+aliases (`--json --csv`) is a usage error (exit 2), as is an unknown
+`--format` value (`--format mermaid` lists the valid ones). `xray lang list`
 takes `--format text|json` too (`--json` alias). Machine formats
 (`json`, `csv`, `xml`) keep advisory INFO hints on stderr quiet unless
 verbose.

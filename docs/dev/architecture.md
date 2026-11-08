@@ -192,8 +192,6 @@ Renders analysis results in various formats with support for both single-file an
 - **JSON**: Raw graph data
 - **CSV**: Tabular data
 - **XML**: Structured markup
-- **Mermaid**: Diagram DSL
-- **DOT**: Graphviz format
 
 **Chunked Renderer Features:**
 - Automatic directory-based chunking

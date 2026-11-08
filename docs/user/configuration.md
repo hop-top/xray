@@ -160,7 +160,6 @@ anywhere.
   "depth": 5,
   "match": ["*.ts", "*.tsx", "!*.test.ts"],
   "format": "txt",
-  "diagram": "mermaid",
   "aliases": {
     "comp": "react components",
     "routes": "express routes"
@@ -211,7 +210,6 @@ anywhere.
 | `match` | `string[]` | File patterns for `map` and `graph`, the same as `--match` (`!` excludes; `--match` replaces the list) |
 | `catch` | `string[]` | Function/class name patterns |
 | `format` | `'txt' \| 'csv' \| 'xml'` | Output format |
-| `diagram` | `'mermaid' \| 'dot'` | Diagram type |
 | `queries` | `string[]` | Custom Tree-sitter query paths/URLs |
 | `json` | `boolean` | Output raw JSON graph |
 | `aliases` | `object` | Command aliases - shortcuts for strategy commands |

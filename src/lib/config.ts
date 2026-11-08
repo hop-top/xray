@@ -513,7 +513,6 @@ export function mergeScopeWithBase(baseConfig: XrayConfig, scopeConfig: XrayScop
     match: scopeConfig.match || baseConfig.match,
     catch: scopeConfig.catch || baseConfig.catch,
     format: scopeConfig.format || baseConfig.format,
-    diagram: scopeConfig.diagram || baseConfig.diagram,
     queries: scopeConfig.queries || baseConfig.queries,
     json: scopeConfig.json !== undefined ? scopeConfig.json : baseConfig.json,
     chunked: scopeConfig.chunked !== undefined ? scopeConfig.chunked : (baseConfig.chunked !== undefined ? baseConfig.chunked : true),
@@ -751,12 +750,9 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     csv: cliOptions.csv || baseConfig.format === 'csv',
     xml: cliOptions.xml || baseConfig.format === 'xml',
     txt: cliOptions.txt || baseConfig.format === 'txt',
-    dot: cliOptions.dot || baseConfig.diagram === 'dot',
-    mermaid: cliOptions.mermaid || baseConfig.diagram === 'mermaid',
     // Resolved selection (see resolveFormatFlags): CLI beats config, and a
     // CLI choice on an axis must not be re-overridden by config booleans.
     outputFormat: cliOptions.outputFormat ?? (baseConfig.json ? 'json' : baseConfig.format),
-    outputDiagram: cliOptions.outputDiagram ?? baseConfig.diagram,
     // commander's `--no-chunk` defaults `chunk` to true: only an explicit false is a CLI choice.
     chunked: cliOptions.chunk === false ? false : baseConfig.chunked !== false,
     detect: cliOptions.detect ?? false,

@@ -295,10 +295,10 @@ WHICH OUTPUT FORMAT SHOULD I USE?
     │   ├─ COMMAND: xray map --format csv
     │   └─ OUTPUT: <out>.nodes.csv + <out>.edges.csv (two tables)
     │
-    ├─ Mermaid diagram?
-    │   ├─ WHEN: Need visual relationships
-    │   ├─ COMMAND: xray graph --format mermaid
-    │   └─ OUTPUT: Mermaid syntax diagram
+    ├─ XML?
+    │   ├─ WHEN: Need one <graph> document
+    │   ├─ COMMAND: xray map --format xml
+    │   └─ OUTPUT: <out>.xml
     │
     └─ Chunked (multiple files)?
         ├─ WHEN: Large codebase

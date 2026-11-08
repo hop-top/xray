@@ -996,17 +996,14 @@ FLAGS:
                                       negate) (repeatable) (default: [])
   -c, --catch <pattern>               Match function/class name (prefix ! to
                                       negate) (repeatable) (default: [])
-  --format <fmt>                      Output format: txt (default); graph
-                                      formats json, csv (nodes+edges tables),
-                                      xml; or diagram: mermaid (default), dot
+  --format <fmt>                      Output format: txt (default), json, csv
+                                      (nodes+edges tables), xml
   --txt                               Alias of --format txt
   --csv                               Alias of --format csv (<out>.nodes.csv +
                                       <out>.edges.csv)
   --xml                               Alias of --format xml (one <graph>
                                       document)
   --json                              Alias of --format json (raw JSON graph)
-  --mermaid                           Alias of --format mermaid
-  --dot                               Alias of --format dot
   --no-chunk                          Disable chunked output (single file
                                       output)
   --group <mode>                      Chunk grouping mode: directory (default)
@@ -1432,17 +1429,14 @@ FLAGS:
                                       negate) (repeatable) (default: [])
   -c, --catch <pattern>               Match function/class name (prefix ! to
                                       negate) (repeatable) (default: [])
-  --format <fmt>                      Output format: txt (default); graph
-                                      formats json, csv (nodes+edges tables),
-                                      xml; or diagram: mermaid (default), dot
+  --format <fmt>                      Output format: txt (default), json, csv
+                                      (nodes+edges tables), xml
   --txt                               Alias of --format txt
   --csv                               Alias of --format csv (<out>.nodes.csv +
                                       <out>.edges.csv)
   --xml                               Alias of --format xml (one <graph>
                                       document)
   --json                              Alias of --format json (raw JSON graph)
-  --mermaid                           Alias of --format mermaid
-  --dot                               Alias of --format dot
   --no-chunk                          Disable chunked output (single file
                                       output)
   --group <mode>                      Chunk grouping mode: directory (default)
@@ -2437,17 +2431,14 @@ FLAGS:
                                       negate) (repeatable) (default: [])
   -c, --catch <pattern>               Match function/class name (prefix ! to
                                       negate) (repeatable) (default: [])
-  --format <fmt>                      Output format: txt (default); graph
-                                      formats json, csv (nodes+edges tables),
-                                      xml; or diagram: mermaid (default), dot
+  --format <fmt>                      Output format: txt (default), json, csv
+                                      (nodes+edges tables), xml
   --txt                               Alias of --format txt
   --csv                               Alias of --format csv (<out>.nodes.csv +
                                       <out>.edges.csv)
   --xml                               Alias of --format xml (one <graph>
                                       document)
   --json                              Alias of --format json (raw JSON graph)
-  --mermaid                           Alias of --format mermaid
-  --dot                               Alias of --format dot
   --no-chunk                          Disable chunked output (single file
                                       output)
   --group <mode>                      Chunk grouping mode: directory (default)
@@ -3969,7 +3960,7 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": null,
-          "description": "Output format: txt (default); graph formats json, csv (nodes+edges tables), xml; or diagram: mermaid (default), dot"
+          "description": "Output format: txt (default), json, csv (nodes+edges tables), xml"
         },
         {
           "name": "--txt",
@@ -4002,22 +3993,6 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": null,
           "description": "Alias of --format json (raw JSON graph)"
-        },
-        {
-          "name": "--mermaid",
-          "short": null,
-          "type": "boolean",
-          "required": false,
-          "default": null,
-          "description": "Alias of --format mermaid"
-        },
-        {
-          "name": "--dot",
-          "short": null,
-          "type": "boolean",
-          "required": false,
-          "default": null,
-          "description": "Alias of --format dot"
         },
         {
           "name": "--no-chunk",
@@ -4250,7 +4225,7 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": null,
-          "description": "Output format: txt (default); graph formats json, csv (nodes+edges tables), xml; or diagram: mermaid (default), dot"
+          "description": "Output format: txt (default), json, csv (nodes+edges tables), xml"
         },
         {
           "name": "--txt",
@@ -4283,22 +4258,6 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": null,
           "description": "Alias of --format json (raw JSON graph)"
-        },
-        {
-          "name": "--mermaid",
-          "short": null,
-          "type": "boolean",
-          "required": false,
-          "default": null,
-          "description": "Alias of --format mermaid"
-        },
-        {
-          "name": "--dot",
-          "short": null,
-          "type": "boolean",
-          "required": false,
-          "default": null,
-          "description": "Alias of --format dot"
         },
         {
           "name": "--no-chunk",

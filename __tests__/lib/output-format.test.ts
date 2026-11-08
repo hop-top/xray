@@ -3,33 +3,34 @@ import { UsageError, EXIT_USAGE } from '../../src/lib/error/types';
 
 describe('resolveFormatFlags', () => {
   test('nothing selected -> both axes undefined', () => {
-    expect(resolveFormatFlags({})).toEqual({ format: undefined, diagram: undefined });
+    expect(resolveFormatFlags({})).toEqual({ format: undefined });
   });
 
   test.each(['txt', 'csv', 'xml', 'json'] as const)('legacy --%s alias', f => {
     expect(resolveFormatFlags({ [f]: true }).format).toBe(f);
   });
 
-  test.each(['mermaid', 'dot'] as const)('legacy --%s alias', d => {
-    expect(resolveFormatFlags({ [d]: true }).diagram).toBe(d);
+  test('--format selects data format, case-insensitive', () => {
+    expect(resolveFormatFlags({ format: 'JSON' })).toEqual({ format: 'json' });
   });
 
-  test('--format selects data format or diagram, case-insensitive', () => {
-    expect(resolveFormatFlags({ format: 'JSON' })).toEqual({ format: 'json', diagram: undefined });
-    expect(resolveFormatFlags({ format: 'dot' })).toEqual({ format: undefined, diagram: 'dot' });
+  test.each(['mermaid', 'dot'])('--format %s is a usage error listing valid formats', f => {
+    let err: any;
+    try { resolveFormatFlags({ format: f }); } catch (e) { err = e; }
+    expect(err).toBeInstanceOf(UsageError);
+    expect(err.message).toBe(`invalid --format '${f}' (expected one of: txt, csv, xml, json)`);
   });
 
-  test('axes combine (--csv --dot)', () => {
-    expect(resolveFormatFlags({ csv: true, dot: true })).toEqual({ format: 'csv', diagram: 'dot' });
+  test.each(['mermaid', 'dot'])('--%s legacy flag no longer selects anything', f => {
+    expect(resolveFormatFlags({ [f]: true } as any)).toEqual({ format: undefined });
   });
 
   test('--format wins over a legacy flag on the same axis', () => {
     expect(resolveFormatFlags({ format: 'csv', json: true }).format).toBe('csv');
-    expect(resolveFormatFlags({ format: 'dot', mermaid: true }).diagram).toBe('dot');
   });
 
   test('two legacy flags on one axis -> UsageError (exit 2)', () => {
-    for (const opts of [{ json: true, csv: true }, { xml: true, txt: true }, { mermaid: true, dot: true }]) {
+    for (const opts of [{ json: true, csv: true }, { xml: true, txt: true }]) {
       let err: any;
       try { resolveFormatFlags(opts); } catch (e) { err = e; }
       expect(err).toBeInstanceOf(UsageError);

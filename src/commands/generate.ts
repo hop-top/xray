@@ -312,7 +312,6 @@ export const buildGraphForRoots = async (
         languages: mergedOptions.languages,
         configPath,
         format: opts.format ?? 'json',
-        diagram: mergedOptions.outputDiagram ?? (mergedOptions.dot ? 'dot' : 'mermaid'),
         chunked: false,
         onProgress: (current, total, file) => progress.update(current, total, file)
       });
@@ -473,10 +472,6 @@ export const runSingleXray = async (
   // Resolve queries
   const queries = QueryResolver.resolve(mergedOptions.query || []);
 
-  // Determine diagram type
-  const diagram: 'mermaid' | 'dot' =
-    mergedOptions.outputDiagram ?? (mergedOptions.dot ? 'dot' : 'mermaid');
-
   // Parse progress: suppressed under --quiet / below info level and on
   // non-TTY stderr (see fileProgress).
   const progressQuiet = Boolean(mergedOptions.quiet) || Logger.getLevel() < LogLevel.INFO;
@@ -549,7 +544,6 @@ export const runSingleXray = async (
         languages: mergedOptions.languages,
         configPath,
         format,
-        diagram,
         chunked: true,
         onProgress: (current, total, file) => progress.update(current, total, file)
       });
@@ -666,7 +660,6 @@ export const runSingleXray = async (
         languages: mergedOptions.languages,
         configPath,
         format,
-        diagram,
         chunked: false,
         onProgress: (current, total, file) => progress.update(current, total, file)
       });
@@ -857,7 +850,6 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions, previ
     const normalizedOptions = {
       ...normalizeExtensionOptions(options),
       outputFormat: resolvedFormat.format,
-      outputDiagram: resolvedFormat.diagram,
     };
 
     // Set verbose level if provided

@@ -60,7 +60,6 @@ export interface XrayConfig {
 
   // Output options
   format?: 'txt' | 'csv' | 'xml' | 'json';
-  diagram?: 'mermaid' | 'dot';
   chunked?: boolean;     // enable chunked output (default: true)
 
   // Advanced

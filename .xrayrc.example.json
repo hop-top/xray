@@ -23,7 +23,6 @@
   ],
 
   "format": "txt",
-  "diagram": "mermaid",
   "chunked": true,
 
   "telemetry": {

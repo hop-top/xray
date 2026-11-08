@@ -126,7 +126,7 @@ xray graph [options]
 **Features:**
 - Control Flow Graph (CFG)
 - Data Flow Graph (DFG)
-- Multiple output formats (mermaid, dot, txt)
+- Multiple output formats (txt, json, csv, xml)
 
 **Supported Languages:**
 C, C++, C#, Go, Java, Rust, Swift
@@ -207,8 +207,6 @@ addCommonOptions(cmd: Command) {
   --csv                      // CSV format
   --xml                      // XML format
   --json                     // Raw JSON
-  --mermaid                  // Mermaid diagram
-  --dot                      // Graphviz format
 
   // Chunking
   --no-chunk                 // Disable chunked output
