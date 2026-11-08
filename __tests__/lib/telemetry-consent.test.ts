@@ -297,6 +297,38 @@ describe('TelemetryConsent', () => {
       expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8')).telemetry).toEqual({ enabled: false });
     });
 
+    it('saves "off" when the prompt times out, and does not re-ask', async () => {
+      const argv = ['node', 'xray', 'map'];
+      jest.useFakeTimers();
+      try {
+        mockQuestion.mockImplementation(() => { /* never answered */ });
+        const pending = handleFirstRunConsent(argv);
+        await jest.advanceTimersByTimeAsync(15_000);
+        expect(await pending).toBe(false);
+      } finally {
+        jest.useRealTimers();
+      }
+      expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8')).telemetry).toEqual({ enabled: false });
+      expect(await handleFirstRunConsent(argv)).toBe(false);
+      expect(mockQuestion).toHaveBeenCalledTimes(1);
+    });
+
+    it('saves "off" when input ends unanswered (Ctrl-D), and does not re-ask', async () => {
+      const argv = ['node', 'xray', 'map'];
+      (readline.createInterface as jest.Mock).mockImplementationOnce(() => {
+        const handlers: Record<string, () => void> = {};
+        return {
+          question: jest.fn(() => { handlers.close?.(); }),
+          once: jest.fn((ev: string, fn: () => void) => { handlers[ev] = fn; }),
+          close: mockClose,
+        };
+      });
+      expect(await handleFirstRunConsent(argv)).toBe(false);
+      expect(JSON.parse(fs.readFileSync(globalFile(), 'utf-8')).telemetry).toEqual({ enabled: false });
+      expect(await handleFirstRunConsent(argv)).toBe(false);
+      expect(mockQuestion).not.toHaveBeenCalled();
+    });
+
     it('re-asks after the global config is deleted', async () => {
       const argv = ['node', 'xray', 'map'];
       await handleFirstRunConsent(argv);

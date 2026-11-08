@@ -275,7 +275,7 @@ The consent flow:
 1. **Check for --no-telemetry flag** - Skip if present
 2. **Check for existing decision** - Skip if project/`--config` or the global user config has a `telemetry` setting (project wins)
 3. **Check for interactive mode** - Skip in CI/CD or piped I/O
-4. **Prompt user** - Show informative message and ask Y/n
+4. **Prompt user** - Show informative message and ask Y/n; no answer within 15 s, or end of input, counts as no
 5. **Save decision** - Write to the global user config (`config.json` in the kit XDG config dir); never the cwd or project files. Non-interactive runs persist nothing
 
 ### Non-Interactive Detection

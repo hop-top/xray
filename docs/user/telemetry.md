@@ -14,7 +14,7 @@ All telemetry data is written, in JSONL format, to a per-project file in the xra
 
 ## First Run Consent
 
-The first time you use xray interactively, it prompts you to enable telemetry. The answer is stored once, per user, in your global config (`config.json` in the config dir shown by `xray paths`); it is not asked again in other projects, and nothing is written into the project. Delete the global config to be asked again.
+The first time you use xray interactively, it prompts you to enable telemetry. The answer is stored once, per user, in your global config (`config.json` in the config dir shown by `xray paths`); it is not asked again in other projects, and nothing is written into the project. No answer within 15 seconds, or end of input (Ctrl-D), counts as "no": telemetry is saved as off and you are not asked again. Delete the global config to be asked again.
 
 ```
 Welcome to Xray!
@@ -34,8 +34,9 @@ What is NOT collected:
   • Network activity (data stays local)
 
 All data is stored locally in the xray state directory (see `xray paths`)
-You are asked once. Change it anytime in your user config,
-or per project via "telemetry" in .xrayrc.json.
+You are asked once; no answer within 15s means no.
+Change it later: set XRAY_TELEMETRY_ENABLED=true, or "telemetry" in your user config
+(xray paths shows where) or per project in .xrayrc.json.
 
 Enable telemetry? [Y/n]:
 ```
@@ -55,7 +56,7 @@ Telemetry only records when a person runs xray at a terminal. Any of these turns
 | CI environment | `CI`, `GITHUB_ACTIONS`, `GITLAB_CI`, `BUILDKITE`, ... |
 | `xray mcp` (MCP server) | always off |
 
-No prompt is shown and nothing is stored on those runs, so the saved decision still applies to your next interactive run (and an unanswered prompt is still asked then). `xray describe` publishes these rules under `telemetry` so a tool driving xray can check them:
+No prompt is shown and nothing is stored on those runs, so the saved decision still applies to your next interactive run. `xray describe` publishes these rules under `telemetry` so a tool driving xray can check them:
 
 ```json
 "telemetry": {

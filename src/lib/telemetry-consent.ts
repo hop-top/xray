@@ -59,15 +59,14 @@ export interface PromptIO {
  * How long the prompt waits for an answer. A person answers in seconds; an
  * agent, hook or multiplexer driving a pty never does, and must not hang.
  */
-export const CONSENT_PROMPT_TIMEOUT_MS = 60_000;
+export const CONSENT_PROMPT_TIMEOUT_MS = 15_000;
 
 /**
  * Prompt user for telemetry consent.
- * Returns true if the user consents, false if they decline, undefined when
- * there was no answer (input ended, or none within the timeout): nothing is
- * decided then and nothing may be saved.
+ * Returns true if the user consents, false if they decline. No answer
+ * (input ended, or none within the timeout) counts as a decline.
  */
-export async function promptForConsent(io: PromptIO = {}): Promise<boolean | undefined> {
+export async function promptForConsent(io: PromptIO = {}): Promise<boolean> {
   const out = io.output ?? process.stdout;
   const paint = styles(out as NodeJS.WriteStream);
   const console = { log: (line = '') => { out.write(`${line}\n`); } };
@@ -93,17 +92,18 @@ export async function promptForConsent(io: PromptIO = {}): Promise<boolean | und
   console.log('  • Network activity (data stays local)');
   console.log('');
   console.log(paint.muted('All data is stored locally in the xray state directory (see `xray paths`)'));
-  console.log(paint.muted('You are asked once. Change it anytime in your user config (xray paths shows where),'));
-  console.log(paint.muted('or per project via "telemetry" in .xrayrc.json.'));
+  console.log(paint.muted('You are asked once; no answer within ' + Math.round((io.timeoutMs ?? CONSENT_PROMPT_TIMEOUT_MS) / 1000) + 's means no.'));
+  console.log(paint.muted('Change it later: set XRAY_TELEMETRY_ENABLED=true, or "telemetry" in your user config'));
+  console.log(paint.muted('(xray paths shows where) or per project in .xrayrc.json.'));
   console.log('');
 
   const answer = await askQuestion(paint.bold('Enable telemetry?') + ' [Y/n]: ', io);
 
   if (answer === null) {
     console.log('');
-    console.log(paint.muted('No answer: telemetry stays off for this run. You will be asked again.'));
+    console.log(paint.muted('No answer: telemetry off. You will not be asked again.'));
     console.log('');
-    return undefined;
+    return false;
   }
 
   const consent = answer.toLowerCase() !== 'n' && answer.toLowerCase() !== 'no';
@@ -173,9 +173,6 @@ export async function handleFirstRunConsent(argv: string[], configPath?: string)
   // Prompt user for consent
   Logger.debug('Prompting user for telemetry consent');
   const consent = await promptForConsent();
-
-  // No answer (input ended, timed out): decide nothing, ask again next time
-  if (consent === undefined) return false;
 
   // Save decision (per user, global config)
   saveConsentDecision(consent);

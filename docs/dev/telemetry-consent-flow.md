@@ -112,8 +112,8 @@ Main entry point for consent flow. Returns `true` if telemetry should be enabled
 1. `telemetryOffReason()` (`src/lib/telemetry-policy.ts`) non-null → return `false`, nothing saved
 2. Check existing decision → return saved value
 3. stdin not a TTY → return `false`, nothing saved
-4. Prompt user → return answer
-5. Save decision → persist to config
+4. Prompt user → answer; no answer (15 s timeout, end of input) = `false`
+5. Save decision → persist to config (also for no answer)
 
 **`hasConsentDecision(): boolean`**
 
@@ -132,7 +132,7 @@ without `--format text|table|txt`),
 
 **`promptForConsent(): Promise<boolean>`**
 
-Displays informative prompt and gets user answer. Uses `readline` for input.
+Displays informative prompt and gets user answer. Uses `readline` for input. Gives up after `CONSENT_PROMPT_TIMEOUT_MS` (15 s); a timeout or end of input (Ctrl-D) is a decline.
 
 **`saveConsentDecision(enabled: boolean): void`**
 
