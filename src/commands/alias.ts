@@ -5,6 +5,7 @@ import { declareEffect, emitPlan, previewing } from './side-effect';
 import { assertDataConfig, isWritableConfigFile, loadConfig, saveConfig } from '../lib/config';
 import { isAliasTarget, kitAlias, reservedAliasNames, rootCommand, usableAliases } from '../lib/alias-resolver';
 import { Logger } from '../lib/logger';
+import { hintsEnabled } from './kit-cli';
 import { ConflictError, NotFoundError, UsageError, withHelp } from '../lib/error/types';
 import { jsonErrorsEnabled } from '../lib/error/report';
 import {
@@ -51,6 +52,13 @@ function saveAliases(config: Parameters<typeof saveConfig>[0], configPath: strin
   else saveConfig(config, configPath);
 }
 
+/** Next-step hint: dropped by `--no-hints`, `--quiet` and HOP_QUIET_HINTS. */
+function hint(cmd: Command, message: string): void {
+  const root = rootCommand(cmd);
+  const noHints = root.getOptionValueSource('hints') === 'cli';
+  if (hintsEnabled({ noHints, quiet: Boolean(root.opts().quiet) })) Logger.info(message);
+}
+
 export function registerAliasCommand(): Command {
   const program = new Command('alias')
     .description('Manage command aliases');
@@ -70,10 +78,10 @@ export function registerAliasCommand(): Command {
 
     if (!config) {
       Logger.info('No configuration file found.');
-      Logger.info('\nCreate .xrayrc.json to configure aliases.');
+      hint(cmd, '\nCreate .xrayrc.json to configure aliases.');
     } else if (Object.keys(aliases).length === 0) {
       Logger.info('No aliases configured.');
-      Logger.info('\nTo add aliases, use: xray alias set <name> <target>');
+      hint(cmd, '\nTo add aliases, use: xray alias set <name> <target>');
     }
 
     const rows: AliasRow[] = Object.entries(aliases).map(([alias, target]) => ({ alias, target }));
@@ -100,7 +108,7 @@ export function registerAliasCommand(): Command {
       // Validate target format
       if (!isAliasTarget(target)) {
         const example = 'xray alias set comp "react components"';
-        if (!jsonErrorsEnabled()) Logger.info(`Example: ${example}`);
+        if (!jsonErrorsEnabled()) hint(cmd, `Example: ${example}`);
         throw withHelp(new UsageError('Target must be in format "<strategy> <command>"'), { suggestedFix: `Example: ${example}` });
       }
 
@@ -145,7 +153,7 @@ export function registerAliasCommand(): Command {
           Logger.success(`Created alias "${name}" → "${target}"`);
         }
 
-        Logger.info('\nThe alias is available on the next xray run.');
+        hint(cmd, '\nThe alias is available on the next xray run.');
       });
     }), 'write-local', 'conditional');
 

@@ -19,6 +19,7 @@ export const verboseCount = kit.verboseCount;
 export const isDryRun = kit.isDryRun;
 export const resolveDryRunPolicy = kit.resolveDryRunPolicy;
 export const renderPlan = kit.renderPlan;
+export const hintsEnabled = kit.hintsEnabled;
 
 export type { Plan, Effect } from '@hop-top/kit/dist/cli';
 
