@@ -15,7 +15,63 @@ import { CodedError, ConflictError, FileWriteError, NotFoundError, UsageError } 
 import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
+import { isWithin, realpathLoose } from '../lib/confine';
 import { addResultFormat, assertResultFormat, emitResult } from '../lib/result-format';
+
+/** Longest strategy name `strategy create` accepts. */
+const STRATEGY_NAME_MAX = 64;
+const STRATEGY_NAME = /^[a-z0-9][a-z0-9-]*$/;
+
+/**
+ * A strategy name becomes a file name and a command word: lowercase
+ * letters, digits and hyphens only, so no separator or `..` can reach
+ * outside the strategies directory. Anything else is a usage error.
+ */
+export function assertStrategyName(name: string): void {
+  if (name.length <= STRATEGY_NAME_MAX && STRATEGY_NAME.test(name)) return;
+  const shown = terminalSafe(name.length > 80 ? `${name.slice(0, 80)}...` : name);
+  throw new UsageError(
+    `invalid strategy name "${shown}": use lowercase letters, digits and hyphens, ` +
+    `starting with a letter or digit (^[a-z0-9][a-z0-9-]*$), at most ${STRATEGY_NAME_MAX} characters`
+  );
+}
+
+/** The project's strategies directory must resolve (symlinks included) inside the working directory. */
+function assertInsideProject(dir: string): void {
+  const project = realpathLoose(process.cwd());
+  const real = realpathLoose(dir);
+  if (!isWithin(project, real)) {
+    throw new UsageError(
+      `refusing to write: ${terminalSafe(dir)} resolves to ${terminalSafe(real)}, outside the project ` +
+      `${terminalSafe(project)} (a symlink in .xray?); pass --dir to choose a directory`
+    );
+  }
+}
+
+function pathExists(p: string): boolean {
+  try {
+    fs.lstatSync(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Create `file` exclusively: never through an existing entry, symlink or not. */
+function writeNew(file: string, content: string): void {
+  try {
+    fs.writeFileSync(file, content, { flag: 'wx' });
+  } catch (err: any) {
+    if (err?.code === 'EEXIST') throw new ConflictError(`Strategy file already exists: ${file}`);
+    throw err;
+  }
+}
+
+/** A TypeScript identifier from a strategy name (hyphens to underscores, `_` before a leading digit). */
+function identifierOf(name: string): string {
+  const id = name.replace(/-/g, '_');
+  return /^[0-9]/.test(id) ? `_${id}` : id;
+}
 
 interface StrategyRow { name: string; version: string; commands: string }
 
@@ -157,14 +213,20 @@ export function registerStrategyCommand(): Command {
     .option('--ts', 'Create TypeScript format strategy (full control)'))
     .action(async (name, options, cmd: Command) => {
       assertResultFormat(cmd);
+      assertStrategyName(name);
       const dir = options.dir || path.join(process.cwd(), '.xray/strategies');
+      // The default directory must stay in the project even when .xray or
+      // .xray/strategies is a symlink; --dir is the user's own choice.
+      if (!options.dir) assertInsideProject(dir);
 
-      const fileName = name.toLowerCase().replace(/\s+/g, '-');
+      const fileName = name;
       const isYaml = options.yaml || (!options.ts && !options.dir);
       const fileExt = isYaml ? '.yml' : '.ts';
       const filePath = path.join(dir, `${fileName}${fileExt}`);
 
-      if (fs.existsSync(filePath)) {
+      // lstat: a planted symlink (even a dangling one) is "already there",
+      // never a path to write through.
+      if (pathExists(filePath)) {
         throw new ConflictError(`Strategy file already exists: ${filePath}`);
       }
 
@@ -193,8 +255,9 @@ tags: []
 commands: {}
 `;
         try {
-          fs.writeFileSync(filePath, template);
+          writeNew(filePath, template);
         } catch (err: any) {
+          if (err instanceof CodedError) throw err;
           throw new FileWriteError(filePath, err);
         }
         emitResult(cmd, { strategy: name, path: filePath, kind: 'yaml', action: 'created' }, () => {
@@ -207,7 +270,7 @@ commands: {}
       } else {
         const template = `import { Strategy, StrategyContext, FileMetadata } from '../../../src/lib/strategy/types';
 
-export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy = {
+export const ${identifierOf(name)}Strategy: Strategy = {
   name: '${name}',
   version: '0.1.0',
   detect: (ctx: StrategyContext) => {
@@ -236,8 +299,9 @@ export const ${name.replace(/-/g, '_').replace(/\s+/g, '_')}Strategy: Strategy =
 };
 `;
         try {
-          fs.writeFileSync(filePath, template);
+          writeNew(filePath, template);
         } catch (err: any) {
+          if (err instanceof CodedError) throw err;
           throw new FileWriteError(filePath, err);
         }
         emitResult(cmd, { strategy: name, path: filePath, kind: 'ts', action: 'created' }, () => {

@@ -21,6 +21,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { assertDataConfig, findConfigPath } from '../config';
+import { isWithin, realpathLoose } from '../confine';
 import { UsageError } from '../error/types';
 import { ToolArgumentError } from './tools';
 
@@ -46,22 +47,7 @@ export interface RunOptions {
   globalArgs?: readonly string[];
 }
 
-/** Whether `child` is `parent` or inside it (both absolute, resolved). */
-export function isWithin(parent: string, child: string): boolean {
-  const rel = path.relative(parent, child);
-  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
-}
-
-/** Realpath of `p`, or of its nearest existing ancestor joined with the rest. */
-function realpathLoose(p: string): string {
-  try {
-    return fs.realpathSync(p);
-  } catch {
-    const parent = path.dirname(p);
-    if (parent === p) return p;
-    return path.join(realpathLoose(parent), path.basename(p));
-  }
-}
+export { isWithin };
 
 /**
  * Resolve `value` against `base` and require it inside `serverRoot`

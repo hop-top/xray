@@ -182,6 +182,13 @@ strategy loads with no opt-in:
 xray strategy create my-rules --yaml   # writes .xray/strategies/my-rules.yml
 ```
 
+A strategy name is lowercase letters, digits and hyphens, starting with a
+letter or digit (`^[a-z0-9][a-z0-9-]*$`), at most 64 characters. Anything
+else, including `/`, `..` and uppercase, is a usage error (exit 2); the
+name is never rewritten. The default `.xray/strategies` directory must
+resolve inside the project, so a symlinked `.xray` that leaves it is
+refused.
+
 A code strategy (`.ts`, `.js`, an npm package) also needs
 `XRAY_ALLOW_PROJECT_STRATEGIES=1`:
 
