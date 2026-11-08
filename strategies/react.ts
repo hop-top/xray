@@ -2,6 +2,7 @@
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import Parser from 'tree-sitter';
 import { requireGrammarModule } from '../src/lib/parser/grammars';
+import { Logger } from '../src/lib/logger';
 
 export default class ReactStrategy implements Strategy {
   name = 'react';
@@ -59,11 +60,12 @@ export default class ReactStrategy implements Strategy {
 
       if (hasJSX) {
         // Detect components using AST
-        const component = this.findComponent(rootNode);
-        if (component) {
+        const components = this.findComponents(rootNode);
+        if (components.length > 0) {
           tags.push('react:component');
-          metadata.componentName = component.name;
-          metadata.componentType = component.type;
+          metadata.componentName = components[0].name;
+          metadata.componentType = components[0].type;
+          metadata.components = components;
         }
       }
 
@@ -158,65 +160,66 @@ export default class ReactStrategy implements Strategy {
     return false;
   }
 
-  private findComponent(node: Parser.SyntaxNode): { name: string; type: 'function' | 'class' } | null {
-    // Check for function declarations: function MyComponent() { ... }
-    if (node.type === 'function_declaration') {
-      const nameNode = node.childForFieldName('name');
-      if (nameNode && this.isComponentName(nameNode.text)) {
-        return { name: nameNode.text, type: 'function' };
-      }
-    }
+  /**
+   * Every component declared in the tree, in source order: function
+   * declarations, arrow / function-expression constants, and classes that
+   * extend Component / PureComponent. A matched node is not searched again,
+   * so helpers nested inside a component are not reported.
+   */
+  private findComponents(root: Parser.SyntaxNode): Array<{ name: string; type: 'function' | 'class' }> {
+    const found: Array<{ name: string; type: 'function' | 'class' }> = [];
+    const seen = new Set<string>();
+    const add = (name: string, type: 'function' | 'class'): void => {
+      if (seen.has(name)) return;
+      seen.add(name);
+      found.push({ name, type });
+    };
 
-    // Check for variable declarators with arrow functions: const MyComponent = () => { ... }
-    if (node.type === 'lexical_declaration' || node.type === 'variable_declaration') {
-      for (const child of node.children) {
-        if (child.type === 'variable_declarator') {
+    const visit = (node: Parser.SyntaxNode): void => {
+      // function MyComponent() { ... }
+      if (node.type === 'function_declaration') {
+        const nameNode = node.childForFieldName('name');
+        if (nameNode && this.isComponentName(nameNode.text)) {
+          add(nameNode.text, 'function');
+          return;
+        }
+      }
+
+      // const MyComponent = () => { ... } / function expression / `as` cast
+      if (node.type === 'lexical_declaration' || node.type === 'variable_declaration') {
+        let matched = false;
+        for (const child of node.children) {
+          if (child.type !== 'variable_declarator') continue;
           const nameNode = child.childForFieldName('name');
           const valueNode = child.childForFieldName('value');
+          if (nameNode && valueNode && this.isComponentName(nameNode.text) &&
+              (valueNode.type === 'arrow_function' || valueNode.type === 'function_expression' ||
+               valueNode.type === 'type_assertion' || valueNode.type === 'as_expression')) {
+            add(nameNode.text, 'function');
+            matched = true;
+          }
+        }
+        if (matched) return;
+      }
 
-          if (nameNode && valueNode && this.isComponentName(nameNode.text)) {
-            // Check if value is arrow function or function expression
-            if (valueNode.type === 'arrow_function' || valueNode.type === 'function_expression') {
-              return { name: nameNode.text, type: 'function' };
-            }
-            // Check for React.FC<Props> or React.FunctionComponent<Props>
-            if (valueNode.type === 'type_assertion' || valueNode.type === 'as_expression') {
-              return { name: nameNode.text, type: 'function' };
-            }
+      // class MyComponent extends React.Component { ... }
+      if (node.type === 'class_declaration') {
+        const nameNode = node.childForFieldName('name');
+        const heritageNode = node.children.find(c => c.type === 'class_heritage');
+        if (nameNode && heritageNode) {
+          const extendsText = heritageNode.text;
+          if (extendsText.includes('Component') || extendsText.includes('PureComponent')) {
+            add(nameNode.text, 'class');
+            return;
           }
         }
       }
-    }
 
-    // Check for class declarations: class MyComponent extends React.Component { ... }
-    if (node.type === 'class_declaration') {
-      const nameNode = node.childForFieldName('name');
-      const heritageNode = node.children.find(c => c.type === 'class_heritage');
+      for (const child of node.children) visit(child);
+    };
 
-      if (nameNode && heritageNode) {
-        const extendsText = heritageNode.text;
-        if (extendsText.includes('Component') || extendsText.includes('PureComponent')) {
-          return { name: nameNode.text, type: 'class' };
-        }
-      }
-    }
-
-    // Check for export statements
-    if (node.type === 'export_statement') {
-      const declaration = node.childForFieldName('declaration');
-      if (declaration) {
-        const result = this.findComponent(declaration);
-        if (result) return result;
-      }
-    }
-
-    // Recurse into children
-    for (const child of node.children) {
-      const result = this.findComponent(child);
-      if (result) return result;
-    }
-
-    return null;
+    visit(root);
+    return found;
   }
 
   private findHook(node: Parser.SyntaxNode): { name: string } | null {
@@ -320,15 +323,16 @@ export default class ReactStrategy implements Strategy {
 
         for (const file of files) {
           const metadata = ctx.getMetadata(file, 'react');
-          if (metadata?.componentName) {
-            components.push({
-              name: metadata.componentName,
-              type: metadata.componentType || 'unknown',
-              file
-            });
+          const all: Array<{ name: string; type?: string }> =
+            metadata?.components ?? (metadata?.componentName
+              ? [{ name: metadata.componentName, type: metadata.componentType }]
+              : []);
+          for (const c of all) {
+            components.push({ name: c.name, type: c.type || 'unknown', file });
           }
         }
 
+        if (components.length === 0) explainEmpty(ctx, 'components');
         return components;
       }
     },
@@ -348,6 +352,7 @@ export default class ReactStrategy implements Strategy {
           }
         }
 
+        if (hooks.length === 0) explainEmpty(ctx, 'hooks');
         return hooks;
       }
     },
@@ -367,8 +372,32 @@ export default class ReactStrategy implements Strategy {
           }
         }
 
+        if (contexts.length === 0) explainEmpty(ctx, 'contexts');
         return contexts;
       }
     }
   };
+}
+
+/** Paths the strategy skips (see `ignorePatterns`). */
+const TEST_PATH = /(^|\/)__tests__\/|\.(test|spec)\.[jt]sx?$/;
+
+/**
+ * An empty list is a result, not an explanation: say what was scanned and
+ * what is skipped by design, on stderr so machine output stays clean.
+ */
+function explainEmpty(ctx: StrategyContext, what: 'components' | 'hooks' | 'contexts'): void {
+  const exts = what === 'components' ? 'jsx,tsx' : 'js,jsx,ts,tsx';
+  const label = what === 'components' ? '.jsx/.tsx' : '.js/.jsx/.ts/.tsx';
+  const files = ctx.globFiles(`**/*.{${exts}}`).filter(f => !f.split('/').includes('node_modules'));
+  const inTests = files.filter(f => TEST_PATH.test(f)).length;
+  const skipped = 'test files (*.test.*, *.spec.*, anything under __tests__/) are not scanned';
+  const head = `no React ${what} found`;
+  if (files.length === 0) {
+    Logger.warn(`${head}: no ${label} files in the project (${skipped})`);
+  } else if (inTests > 0) {
+    Logger.warn(`${head}: ${inTests} of ${files.length} ${label} file(s) are under test paths; ${skipped}`);
+  } else {
+    Logger.warn(`${head}: scanned ${files.length} ${label} file(s) (${skipped})`);
+  }
 }

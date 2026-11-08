@@ -97,6 +97,12 @@ Total: 3 component(s)
 - Arrow function components: `const MyComponent: React.FC = () => {}`
 - Class components: `class MyComponent extends Component`, `class MyComponent extends React.PureComponent`
 - TypeScript patterns with generics and complex type annotations
+- Every component in a file is listed, not just the first
+
+**Not scanned:** `*.test.*`, `*.spec.*` and anything under `__tests__/`
+(see Ignore Patterns). A project whose only components live there lists
+nothing; the command says so on stderr, with the number of files skipped.
+Wrapped components (`React.memo(...)`, `forwardRef(...)`) are not detected.
 
 ### List Custom Hooks
 ```bash
