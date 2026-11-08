@@ -110,14 +110,17 @@ When using an explicit path, **no merging occurs** - only that config file is us
 
 ### Relative Paths
 
-Relative `paths`, `lenses.<name>.paths` and `scopes.<name>.paths`
-resolve against the directory of the config file that defines them
-(like `tsconfig.json` or ESLint), not the directory you run xray from.
-A project `.xrayrc.json` with `"paths": ["./src"]` scans the project's
-`src/` from any subdirectory; a relative path in the global config
-resolves against the global config directory; with `--config`, against
-that file's directory. Absolute paths are used as-is. `--path` on the
-command line stays relative to the current directory.
+Relative `paths`, `output`, `share` (a path string) and `queries` (local
+paths, `.ext:path`; URLs are left alone), at the top level and in
+`lenses.<name>` / `scopes.<name>`, resolve against the directory of the
+config file that defines them (like `tsconfig.json` or ESLint), not the
+directory you run xray from. A project `.xrayrc.json` with
+`"paths": ["./src"]` scans the project's `src/` from any subdirectory,
+and `"output": "xray.md"` writes next to the config; a relative path in
+the global config resolves against the global config directory; with
+`--config`, against that file's directory. Absolute paths are used as-is.
+Values given on the command line (`--path`, `-o/--output`, `--share <path>`,
+`--query`) stay relative to the current directory.
 
 ### Paths Stay Inside the Project
 
@@ -135,9 +138,9 @@ config /repo/.xrayrc.json: output resolves to /tmp/evil.sh, outside the project 
 | Key (top level, `lenses.<name>`, `scopes.<name>`) | Use | Checked |
 |-----|-----|---------|
 | `paths` | scan roots | resolved against the config file's directory, then confined |
-| `output` | file written | resolved against the working directory (where it is written), then confined |
+| `output` | file written | resolved against the config file's directory, then confined |
 | `share` (a path string) | file written | same as `output` |
-| `queries` (local paths, `.ext:path`; URLs are not paths) | files read | resolved against the working directory, then confined |
+| `queries` (local paths, `.ext:path`; URLs are not paths) | files read | resolved against the config file's directory, then confined |
 | `anchor` | node name for ranking; no file is opened | not checked |
 | `aliases`, `languages`, `telemetry`, `extensions`, other keys | not paths | not checked |
 
@@ -213,7 +216,7 @@ anywhere.
 | Option | Type | Description |
 |--------|------|-------------|
 | `paths` | `string[]` | Default paths to analyze (relative to the config file's directory) |
-| `output` | `string` | Default output file path |
+| `output` | `string` | Default output file path (relative to the config file's directory) |
 | `limit` | `number` | Token limit for output |
 | `features` | `object` | Features to enable: `vars`, `incs`, `docs`, `cost`, `cf`, `df` |
 | `anchor` | `string` | Focus file for Personalized PageRank |

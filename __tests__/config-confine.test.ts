@@ -139,7 +139,7 @@ describe('config paths stay inside their project', () => {
       rc(proj, { output: 'build/out.txt' });
       const r = run(path.join(proj, 'sub'), 'map', '--format', 'json');
       expect(r.status).toBe(0);
-      expect(fs.existsSync(path.join(proj, 'sub/build/out.txt'))).toBe(true);
+      expect(fs.existsSync(path.join(proj, 'build/out.txt'))).toBe(true);
     });
 
     it('-o on the command line is unrestricted', () => {
@@ -370,14 +370,14 @@ describe('config paths stay inside their project', () => {
   describe('assertConfigConfined / loadConfig', () => {
     const all = { paths: true, output: true, queries: true, share: true };
 
-    it('judges a relative output against the working directory, where it is written', () => {
+    it('judges a still-relative output against the config file directory, not the working directory', () => {
       const { proj } = layout();
       const file = path.join(proj, '.xrayrc.json');
       const cwd = process.cwd();
       try {
         process.chdir(path.join(proj, 'src'));
-        expect(() => assertConfigConfined({ output: '../x.txt' }, file, all)).not.toThrow();
-        expect(() => assertConfigConfined({ output: '../../x.txt' }, file, all)).toThrow(/outside the project/);
+        expect(() => assertConfigConfined({ output: 'build/x.txt' }, file, all)).not.toThrow();
+        expect(() => assertConfigConfined({ output: '../x.txt' }, file, all)).toThrow(/outside the project/);
       } finally {
         process.chdir(cwd);
       }

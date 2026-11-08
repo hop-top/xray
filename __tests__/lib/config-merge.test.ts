@@ -287,7 +287,7 @@ describe('mergeConfig — unknown lens', () => {
 });
 
 describe('resolveConfigPaths / loadConfig resolvePaths', () => {
-  it('resolves relative paths, lens + scope paths against the file dir; keeps absolute', () => {
+  it('resolves relative paths, output, lens + scope paths against the file dir; keeps absolute', () => {
     const cfg: XrayConfig = {
       paths: ['./src', '/abs/x'],
       output: 'docs/map.txt',
@@ -299,7 +299,7 @@ describe('resolveConfigPaths / loadConfig resolvePaths', () => {
     expect(r.lenses!.quick.paths).toEqual(['/repo/cfg/lib']);
     expect(r.lenses!.bare).toEqual({ limit: 1 });
     expect(r.scopes!.api.paths).toEqual(['/repo/api']);
-    expect(r.output).toBe('docs/map.txt');
+    expect(r.output).toBe('/repo/cfg/docs/map.txt');
     expect(cfg.paths).toEqual(['./src', '/abs/x']); // input not mutated
   });
 

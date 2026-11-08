@@ -277,30 +277,67 @@ function resolveAgainst(dir: string, paths: string[] | undefined): string[] | un
     : paths;
 }
 
+/** A relative file path resolved against `dir`; empty strings and non-strings untouched. */
+function resolveFile<T>(dir: string, value: T): T | string {
+  return typeof value === 'string' && value.trim() !== '' ? path.resolve(dir, value) : value;
+}
+
+/**
+ * `queries` entries with local paths resolved against `dir`. An entry is
+ * `<path>`, `.ext:<path>` or a comma list of those; URLs are left alone.
+ */
+function resolveQueries(dir: string, queries: unknown): unknown {
+  if (!Array.isArray(queries)) return queries;
+  return queries.map(entry => {
+    if (typeof entry !== 'string') return entry;
+    return entry
+      .split(',')
+      .map(part => {
+        const trimmed = part.trim();
+        if (!trimmed) return part;
+        const colon = trimmed.indexOf(':');
+        const prefix = colon > 0 && trimmed.startsWith('.') ? trimmed.slice(0, colon + 1) : '';
+        const target = trimmed.slice(prefix.length);
+        if (target.startsWith('http://') || target.startsWith('https://')) return trimmed;
+        return prefix + path.resolve(dir, target);
+      })
+      .join(',');
+  });
+}
+
+/** `paths`, `output`, `share` and `queries` of one config level resolved against `dir`. */
+function resolveLevel<T extends XrayScopeConfig>(dir: string, level: T): T {
+  const out: T = { ...level };
+  if (level.paths !== undefined) out.paths = resolveAgainst(dir, level.paths);
+  if (level.output !== undefined) out.output = resolveFile(dir, level.output) as string;
+  if (level.share !== undefined) out.share = resolveFile(dir, level.share) as typeof level.share;
+  if (level.queries !== undefined) out.queries = resolveQueries(dir, level.queries) as string[];
+  return out;
+}
+
 function withResolvedPaths(
   dir: string,
   entries: Record<string, XrayScopeConfig>
 ): Record<string, XrayScopeConfig> {
   const out: Record<string, XrayScopeConfig> = {};
   for (const [name, entry] of Object.entries(entries)) {
-    out[name] = entry && typeof entry === 'object' && entry.paths !== undefined
-      ? { ...entry, paths: resolveAgainst(dir, entry.paths) }
-      : entry;
+    out[name] = entry && typeof entry === 'object' ? resolveLevel(dir, entry) : entry;
   }
   return out;
 }
 
 /**
- * Copy of `config` with relative `paths`, `lenses.<name>.paths` and
- * `scopes.<name>.paths` resolved against the directory of `filepath`
- * (the file defining them, like tsconfig/eslint); absolute paths kept.
- * Done per file before merging so each path keeps its own base.
+ * Copy of `config` with relative `paths`, `output`, `share` and `queries`
+ * (top level, `lenses.<name>` and `scopes.<name>`) resolved against the
+ * directory of `filepath` (the file defining them, like tsconfig/eslint);
+ * absolute paths and URLs kept. Done per file before merging so each value
+ * keeps its own base. Command-line values are not touched: they resolve
+ * against the working directory.
  */
 export function resolveConfigPaths(config: XrayConfig, filepath: string): XrayConfig {
   if (!config || typeof config !== 'object') return config;
   const dir = path.dirname(path.resolve(filepath));
-  const resolved: XrayConfig = { ...config };
-  if (config.paths !== undefined) resolved.paths = resolveAgainst(dir, config.paths);
+  const resolved: XrayConfig = resolveLevel(dir, config);
   if (config.lenses && typeof config.lenses === 'object') {
     resolved.lenses = withResolvedPaths(dir, config.lenses);
   }
@@ -357,9 +394,8 @@ function localQueryPaths(entries: unknown[]): Array<{ index: number; value: stri
  * `paths` (scan roots), `output` and `share` (files written) and `queries`
  * (files read) that resolve elsewhere are a usage error unless the command
  * line gives the value. The user's own global config is exempt. `config`
- * is as loaded; `paths` are already absolute (see resolveConfigPaths).
- * Relative `output`, `share` and `queries` are judged where the run would
- * use them, against the working directory.
+ * is as loaded; values are already absolute (see resolveConfigPaths).
+ * Values still relative are judged against the config file's directory.
  */
 export function assertConfigConfined(config: XrayConfig, file: string, o: ConfineOptions): void {
   if (!config || typeof config !== 'object') return;
@@ -372,7 +408,7 @@ export function assertConfigConfined(config: XrayConfig, file: string, o: Confin
     );
   };
   const check = (key: string, value: string, flag: string): void => {
-    const real = realpathLoose(path.resolve(value));
+    const real = realpathLoose(path.resolve(path.dirname(path.resolve(file)), value));
     if (!isWithin(root, real)) refuse(key, real, flag);
   };
 
