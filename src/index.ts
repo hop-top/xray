@@ -216,7 +216,8 @@ export async function main() {
 
   // Startup update notification (async, non-blocking); --offline means
   // no network access.
-  if (!mcpRequest && !argv.includes('--offline')) {
+  // `upgrade` does its own lookup; the notice would repeat it.
+  if (!mcpRequest && !argv.includes('--offline') && defaultRouteFromArgv(rootProgram, argv).word !== 'upgrade') {
     pendingUpgradeCheck = createXrayUpgradeChecker().notifyIfAvailable(process.stderr).catch(() => {});
   }
 

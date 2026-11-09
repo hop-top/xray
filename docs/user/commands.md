@@ -763,6 +763,17 @@ xray clear-cache --confirm=yes
 
 This is a destructive command: in a terminal it asks first; scripts and agents (no terminal) must pass `--confirm=yes` or it exits 5.
 
+### `xray upgrade --check`
+
+Report whether a newer release exists. `--check` is the only mode; bare `xray upgrade` is a usage error (exit 2) that points at `--check` and at the install command, `npm i -g @hop-top/xray`. Nothing is installed.
+
+```bash
+xray upgrade --check
+xray upgrade --check --format json
+```
+
+A newer release is a normal answer: exit 0, with `update available: vA → vB` and the release URL (JSON: `updateAvailable: true`, `latest`, `url`). Up to date is exit 0 too (`updateAvailable: false`, `latest: null`). A failed lookup, or `--offline`, exits 6 (transient). The lookup is never served from the startup-notice cache.
+
 ### `xray completion`
 
 Generate shell completion scripts: `bash`, `zsh`, `fish`, `powershell`.

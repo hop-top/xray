@@ -294,7 +294,7 @@ command (`sideEffect`, `idempotent`):
 
 | Tier | Commands |
 |------|----------|
-| `read` | `query`, `impact`, `imports`, `explore`, `paths`, `describe`, `completion`, `help`, `lang list`, `alias list`, `strategy list/detect/info/validate/path`, every strategy command (`react components`, ...), aliases |
+| `read` | `query`, `impact`, `imports`, `explore`, `paths`, `describe`, `upgrade --check`, `completion`, `help`, `lang list`, `alias list`, `strategy list/detect/info/validate/path`, every strategy command (`react components`, ...), aliases |
 | `write-local` | `map`, `graph` (write the analysis into the project), `alias set/remove`, `lang add/remove`, `strategy create/install` |
 | `destructive-local` | `strategy remove`, `cache clear` (`clear-cache`) |
 | `interactive` | `mcp` |

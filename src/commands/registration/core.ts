@@ -14,6 +14,7 @@ import { registerAliasCommand } from '../alias';
 import { registerPathsCommand } from '../paths';
 import { registerLangCommand } from '../lang';
 import { registerMcpCommand } from '../mcp';
+import { registerUpgradeCommand } from '../upgrade';
 import { setCommandGroup, type HelpGroupId } from '../kit-cli';
 import { declareEffect } from '../side-effect';
 import { addResultFormat } from '../../lib/result-format';
@@ -32,6 +33,7 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   cache: 'management',
   paths: 'management',
   describe: 'management',
+  upgrade: 'management',
   mcp: 'management',
   completion: 'management',
 };
@@ -127,6 +129,9 @@ Examples:
     .action(handleDescribeAction);
   declareEffect(describe, 'read', 'yes');
   bindFlag(describe, 'format', staticValues('json'));
+
+  // Release check (no install action).
+  registerUpgradeCommand(program);
 
   // Read-only analysis commands as MCP tools over stdio.
   registerMcpCommand(program);

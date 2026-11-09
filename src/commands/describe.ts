@@ -65,6 +65,8 @@ const EXTRA_EXIT_CODES: Record<string, number[]> = {
   imports: [EXIT_NOT_FOUND],
   'alias.set': [EXIT_CONFLICT],
   explore: [EXIT_NOT_FOUND],
+  // --check: the release lookup failed.
+  upgrade: [EXIT_TRANSIENT],
 };
 
 // Commands whose machine output is a versioned document: schema id (the

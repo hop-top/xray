@@ -53,9 +53,12 @@ describe('Dynamic Command Registration', () => {
       }
     });
 
-    it('should NOT register an upgrade subcommand', () => {
-      // Self-update dropped: package manager is the canonical upgrade path.
-      expect(program.commands.find(c => c.name() === 'upgrade')).toBeUndefined();
+    it('registers upgrade as a check only: no install action', () => {
+      // The package manager is the canonical upgrade path; `upgrade` only reports.
+      const upgrade = program.commands.find(c => c.name() === 'upgrade');
+      expect(upgrade).toBeDefined();
+      expect(upgrade!.commands).toHaveLength(0);
+      expect(upgrade!.options.map(o => o.long)).toEqual(['--check', '--format']);
     });
 
     it('should have analysis commands with descriptions', () => {

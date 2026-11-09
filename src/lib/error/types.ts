@@ -340,3 +340,13 @@ export class UnauthorizedError extends CodedError {
     super(message, EXIT_UNAUTHORIZED, 'UNAUTHORIZED', cause);
   }
 }
+
+/**
+ * Transient error: the operation failed for a reason a retry may clear
+ * (network down, remote unavailable). Exit code 6 (kit EXIT_TRANSIENT).
+ */
+export class TransientError extends CodedError {
+  constructor(message: string, cause?: Error) {
+    super(message, EXIT_TRANSIENT, 'TRANSIENT', cause);
+  }
+}

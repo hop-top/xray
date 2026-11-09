@@ -5,6 +5,7 @@
 //                  components' releases), the last carries the xray release
 //   STUB_TAG       tag on the last page (default xray/v99.0.0-rc.1)
 //   STUB_HANG      '1': requests never answer
+//   STUB_FAIL      'reject': fetch rejects (network down); 'http': HTTP 500
 const delay = Number(process.env.STUB_DELAY_MS || 0);
 const pages = Number(process.env.STUB_PAGES || 1);
 const tag = process.env.STUB_TAG || 'xray/v99.0.0-rc.1';
@@ -13,6 +14,8 @@ globalThis.fetch = (url) => {
   if (!u.startsWith('https://api.github.com/repos/xray-codes/xray/releases')) {
     return Promise.reject(new Error(`stub fetch: unexpected URL ${u}`));
   }
+  if (process.env.STUB_FAIL === 'reject') return Promise.reject(new Error('stub fetch: network down'));
+  if (process.env.STUB_FAIL === 'http') return Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
   if (process.env.STUB_HANG === '1') return new Promise(() => setInterval(() => {}, 1000));
   const page = Number(new URL(u).searchParams.get('page') || 1);
   const body =

@@ -18,6 +18,7 @@ const { createChecker } = require('@hop-top/kit/upgrade') as {
     repo: string;
     tagPrefix?: string;
     includePrereleases?: boolean;
+    cacheTTL?: number;
   }) => { notifyIfAvailable: (stream?: NodeJS.WritableStream) => Promise<void> };
 };
 
@@ -28,8 +29,9 @@ const { version: XRAY_VERSION } = require('../package.json');
 /**
  * Build the upgrade-checker the CLI wires into its startup stream.
  */
-export function createXrayUpgradeChecker() {
+export function createXrayUpgradeChecker(overrides: { cacheTTL?: number } = {}) {
   return createChecker({
+    ...overrides,
     name: 'xray',
     currentVersion: XRAY_VERSION,
     owner: 'xray-codes',
@@ -40,4 +42,46 @@ export function createXrayUpgradeChecker() {
     tagPrefix: 'xray/v',
     includePrereleases: true,
   });
+}
+
+/** Outcome of an explicit upgrade check. */
+export interface UpgradeCheckResult {
+  current: string;
+  /** Newest release when it is newer than `current`; null when up to date. */
+  latest: string | null;
+  /** Release page of `latest`; null when up to date. */
+  url: string | null;
+  /** True when the release lookup itself failed (network, HTTP error). */
+  failed: boolean;
+}
+
+/**
+ * One uncached release lookup through the same checker the startup notice
+ * uses. The kit checker only reports "newer" by writing its notice and
+ * swallows every failure, so the notice is read back and the lookup's
+ * requests are watched to tell "up to date" from "could not check".
+ */
+export async function checkForUpgrade(): Promise<UpgradeCheckResult> {
+  const realFetch = globalThis.fetch;
+  let failed = false;
+  globalThis.fetch = (async (...args: Parameters<typeof fetch>) => {
+    try {
+      const res = await realFetch(...args);
+      if (!res.ok) failed = true;
+      return res;
+    } catch (err) {
+      failed = true;
+      throw err;
+    }
+  }) as typeof fetch;
+  let notice = '';
+  try {
+    await createXrayUpgradeChecker({ cacheTTL: 0 }).notifyIfAvailable({
+      write: (chunk: string) => ((notice += chunk), true),
+    } as unknown as NodeJS.WritableStream);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  const m = notice.match(/→ v(\S+)\n(\S+)/);
+  return { current: XRAY_VERSION, latest: m ? m[1] : null, url: m ? m[2] : null, failed: m ? false : failed };
 }

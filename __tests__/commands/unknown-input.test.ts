@@ -50,7 +50,6 @@ afterEach(() => {
 
 describe('a word that names no command', () => {
   it.each([
-    [['upgrade'], 'upgrade'],
     [['version'], 'version'],
     [['spec'], 'spec'],
     [['zzzqqq'], 'zzzqqq'],

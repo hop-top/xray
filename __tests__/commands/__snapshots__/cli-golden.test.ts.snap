@@ -48,6 +48,8 @@ MANAGEMENT:
                              root
   describe [--flags]         Emit machine-readable capability surface (12fc
                              Factor 1)
+  upgrade [--flags]          Check whether a newer xray release is available
+                             (--check)
   mcp [--flags]              Serve analysis commands as MCP tools over stdio
   completion [command]       Generate the autocompletion script for the
                              specified shell
@@ -2299,6 +2301,24 @@ FLAGS:
 "
 `;
 
+exports[`cli golden: --help xray upgrade --help 1`] = `
+"exit: 0
+--- stdout ---
+Usage: xray upgrade [options]
+
+Check whether a newer xray release is available (--check)
+
+FLAGS:
+  --check         Look up the latest release and report; exit 0 either way, 6 if
+                  the lookup fails
+  --format <fmt>  Output format: text (default) or json
+  -h, --help      Display help
+
+
+--- stderr ---
+"
+`;
+
 exports[`cli golden: error paths xray --bogus 1`] = `
 "exit: 2
 --- stdout ---
@@ -2416,6 +2436,8 @@ MANAGEMENT:
                              root
   describe [--flags]         Emit machine-readable capability surface (12fc
                              Factor 1)
+  upgrade [--flags]          Check whether a newer xray release is available
+                             (--check)
   mcp [--flags]              Serve analysis commands as MCP tools over stdio
   completion [command]       Generate the autocompletion script for the
                              specified shell
@@ -5656,6 +5678,40 @@ exports[`cli golden: introspection describe 1`] = `
         0,
         1,
         2
+      ]
+    },
+    {
+      "name": "upgrade",
+      "qualifiedName": "upgrade",
+      "description": "Check whether a newer xray release is available (--check)",
+      "hidden": false,
+      "arguments": [],
+      "options": [
+        {
+          "name": "--check",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Look up the latest release and report; exit 0 either way, 6 if the lookup fails"
+        },
+        {
+          "name": "--format",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Output format: text (default) or json"
+        }
+      ],
+      "subcommands": [],
+      "sideEffect": "read",
+      "idempotent": "yes",
+      "exitCodes": [
+        0,
+        1,
+        2,
+        6
       ]
     },
     {

@@ -81,6 +81,7 @@ describe('failing commands exit with the code describe advertises', () => {
     { name: 'clear-cache --confirm=no', command: 'clear-cache', args: ['--confirm=no', 'clear-cache'], code: 5, stderr: /refused/ },
     { name: 'build exec <target> without confirmation', command: 'build.exec', args: ['--confirm=no', 'build', 'exec', 'all'], code: 5, stderr: /refused/ },
     { name: 'build exec <unknown> --confirm=yes', command: 'build.exec', args: ['--confirm=yes', 'build', 'exec', 'nope'], code: 3, stderr: /not found/ },
+    { name: 'upgrade --check --offline', command: 'upgrade', args: ['--offline', 'upgrade', '--check'], code: 6, stderr: /offline/ },
     { name: 'build run (no --target)', command: 'build.run', args: ['build', 'run'], code: 2, stderr: /No target specified/ },
   ];
 
@@ -142,7 +143,7 @@ describe('failing commands exit with the code describe advertises', () => {
 
   it('strategy leaves: a missing --path is not found (3) with the envelope, not an empty result', () => {
     const builtin = new Set(['help', 'map', 'graph', 'query', 'impact', 'imports', 'strategy', 'alias', 'lang',
-      'cache', 'clear-cache', 'paths', 'describe', 'mcp', 'completion', 'explore']);
+      'cache', 'clear-cache', 'paths', 'describe', 'mcp', 'completion', 'explore', 'upgrade']);
     const strategyLeaves = leaves.filter((l) => !builtin.has(l.argv[0]));
     expect(strategyLeaves.length).toBeGreaterThan(20);
     for (const l of strategyLeaves) {
