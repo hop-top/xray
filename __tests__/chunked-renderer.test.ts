@@ -202,6 +202,25 @@ describe('ChunkedRenderer', () => {
   });
 
   describe('directory organization', () => {
+    it('counts files, not tags, per directory chunk', async () => {
+      const g = new Graph();
+      const file = (id: string): RankedNode => ({ id, rank: 1, attributes: { type: 'file', label: id } });
+      const tag = (id: string, f: string, label: string): RankedNode => ({
+        id, rank: 0.5, attributes: { type: 'tag', file: f, label, kind: 'function', line: 1, endLine: 2 },
+      });
+      const nodes: RankedNode[] = [
+        file('src/a.ts'), file('src/b.ts'), file('src/c.ts'), file('empty/e.ts'), file('empty/f.ts'),
+        tag('src/a.ts::one', 'src/a.ts', 'one'), tag('src/a.ts::two', 'src/a.ts', 'two'),
+        tag('src/a.ts::three', 'src/a.ts', 'three'), tag('src/b.ts::four', 'src/b.ts', 'four'),
+      ];
+      for (const n of nodes) g.addNode(n.id, n.attributes as any);
+      const result = await new ChunkedRenderer({ root: '/project', ranked: nodes, graph: g as any, tokenLimit: 4096 })
+        .renderChunked(outputBase);
+      const count = (dir: string) => result.metadata.find(m => m.directory === dir)?.fileCount;
+      expect(count('src')).toBe(3); // 4 tags, 3 files (c.ts has no symbols)
+      expect(count('empty')).toBe(2); // no tags at all
+    });
+
     it('should handle root directory', async () => {
       const rootNodes: RankedNode[] = [
         {

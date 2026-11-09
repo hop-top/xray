@@ -195,6 +195,17 @@ export class ChunkedRenderer {
     const chunks = new Map<string, string>();
     const metadata: ChunkMetadata[] = [];
 
+    // Files per directory: the chunk's own file nodes. `directoryMap` holds
+    // tags, whose count says nothing about files (none for a file without
+    // symbols).
+    const fileCounts = new Map<string, number>();
+    for (const node of this.ranked) {
+      if (node.attributes.type === 'file') {
+        const dir = path.dirname(node.id);
+        fileCounts.set(dir, (fileCounts.get(dir) ?? 0) + 1);
+      }
+    }
+
     // Process directories in depth-first order to handle parent-child relationships
     const sortedDirs = Array.from(directoryMap.keys()).sort();
 
@@ -227,7 +238,7 @@ export class ChunkedRenderer {
         directory: dir,
         filePath: chunkPath,
         tokenCount,
-        fileCount: files.length,
+        fileCount: fileCounts.get(dir) ?? 0,
         parent,
         children,
         depth: dirDepth,
