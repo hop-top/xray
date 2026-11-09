@@ -8,6 +8,7 @@ import type { QueryResult, SerializedGraph } from '../lib/query/types';
 import { editorLine, withEditorLine } from '../lib/query/impact';
 import { QueryCommandOptions } from '../types/command-options';
 import { Logger } from '../lib/logger';
+import { obtainGraph } from './graph-source';
 import { terminalSafe } from '../lib/terminal-safe';
 import { NotFoundError, UsageError } from '../lib/error/types';
 import {
@@ -28,11 +29,7 @@ export async function handleQueryAction(query: string, options: QueryCommandOpti
     throw new UsageError('Query is required');
   }
 
-  if (!options.graph) {
-    throw new UsageError('--graph flag is required');
-  }
-
-  const graph = await loadGraph(options.graph);
+  const graph = new GraphSerializer().deserialize(await obtainGraph(options));
   const registry = new QueryAdapterRegistry();
   registry.register(new FunctionAdapter());
 
@@ -128,10 +125,6 @@ export function readSerializedGraph(graphPath: string): SerializedGraph {
   }
 }
 
-async function loadGraph(graphPath: string): Promise<any> {
-  return new GraphSerializer().deserialize(readSerializedGraph(graphPath));
-}
-
 function listAdapters(): string {
   const registry = new QueryAdapterRegistry();
   registry.register(new FunctionAdapter());
@@ -141,7 +134,7 @@ function listAdapters(): string {
   for (const adapter of adapters) {
     output += styles().accent('  ' + adapter.syntax) + styles().muted(' - ' + adapter.name + '\n');
   }
-  output += styles().muted('\nExample: xray query --graph graph.json "calls(main)"\n');
+  output += styles().muted('\nExample: xray query "calls(main)"  (or: xray query --graph graph.json "calls(main)")\n');
   return output;
 }
 

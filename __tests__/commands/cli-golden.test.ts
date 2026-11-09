@@ -66,7 +66,7 @@ const ERROR_CASES: string[][] = [
   ['--bogus'], // unknown root flag
   ['map', '--bogus'], // unknown subcommand flag
   ['query'], // missing optional-but-required query
-  ['query', '--format', 'json', 'calls(x)'], // missing --graph
+  ['query', '--format', 'json', '--graph', '/nonexistent/g.json', '--path', '/tmp', 'calls(x)'], // --graph with --path
   ['query', '--graph', '/nonexistent/g.json', 'calls(x)'], // not found
   ['strategy', 'info'], // missing required arg
   ['alias', 'remove'],

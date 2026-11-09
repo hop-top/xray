@@ -76,10 +76,27 @@ describe('xray query prints results', () => {
     expect(r.stderr).toContain('Graph file not found');
   });
 
-  test('missing --graph is a usage error (exit 2)', () => {
-    const r = run(['query', 'calls(main)']);
+  test('without --graph the graph is built in memory for the roots (same result as --graph)', () => {
+    const built = run(['query', '-p', repo, '--format', 'json', 'calls(main)']);
+    expect(built.status).toBe(0);
+    const saved = run(['query', '--graph', graphFile, '--format', 'json', 'calls(main)']);
+    const strip = (doc: any) => ({ nodes: doc.nodes, edges: doc.edges });
+    expect(strip(JSON.parse(built.stdout))).toEqual(strip(JSON.parse(saved.stdout)));
+    expect(built.stderr).toContain('coverage:');
+  });
+
+  test('--graph cannot be combined with --path, --lens or --scope (exit 2)', () => {
+    const r = run(['query', '--graph', graphFile, '-p', repo, 'calls(main)']);
     expect(r.status).toBe(2);
+    expect(r.stderr).toContain('cannot be combined');
     expect(r.stdout).toBe('');
+  });
+
+  test('--help lists the build options', () => {
+    const r = run(['query', '--help']);
+    expect(r.stdout).toMatch(/--lens/);
+    expect(r.stdout).toMatch(/--scope/);
+    expect(r.stdout).toMatch(/--path/);
   });
 
   test('empty query is a usage error (exit 2)', () => {

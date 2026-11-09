@@ -1,6 +1,7 @@
 // src/commands/registration/core.ts
 import { Command } from 'commander';
-import { addCommonOptions, graphFileArg } from '../common';
+import { addCommonOptions } from '../common';
+import { addGraphSourceOptions } from '../graph-source';
 import { handleGenerateCommand } from '../generate';
 import { handleClearCacheAction } from '../clear-cache';
 import { bindFlag, registerCompletionCommand, staticValues } from '../completion';
@@ -61,14 +62,23 @@ export function registerCoreCommands(program: Command): void {
   declareEffect(graphCmd, 'write-local', 'conditional');
 
   // Query command - call graph queries
-  declareEffect(addQueryOutputFlags(
+  declareEffect(addQueryOutputFlags(addGraphSourceOptions(
     program
       .command('query')
       .description('Query call graph using function-based syntax')
       .argument('[query]', 'Query string (e.g., "calls(main)", "callers(processData)")')
-      .option('--graph <file>', 'Path to saved graph JSON file', graphFileArg)
-  )
+  ))
     .option('--list-adapters', 'List available query adapters')
+    .addHelpText('after', `
+Without --graph the graph is built in memory for the configured roots
+(--path, --lens, --scope; same resolution as \`impact\` and \`map --format
+json\`) and no map file is written.
+
+Examples:
+  xray query "calls(main)"
+  xray query -p ./api "callers(validateInput)"
+  xray query --graph graph.json "calls(main)"
+`)
     .action(runQueryCommand), 'read', 'yes');
 
   // Impact command - transitive callers of a symbol, grouped by area

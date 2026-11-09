@@ -17,8 +17,19 @@ The xray query system allows you to interactively explore your codebase's call g
 
 ### Prerequisites
 
-Before querying, you need a saved graph file. `xray map --format json`
-writes exactly that: one JSON document (`metadata`, `nodes`, `edges`).
+`xray query` needs no setup: without `--graph` it builds the graph in
+memory for the configured roots (`-p/--path`, `--lens`, `--scope`, `--lang`;
+the same resolution as `xray impact` and `map --format json`) and writes no
+file.
+
+```bash
+xray query "calls(main)"
+xray query -p ./api "callers(validateInput)"
+```
+
+To query one graph repeatedly, save it with `xray map --format json` and
+read it back with `--graph` (it cannot be combined with `-p`, `--lens` or
+`--scope`):
 
 ```bash
 # Write the graph (no extension on -o => ".json" is appended)
@@ -34,8 +45,8 @@ merge into one graph, with every node id prefixed by a root label
 [Merged graphs](commands.md#merged-multi-root-graphs).
 
 `xray query` prints its result to stdout (`--format table|tree|json|yaml|csv`)
-and exits 2 on a bad query, missing `--graph` or unknown `--format`/column, 3 if
-the graph file is not found.
+and exits 2 on a bad query, `--graph` combined with `-p`/`--lens`/`--scope`, or unknown `--format`/column, 3 if
+the graph file or a root is not found.
 
 ### Basic Query Syntax
 

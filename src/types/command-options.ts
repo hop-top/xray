@@ -134,8 +134,18 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
  * Options for the query command
  */
 export interface QueryCommandOptions extends BaseCommandOptions {
-  /** Path to saved graph JSON file */
+  /** Path to saved graph JSON file (otherwise the graph is built for the roots) */
   graph?: string;
+
+  /** Root directories to analyze when no graph file is given (repeatable) */
+  path?: string[];
+
+  /** Named lens / scope from the config file */
+  lens?: string;
+  scope?: string;
+
+  /** Languages to parse */
+  lang?: string[];
 
   /** Output format: table (default), json, yaml, csv, tree */
   format?: string;

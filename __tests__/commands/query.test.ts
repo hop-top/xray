@@ -219,16 +219,6 @@ describe('Query Command', () => {
 
       await expect(handleQueryAction('', options)).rejects.toThrow();
     });
-
-    test('provides helpful error message for missing graph', async () => {
-      const options: QueryCommandOptions = {
-        format: 'json',
-      };
-
-      await expect(handleQueryAction('calls(main)', options)).rejects.toThrow(
-        /graph/i
-      );
-    });
   });
 
   describe('--list-adapters flag', () => {

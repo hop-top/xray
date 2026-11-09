@@ -454,7 +454,7 @@ file is written, and stderr gets one coverage line:
 `ℹ coverage: served from cache (715 files) · …` when every root of a
 multi-root run was served from the cache. When the config sets `match`,
 stderr also gets a `note:` line naming the patterns: `impact` has no
-`--match`, so callers in other files are not reported. `--quiet` silences
+`--match`, so results in other files are not reported. `--quiet` silences
 both lines; a saved `--graph` is never narrowed by config.
 
 **Text output** (`xray impact RunHooks --depth 2 -p ../poly-nerv`):
@@ -951,14 +951,15 @@ verbose.
 ### Query
 
 ```bash
+xray query "calls(main)"                                # builds the graph in memory (-p, --lens, --scope as for impact)
 xray map --format json -o graph
-xray query --graph graph.json "calls(main)"             # table (default)
+xray query --graph graph.json "calls(main)"             # read a saved graph instead
 xray query --graph graph.json --format json "callers(helper)"
 ```
 
 Results go to stdout (`--format table|tree|json|yaml|csv`); diagnostics go to
-stderr. Exit 2: bad query / missing `--graph` or query / unknown format or
-column; exit 3: graph file not found. See the [query guide](query-guide.md).
+stderr. Exit 2: bad query or missing query / `--graph` with `-p`, `--lens` or
+`--scope` / unknown format or column; exit 3: graph file or root not found. See the [query guide](query-guide.md).
 
 ### Structured output (record commands)
 

@@ -1876,14 +1876,31 @@ Usage: xray query [options] [query]
 Query call graph using function-based syntax
 
 ARGUMENTS:
-  query            Query string (e.g., "calls(main)", "callers(processData)")
+  query              Query string (e.g., "calls(main)", "callers(processData)")
 
 FLAGS:
-  --graph <file>   Path to saved graph JSON file
-  --format <fmt>   Output format: table, json, yaml, csv, tree (default: table)
-                   (default: "table")
-  --list-adapters  List available query adapters
-  -h, --help       Display help
+  --graph <file>     Read a saved graph (map --format json) instead of building
+                     one
+  -p, --path <path>  Root directory to analyze (repeatable) [default: config
+                     paths or current directory] (default: [])
+  --lens <name>      Use named lens (config-file option overlay)
+  --scope <name>     Use specific scope from config file
+  --lang <list>      Languages to parse, comma-separated names or bundles
+                     (repeatable) (default: [])
+  --format <fmt>     Output format: table, json, yaml, csv, tree (default:
+                     table) (default: "table")
+  --list-adapters    List available query adapters
+  -h, --help         Display help
+
+
+Without --graph the graph is built in memory for the configured roots
+(--path, --lens, --scope; same resolution as \`impact\` and \`map --format
+json\`) and no map file is written.
+
+Examples:
+  xray query "calls(main)"
+  xray query -p ./api "callers(validateInput)"
+  xray query --graph graph.json "calls(main)"
 
 
 --- stderr ---
@@ -2545,14 +2562,14 @@ exports[`cli golden: error paths xray nosuchcmd-x 1`] = `
 "
 `;
 
-exports[`cli golden: error paths xray query --format json calls(x) 1`] = `
+exports[`cli golden: error paths xray query --format json --graph /nonexistent/g.json --path /tmp calls(x) 1`] = `
 "exit: 2
 --- stdout ---
 
 --- stderr ---
 {
   "code": "USAGE",
-  "message": "--graph flag is required",
+  "message": "--graph reads a saved graph; it cannot be combined with --path, --lens or --scope",
   "exit_code": 2,
   "transience": "permanent"
 }
@@ -4466,7 +4483,39 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": null,
-          "description": "Path to saved graph JSON file"
+          "description": "Read a saved graph (map --format json) instead of building one"
+        },
+        {
+          "name": "--path",
+          "short": "-p",
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Root directory to analyze (repeatable) [default: config paths or current directory]"
+        },
+        {
+          "name": "--lens",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use named lens (config-file option overlay)"
+        },
+        {
+          "name": "--scope",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use specific scope from config file"
+        },
+        {
+          "name": "--lang",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Languages to parse, comma-separated names or bundles (repeatable)"
         },
         {
           "name": "--format-opt",
