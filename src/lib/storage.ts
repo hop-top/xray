@@ -65,46 +65,148 @@ export function projectTelemetryPath(projectRoot: string): string | undefined {
   return statePath('telemetry', projectKey(projectRoot), 'telemetry.json');
 }
 
-/**
- * Create `dir` (and parents) private to the user: mode 0700, owned by `uid`
- * (default: the current user; unchecked where the platform has no uids).
- * An existing loose directory is tightened. Returns false, never throws,
- * when the directory cannot be made private (not a real directory, owned by
- * someone else, chmod refused).
- */
-export function ensurePrivateDir(dir: string, uid: number | undefined = currentUid()): boolean {
-  try {
-    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-    const st = fs.lstatSync(dir);
-    if (!st.isDirectory()) return false;
-    if (uid !== undefined && st.uid !== uid) return false;
-    fs.chmodSync(dir, 0o700);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const IS_WIN = process.platform === 'win32';
+const NOFOLLOW = fs.constants.O_NOFOLLOW ?? 0;
+const DIRECTORY = fs.constants.O_DIRECTORY ?? 0;
 
 function currentUid(): number | undefined {
   return typeof process.getuid === 'function' ? process.getuid() : undefined;
 }
 
 /**
- * Make `file` (and its `-wal` / `-shm` sidecars, when present) readable by
- * the user only: mode 0600. The file is created empty first if missing, so
- * it never exists with looser permissions, and a SQLite db opened later
- * gives its sidecars the same mode. False, never throws, when that fails.
+ * Directory the trust walk starts below: the parent of the xray cache / state
+ * dir that contains `dir` (the XDG base, which the user chose and which may be
+ * shared), else the parent of `dir` itself.
  */
-export function ensurePrivateFile(file: string): boolean {
+function trustRoot(dir: string): string {
+  for (const pick of [xdg.cacheDir, xdg.stateDir]) {
+    const base = absoluteDir(pick);
+    if (!base) continue;
+    const rel = path.relative(base, dir);
+    if (!rel.startsWith('..') && !path.isAbsolute(rel)) return path.dirname(base);
+  }
+  return path.dirname(dir);
+}
+
+function realpathOrSelf(p: string): string {
   try {
-    fs.closeSync(fs.openSync(file, 'a', 0o600));
-    for (const f of [file, `${file}-wal`, `${file}-shm`]) {
-      if (fs.existsSync(f)) fs.chmodSync(f, 0o600);
+    return fs.realpathSync(p);
+  } catch {
+    return p;
+  }
+}
+
+/**
+ * Create `dir` private to the user: mode 0700, owned by `uid` (default: the
+ * current user; unchecked where the platform has no uids). An existing loose
+ * directory is tightened. Returns false, never throws, when the directory
+ * cannot be made private.
+ *
+ * Every component below `root` (default: the XDG base holding the xray dir,
+ * else the parent of `dir`) is created with mode 0700 and then opened
+ * O_NOFOLLOW: a symlink, a non-directory, a directory owned by someone else
+ * or one writable by group/other (unless sticky) is refused, so a planted
+ * entry in a shared XDG dir is never followed into. The leaf is tightened
+ * with fchmod on the opened fd, never by path. `root` itself is trusted (the
+ * user chose it). Where the platform has no uids or symlink-safe opens
+ * (Windows) this is a plain mkdir + directory check.
+ */
+export function ensurePrivateDir(dir: string, uid: number | undefined = currentUid(), root?: string): boolean {
+  try {
+    const target = path.resolve(dir);
+    if (IS_WIN) {
+      fs.mkdirSync(target, { recursive: true, mode: 0o700 });
+      return fs.lstatSync(target).isDirectory();
+    }
+    const base = path.resolve(root ?? trustRoot(target));
+    const rel = path.relative(base, target);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) return false;
+    const parts = rel === '' ? [] : rel.split(path.sep);
+    let cur = realpathOrSelf(base);
+    fs.mkdirSync(cur, { recursive: true, mode: 0o700 });
+    if (parts.length === 0) parts.push(''); // the root is the leaf: check it in place
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i]) {
+        cur = path.join(cur, parts[i]);
+        try {
+          fs.mkdirSync(cur, { mode: 0o700 });
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== 'EEXIST') return false;
+        }
+      }
+      const fd = fs.openSync(cur, fs.constants.O_RDONLY | DIRECTORY | NOFOLLOW);
+      try {
+        const st = fs.fstatSync(fd);
+        if (!st.isDirectory()) return false;
+        if (uid !== undefined && st.uid !== uid) return false;
+        const leaf = i === parts.length - 1;
+        if (leaf) {
+          fs.fchmodSync(fd, 0o700);
+        } else if ((st.mode & 0o022) !== 0 && (st.mode & 0o1000) === 0) {
+          return false;
+        }
+      } finally {
+        fs.closeSync(fd);
+      }
     }
     return true;
   } catch {
     return false;
   }
+}
+
+/** fd-based 0600 on an existing regular file we own; no symlink is followed. */
+function tightenFile(file: string, create: boolean): boolean {
+  const flags = fs.constants.O_RDWR | NOFOLLOW;
+  let fd: number | undefined;
+  try {
+    if (create) {
+      try {
+        fd = fs.openSync(file, flags | fs.constants.O_CREAT | fs.constants.O_EXCL, 0o600);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'EEXIST') return false;
+      }
+    }
+    if (fd === undefined) {
+      try {
+        fd = fs.openSync(file, flags);
+      } catch (err) {
+        // A sidecar that does not exist is fine; a symlink (ELOOP) is not.
+        return !create && (err as NodeJS.ErrnoException).code === 'ENOENT';
+      }
+    }
+    const st = fs.fstatSync(fd);
+    if (!st.isFile()) return false;
+    const uid = currentUid();
+    if (uid !== undefined && st.uid !== uid) return false;
+    fs.fchmodSync(fd, 0o600);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}
+
+/**
+ * Make `file` (and its `-wal` / `-shm` sidecars, when present) readable by
+ * the user only: mode 0600. The file is created empty first if missing
+ * (O_EXCL, so it never exists with looser permissions), and a SQLite db
+ * opened later gives its sidecars the same mode. Each is opened O_NOFOLLOW
+ * and checked on the fd (regular file, ours) before fchmod: a planted
+ * symlink is refused, never followed or chmod-ed by path. False, never
+ * throws, when that fails.
+ */
+export function ensurePrivateFile(file: string): boolean {
+  if (IS_WIN) {
+    try {
+      fs.closeSync(fs.openSync(file, 'a', 0o600));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return tightenFile(file, true) && tightenFile(`${file}-wal`, false) && tightenFile(`${file}-shm`, false);
 }
 
 /**
