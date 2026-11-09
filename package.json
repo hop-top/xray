@@ -61,7 +61,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc && tsc --project tsconfig.declarations.json && tsc --project tsconfig.strategies.json && cp -r src/lib/parser/queries dist/lib/parser/",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc && tsc --project tsconfig.declarations.json && tsc --project tsconfig.strategies.json && cp -r src/lib/parser/queries dist/lib/parser/",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "./scripts/test-sequential.sh",
