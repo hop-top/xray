@@ -105,7 +105,9 @@ export default class ConfigStrategy implements Strategy {
 
         out(`\nTotal: ${files.length} file(s)\n`);
 
-        return { files, count: files.length };
+        // Text mode printed above; returning the data too would have the
+        // generic text renderer dump it as JSON after the listing.
+        return text ? undefined : { files, count: files.length };
       }
     },
 
@@ -149,7 +151,7 @@ export default class ConfigStrategy implements Strategy {
           Logger.output(`\nTotal: ${uniqueKeys.length} key(s)\n`);
         }
 
-        return { keys: uniqueKeys, count: uniqueKeys.length };
+        return isTextFormat(opts) ? undefined : { keys: uniqueKeys, count: uniqueKeys.length };
       }
     },
 
@@ -210,7 +212,7 @@ export default class ConfigStrategy implements Strategy {
         }
 
         out('');
-        return {};
+        return text ? undefined : {};
       }
     }
   };
