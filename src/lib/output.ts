@@ -9,6 +9,7 @@
  * `--format` is declared here rather than by kit so each command keeps
  * its historical default (`text` / `table`) and help text.
  */
+import * as path from 'path';
 import type { Command, Option } from 'commander';
 import type * as KitOutput from '@hop-top/kit/dist/output';
 import type * as KitCompletion from '@hop-top/kit/dist/completion';
@@ -16,6 +17,7 @@ import type * as KitValues from '@hop-top/kit/dist/completion-values';
 import { UsageError, FileWriteError } from './error/types';
 import { styles, type Styles } from './tui';
 import { terminalSafe } from './terminal-safe';
+import { Logger } from './logger';
 
 export type ColumnSpec = KitOutput.ColumnSpec;
 export type Formatter<T = unknown> = KitOutput.Formatter<T>;
@@ -183,6 +185,32 @@ export interface EmitOptions {
   defaultFormat: string;
 }
 
+const DOCUMENT_FORMATS = new Set(['json', 'yaml', 'xml']);
+const EXT_FORMATS: Record<string, string> = { '.json': 'json', '.yaml': 'yaml', '.yml': 'yaml', '.xml': 'xml' };
+
+/**
+ * Format `dispatch` will use: `--format`, else (format left at its
+ * default) the `-o` file extension.
+ */
+function effectiveFormat(cmd: Command): string {
+  const opts = cmd.opts();
+  const fmt = String(opts.format ?? '');
+  if (cmd.getOptionValueSource('format') === 'cli' || typeof opts.output !== 'string') return fmt;
+  return EXT_FORMATS[path.extname(opts.output).toLowerCase()] ?? fmt;
+}
+
+/**
+ * `--cols` selects table/csv columns. A document format (json, yaml, xml)
+ * is the whole record: warn once (stderr, silenced by --quiet) and drop
+ * the selection so stdout stays the complete document.
+ */
+function ignoreColsForDocuments(cmd: Command): void {
+  if (!colsRequested(cmd) || !DOCUMENT_FORMATS.has(effectiveFormat(cmd))) return;
+  Logger.warn(`--cols applies to table and csv output only; ignored for --format ${effectiveFormat(cmd)}`);
+  cmd.setOptionValue('cols', undefined);
+  cmd.setOptionValue('columns', undefined);
+}
+
 /**
  * Render `data` through kit dispatch. Kit raises plain Errors for bad
  * flags (unknown column, format/extension mismatch, bad --format-opt);
@@ -190,6 +218,7 @@ export interface EmitOptions {
  * FileWriteError.
  */
 export async function emit(cmd: Command, data: unknown, o: EmitOptions): Promise<void> {
+  ignoreColsForDocuments(cmd);
   try {
     await kit().dispatch(cmd, data, {
       registry: o.registry,

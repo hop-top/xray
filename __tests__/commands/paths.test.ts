@@ -123,7 +123,7 @@ describe('xray paths command', () => {
 
   it('rejects an unknown column with a usage error', async () => {
     await expect(
-      runPaths('--path', tmpRoot, '--format', 'json', '--cols', 'nope')
+      runPaths('--path', tmpRoot, '--format', 'table', '--cols', 'nope')
     ).rejects.toMatchObject({ exitCode: 2 });
   });
 });

@@ -970,7 +970,7 @@ render their results through one output layer:
 | Flag | Effect |
 |------|--------|
 | `--format <fmt>` | `text` (default; the human view) or `json`, `yaml`, `table`, `csv`. `query`: `table` (default), `json`, `yaml`, `csv`, `tree` |
-| `--cols=a,b` | Pick and order columns (`table`, `csv`; `json`/`yaml` too, except `query`). Unknown column: exit 2 |
+| `--cols=a,b` | Pick and order columns of `table` and `csv` only. With `json`, `yaml` or `xml` it is ignored with one stderr warning (silenced by `--quiet`) and stdout stays the whole document. Unknown column: exit 2 |
 | `-o, --output <path>` | Write to a file; without `--format` the extension picks the format |
 | `--format-opt k=v` | Per-format option (`indent=4`, `delimiter=;`, `no-header`) |
 | `--format-help [fmt]` | List formats and their options |

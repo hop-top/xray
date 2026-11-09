@@ -198,7 +198,7 @@ their options (`--format-opt indent=4`, `--format-opt delimiter=;`, ...).
 ### JSON / YAML Format
 
 Structured document for programmatic processing: the whole result
-(`nodes`, `edges`, `metadata`); `--cols` does not reshape it. `--format yaml`
+(`nodes`, `edges`, `metadata`); `--cols` does not reshape it (one stderr warning; `--quiet` silences it). `--format yaml`
 emits the same document as YAML.
 
 ```bash

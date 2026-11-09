@@ -99,6 +99,39 @@ describe('xray query prints results', () => {
     expect(r.stdout).toMatch(/--path/);
   });
 
+  describe('--cols applies to table/csv only', () => {
+    const qs = () => ['query', '--graph', graphFile, 'calls(main)'];
+    test.each(['json', 'yaml'])('--format %s ignores --cols with one stderr warning', (fmt) => {
+      const withCols = run([...qs(), '--format', fmt, '--cols', 'name']);
+      const without = run([...qs(), '--format', fmt]);
+      expect(withCols.status).toBe(0);
+      const norm = (t: string) => t.replace(/executionTime("?): \d+/, 'executionTime$1: 0');
+      expect(norm(withCols.stdout)).toBe(norm(without.stdout));
+      const warns = withCols.stderr.split('\n').filter(l => l.includes('--cols'));
+      expect(warns).toHaveLength(1);
+      expect(warns[0]).toMatch(/table|csv/);
+    });
+    test('--quiet suppresses the warning', () => {
+      const r = run(['--quiet', ...qs(), '--format', 'json', '--cols', 'name']);
+      expect(r.status).toBe(0);
+      expect(r.stderr).not.toContain('--cols');
+      expect(JSON.parse(r.stdout).nodes[0]).toHaveProperty('file');
+    });
+    test('table and csv still project, no warning', () => {
+      const r = run([...qs(), '--format', 'csv', '--cols', 'name']);
+      expect(r.stdout).toBe('name\nhelper\n');
+      expect(r.stderr).not.toContain('--cols');
+    });
+    test('strategy commands: json keeps whole records', () => {
+      fs.writeFileSync(path.join(repo, 'Makefile'), 'all:\n\techo hi\n');
+      const r = run(['build', 'targets', '-p', repo, '--format', 'json', '--cols', 'name']);
+      expect(r.status).toBe(0);
+      expect(JSON.parse(r.stdout)[0]).toHaveProperty('dependencies');
+      expect(r.stderr).toContain('--cols');
+      fs.rmSync(path.join(repo, 'Makefile'));
+    });
+  });
+
   test('empty query is a usage error (exit 2)', () => {
     const r = run(['query', '--graph', graphFile]);
     expect(r.status).toBe(2);
