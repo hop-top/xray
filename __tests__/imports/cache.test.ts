@@ -7,6 +7,8 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { createHash } from 'crypto';
+import { Logger } from '../../src/lib/logger';
 import { extractImports, IMPORTS_EXTRACTOR_VERSION, type ImportsSourceFile } from '../../src/lib/imports';
 import { importsCacheDir, openImportsCache, type ImportsCache } from '../../src/lib/imports/cache';
 import { IMPORT_LANGUAGES } from '../../src/lib/imports/languages';
@@ -369,5 +371,71 @@ describe('imports cache: location', () => {
     fs.rmSync(probe);
     fs.mkdirSync(probe);
     expect(openImportsCache(root, { dir })).toBeUndefined();
+  });
+});
+
+(process.platform === 'win32' ? describe.skip : describe)('imports cache: hostile shared cache dir', () => {
+  const savedXdg = process.env.XDG_CACHE_HOME;
+  const mode = (p: string) => fs.statSync(p).mode & 0o777;
+  afterEach(() => {
+    jest.restoreAllMocks();
+    if (savedXdg === undefined) delete process.env.XDG_CACHE_HOME;
+    else process.env.XDG_CACHE_HOME = savedXdg;
+  });
+  const setup = () => {
+    const base = fs.mkdtempSync(path.join(tmp, 'h-'));
+    const outside = path.join(base, 'outside');
+    fs.mkdirSync(outside);
+    const sentinel = path.join(outside, 'sentinel');
+    fs.writeFileSync(sentinel, 'secret');
+    fs.chmodSync(sentinel, 0o644);
+    const root = path.join(base, 'root');
+    fs.mkdirSync(root);
+    return { base, outside, sentinel, root };
+  };
+
+  it('a planted symlink where the xray dir belongs: no cache, one warning, nothing created outside', () => {
+    const { base, outside, root } = setup();
+    const shared = path.join(base, 'shared');
+    fs.mkdirSync(shared);
+    fs.symlinkSync(outside, path.join(shared, 'xray'));
+    process.env.XDG_CACHE_HOME = shared;
+    const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+    expect(openImportsCache(root)).toBeUndefined();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(fs.readdirSync(outside)).toEqual(['sentinel']);
+  });
+
+  it('a planted symlink at the db path: no cache, target untouched', () => {
+    const { base, sentinel, root } = setup();
+    const dir = path.join(base, 'cache', 'imports');
+    fs.mkdirSync(dir, { recursive: true });
+    const id = createHash('sha256').update(fs.realpathSync(root)).digest('hex').slice(0, 16);
+    // an empty file is a valid (empty) sqlite db: the store would happily adopt it
+    fs.writeFileSync(sentinel, '');
+    fs.symlinkSync(sentinel, path.join(dir, `${id}.db`));
+    jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+    expect(openImportsCache(root, { dir })).toBeUndefined();
+    expect(mode(sentinel)).toBe(0o644);
+    expect(fs.statSync(sentinel).size).toBe(0);
+  });
+
+  it('a cache dir owned by someone else (uid injected): no cache, one warning', () => {
+    const { base, root } = setup();
+    const dir = path.join(base, 'cache', 'imports');
+    fs.mkdirSync(dir, { recursive: true });
+    const warn = jest.spyOn(Logger, 'warn').mockImplementation(() => undefined);
+    expect(openImportsCache(root, { dir, uid: process.getuid!() + 1 })).toBeUndefined();
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('the db and its sidecars end up 0600 in a 0700 dir', () => {
+    const { base, root } = setup();
+    const dir = path.join(base, 'cache2', 'imports');
+    const c = openImportsCache(root, { dir })!;
+    expect(c).toBeDefined();
+    c.close();
+    expect(mode(dir)).toBe(0o700);
+    expect(mode(c.file)).toBe(0o600);
   });
 });

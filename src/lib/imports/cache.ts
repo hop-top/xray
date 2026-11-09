@@ -25,6 +25,7 @@ import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Logger } from '../logger';
+import { ensurePrivateDir, ensurePrivateFile } from '../storage';
 import {
   CONFIDENCES, FILE_STATUSES, IMPORT_KINDS, LOCALITIES, PARSE_ERROR_KINDS, UNSUPPORTED_CONSTRUCTS,
   type FileImports, type GrammarInfo,
@@ -129,12 +130,15 @@ function isInside(child: string, parent: string): boolean {
 export interface OpenImportsCacheOptions {
   /** Cache directory (default importsCacheDir()). */
   dir?: string;
+  /** Owner the cache dir must have (default: the current user). */
+  uid?: number;
 }
 
 /**
  * Open the cache for `root`; undefined (run uncached) when no usable
  * location exists, the location is inside the root, or the store fails to
- * open. Reasons go to the debug log only.
+ * open. A location that cannot be made private (symlink, foreign owner,
+ * loose parent) logs one warning; other reasons go to the debug log.
  */
 export function openImportsCache(root: string, opts: OpenImportsCacheOptions = {}): ImportsCache | undefined {
   const dir = opts.dir ?? importsCacheDir();
@@ -148,15 +152,26 @@ export function openImportsCache(root: string, opts: OpenImportsCacheOptions = {
     Logger.debug(`imports cache: ${realCache} is inside the scanned root, running uncached`);
     return undefined;
   }
-  const file = path.join(realCache, `${sha256(realRoot).slice(0, 16)}.db`);
-  let store: Store;
+  // The location is checked unresolved (a planted symlink must not be
+  // followed into): every component below the XDG base is a real directory
+  // of ours, the db a regular file of ours (O_NOFOLLOW, fchmod on the fd).
+  const privateDir = path.resolve(dir);
+  const file = path.join(privateDir, `${sha256(realRoot).slice(0, 16)}.db`);
+  if (!ensurePrivateDir(privateDir, opts.uid) || !ensurePrivateFile(file)) {
+    Logger.warn(
+      `Imports cache directory ${privateDir} is unusable (cannot be made private to this user); ` +
+      'running without persistent cache.'
+    );
+    return undefined;
+  }
+  let store: Store | undefined;
   try {
-    fs.mkdirSync(realCache, { recursive: true, mode: 0o700 });
-    fs.chmodSync(realCache, 0o700);
     store = open(file);
-    fs.chmodSync(file, 0o600);
     store.db().pragma('journal_mode = WAL');
+    // WAL / SHM sidecars exist now: same mode as the db.
+    if (!ensurePrivateFile(file)) throw new Error('db or sidecar is not a private regular file');
   } catch (err) {
+    try { store?.close(); } catch { /* already unusable */ }
     Logger.debug(`imports cache: ${file} unusable (${(err as Error).message}), running uncached`);
     return undefined;
   }
