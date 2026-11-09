@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "description": "Example xray configuration with telemetry enabled",
+
+  "paths": ["./src"],
+  "output": ".xray",
+  "limit": 4096,
+
+  "features": {
+    "vars": true,
+    "incs": true,
+    "docs": false,
+    "cost": false,
+    "cf": false,
+    "df": false
+  },
+
+  "match": [
+    "*.ts",
+    "*.js",
+    "!*.test.ts",
+    "!*.spec.js"
+  ],
+
+  "format": "txt",
+  "chunked": true,
+
+  "telemetry": {
+    "enabled": false,
+    "_comment": "Set to true to enable telemetry tracking. All data is stored locally in the xray state directory (see `xray paths`)"
+  },
+
+  "presets": {
+    "minimal": {
+      "limit": 2048,
+      "features": {
+        "vars": false,
+        "incs": false
+      }
+    },
+    "detailed": {
+      "limit": 8192,
+      "features": {
+        "vars": true,
+        "incs": true,
+        "docs": true,
+        "cost": true
+      }
+    }
+  },
+
+  "scopes": {
+    "frontend": {
+      "paths": ["./src/components", "./src/pages"],
+      "match": ["*.tsx", "*.jsx"],
+      "output": ".xray/frontend"
+    },
+    "backend": {
+      "paths": ["./src/lib", "./src/api"],
+      "match": ["*.ts", "!*.test.ts"],
+      "output": ".xray/backend"
+    },
+    "with-telemetry": {
+      "paths": ["./src"],
+      "telemetry": {
+        "enabled": true
+      },
+      "_comment": "Example scope with telemetry enabled for tracking"
+    }
+  }
+}

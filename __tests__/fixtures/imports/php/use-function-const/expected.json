@@ -1,0 +1,140 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "php": {
+      "module": "tree-sitter-php",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "a.php",
+      "language": "php",
+      "sha256": "25d656516b2fa1c35d59bc3d77460eddbcb4a8d99b9f70dbc5e9df7d95170dbb",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 23,
+          "kind": "static",
+          "form": "use-function",
+          "module": "Foo\\fn_a",
+          "normalized": "Foo\\fn_a",
+          "package": "Foo",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use function Foo\\fn_a;"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "use-const",
+          "module": "Foo\\BAR",
+          "normalized": "Foo\\BAR",
+          "package": "Foo",
+          "locality": "unknown",
+          "alias": "B",
+          "confidence": "syntactic",
+          "evidence": "use const Foo\\BAR as B;"
+        },
+        {
+          "line": 4,
+          "column": 19,
+          "endLine": 4,
+          "endColumn": 20,
+          "kind": "static",
+          "form": "use-function",
+          "module": "Foo\\x",
+          "normalized": "Foo\\x",
+          "package": "Foo",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use function Foo\\{x, y as z};"
+        },
+        {
+          "line": 4,
+          "column": 22,
+          "endLine": 4,
+          "endColumn": 28,
+          "kind": "static",
+          "form": "use-function",
+          "module": "Foo\\y",
+          "normalized": "Foo\\y",
+          "package": "Foo",
+          "locality": "unknown",
+          "alias": "z",
+          "confidence": "syntactic",
+          "evidence": "use function Foo\\{x, y as z};"
+        },
+        {
+          "line": 5,
+          "column": 16,
+          "endLine": 5,
+          "endColumn": 17,
+          "kind": "static",
+          "form": "use-const",
+          "module": "Lib\\A",
+          "normalized": "Lib\\A",
+          "package": "Lib",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use const Lib\\{A, B as C};"
+        },
+        {
+          "line": 5,
+          "column": 19,
+          "endLine": 5,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "use-const",
+          "module": "Lib\\B",
+          "normalized": "Lib\\B",
+          "package": "Lib",
+          "locality": "unknown",
+          "alias": "C",
+          "confidence": "syntactic",
+          "evidence": "use const Lib\\{A, B as C};"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 19,
+          "kind": "static",
+          "form": "use-function",
+          "module": "Up\\f",
+          "normalized": "Up\\f",
+          "package": "Up",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use FUNCTION Up\\f;"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 7,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

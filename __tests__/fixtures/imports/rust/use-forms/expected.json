@@ -1,0 +1,212 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "rust": {
+      "module": "tree-sitter-rust",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "lib.rs",
+      "language": "rust",
+      "sha256": "7ff19a60b0f1e86bf54c98908bf311c6a2aa455eaa3788908830b0b5ef6073fd",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 14,
+          "kind": "static",
+          "form": "use",
+          "module": "std::fmt",
+          "normalized": "std::fmt",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "use std::fmt;"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 18,
+          "kind": "static",
+          "form": "use",
+          "module": "serde_json",
+          "normalized": "serde_json",
+          "package": "serde_json",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use ::serde_json;"
+        },
+        {
+          "line": 3,
+          "column": 15,
+          "endLine": 3,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "use",
+          "module": "serde::Serialize",
+          "normalized": "serde::Serialize",
+          "package": "serde",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use ::serde::{Serialize, de::*};"
+        },
+        {
+          "line": 3,
+          "column": 26,
+          "endLine": 3,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "use",
+          "module": "serde::de",
+          "normalized": "serde::de",
+          "package": "serde",
+          "locality": "external",
+          "wildcard": true,
+          "confidence": "syntactic",
+          "evidence": "use ::serde::{Serialize, de::*};"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "use",
+          "module": "crate::a::b",
+          "normalized": "crate::a::b",
+          "package": "crate",
+          "locality": "local",
+          "alias": "c",
+          "confidence": "syntactic",
+          "evidence": "use crate::a::b as c;"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 14,
+          "kind": "static",
+          "form": "use",
+          "module": "super",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "wildcard": true,
+          "confidence": "syntactic",
+          "evidence": "use super::*;"
+        },
+        {
+          "line": 6,
+          "column": 15,
+          "endLine": 6,
+          "endColumn": 19,
+          "kind": "static",
+          "form": "use",
+          "module": "self::x::y",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "wildcard": true,
+          "confidence": "syntactic",
+          "evidence": "use self::x::{y::*, z};"
+        },
+        {
+          "line": 6,
+          "column": 21,
+          "endLine": 6,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "use",
+          "module": "self::x::z",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use self::x::{y::*, z};"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 38,
+          "kind": "static",
+          "form": "use",
+          "module": "crate::config::Config",
+          "normalized": "crate::config::Config",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "pub(crate) use crate::config::Config;"
+        },
+        {
+          "line": 9,
+          "column": 1,
+          "endLine": 9,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "use",
+          "module": "std::collections::HashMap",
+          "normalized": "std::collections::HashMap",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "use std::collections::HashMap;"
+        },
+        {
+          "line": 12,
+          "column": 5,
+          "endLine": 12,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "use",
+          "module": "std::io::Write",
+          "normalized": "std::io::Write",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "use std::io::Write;"
+        },
+        {
+          "line": 16,
+          "column": 5,
+          "endLine": 16,
+          "endColumn": 28,
+          "kind": "static",
+          "form": "use",
+          "module": "super::fmt",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "alias": "fmt2",
+          "confidence": "syntactic",
+          "evidence": "use super::fmt as fmt2;"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 12,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

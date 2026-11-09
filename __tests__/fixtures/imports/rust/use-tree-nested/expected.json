@@ -1,0 +1,197 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "rust": {
+      "module": "tree-sitter-rust",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "lib.rs",
+      "language": "rust",
+      "sha256": "26e92a80a189341ce93c6e491f6fffd7fd0590952a0a1f70fb1df110cf408e7c",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 13,
+          "endLine": 1,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "use",
+          "module": "serde::Deserialize",
+          "normalized": "serde::Deserialize",
+          "package": "serde",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use serde::{Deserialize, de::{self, Visitor}};"
+        },
+        {
+          "line": 1,
+          "column": 31,
+          "endLine": 1,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "use",
+          "module": "serde::de",
+          "normalized": "serde::de",
+          "package": "serde",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use serde::{Deserialize, de::{self, Visitor}};"
+        },
+        {
+          "line": 1,
+          "column": 37,
+          "endLine": 1,
+          "endColumn": 44,
+          "kind": "static",
+          "form": "use",
+          "module": "serde::de::Visitor",
+          "normalized": "serde::de::Visitor",
+          "package": "serde",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use serde::{Deserialize, de::{self, Visitor}};"
+        },
+        {
+          "line": 2,
+          "column": 6,
+          "endLine": 2,
+          "endColumn": 14,
+          "kind": "static",
+          "form": "use",
+          "module": "std::fmt",
+          "normalized": "std::fmt",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "use {std::fmt, serde as s};"
+        },
+        {
+          "line": 2,
+          "column": 16,
+          "endLine": 2,
+          "endColumn": 26,
+          "kind": "static",
+          "form": "use",
+          "module": "serde",
+          "normalized": "serde",
+          "package": "serde",
+          "locality": "external",
+          "alias": "s",
+          "confidence": "syntactic",
+          "evidence": "use {std::fmt, serde as s};"
+        },
+        {
+          "line": 3,
+          "column": 17,
+          "endLine": 3,
+          "endColumn": 18,
+          "kind": "static",
+          "form": "use",
+          "module": "a::b::c::d",
+          "normalized": "a::b::c::d",
+          "package": "a",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use a::{b::{c::{d, e as f}, g::*}, h};"
+        },
+        {
+          "line": 3,
+          "column": 20,
+          "endLine": 3,
+          "endColumn": 26,
+          "kind": "static",
+          "form": "use",
+          "module": "a::b::c::e",
+          "normalized": "a::b::c::e",
+          "package": "a",
+          "locality": "external",
+          "alias": "f",
+          "confidence": "syntactic",
+          "evidence": "use a::{b::{c::{d, e as f}, g::*}, h};"
+        },
+        {
+          "line": 3,
+          "column": 29,
+          "endLine": 3,
+          "endColumn": 33,
+          "kind": "static",
+          "form": "use",
+          "module": "a::b::g",
+          "normalized": "a::b::g",
+          "package": "a",
+          "locality": "external",
+          "wildcard": true,
+          "confidence": "syntactic",
+          "evidence": "use a::{b::{c::{d, e as f}, g::*}, h};"
+        },
+        {
+          "line": 3,
+          "column": 36,
+          "endLine": 3,
+          "endColumn": 37,
+          "kind": "static",
+          "form": "use",
+          "module": "a::h",
+          "normalized": "a::h",
+          "package": "a",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use a::{b::{c::{d, e as f}, g::*}, h};"
+        },
+        {
+          "line": 5,
+          "column": 18,
+          "endLine": 5,
+          "endColumn": 29,
+          "kind": "static",
+          "form": "use",
+          "module": "tokio::io",
+          "normalized": "tokio::io",
+          "package": "tokio",
+          "locality": "external",
+          "alias": "tio",
+          "confidence": "syntactic",
+          "evidence": "use tokio::{io::{self as tio}, net};"
+        },
+        {
+          "line": 5,
+          "column": 32,
+          "endLine": 5,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "use",
+          "module": "tokio::net",
+          "normalized": "tokio::net",
+          "package": "tokio",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use tokio::{io::{self as tio}, net};"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 11,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

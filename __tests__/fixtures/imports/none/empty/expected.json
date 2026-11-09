@@ -1,0 +1,21 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {},
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [],
+  "summary": {
+    "files": 0,
+    "complete": 0,
+    "imports": 0,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: next
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # The release-please pin must match `tooling-ref` and the preflight
+      # pin (see release-please.yml); moved by hand, all three together.
+      # Reusable workflows are named by their path, so match those too.
+      - dependency-name: "hop-top/.github"
+      - dependency-name: "hop-top/.github/.github/workflows/release-please-*"

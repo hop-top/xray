@@ -1,0 +1,201 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "rust": {
+      "module": "tree-sitter-rust",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "lib.rs",
+      "language": "rust",
+      "sha256": "04d12798c728b997567a5c9fedfe9f548ba4a43d3ed12d29e5c70bc6756045b3",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 32,
+          "kind": "static",
+          "form": "use",
+          "module": "std::collections::hash_map",
+          "normalized": "std::collections::hash_map",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "use std::collections::hash_map;"
+        },
+        {
+          "line": 2,
+          "column": 14,
+          "endLine": 2,
+          "endColumn": 18,
+          "kind": "static",
+          "form": "use",
+          "module": "anyhow",
+          "normalized": "anyhow",
+          "package": "anyhow",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use anyhow::{self, Context as _};"
+        },
+        {
+          "line": 2,
+          "column": 20,
+          "endLine": 2,
+          "endColumn": 32,
+          "kind": "static",
+          "form": "use",
+          "module": "anyhow::Context",
+          "normalized": "anyhow::Context",
+          "package": "anyhow",
+          "locality": "external",
+          "alias": "_",
+          "confidence": "syntactic",
+          "evidence": "use anyhow::{self, Context as _};"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 26,
+          "kind": "static",
+          "form": "extern-crate",
+          "module": "rand",
+          "normalized": "rand",
+          "package": "rand",
+          "locality": "external",
+          "alias": "rng",
+          "confidence": "syntactic",
+          "evidence": "extern crate rand as rng;"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 10,
+          "kind": "include",
+          "form": "mod",
+          "module": "util",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "mod util;"
+        },
+        {
+          "line": 7,
+          "column": 13,
+          "endLine": 7,
+          "endColumn": 34,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "serde_json",
+          "normalized": "serde_json",
+          "package": "serde_json",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 2,
+          "evidence": "serde_json::to_string"
+        },
+        {
+          "line": 13,
+          "column": 5,
+          "endLine": 13,
+          "endColumn": 19,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "std",
+          "normalized": "std",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "std::mem::drop"
+        },
+        {
+          "line": 21,
+          "column": 6,
+          "endLine": 21,
+          "endColumn": 26,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "tokio",
+          "normalized": "tokio",
+          "package": "tokio",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "tokio::io::AsyncRead"
+        },
+        {
+          "line": 22,
+          "column": 23,
+          "endLine": 22,
+          "endColumn": 48,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "futures",
+          "normalized": "futures",
+          "package": "futures",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "futures::io::AsyncBufRead"
+        },
+        {
+          "line": 24,
+          "column": 18,
+          "endLine": 24,
+          "endColumn": 32,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "bytes",
+          "normalized": "bytes",
+          "package": "bytes",
+          "locality": "external",
+          "confidence": "syntactic",
+          "occurrences": 2,
+          "evidence": "::bytes::Bytes"
+        },
+        {
+          "line": 24,
+          "column": 35,
+          "endLine": 24,
+          "endColumn": 44,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "log",
+          "normalized": "log",
+          "package": "log",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "log::info"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 11,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

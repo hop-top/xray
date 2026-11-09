@@ -1,0 +1,153 @@
+{
+  "tool": "demo",
+  "version": "0.1.0",
+  "schema_version": "1.0",
+  "commands": [
+    {
+      "path": [
+        "demo",
+        "item",
+        "add"
+      ],
+      "short": "Add an item",
+      "side_effect": "write",
+      "idempotent": "no",
+      "flags": [
+        {
+          "name": "force",
+          "type": "bool",
+          "description": "overwrite",
+          "default": "false"
+        }
+      ],
+      "long": "Add an item (long description)\n\nDry-run support: this command honors --dry-run.",
+      "retryable": false,
+      "dry_run_supported": true
+    },
+    {
+      "path": [
+        "demo",
+        "item",
+        "purge"
+      ],
+      "short": "Purge items",
+      "side_effect": "destructive",
+      "idempotent": "no",
+      "long": "Purge items (long description)\n\nDry-run support: this command honors --dry-run.",
+      "retryable": false,
+      "dry_run_supported": true
+    },
+    {
+      "path": [
+        "demo",
+        "list"
+      ],
+      "short": "List items",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "flags": [
+        {
+          "name": "filter",
+          "short": "f",
+          "type": "string",
+          "description": "filter expression"
+        }
+      ],
+      "long": "List items (long description)",
+      "retryable": false,
+      "top_level_verb": true,
+      "dry_run_supported": false
+    },
+    {
+      "path": [
+        "demo",
+        "spec"
+      ],
+      "short": "Emit machine-readable capability manifest",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "description": "help for spec",
+          "default": "false"
+        },
+        {
+          "name": "include-deprecated",
+          "type": "bool",
+          "description": "Include deprecated commands in the manifest (default: hidden)",
+          "default": "false"
+        },
+        {
+          "name": "version",
+          "type": "bool",
+          "description": "Print the schema version only (capability negotiation)",
+          "default": "false"
+        }
+      ],
+      "long": "Emit the tool's full capability manifest as JSON/YAML/table. Agents consume this for capability negotiation and dispatch. --version prints only the schema version.",
+      "retryable": false,
+      "output_schema_version": "1.0",
+      "examples": [
+        {
+          "title": "Full capabilities",
+          "command": "demo spec --format json"
+        },
+        {
+          "title": "Schema probe",
+          "command": "demo spec --version"
+        },
+        {
+          "title": "Filter to old clients",
+          "command": "demo spec --api-version=1.0"
+        }
+      ],
+      "top_level_verb": true,
+      "dry_run_supported": false,
+      "reserved": true
+    },
+    {
+      "path": [
+        "demo",
+        "status"
+      ],
+      "short": "Show kit runtime status (profile, env, workspace, auth, config)",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "long": "Inspect kit's runtime state across the six default sections \u2014 profile, env, workspace, auth, effective-config, kit-annotations \u2014 plus any adopter-registered providers. Read-only: no network calls, no state mutation. Sensitive sections (env, auth, effective-config) render values as [redacted] unless --show-sensitive is passed.",
+      "retryable": false,
+      "output_schema_version": "1.0",
+      "examples": [
+        {
+          "title": "Default sections",
+          "command": "demo status"
+        },
+        {
+          "title": "Reveal redactions",
+          "command": "demo status --show-sensitive"
+        },
+        {
+          "title": "JSON for agents",
+          "command": "demo status --format json"
+        }
+      ],
+      "next_steps": [
+        {
+          "when": "auth section reports unavailable",
+          "suggest": "demo auth login",
+          "reason": "No credential introspector wired on the root"
+        },
+        {
+          "when": "env section is empty",
+          "suggest": "Set KIT_* env vars or pass StatusConfig.ExtraEnvKeys",
+          "reason": "Default filter only picks up KIT_* names"
+        }
+      ],
+      "top_level_verb": true,
+      "dry_run_supported": false,
+      "reserved": true
+    }
+  ]
+}

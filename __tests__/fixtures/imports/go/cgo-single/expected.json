@@ -1,0 +1,74 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "go": {
+      "module": "tree-sitter-go",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "cgo.go",
+      "language": "go",
+      "sha256": "1c8dd306c2243d985ce8c30e4efa33783f8d18164bea5a83992f037d0e8e88a1",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 11,
+          "kind": "static",
+          "form": "import",
+          "module": "C",
+          "normalized": "C",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import \"C\""
+        },
+        {
+          "line": 6,
+          "column": 10,
+          "endLine": 6,
+          "endColumn": 14,
+          "kind": "static",
+          "form": "import",
+          "module": "os",
+          "normalized": "os",
+          "package": "os",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "\"os\""
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 4,
+          "column": 1,
+          "construct": "cgo",
+          "detail": "cgo preamble can include C code",
+          "evidence": "import \"C\""
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 0,
+    "imports": 2,
+    "unsupported": 1,
+    "parseErrors": 0
+  }
+}

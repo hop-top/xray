@@ -1,0 +1,82 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "javascript": {
+      "module": "tree-sitter-javascript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "index.js",
+      "language": "javascript",
+      "sha256": "2a7012dd57503ec2dc55c35fb045024354c1bdaea17335ed025fbac375e194df",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 12,
+          "endLine": 1,
+          "endColumn": 25,
+          "kind": "require",
+          "form": "require",
+          "module": "fs",
+          "normalized": "fs",
+          "package": "fs",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "require('fs')"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 2,
+          "column": 16,
+          "construct": "dynamic-require",
+          "detail": "require with a non-literal argument",
+          "evidence": "require(`./plugins/${name}`)"
+        },
+        {
+          "line": 5,
+          "column": 26,
+          "construct": "dynamic-import",
+          "detail": "import() with a non-literal argument",
+          "evidence": "import('./i18n/' + lang + '.js')"
+        },
+        {
+          "line": 9,
+          "column": 1,
+          "construct": "eval",
+          "detail": "eval of code",
+          "evidence": "eval(code)"
+        },
+        {
+          "line": 10,
+          "column": 13,
+          "construct": "eval",
+          "detail": "Function constructor compiles code",
+          "evidence": "new Function('a', 'b', 'return a + b')"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 0,
+    "imports": 1,
+    "unsupported": 4,
+    "parseErrors": 0
+  }
+}

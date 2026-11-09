@@ -1,0 +1,156 @@
+name: release-please
+
+# The branch decides the version (target versioning, see RELEASING.md):
+#   next         -> prereleases; rc counter on the line, new line at alpha.0
+#   main         -> stable: the rc is cut to its target, stable patches only
+#   release/x.y  -> maintenance: patches only
+# One committed config on every branch; nothing is patched per branch, so
+# next -> main merges stay conflict-free.
+#
+# googleapis/release-please-action does not know `versioning: "target"`: the
+# shared workflow runs release-please with hop-top/.github's extension. It
+# also carries the per-branch concurrency guard and the release-bot App token
+# (release PRs open as the bot, so CI runs on them). Labels come from the
+# config.
+#
+# Pin: the full commit SHA of a hop-top/.github release that carries the
+# target-versioning extension (v0.15.0 and later), version in a trailing
+# comment; `tooling-ref` names the same commit. scripts/promote-release.sh
+# and release-promote-gate.yml read the pin from the `uses:` line and accept
+# only a full SHA; release-please-preflight.yml carries the same pin. Move all
+# three together (Dependabot ignores them for that reason).
+
+on:
+  push:
+    # release/<major>.<minor> only: the extension's maintenance role
+    # (^release/\d+\.\d+$). Any other release/* branch has no role and would
+    # fall back to prereleases. Filter globs: `+` repeats the preceding
+    # character class, `.` is literal.
+    branches: [main, next, 'release/[0-9]+.[0-9]+']
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  # workflow_dispatch runs on whatever branch it is started from, and a branch
+  # without a role falls back to prereleases: release only from main, next or
+  # release/<major>.<minor> (the push filter above, as a regex, which a job
+  # `if:` cannot express).
+  branch-role:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.role.outputs.release }}
+    steps:
+      - id: role
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [[ "$REF" =~ ^refs/heads/(main|next|release/[0-9]+\.[0-9]+)$ ]]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::$REF has no release role (main, next, release/<major>.<minor>): not releasing"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  release-please:
+    needs: branch-role
+    if: needs.branch-role.outputs.release == 'true'
+    uses: hop-top/.github/.github/workflows/release-please-on-push.yml@932d42a3c87be0767e20187fb522d29764374eb5 # v0.18.1
+    secrets:
+      RELEASE_BOT_APP_ID: ${{ secrets.RELEASE_BOT_APP_ID }}
+      RELEASE_BOT_PRIVATE_KEY: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+    with:
+      config-file: .github/release-please-config.json
+      manifest-file: .github/.release-please-manifest.json
+      versioning-extension: true
+      tooling-ref: 932d42a3c87be0767e20187fb522d29764374eb5 # v0.18.1
+
+  # Runs only on the push that merged a release PR (tag + GitHub release
+  # just created). No test step: CI already ran the full suite on the
+  # release PR. Holds no secrets; install scripts stay off, so dependency
+  # code cannot run here at all.
+  build:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - run: npm run build
+
+      - name: Check tag matches package.json
+        env:
+          TAG_VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          if [ "$pkg" != "$TAG_VERSION" ]; then
+            echo "::error::package.json $pkg != release $TAG_VERSION"
+            exit 1
+          fi
+
+      - run: npm pack --ignore-scripts
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: package
+          path: '*.tgz'
+          if-no-files-found: error
+
+  # Only job with the npm token. No checkout, no install: it publishes the
+  # tarball the build job packed, so no repo or dependency code runs here.
+  publish:
+    needs: [release-please, build]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: package
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+
+      # npm refuses a prerelease without an explicit --tag, and a prerelease
+      # must never become `latest`: the dist-tag comes from the version.
+      #   x.y.z-rc.N  -> next            (any version with a suffix)
+      #   x.y.z       -> latest          (stable, from main)
+      #   x.y.z       -> release-x.y     (stable patch from release/x.y: must
+      #                                   not move `latest` off a newer line)
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_REGISTRY_TOKEN }}
+          VERSION: ${{ needs.release-please.outputs.version }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "::error::release version is not semver: $(printf '%q' "$VERSION")"
+            exit 1
+          fi
+          if [[ "$VERSION" == *-* ]]; then
+            tag=next
+          elif [[ "$BRANCH" == main ]]; then
+            tag=latest
+          elif [[ "$BRANCH" =~ ^release/([0-9]+\.[0-9]+)$ ]]; then
+            tag="release-${BASH_REMATCH[1]}"
+          else
+            echo "::error::stable $VERSION from $BRANCH: no dist-tag rule (main, release/<major>.<minor>)"
+            exit 1
+          fi
+          echo "Publishing $VERSION with dist-tag $tag"
+          npm publish ./*.tgz --access public --tag "$tag" --ignore-scripts

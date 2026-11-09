@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/hop-top/xray/main/schemas/xray.imports.v1.json",
+  "title": "xray.imports/v1",
+  "description": "Per-file imports extracted by `xray imports`. Frozen v1: changes within v1 are additive only (optional fields, form / construct values, opt-in status values); consumers MUST ignore unknown fields. See docs/user/imports-contract.md.",
+  "type": "object",
+  "required": ["schema", "xray", "grammars", "root", "positions", "files", "summary"],
+  "properties": {
+    "schema": { "const": "xray.imports/v1" },
+    "xray": {
+      "type": "object",
+      "required": ["version", "extractor"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1, "description": "xray package version." },
+        "extractor": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$", "description": "Extractor semver; bumps on any output change for the same input." }
+      }
+    },
+    "grammars": {
+      "type": "object",
+      "description": "Grammar actually loaded, keyed by language; only languages present in files.",
+      "additionalProperties": { "$ref": "#/$defs/grammar" }
+    },
+    "root": { "type": "string", "minLength": 1, "description": "Scan root as given; file paths are relative to it." },
+    "positions": { "$ref": "#/$defs/positions" },
+    "files": { "type": "array", "items": { "$ref": "#/$defs/fileImports" } },
+    "summary": { "$ref": "#/$defs/summary" }
+  },
+  "$defs": {
+    "importKind": { "enum": ["static", "require", "dynamic", "include", "reference"] },
+    "locality": { "enum": ["stdlib", "local", "external", "unknown"] },
+    "confidence": { "enum": ["syntactic", "inferred"] },
+    "fileStatus": { "enum": ["ok", "parse-error", "grammar-missing", "unsupported-language"] },
+    "construct": {
+      "enum": [
+        "linkname", "cgo", "plugin",
+        "build-script", "include-macro", "include-data",
+        "eval", "dynamic-include", "dynamic-new", "dynamic-static-call",
+        "dynamic-require", "dynamic-import", "create-require",
+        "exec", "sys-path",
+        "dynamic-call",
+        "oversized-module",
+        "invalid-escape"
+      ]
+    },
+    "parseErrorKind": { "enum": ["error", "missing"] },
+    "count": { "type": "integer", "minimum": 0 },
+    "lineNo": { "type": "integer", "minimum": 1 },
+    "columnNo": { "type": "integer", "minimum": 1 },
+    "position": {
+      "type": "object",
+      "required": ["line", "column"],
+      "properties": {
+        "line": { "$ref": "#/$defs/lineNo" },
+        "column": { "$ref": "#/$defs/columnNo" }
+      }
+    },
+    "positions": {
+      "type": "object",
+      "required": ["line", "column"],
+      "properties": {
+        "line": { "const": "1-based" },
+        "column": { "const": "1-based, UTF-16 code units" }
+      }
+    },
+    "grammar": {
+      "type": "object",
+      "required": ["module", "version", "source"],
+      "properties": {
+        "module": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1, "description": "Where the grammar module was loaded from." }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["files", "complete", "imports", "unsupported", "parseErrors"],
+      "properties": {
+        "files": { "$ref": "#/$defs/count" },
+        "complete": { "$ref": "#/$defs/count" },
+        "imports": { "$ref": "#/$defs/count" },
+        "unsupported": { "$ref": "#/$defs/count" },
+        "parseErrors": { "$ref": "#/$defs/count" }
+      }
+    },
+    "fileImports": {
+      "type": "object",
+      "required": ["path", "language", "sha256", "status", "complete", "parseErrors", "imports", "unsupported"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "description": "Posix path relative to root." },
+        "language": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "status": { "$ref": "#/$defs/fileStatus" },
+        "complete": { "type": "boolean", "description": "status ok, unsupported empty and resolution succeeded." },
+        "parseErrors": { "type": "array", "items": { "$ref": "#/$defs/parseError" } },
+        "imports": { "type": "array", "items": { "$ref": "#/$defs/importRecord" } },
+        "unsupported": { "type": "array", "items": { "$ref": "#/$defs/unsupportedRecord" } }
+      }
+    },
+    "parseError": {
+      "type": "object",
+      "required": ["kind", "start", "end"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/parseErrorKind" },
+        "start": { "$ref": "#/$defs/position" },
+        "end": { "$ref": "#/$defs/position" }
+      }
+    },
+    "importName": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "alias": { "type": "string", "minLength": 1 }
+      }
+    },
+    "relative": {
+      "type": "object",
+      "required": ["level"],
+      "properties": {
+        "level": { "type": "integer", "minimum": 1 },
+        "module": { "type": "string", "minLength": 1 }
+      }
+    },
+    "resolved": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["file"],
+          "properties": { "file": { "type": "string", "minLength": 1 } }
+        },
+        {
+          "type": "object",
+          "required": ["dir"],
+          "properties": { "dir": { "type": "string", "minLength": 1 } }
+        }
+      ]
+    },
+    "importRecord": {
+      "type": "object",
+      "required": ["line", "column", "endLine", "endColumn", "kind", "form", "module", "normalized", "locality", "confidence", "evidence"],
+      "properties": {
+        "line": { "$ref": "#/$defs/lineNo" },
+        "column": { "$ref": "#/$defs/columnNo" },
+        "endLine": { "$ref": "#/$defs/lineNo" },
+        "endColumn": { "$ref": "#/$defs/columnNo" },
+        "kind": { "$ref": "#/$defs/importKind" },
+        "form": { "type": "string", "minLength": 1, "description": "Open per-language list; see the contract doc." },
+        "module": { "type": "string", "description": "As written, lexically cleaned." },
+        "normalized": { "type": ["string", "null"], "description": "Canonical absolute id; null when not derivable." },
+        "package": { "type": "string", "minLength": 1 },
+        "locality": { "$ref": "#/$defs/locality" },
+        "relative": { "$ref": "#/$defs/relative" },
+        "alias": { "type": "string", "minLength": 1 },
+        "names": { "type": "array", "items": { "$ref": "#/$defs/importName" } },
+        "wildcard": { "type": "boolean" },
+        "typeOnly": { "type": "boolean" },
+        "resolved": { "$ref": "#/$defs/resolved" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "occurrences": { "type": "integer", "minimum": 1 },
+        "evidence": { "type": "string", "maxLength": 240 }
+      }
+    },
+    "unsupportedRecord": {
+      "type": "object",
+      "required": ["line", "column", "construct", "evidence"],
+      "properties": {
+        "line": { "$ref": "#/$defs/lineNo" },
+        "column": { "$ref": "#/$defs/columnNo" },
+        "construct": { "$ref": "#/$defs/construct" },
+        "detail": { "type": "string" },
+        "evidence": { "type": "string", "maxLength": 240 }
+      }
+    }
+  }
+}

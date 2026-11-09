@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [next, main, 'release/[0-9]+.[0-9]+']
+  pull_request:
+    branches: [next, main, 'release/[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+jobs:
+  build-typecheck:
+    name: build + typecheck (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['26', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Guard plain install (no peer-dep flags)
+        run: scripts/check-plain-install.sh
+      - run: npm ci
+      - run: npm run build
+      # ts-jest is transpile-only (isolatedModules); test files are type-checked here
+      - run: npm run typecheck:tests
+
+  shellcheck:
+    name: shellcheck (hooks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # shellcheck is preinstalled on ubuntu runners.
+      - name: shellcheck hooks
+        run: |
+          shellcheck --version
+          shellcheck hooks/pre-commit
+          find hooks/harness -type f \( -name '*.sh' -o -name xray-impact-context \) -print0 \
+            | xargs -0 shellcheck
+
+  test:
+    name: test (node ${{ matrix.node }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        arch: [x64]
+        node: ['26', '22']
+        include:
+          # mdq publishes no linux-arm64 asset; this leg builds it from source.
+          - os: ubuntu-24.04-arm
+            arch: arm64
+            node: '22'
+    env:
+      # One CI job == one runner; the machine-wide lock only matters on dev boxes.
+      XRAY_TEST_NO_LOCK: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Install bubblewrap
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bubblewrap
+      # Version pinned once, in src/utils/mdqInstall.ts. Tests for the markdown
+      # strategy skip when mdq is absent.
+      - name: Read pinned mdq version
+        run: echo "MDQ_VERSION=$(sed -n "s/^export const MDQ_VERSION = '\(.*\)';/\1/p" src/utils/mdqInstall.ts)" >> "$GITHUB_ENV"
+      - name: Install mdq (prebuilt release)
+        if: matrix.arch == 'x64'
+        run: |
+          MDQ_SHA256=de00a4dcbfb4cc2f59152b52ae774702343fdc82e6cd4f87a2a40c7be09935d7  # v0.10.0 linux-x64
+          curl -fsSL -o "$RUNNER_TEMP/mdq.tar.gz" \
+            "https://github.com/yshavit/mdq/releases/download/v${MDQ_VERSION}/mdq-linux-x64.tar.gz"
+          echo "${MDQ_SHA256}  $RUNNER_TEMP/mdq.tar.gz" | sha256sum -c -
+          mkdir -p "$HOME/.local/bin"
+          tar -xzf "$RUNNER_TEMP/mdq.tar.gz" -C "$HOME/.local/bin" mdq
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Cache mdq (built from source)
+        if: matrix.arch != 'x64'
+        id: mdq-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/mdq
+          key: mdq-${{ runner.os }}-${{ runner.arch }}-${{ env.MDQ_VERSION }}
+      - name: Install mdq (cargo)
+        if: matrix.arch != 'x64' && steps.mdq-cache.outputs.cache-hit != 'true'
+        run: cargo install mdq --version "${MDQ_VERSION}" --locked
+      - name: Add cargo bin to PATH
+        if: matrix.arch != 'x64'
+        run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Verify mdq
+        run: mdq --version
+      # Ubuntu 24.04 runners set kernel.apparmor_restrict_unprivileged_userns=1, which
+      # strips capabilities from unprivileged user namespaces; bwrap then dies with
+      # "loopback: Failed RTM_NEWADDR: Operation not permitted" and every sandboxed
+      # go-cli build fails. Grant `userns` to the bwrap binary only (scoped; leaves
+      # the system-wide restriction in place).
+      - name: Allow bubblewrap user namespaces
+        run: |
+          sudo tee /etc/apparmor.d/bwrap-userns >/dev/null <<'EOF'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+          }
+          EOF
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns
+          bwrap --ro-bind / / --unshare-net --unshare-pid true
+      - run: npm ci
+      - run: npm run build
+      - name: Run test suites
+        run: npm test 2>&1 | tee "$RUNNER_TEMP/test.log"; exit "${PIPESTATUS[0]}"
+      - name: Upload test log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-log-node-${{ matrix.node }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/test.log
+          if-no-files-found: ignore

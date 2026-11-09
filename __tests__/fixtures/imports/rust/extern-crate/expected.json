@@ -1,0 +1,97 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "rust": {
+      "module": "tree-sitter-rust",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "main.rs",
+      "language": "rust",
+      "sha256": "bee0df4a91838c0efddb6ae8909b1be13f6b5a7bd5963f2c773c6a255e6f25a2",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 20,
+          "kind": "static",
+          "form": "extern-crate",
+          "module": "alloc",
+          "normalized": "alloc",
+          "package": "alloc",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "extern crate alloc;"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "extern-crate",
+          "module": "foo",
+          "normalized": "foo",
+          "package": "foo",
+          "locality": "external",
+          "alias": "bar",
+          "confidence": "syntactic",
+          "evidence": "extern crate foo as bar;"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "extern-crate",
+          "module": "self",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "alias": "me",
+          "confidence": "syntactic",
+          "evidence": "extern crate self as me;"
+        },
+        {
+          "line": 4,
+          "column": 14,
+          "endLine": 4,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "extern-crate",
+          "module": "log",
+          "normalized": "log",
+          "package": "log",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "extern crate log;"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 4,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

@@ -1,0 +1,271 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "go": {
+      "module": "tree-sitter-go",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "api/types/types.go",
+      "language": "go",
+      "sha256": "c4420d97f25e7d4508b314d50492b49ed1d227c5e665b446fdd83a530a44bcee",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 32,
+          "kind": "static",
+          "form": "import",
+          "module": "github.com/google/uuid",
+          "normalized": "github.com/google/uuid",
+          "package": "github.com/google/uuid",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "import \"github.com/google/uuid\""
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "svc/internal/db/db.go",
+      "language": "go",
+      "sha256": "7c7093e6e81f34bdc81a6f8b4603b897929b77e826986c52cbdaa45ee425769d",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/svc",
+          "normalized": "example.com/svc",
+          "package": "example.com/svc",
+          "locality": "local",
+          "resolved": {
+            "dir": "svc"
+          },
+          "confidence": "syntactic",
+          "evidence": "import \"example.com/svc\""
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "svc/main.go",
+      "language": "go",
+      "sha256": "1138d78730d2bd3a01b328911a9bd877da2a1e52d8ca1c829d67ab3e793c72c1",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 11,
+          "kind": "static",
+          "form": "import",
+          "module": "C",
+          "normalized": "C",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import \"C\""
+        },
+        {
+          "line": 7,
+          "column": 2,
+          "endLine": 7,
+          "endColumn": 7,
+          "kind": "static",
+          "form": "import",
+          "module": "fmt",
+          "normalized": "fmt",
+          "package": "fmt",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "\"fmt\""
+        },
+        {
+          "line": 8,
+          "column": 2,
+          "endLine": 8,
+          "endColumn": 12,
+          "kind": "static",
+          "form": "import",
+          "module": "net/http",
+          "normalized": "net/http",
+          "package": "net",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "\"net/http\""
+        },
+        {
+          "line": 10,
+          "column": 2,
+          "endLine": 10,
+          "endColumn": 27,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/api/missing",
+          "normalized": "example.com/api/missing",
+          "package": "example.com/api",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "\"example.com/api/missing\""
+        },
+        {
+          "line": 11,
+          "column": 2,
+          "endLine": 11,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/api/types",
+          "normalized": "example.com/api/types",
+          "package": "example.com/api",
+          "locality": "local",
+          "resolved": {
+            "dir": "api/types"
+          },
+          "confidence": "syntactic",
+          "evidence": "\"example.com/api/types\""
+        },
+        {
+          "line": 12,
+          "column": 2,
+          "endLine": 12,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/svc/internal/db",
+          "normalized": "example.com/svc/internal/db",
+          "package": "example.com/svc",
+          "locality": "local",
+          "resolved": {
+            "dir": "svc/internal/db"
+          },
+          "confidence": "syntactic",
+          "evidence": "\"example.com/svc/internal/db\""
+        },
+        {
+          "line": 13,
+          "column": 2,
+          "endLine": 13,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/tools/gen",
+          "normalized": "example.com/tools/gen",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "\"example.com/tools/gen\""
+        },
+        {
+          "line": 14,
+          "column": 2,
+          "endLine": 14,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "import",
+          "module": "github.com/pkg/errors",
+          "normalized": "github.com/pkg/errors",
+          "package": "github.com/pkg/errors",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "\"github.com/pkg/errors\""
+        },
+        {
+          "line": 15,
+          "column": 2,
+          "endLine": 15,
+          "endColumn": 27,
+          "kind": "static",
+          "form": "import",
+          "module": "github.com/undeclared/x",
+          "normalized": "github.com/undeclared/x",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "\"github.com/undeclared/x\""
+        },
+        {
+          "line": 16,
+          "column": 2,
+          "endLine": 16,
+          "endColumn": 30,
+          "kind": "static",
+          "form": "import",
+          "module": "golang.org/x/text/language",
+          "normalized": "golang.org/x/text/language",
+          "package": "golang.org/x/text",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "\"golang.org/x/text/language\""
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 4,
+          "column": 1,
+          "construct": "cgo",
+          "detail": "cgo preamble can include C code",
+          "evidence": "import \"C\""
+        }
+      ]
+    },
+    {
+      "path": "tools/gen/gen.go",
+      "language": "go",
+      "sha256": "cd43dfa395a25cec1ab0d0e74eb790651b978b6067ba9962b70a288952c3d362",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/api/types",
+          "normalized": "example.com/api/types",
+          "package": "example.com/api",
+          "locality": "local",
+          "resolved": {
+            "dir": "api/types"
+          },
+          "confidence": "syntactic",
+          "evidence": "import \"example.com/api/types\""
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 4,
+    "complete": 3,
+    "imports": 13,
+    "unsupported": 1,
+    "parseErrors": 0
+  }
+}

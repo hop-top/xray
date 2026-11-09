@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+#
+# Xray Pre-commit Hook
+#
+# Regenerates xray maps from the STAGED content when you commit source
+# changes, and stages the generated files.
+#
+# The working tree is never touched, except to write the generated files
+# themselves: no stash, no checkout, no `git add -A`. Unrelated unstaged or
+# untracked work stays exactly as it is.
+#
+# How it works:
+#   1. Export the index (what will be committed) to a work directory under
+#      the repo's git dir: <git-dir>/xray-precommit/tree.
+#   2. Run `xray map` there and diff the tree before and after.
+#   3. Copy only the changed paths back and stage only those.
+#
+# The work directory holds nothing of yours: it is emptied before every run
+# and on exit, so a killed hook (even SIGKILL) loses nothing; the next run
+# recovers.
+#
+# Config must be tracked (.xrayrc, .xrayrc.json or xray.config.json in the
+# index). An untracked config is not exported, so the hook skips and says so.
+#
+# A generated path whose working copy has unstaged edits that differ from
+# both the index and the new map stops the commit; nothing is overwritten.
+# Stage or discard those edits and commit again.
+#
+# Installation:
+#   cp hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+
+set -u
+
+CONFIGS=(.xrayrc .xrayrc.json xray.config.json)
+
+top=$(git rev-parse --show-toplevel) || exit 1
+cd "$top" || exit 1
+
+# Config comes from the index only.
+if [ -z "$(git ls-files -- "${CONFIGS[@]}")" ]; then
+  for c in "${CONFIGS[@]}"; do
+    if [ -e "$c" ]; then
+      echo "xray: $c is not tracked; the pre-commit hook only reads config from the index. Skipping." >&2
+    fi
+  done
+  exit 0
+fi
+
+if ! command -v xray > /dev/null 2>&1; then
+  echo "⚠️  Xray is not installed. Skipping xray regeneration."
+  echo "   Install it with: npm install -g @hop-top/xray"
+  exit 0
+fi
+
+# Skip if no source files are being committed
+if ! git diff --cached --name-only -z --diff-filter=ACM |
+  tr '\0' '\n' |
+  grep -qE '\.(ts|js|py|java|go|rs|rb|php|swift|kt|cs|cpp|c|h|hpp|lua|dart|ex|exs|hs|scala)$'; then
+  exit 0
+fi
+
+echo "🔍 Regenerating xray maps..."
+
+gitdir=$(git rev-parse --absolute-git-dir) || exit 1
+WORK="$gitdir/xray-precommit"
+TREE="$WORK/tree"
+
+trap '[ -n "${WORK:-}" ] && rm -rf -- "$WORK"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# git run inside the work tree, detached from the real repo's environment.
+ng() {
+  env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_WORK_TREE -u GIT_PREFIX \
+    -u GIT_COMMON_DIR -u GIT_OBJECT_DIRECTORY -u GIT_ALTERNATE_OBJECT_DIRECTORIES \
+    -u GIT_LITERAL_PATHSPECS git -C "$TREE" "$@"
+}
+
+rm -rf -- "$WORK"
+mkdir -p -- "$TREE" || exit 1
+
+# The index as files (symlinks stay links, submodules stay empty dirs).
+git checkout-index -a --prefix="$TREE/" || {
+  echo "xray: could not export the index" >&2
+  exit 1
+}
+
+# Scratch repo over the export: gives xray a git view of exactly the index,
+# and gives us a NUL-safe before/after comparison.
+ng init -q || exit 1
+ng config core.autocrlf false
+mkdir -p -- "$TREE/.git/info"
+echo '* -text -eol -filter -ident' > "$TREE/.git/info/attributes"
+ng add -f --all -- . || exit 1
+before=$(ng write-tree) || exit 1
+
+# Run xray map (reads from config file). All scopes when defined.
+if ! (
+  cd "$TREE" || exit 1
+  unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_COMMON_DIR \
+    GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_LITERAL_PATHSPECS
+  xray map --all-scopes 2>/dev/null || xray map
+); then
+  echo "xray: map failed; commit aborted" >&2
+  exit 1
+fi
+
+ng add -f --all -- . || exit 1
+
+# Paths xray changed: status, path pairs, NUL separated.
+changes="$WORK/changes"
+ng diff --cached --name-status -z --no-renames "$before" > "$changes" || exit 1
+
+same_as_before() { # path: working copy equals the exported (staged) copy
+  local p=$1
+  if [ -L "$p" ]; then
+    [ "$(ng cat-file blob "$before:$p" 2>/dev/null)" = "$(readlink -- "$p")" ]
+  elif [ -f "$p" ]; then
+    ng cat-file blob "$before:$p" 2>/dev/null | cmp -s - "./$p"
+  else
+    return 1
+  fi
+}
+
+same_as_after() { # path: working copy equals the regenerated copy
+  local p=$1
+  if [ -L "$TREE/$p" ]; then
+    [ -L "$p" ] && [ "$(readlink -- "$p")" = "$(readlink -- "$TREE/$p")" ]
+  elif [ -f "$TREE/$p" ]; then
+    [ -f "$p" ] && [ ! -L "$p" ] && cmp -s -- "$TREE/$p" "$p"
+  else
+    [ ! -e "$p" ] && [ ! -L "$p" ]
+  fi
+}
+
+export GIT_LITERAL_PATHSPECS=1
+
+# Pass 1: decide per path. Nothing is written until every path is cleared.
+status_list=()
+path_list=()
+conflicts=()
+while IFS= read -r -d '' st && IFS= read -r -d '' p; do
+  # Never the analysis cache, never paths git ignores (git add would refuse).
+  case "${p##*/}" in .xray_cache.db*) continue ;; esac
+  # (check-ignore takes plain paths and rejects literal-pathspec mode)
+  if env -u GIT_LITERAL_PATHSPECS git check-ignore -q -- "$p"; then continue; fi
+
+  if [ "$st" = A ]; then
+    if [ -e "$p" ] || [ -L "$p" ]; then
+      same_as_after "$p" || { conflicts+=("$p"); continue; }
+    fi
+  elif ! same_as_after "$p" && ! same_as_before "$p"; then
+    conflicts+=("$p"); continue
+  fi
+  status_list+=("$st")
+  path_list+=("$p")
+done < "$changes"
+
+if [ "${#conflicts[@]}" -gt 0 ]; then
+  echo "xray: commit aborted. These generated files have changes that are not staged," >&2
+  echo "and regenerating them would overwrite those changes:" >&2
+  printf '  %s\n' "${conflicts[@]}" >&2
+  echo "Stage them (git add), or discard them, then commit again." >&2
+  exit 1
+fi
+
+if [ "${#path_list[@]}" -eq 0 ]; then
+  echo "✓ Xray maps are already up to date."
+  exit 0
+fi
+
+# Pass 2: write only the changed paths, stage only those.
+for i in "${!path_list[@]}"; do
+  p=${path_list[$i]}
+  if same_as_after "$p"; then continue; fi
+  if [ "${status_list[$i]}" = D ]; then
+    rm -f -- "$p" || exit 1
+    continue
+  fi
+  mkdir -p -- "$(dirname -- "$p")" || exit 1
+  if [ -L "$TREE/$p" ]; then
+    ln -sfn -- "$(readlink -- "$TREE/$p")" "$p" || exit 1
+  else
+    cp -p -- "$TREE/$p" "$p" || exit 1
+  fi
+done
+
+printf '%s\0' "${path_list[@]}" |
+  git add --pathspec-from-file=- --pathspec-file-nul || exit 1
+
+echo "✓ Xray maps updated and staged:"
+printf '  %s\n' "${path_list[@]}"
+exit 0

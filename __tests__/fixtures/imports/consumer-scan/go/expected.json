@@ -1,0 +1,304 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "go": {
+      "module": "tree-sitter-go",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "api/types.go",
+      "language": "go",
+      "sha256": "d05976aa0f99819b02d8ec3a4c62ae9d48c2369cf189603bc36fc92058366187",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 14,
+          "kind": "static",
+          "form": "import",
+          "module": "time",
+          "normalized": "time",
+          "package": "time",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import \"time\""
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "svc/broken.go",
+      "language": "go",
+      "sha256": "87b5e7deecfbd1fca68cc7bbc1fe50cbb2aa4db6cc24b77f9bd6d7c6a454ddb0",
+      "status": "parse-error",
+      "complete": false,
+      "parseErrors": [
+        {
+          "kind": "missing",
+          "start": {
+            "line": 5,
+            "column": 13
+          },
+          "end": {
+            "line": 5,
+            "column": 13
+          }
+        },
+        {
+          "kind": "missing",
+          "start": {
+            "line": 7,
+            "column": 1
+          },
+          "end": {
+            "line": 7,
+            "column": 1
+          }
+        }
+      ],
+      "imports": [
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 13,
+          "kind": "static",
+          "form": "import",
+          "module": "fmt",
+          "normalized": "fmt",
+          "package": "fmt",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import \"fmt\""
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "svc/internal/internal.go",
+      "language": "go",
+      "sha256": "c919cb2af76ad7c9c784f62804368cb39a37bebfee5de431eddc80d401250b05",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "svc/main.go",
+      "language": "go",
+      "sha256": "df5c33bef621c80740bded63a54fbb73d4bd968afb3516c1dbb7a9b4b65e7a02",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 13,
+          "kind": "static",
+          "form": "import",
+          "module": "fmt",
+          "normalized": "fmt",
+          "package": "fmt",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import \"fmt\""
+        },
+        {
+          "line": 8,
+          "column": 2,
+          "endLine": 8,
+          "endColumn": 6,
+          "kind": "static",
+          "form": "import",
+          "module": "os",
+          "normalized": "os",
+          "package": "os",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "\"os\""
+        },
+        {
+          "line": 9,
+          "column": 2,
+          "endLine": 9,
+          "endColumn": 23,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/api",
+          "normalized": "example.com/api",
+          "package": "example.com/api",
+          "locality": "local",
+          "alias": "api",
+          "resolved": {
+            "dir": "api"
+          },
+          "confidence": "syntactic",
+          "evidence": "api \"example.com/api\""
+        },
+        {
+          "line": 10,
+          "column": 2,
+          "endLine": 10,
+          "endColumn": 13,
+          "kind": "static",
+          "form": "import",
+          "module": "strings",
+          "normalized": "strings",
+          "package": "strings",
+          "locality": "stdlib",
+          "alias": ".",
+          "confidence": "syntactic",
+          "evidence": ". \"strings\""
+        },
+        {
+          "line": 11,
+          "column": 2,
+          "endLine": 11,
+          "endColumn": 11,
+          "kind": "static",
+          "form": "import",
+          "module": "embed",
+          "normalized": "embed",
+          "package": "embed",
+          "locality": "stdlib",
+          "alias": "_",
+          "confidence": "syntactic",
+          "evidence": "_ \"embed\""
+        },
+        {
+          "line": 13,
+          "column": 2,
+          "endLine": 13,
+          "endColumn": 28,
+          "kind": "static",
+          "form": "import",
+          "module": "example.com/svc/internal",
+          "normalized": "example.com/svc/internal",
+          "package": "example.com/svc",
+          "locality": "local",
+          "resolved": {
+            "dir": "svc/internal"
+          },
+          "confidence": "syntactic",
+          "evidence": "\"example.com/svc/internal\""
+        },
+        {
+          "line": 14,
+          "column": 2,
+          "endLine": 14,
+          "endColumn": 26,
+          "kind": "static",
+          "form": "import",
+          "module": "github.com/google/uuid",
+          "normalized": "github.com/google/uuid",
+          "package": "github.com/google/uuid",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "\"github.com/google/uuid\""
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "svc/native.go",
+      "language": "go",
+      "sha256": "170fa09a8d5182eaacea9be0d9e7a902af2a80483d5089f14981c413595829a1",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 11,
+          "kind": "static",
+          "form": "import",
+          "module": "C",
+          "normalized": "C",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import \"C\""
+        },
+        {
+          "line": 10,
+          "column": 2,
+          "endLine": 10,
+          "endColumn": 10,
+          "kind": "static",
+          "form": "import",
+          "module": "plugin",
+          "normalized": "plugin",
+          "package": "plugin",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "\"plugin\""
+        },
+        {
+          "line": 11,
+          "column": 2,
+          "endLine": 11,
+          "endColumn": 12,
+          "kind": "static",
+          "form": "import",
+          "module": "unsafe",
+          "normalized": "unsafe",
+          "package": "unsafe",
+          "locality": "stdlib",
+          "alias": "_",
+          "confidence": "syntactic",
+          "evidence": "_ \"unsafe\""
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 7,
+          "column": 1,
+          "construct": "cgo",
+          "detail": "cgo preamble can include C code",
+          "evidence": "import \"C\""
+        },
+        {
+          "line": 10,
+          "column": 2,
+          "construct": "plugin",
+          "detail": "plugin.Open loads shared objects at run time",
+          "evidence": "\"plugin\""
+        },
+        {
+          "line": 14,
+          "column": 1,
+          "construct": "linkname",
+          "detail": "runtime.nanotime",
+          "evidence": "//go:linkname nanotime runtime.nanotime"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 5,
+    "complete": 3,
+    "imports": 12,
+    "unsupported": 3,
+    "parseErrors": 2
+  }
+}

@@ -1,0 +1,5 @@
+app.test.ts (L1):
+│ [L1] const test
+
+app.ts (L1):
+│ [L1] const app

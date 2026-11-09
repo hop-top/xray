@@ -1,0 +1,380 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "python": {
+      "module": "tree-sitter-python",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "app/__init__.py",
+      "language": "python",
+      "sha256": "bc2c22c604c799e896c34b3775747cd95cf117f5bed5be955341a45cb6189b80",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 8,
+          "endLine": 1,
+          "endColumn": 17,
+          "kind": "static",
+          "form": "import",
+          "module": "importlib",
+          "normalized": "importlib",
+          "package": "importlib",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import importlib"
+        },
+        {
+          "line": 3,
+          "column": 11,
+          "endLine": 3,
+          "endColumn": 64,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": ".plugins",
+          "normalized": "app.plugins",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 1,
+            "module": "plugins"
+          },
+          "confidence": "syntactic",
+          "evidence": "importlib.import_module('.plugins', package=__name__)"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "app/pkg/__init__.py",
+      "language": "python",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "app/pkg/mod.py",
+      "language": "python",
+      "sha256": "0ffca2af0f4421a46a0b1c7e3906dcedafb661271bf31f7e17a1aa4dfddf4df4",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 8,
+          "endLine": 1,
+          "endColumn": 23,
+          "kind": "static",
+          "form": "import",
+          "module": "importlib",
+          "normalized": "importlib",
+          "package": "importlib",
+          "locality": "stdlib",
+          "alias": "il",
+          "confidence": "syntactic",
+          "evidence": "import importlib as il"
+        },
+        {
+          "line": 2,
+          "column": 8,
+          "endLine": 2,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "import",
+          "module": "importlib.util",
+          "normalized": "importlib.util",
+          "package": "importlib",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import importlib.util"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 36,
+          "kind": "static",
+          "form": "from",
+          "module": "importlib",
+          "normalized": "importlib",
+          "package": "importlib",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "import_module"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from importlib import import_module"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 44,
+          "kind": "static",
+          "form": "from",
+          "module": "importlib",
+          "normalized": "importlib",
+          "package": "importlib",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "import_module",
+              "alias": "load"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from importlib import import_module as load"
+        },
+        {
+          "line": 6,
+          "column": 10,
+          "endLine": 6,
+          "endColumn": 31,
+          "kind": "dynamic",
+          "form": "__import__",
+          "module": "os.path",
+          "normalized": "os.path",
+          "package": "os",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "__import__('os.path')"
+        },
+        {
+          "line": 7,
+          "column": 7,
+          "endLine": 7,
+          "endColumn": 48,
+          "kind": "dynamic",
+          "form": "__import__",
+          "module": "sibling",
+          "normalized": "app.pkg.sibling",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 1,
+            "module": "sibling"
+          },
+          "confidence": "syntactic",
+          "evidence": "__import__('sibling', globals(), level=1)"
+        },
+        {
+          "line": 8,
+          "column": 8,
+          "endLine": 8,
+          "endColumn": 39,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": "json",
+          "normalized": "json",
+          "package": "json",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "importlib.import_module('json')"
+        },
+        {
+          "line": 9,
+          "column": 5,
+          "endLine": 9,
+          "endColumn": 34,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": "app.pkg.a",
+          "normalized": "app.pkg.a",
+          "package": "app",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "il.import_module(\"app.pkg.a\")"
+        },
+        {
+          "line": 10,
+          "column": 5,
+          "endLine": 10,
+          "endColumn": 43,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": ".b",
+          "normalized": "app.pkg.b",
+          "package": "app",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import_module('.b', package='app.pkg')"
+        },
+        {
+          "line": 11,
+          "column": 5,
+          "endLine": 11,
+          "endColumn": 27,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": "..c",
+          "normalized": "app.c",
+          "package": "app",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "load('..c', 'app.pkg')"
+        },
+        {
+          "line": 12,
+          "column": 5,
+          "endLine": 12,
+          "endColumn": 42,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": ".d",
+          "normalized": "app.pkg.mod.d",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 1,
+            "module": "mod.d"
+          },
+          "confidence": "syntactic",
+          "evidence": "import_module('.d', package=__name__)"
+        },
+        {
+          "line": 13,
+          "column": 5,
+          "endLine": 13,
+          "endColumn": 46,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": "..e",
+          "normalized": "app.e",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 2,
+            "module": "e"
+          },
+          "confidence": "syntactic",
+          "evidence": "import_module('..e', package=__package__)"
+        },
+        {
+          "line": 14,
+          "column": 5,
+          "endLine": 14,
+          "endColumn": 27,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": "xy",
+          "normalized": "xy",
+          "package": "xy",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import_module('x' 'y')"
+        },
+        {
+          "line": 18,
+          "column": 12,
+          "endLine": 18,
+          "endColumn": 45,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": "late.mod",
+          "normalized": "late.mod",
+          "package": "late",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "il.import_module(name='late.mod')"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 23,
+          "column": 1,
+          "construct": "dynamic-import",
+          "detail": "__import__ with a non-literal argument",
+          "evidence": "__import__(name)"
+        },
+        {
+          "line": 24,
+          "column": 1,
+          "construct": "dynamic-import",
+          "detail": "import_module with a non-literal argument",
+          "evidence": "import_module(f'mod_{name}')"
+        },
+        {
+          "line": 25,
+          "column": 1,
+          "construct": "dynamic-import",
+          "detail": "import_module with a relative name and no package",
+          "evidence": "import_module('.nopkg')"
+        },
+        {
+          "line": 26,
+          "column": 1,
+          "construct": "dynamic-import",
+          "detail": "import_module with a non-literal argument",
+          "evidence": "import_module('.dyn', package=name)"
+        },
+        {
+          "line": 27,
+          "column": 1,
+          "construct": "dynamic-import",
+          "detail": "import_module with a non-literal argument",
+          "evidence": "import_module(b'bytes')"
+        },
+        {
+          "line": 28,
+          "column": 1,
+          "construct": "dynamic-import",
+          "detail": "import_module with a non-literal argument",
+          "evidence": "import_module('esc\\x2e')"
+        },
+        {
+          "line": 31,
+          "column": 8,
+          "construct": "dynamic-import",
+          "detail": "importlib.util.find_spec: importlib loader API, can load a module xray cannot name",
+          "evidence": "importlib.util.find_spec('x')"
+        }
+      ]
+    },
+    {
+      "path": "shadow.py",
+      "language": "python",
+      "sha256": "000a6eae09009c286227f4145ffd4ffdc2a4c9097c9a560977ff16ec9124cd8f",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": [
+        {
+          "line": 5,
+          "column": 1,
+          "construct": "dynamic-import",
+          "detail": "__import__ is rebound in this file",
+          "evidence": "__import__('shadowed')"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 4,
+    "complete": 2,
+    "imports": 16,
+    "unsupported": 8,
+    "parseErrors": 0
+  }
+}

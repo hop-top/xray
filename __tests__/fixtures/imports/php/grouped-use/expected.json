@@ -1,0 +1,125 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "php": {
+      "module": "tree-sitter-php",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "a.php",
+      "language": "php",
+      "sha256": "a8e96fa83fafcd79a7071aa0eba1aad3844c433531ea03220144e6a72b9391e4",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 4,
+          "column": 10,
+          "endLine": 4,
+          "endColumn": 15,
+          "kind": "static",
+          "form": "group-use",
+          "module": "Foo\\Alpha",
+          "normalized": "Foo\\Alpha",
+          "package": "Foo",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use Foo\\{Alpha, Beta\\Gamma as G, function h, const K};"
+        },
+        {
+          "line": 4,
+          "column": 17,
+          "endLine": 4,
+          "endColumn": 32,
+          "kind": "static",
+          "form": "group-use",
+          "module": "Foo\\Beta\\Gamma",
+          "normalized": "Foo\\Beta\\Gamma",
+          "package": "Foo",
+          "locality": "unknown",
+          "alias": "G",
+          "confidence": "syntactic",
+          "evidence": "use Foo\\{Alpha, Beta\\Gamma as G, function h, const K};"
+        },
+        {
+          "line": 4,
+          "column": 34,
+          "endLine": 4,
+          "endColumn": 44,
+          "kind": "static",
+          "form": "use-function",
+          "module": "Foo\\h",
+          "normalized": "Foo\\h",
+          "package": "Foo",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use Foo\\{Alpha, Beta\\Gamma as G, function h, const K};"
+        },
+        {
+          "line": 4,
+          "column": 46,
+          "endLine": 4,
+          "endColumn": 53,
+          "kind": "static",
+          "form": "use-const",
+          "module": "Foo\\K",
+          "normalized": "Foo\\K",
+          "package": "Foo",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use Foo\\{Alpha, Beta\\Gamma as G, function h, const K};"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "group-use",
+          "module": "Lib\\Émile",
+          "normalized": "Lib\\Émile",
+          "package": "Lib",
+          "locality": "unknown",
+          "alias": "E",
+          "confidence": "syntactic",
+          "evidence": "use Lib\\{Émile as E};"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 18,
+          "kind": "static",
+          "form": "group-use",
+          "module": "Single\\One",
+          "normalized": "Single\\One",
+          "package": "Single",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use Single\\{One};"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 6,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "python": {
+      "module": "tree-sitter-python",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "App.java",
+      "language": "java",
+      "sha256": "82c05539b6b1be22b531ec3f18e2e3a98113fe41953883a86dbaa3300d973b14",
+      "status": "unsupported-language",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "main.py",
+      "language": "python",
+      "sha256": "3727adff524e0616022eadd8f4af21a0778b29fc4c77bdfefd1afce2cbf5e4b7",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 8,
+          "endLine": 1,
+          "endColumn": 10,
+          "kind": "static",
+          "form": "import",
+          "module": "os",
+          "normalized": "os",
+          "package": "os",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import os"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 2,
+    "complete": 1,
+    "imports": 1,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

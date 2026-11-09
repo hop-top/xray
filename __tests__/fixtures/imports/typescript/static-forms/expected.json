@@ -1,0 +1,294 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "typescript": {
+      "module": "tree-sitter-typescript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "common.cts",
+      "language": "typescript",
+      "sha256": "ad9cf673cb6210839577f71f6d962c84c1d2ac26945f32d14603bce1e1ab199e",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "import-equals",
+          "module": "./y.cjs",
+          "normalized": "./y.cjs",
+          "locality": "local",
+          "alias": "y",
+          "confidence": "syntactic",
+          "evidence": "import y = require('./y.cjs');"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "forms.ts",
+      "language": "typescript",
+      "sha256": "bbd57f33338e581dbc5def0160048c72b271bdfbd1b3aa4714cd931221be7b80",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 21,
+          "kind": "static",
+          "form": "import",
+          "module": "fs",
+          "normalized": "fs",
+          "package": "fs",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "default",
+              "alias": "fs"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import fs from 'fs';"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 50,
+          "kind": "static",
+          "form": "import",
+          "module": "node:path",
+          "normalized": "path",
+          "package": "path",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "join"
+            },
+            {
+              "name": "resolve",
+              "alias": "res"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { join, resolve as res } from \"node:path\";"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 43,
+          "kind": "static",
+          "form": "import",
+          "module": "@scope/pkg/sub/path",
+          "normalized": "@scope/pkg/sub/path",
+          "package": "@scope/pkg",
+          "locality": "unknown",
+          "alias": "ns",
+          "confidence": "syntactic",
+          "evidence": "import * as ns from '@scope/pkg/sub/path';"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 57,
+          "kind": "static",
+          "form": "import",
+          "module": "lodash/fp",
+          "normalized": "lodash/fp",
+          "package": "lodash",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "default",
+              "alias": "def"
+            },
+            {
+              "name": "a"
+            },
+            {
+              "name": "string-name",
+              "alias": "sn"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import def, { a, \"string-name\" as sn } from 'lodash/fp';"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "import",
+          "module": "./side-effect",
+          "normalized": "./side-effect",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "import './side-effect';"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 54,
+          "kind": "static",
+          "form": "import",
+          "module": "./data.json",
+          "normalized": "./data.json",
+          "locality": "local",
+          "names": [
+            {
+              "name": "default",
+              "alias": "data"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import data from './data.json' with { type: 'json' };"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 39,
+          "kind": "static",
+          "form": "import-equals",
+          "module": "legacy-lib",
+          "normalized": "legacy-lib",
+          "package": "legacy-lib",
+          "locality": "unknown",
+          "alias": "legacy",
+          "confidence": "syntactic",
+          "evidence": "import legacy = require('legacy-lib');"
+        },
+        {
+          "line": 8,
+          "column": 18,
+          "endLine": 8,
+          "endColumn": 48,
+          "kind": "static",
+          "form": "import",
+          "module": "../up/late",
+          "normalized": "../up/late",
+          "locality": "local",
+          "names": [
+            {
+              "name": "default",
+              "alias": "late"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import late from '../up/late';"
+        },
+        {
+          "line": 9,
+          "column": 1,
+          "endLine": 12,
+          "endColumn": 26,
+          "kind": "static",
+          "form": "import",
+          "module": "#internal/alias",
+          "normalized": "#internal/alias",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "multi"
+            },
+            {
+              "name": "line"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { multi, line, } from '#internal/alias';"
+        },
+        {
+          "line": 13,
+          "column": 1,
+          "endLine": 13,
+          "endColumn": 31,
+          "kind": "static",
+          "form": "import",
+          "module": "empty-braces",
+          "normalized": "empty-braces",
+          "package": "empty-braces",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import {} from 'empty-braces';"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "module.mts",
+      "language": "typescript",
+      "sha256": "2de6e1683780a1bc8fda1fbdad03a1635bc514d1e858ddd93a2f58213c873dc7",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 29,
+          "kind": "static",
+          "form": "import",
+          "module": "./x.mjs",
+          "normalized": "./x.mjs",
+          "locality": "local",
+          "names": [
+            {
+              "name": "x"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { x } from './x.mjs';"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 21,
+          "kind": "static",
+          "form": "export-from",
+          "module": "pkg",
+          "normalized": "pkg",
+          "package": "pkg",
+          "locality": "unknown",
+          "wildcard": true,
+          "confidence": "syntactic",
+          "evidence": "export * from 'pkg';"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 3,
+    "complete": 3,
+    "imports": 13,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

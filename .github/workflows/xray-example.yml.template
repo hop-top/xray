@@ -1,0 +1,47 @@
+# Example GitHub Actions workflow for automatic xray regeneration
+# Copy this file to your repository as .github/workflows/xray-regenerate.yml
+
+name: Regenerate Xray Maps
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      # Trigger on source code changes
+      - '**.ts'
+      - '**.tsx'
+      - '**.js'
+      - '**.jsx'
+      - '**.py'
+      - '**.java'
+      - '**.go'
+      - '**.rs'
+      - '**.rb'
+      - '**.php'
+      - '**.swift'
+      - '**.kt'
+      - '**.cs'
+      - '**.cpp'
+      - '**.c'
+      - '**.h'
+      - '**.hpp'
+      # Trigger on config changes
+      - '.xrayrc*'
+      - 'xray.config.*'
+
+jobs:
+  regenerate-xray:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Regenerate xray maps
+        uses: hop-top/xray@xray/v0.1.0-rc.0

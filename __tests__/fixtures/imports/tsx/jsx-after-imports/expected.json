@@ -1,0 +1,114 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "typescript": {
+      "module": "tree-sitter-typescript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "view.tsx",
+      "language": "typescript",
+      "sha256": "d7d53ee43936a1d5384df2fafa66dfbc25e4584cf333ce55ed83953f95b5647b",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 27,
+          "kind": "static",
+          "form": "import",
+          "module": "react",
+          "normalized": "react",
+          "package": "react",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "default",
+              "alias": "React"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import React from 'react';"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 33,
+          "kind": "static",
+          "form": "import",
+          "module": "./later",
+          "normalized": "./later",
+          "locality": "local",
+          "names": [
+            {
+              "name": "later"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { later } from './later';"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 38,
+          "kind": "static",
+          "form": "import",
+          "module": "./props",
+          "normalized": "./props",
+          "locality": "local",
+          "names": [
+            {
+              "name": "Props"
+            }
+          ],
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import type { Props } from './props';"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./button",
+          "normalized": "./button",
+          "locality": "local",
+          "names": [
+            {
+              "name": "Button"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "export { Button } from './button';"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 4,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

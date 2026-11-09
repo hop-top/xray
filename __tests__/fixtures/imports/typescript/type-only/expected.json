@@ -1,0 +1,220 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "typescript": {
+      "module": "tree-sitter-typescript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "types.ts",
+      "language": "typescript",
+      "sha256": "03cb92086dc94a6bedb3e03ca00daf052d9ab4c1c3f4a0178bbcbddb59748e66",
+      "status": "parse-error",
+      "complete": false,
+      "parseErrors": [
+        {
+          "kind": "error",
+          "start": {
+            "line": 8,
+            "column": 8
+          },
+          "end": {
+            "line": 8,
+            "column": 12
+          }
+        }
+      ],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 43,
+          "kind": "static",
+          "form": "import",
+          "module": "./models",
+          "normalized": "./models",
+          "locality": "local",
+          "names": [
+            {
+              "name": "A"
+            },
+            {
+              "name": "B",
+              "alias": "C"
+            }
+          ],
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import type { A, B as C } from './models';"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 26,
+          "kind": "static",
+          "form": "import",
+          "module": "dee",
+          "normalized": "dee",
+          "package": "dee",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "default",
+              "alias": "D"
+            }
+          ],
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import type D from 'dee';"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 40,
+          "kind": "static",
+          "form": "import",
+          "module": "@types/node",
+          "normalized": "@types/node",
+          "package": "@types/node",
+          "locality": "unknown",
+          "alias": "NS",
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import type * as NS from '@types/node';"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 37,
+          "kind": "static",
+          "form": "import",
+          "module": "./mixed",
+          "normalized": "./mixed",
+          "locality": "local",
+          "names": [
+            {
+              "name": "E"
+            },
+            {
+              "name": "f"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { type E, f } from './mixed';"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 40,
+          "kind": "static",
+          "form": "import",
+          "module": "./only-inline",
+          "normalized": "./only-inline",
+          "locality": "local",
+          "names": [
+            {
+              "name": "G"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { type G } from './only-inline';"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 34,
+          "kind": "static",
+          "form": "import-equals",
+          "module": "aitch",
+          "normalized": "aitch",
+          "package": "aitch",
+          "locality": "unknown",
+          "alias": "H",
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import type H = require('aitch');"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 32,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./eye",
+          "normalized": "./eye",
+          "locality": "local",
+          "names": [
+            {
+              "name": "I"
+            }
+          ],
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "export type { I } from './eye';"
+        },
+        {
+          "line": 8,
+          "column": 1,
+          "endLine": 8,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./star-types",
+          "normalized": "./star-types",
+          "locality": "local",
+          "wildcard": true,
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "export type * from './star-types';"
+        },
+        {
+          "line": 9,
+          "column": 1,
+          "endLine": 9,
+          "endColumn": 39,
+          "kind": "static",
+          "form": "import",
+          "module": "type-named-default",
+          "normalized": "type-named-default",
+          "package": "type-named-default",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "default",
+              "alias": "type"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import type from 'type-named-default';"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 0,
+    "imports": 9,
+    "unsupported": 0,
+    "parseErrors": 1
+  }
+}

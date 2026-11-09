@@ -1,0 +1,499 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "python": {
+      "module": "tree-sitter-python",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "app/nsdir/plugins/base.py",
+      "language": "python",
+      "sha256": "96b4eced38537b5ed40558d7f6898a35ffa0b40fffdd56bbb1fb6c0e0e9b8cfc",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 23,
+          "kind": "static",
+          "form": "from",
+          "module": ".",
+          "normalized": null,
+          "locality": "unknown",
+          "relative": {
+            "level": 1
+          },
+          "names": [
+            {
+              "name": "registry"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from . import registry"
+        },
+        {
+          "line": 3,
+          "column": 8,
+          "endLine": 3,
+          "endColumn": 23,
+          "kind": "static",
+          "form": "import",
+          "module": "app.pkg.helpers",
+          "normalized": "app.pkg.helpers",
+          "package": "app",
+          "locality": "local",
+          "resolved": {
+            "file": "app/pkg/helpers.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "import app.pkg.helpers"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "app/nsdir/plugins/registry.py",
+      "language": "python",
+      "sha256": "1e3a85b2ef4c7235b417a290decc867280dccedc9559fbe3f95740faca980c3b",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "app/pkg/__init__.py",
+      "language": "python",
+      "sha256": "81b2813422efcb6a2bfabfb046cfb9c4e26be1992ebf375867f45fdcac855d7b",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 21,
+          "kind": "static",
+          "form": "from",
+          "module": ".mod",
+          "normalized": "pkg.mod",
+          "package": "pkg",
+          "locality": "local",
+          "relative": {
+            "level": 1,
+            "module": "mod"
+          },
+          "names": [
+            {
+              "name": "run"
+            }
+          ],
+          "resolved": {
+            "file": "app/pkg/mod.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from .mod import run"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "app/pkg/broken.py",
+      "language": "python",
+      "sha256": "b3977e75e6b7c5dcbc9a1e7087a3cbbc4bcfbfcaeeb31003672b398a7f2a23eb",
+      "status": "parse-error",
+      "complete": false,
+      "parseErrors": [
+        {
+          "kind": "missing",
+          "start": {
+            "line": 2,
+            "column": 12
+          },
+          "end": {
+            "line": 2,
+            "column": 12
+          }
+        }
+      ],
+      "imports": [
+        {
+          "line": 1,
+          "column": 8,
+          "endLine": 1,
+          "endColumn": 10,
+          "kind": "static",
+          "form": "import",
+          "module": "os",
+          "normalized": "os",
+          "package": "os",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import os"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "app/pkg/helpers.py",
+      "language": "python",
+      "sha256": "e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "app/pkg/loader.py",
+      "language": "python",
+      "sha256": "de58401cbfaf88404dffcf2e77635eb76b269f21117e5082382f4372506c067c",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 8,
+          "endLine": 2,
+          "endColumn": 17,
+          "kind": "static",
+          "form": "import",
+          "module": "importlib",
+          "normalized": "importlib",
+          "package": "importlib",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import importlib"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 42,
+          "kind": "static",
+          "form": "from",
+          "module": "importlib",
+          "normalized": "importlib",
+          "package": "importlib",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "import_module",
+              "alias": "im"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from importlib import import_module as im"
+        },
+        {
+          "line": 5,
+          "column": 8,
+          "endLine": 5,
+          "endColumn": 39,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": "yaml",
+          "normalized": "yaml",
+          "package": "yaml",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "importlib.import_module('yaml')"
+        },
+        {
+          "line": 6,
+          "column": 11,
+          "endLine": 6,
+          "endColumn": 38,
+          "kind": "dynamic",
+          "form": "import_module",
+          "module": ".helpers",
+          "normalized": "pkg.helpers",
+          "package": "pkg",
+          "locality": "local",
+          "relative": {
+            "level": 1,
+            "module": "helpers"
+          },
+          "resolved": {
+            "file": "app/pkg/helpers.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "im('.helpers', __package__)"
+        },
+        {
+          "line": 7,
+          "column": 10,
+          "endLine": 7,
+          "endColumn": 53,
+          "kind": "dynamic",
+          "form": "__import__",
+          "module": "xml.dom",
+          "normalized": "xml.dom",
+          "package": "xml",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "__import__('xml.dom', fromlist=['minidom'])"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "app/pkg/mod.py",
+      "language": "python",
+      "sha256": "80265a00abd0af81a7d4e2e61cef7f7f8a0f76c8e8d56879509cd3a98ea4fa9f",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "from",
+          "module": "__future__",
+          "normalized": "__future__",
+          "package": "__future__",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "annotations"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from __future__ import annotations"
+        },
+        {
+          "line": 3,
+          "column": 8,
+          "endLine": 3,
+          "endColumn": 10,
+          "kind": "static",
+          "form": "import",
+          "module": "os",
+          "normalized": "os",
+          "package": "os",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import os, sys as system"
+        },
+        {
+          "line": 3,
+          "column": 12,
+          "endLine": 3,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "import",
+          "module": "sys",
+          "normalized": "sys",
+          "package": "sys",
+          "locality": "stdlib",
+          "alias": "system",
+          "confidence": "syntactic",
+          "evidence": "import os, sys as system"
+        },
+        {
+          "line": 4,
+          "column": 8,
+          "endLine": 4,
+          "endColumn": 17,
+          "kind": "static",
+          "form": "import",
+          "module": "json",
+          "normalized": "json",
+          "package": "json",
+          "locality": "stdlib",
+          "alias": "j",
+          "confidence": "syntactic",
+          "evidence": "import json as j"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 55,
+          "kind": "static",
+          "form": "from",
+          "module": "collections",
+          "normalized": "collections",
+          "package": "collections",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "OrderedDict"
+            },
+            {
+              "name": "defaultdict",
+              "alias": "dd"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from collections import OrderedDict, defaultdict as dd"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "from",
+          "module": ".",
+          "normalized": "pkg",
+          "package": "pkg",
+          "locality": "local",
+          "relative": {
+            "level": 1
+          },
+          "names": [
+            {
+              "name": "helpers"
+            }
+          ],
+          "resolved": {
+            "file": "app/pkg/__init__.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from . import helpers"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 23,
+          "kind": "static",
+          "form": "from",
+          "module": ".helpers",
+          "normalized": "pkg.helpers",
+          "package": "pkg",
+          "locality": "local",
+          "relative": {
+            "level": 1,
+            "module": "helpers"
+          },
+          "wildcard": true,
+          "resolved": {
+            "file": "app/pkg/helpers.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from .helpers import *"
+        },
+        {
+          "line": 8,
+          "column": 1,
+          "endLine": 8,
+          "endColumn": 33,
+          "kind": "static",
+          "form": "from",
+          "module": "..nsdir.plugins",
+          "normalized": null,
+          "locality": "unknown",
+          "relative": {
+            "level": 2,
+            "module": "nsdir.plugins"
+          },
+          "names": [
+            {
+              "name": "base"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from ..nsdir.plugins import base"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "app/pkg/plugins.py",
+      "language": "python",
+      "sha256": "376e7034e7234187d36d814dad3b873298350a996c7759a13df5fe5aa18cca13",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 2,
+          "column": 8,
+          "endLine": 2,
+          "endColumn": 17,
+          "kind": "static",
+          "form": "import",
+          "module": "importlib",
+          "normalized": "importlib",
+          "package": "importlib",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import importlib"
+        },
+        {
+          "line": 3,
+          "column": 8,
+          "endLine": 3,
+          "endColumn": 11,
+          "kind": "static",
+          "form": "import",
+          "module": "sys",
+          "normalized": "sys",
+          "package": "sys",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import sys"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 6,
+          "column": 7,
+          "construct": "dynamic-import",
+          "detail": "importlib.import_module with a non-literal argument",
+          "evidence": "importlib.import_module(name)"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "construct": "exec",
+          "detail": "exec of code",
+          "evidence": "exec('import secret')"
+        },
+        {
+          "line": 8,
+          "column": 9,
+          "construct": "eval",
+          "detail": "eval of code",
+          "evidence": "eval('1 + 1')"
+        },
+        {
+          "line": 9,
+          "column": 1,
+          "construct": "sys-path",
+          "detail": "sys.path.insert changes the module search path",
+          "evidence": "sys.path.insert(0, '/opt/plugins')"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 8,
+    "complete": 6,
+    "imports": 19,
+    "unsupported": 4,
+    "parseErrors": 1
+  }
+}

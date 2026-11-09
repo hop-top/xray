@@ -1,0 +1,7 @@
+{
+  "name": "@acme/app",
+  "version": "1.0.0",
+  "dependencies": { "@acme/util": "workspace:*", "lodash": "^4.17.21" },
+  "devDependencies": { "vitest": "^2.1.0" },
+  "peerDependencies": { "react": "^18.0.0" }
+}

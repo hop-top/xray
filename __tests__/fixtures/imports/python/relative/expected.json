@@ -1,0 +1,207 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "python": {
+      "module": "tree-sitter-python",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "app/__init__.py",
+      "language": "python",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "app/pkg/__init__.py",
+      "language": "python",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "app/pkg/mod.py",
+      "language": "python",
+      "sha256": "6b2e99211a519fcc808b681af16c87c32d051e6f8f9b5915d250532950346e44",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "from",
+          "module": ".",
+          "normalized": "app.pkg",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 1
+          },
+          "names": [
+            {
+              "name": "sibling"
+            }
+          ],
+          "resolved": {
+            "file": "app/pkg/__init__.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from . import sibling"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 42,
+          "kind": "static",
+          "form": "from",
+          "module": ".sibling",
+          "normalized": "app.pkg.sibling",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 1,
+            "module": "sibling"
+          },
+          "names": [
+            {
+              "name": "thing",
+              "alias": "other"
+            },
+            {
+              "name": "more"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from .sibling import thing as other, more"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 29,
+          "kind": "static",
+          "form": "from",
+          "module": "..pkg.mod",
+          "normalized": "app.pkg.mod",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 2,
+            "module": "pkg.mod"
+          },
+          "names": [
+            {
+              "name": "a",
+              "alias": "b"
+            }
+          ],
+          "resolved": {
+            "file": "app/pkg/mod.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from ..pkg.mod import a as b"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 38,
+          "kind": "static",
+          "form": "from",
+          "module": "..",
+          "normalized": "app",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 2
+          },
+          "names": [
+            {
+              "name": "config"
+            },
+            {
+              "name": "settings",
+              "alias": "st"
+            }
+          ],
+          "resolved": {
+            "file": "app/__init__.py"
+          },
+          "confidence": "syntactic",
+          "evidence": "from .. import config, settings as st"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 20,
+          "kind": "static",
+          "form": "from",
+          "module": ".star",
+          "normalized": "app.pkg.star",
+          "package": "app",
+          "locality": "local",
+          "relative": {
+            "level": 1,
+            "module": "star"
+          },
+          "wildcard": true,
+          "confidence": "syntactic",
+          "evidence": "from .star import *"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "from",
+          "module": "...",
+          "normalized": null,
+          "locality": "unknown",
+          "relative": {
+            "level": 3
+          },
+          "names": [
+            {
+              "name": "outside"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from ... import outside"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 3,
+    "complete": 3,
+    "imports": 6,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

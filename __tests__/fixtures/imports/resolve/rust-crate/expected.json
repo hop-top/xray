@@ -1,0 +1,360 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "rust": {
+      "module": "tree-sitter-rust",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "src/gen/out.rs",
+      "language": "rust",
+      "sha256": "4ffb57f133058f894e3de073da8f3fc8b3a8616c3a4f51a64bc12fd587668a6f",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": []
+    },
+    {
+      "path": "src/lib.rs",
+      "language": "rust",
+      "sha256": "8ab3cbbfe8a8b050014d030716bbcbb1827eb2f76ff63829010f0ef848b76086",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 20,
+          "kind": "static",
+          "form": "extern-crate",
+          "module": "alloc",
+          "normalized": "alloc",
+          "package": "alloc",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "extern crate alloc;"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 18,
+          "kind": "static",
+          "form": "extern-crate",
+          "module": "log",
+          "normalized": "log",
+          "package": "log",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "extern crate log;"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 9,
+          "kind": "include",
+          "form": "mod",
+          "module": "net",
+          "normalized": "crate::net",
+          "package": "crate",
+          "locality": "local",
+          "resolved": {
+            "file": "src/net/mod.rs"
+          },
+          "confidence": "syntactic",
+          "evidence": "mod net;"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 10,
+          "kind": "include",
+          "form": "mod",
+          "module": "util",
+          "normalized": "crate::util",
+          "package": "crate",
+          "locality": "local",
+          "resolved": {
+            "file": "src/util.rs"
+          },
+          "confidence": "syntactic",
+          "evidence": "mod util;"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 15,
+          "kind": "include",
+          "form": "mod",
+          "module": "generated",
+          "normalized": "crate::generated",
+          "package": "crate",
+          "locality": "local",
+          "resolved": {
+            "file": "src/gen/out.rs"
+          },
+          "confidence": "syntactic",
+          "evidence": "#[path = \"gen/out.rs\"] mod generated;"
+        },
+        {
+          "line": 8,
+          "column": 1,
+          "endLine": 8,
+          "endColumn": 12,
+          "kind": "include",
+          "form": "mod",
+          "module": "absent",
+          "normalized": "crate::absent",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "mod absent;"
+        },
+        {
+          "line": 10,
+          "column": 1,
+          "endLine": 10,
+          "endColumn": 14,
+          "kind": "static",
+          "form": "use",
+          "module": "std::fmt",
+          "normalized": "std::fmt",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "use std::fmt;"
+        },
+        {
+          "line": 11,
+          "column": 1,
+          "endLine": 11,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "use",
+          "module": "serde::Serialize",
+          "normalized": "serde::Serialize",
+          "package": "serde",
+          "locality": "external",
+          "confidence": "syntactic",
+          "evidence": "use serde::Serialize;"
+        },
+        {
+          "line": 12,
+          "column": 1,
+          "endLine": 12,
+          "endColumn": 18,
+          "kind": "static",
+          "form": "use",
+          "module": "util::helper",
+          "normalized": "crate::util::helper",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use util::helper;"
+        },
+        {
+          "line": 13,
+          "column": 1,
+          "endLine": 13,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "use",
+          "module": "crate::net::Client",
+          "normalized": "crate::net::Client",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use crate::net::Client;"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/net/mod.rs",
+      "language": "rust",
+      "sha256": "ea372abe8616f43917bf2958691da1ab035efa7ac35e2b43cc08c2e316f4c5a7",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 9,
+          "kind": "include",
+          "form": "mod",
+          "module": "tcp",
+          "normalized": "crate::net::tcp",
+          "package": "crate",
+          "locality": "local",
+          "resolved": {
+            "file": "src/net/tcp.rs"
+          },
+          "confidence": "syntactic",
+          "evidence": "mod tcp;"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 25,
+          "kind": "static",
+          "form": "use",
+          "module": "super::util::helper",
+          "normalized": "crate::util::helper",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use super::util::helper;"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 23,
+          "kind": "static",
+          "form": "use",
+          "module": "self::tcp::Stream",
+          "normalized": "crate::net::tcp::Stream",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use self::tcp::Stream;"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/net/tcp.rs",
+      "language": "rust",
+      "sha256": "ce6b8b640d98b6c45993e45d01c97d4ee2c1737a70ce4077a00e04bac4dd68bc",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "use",
+          "module": "super::super::util",
+          "normalized": "crate::util",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use super::super::util;"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 19,
+          "kind": "static",
+          "form": "use",
+          "module": "super::Client",
+          "normalized": "crate::net::Client",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use super::Client;"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 34,
+          "kind": "static",
+          "form": "use",
+          "module": "super::super::super::nowhere",
+          "normalized": null,
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use super::super::super::nowhere;"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/util.rs",
+      "language": "rust",
+      "sha256": "fa1f2a2a16ebd648134eeb15c70d2a710f41e91a239585fc4dfb92ac61dabefe",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 11,
+          "kind": "include",
+          "form": "mod",
+          "module": "inner",
+          "normalized": "crate::util::inner",
+          "package": "crate",
+          "locality": "local",
+          "resolved": {
+            "file": "src/util/inner.rs"
+          },
+          "confidence": "syntactic",
+          "evidence": "mod inner;"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/util/inner.rs",
+      "language": "rust",
+      "sha256": "9163e048efab9bda3b4cc0bcb0314f9ad633ece3f595aa1ac0a136634fb7a5f0",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 19,
+          "kind": "static",
+          "form": "use",
+          "module": "super::helper",
+          "normalized": "crate::util::helper",
+          "package": "crate",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "use super::helper;"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 6,
+    "complete": 6,
+    "imports": 18,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

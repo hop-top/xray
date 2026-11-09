@@ -1,0 +1,138 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "python": {
+      "module": "tree-sitter-python",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "mod.py",
+      "language": "python",
+      "sha256": "514ec408681acda59b5eb79806020a88eed44f44063b8c61048d68c0e9dcfc1a",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "from",
+          "module": "__future__",
+          "normalized": "__future__",
+          "package": "__future__",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "annotations"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from __future__ import annotations"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "from",
+          "module": "typing",
+          "normalized": "typing",
+          "package": "typing",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "List"
+            },
+            {
+              "name": "Dict",
+              "alias": "D"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from typing import List, Dict as D"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 2,
+          "kind": "static",
+          "form": "from",
+          "module": "collections.abc",
+          "normalized": "collections.abc",
+          "package": "collections",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "Mapping"
+            },
+            {
+              "name": "Sequence",
+              "alias": "Seq"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from collections.abc import ( Mapping, Sequence as Seq, )"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "from",
+          "module": "os.path",
+          "normalized": "os.path",
+          "package": "os",
+          "locality": "stdlib",
+          "wildcard": true,
+          "confidence": "syntactic",
+          "evidence": "from os.path import *"
+        },
+        {
+          "line": 8,
+          "column": 1,
+          "endLine": 8,
+          "endColumn": 20,
+          "kind": "static",
+          "form": "from",
+          "module": "a.b.c",
+          "normalized": "a.b.c",
+          "package": "a",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "d"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "from a.b.c import d"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 5,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

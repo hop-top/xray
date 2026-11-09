@@ -1,0 +1,207 @@
+name: 'Xray Code Regenerator'
+description: 'Automatically regenerate xray code maps when source files change in pull requests'
+author: 'Idea Crafters LLC'
+branding:
+  icon: 'activity'
+  color: 'blue'
+
+inputs:
+  config-path:
+    description: 'Path to xray configuration file (default: auto-detect .xrayrc, .xrayrc.json, xray.config.json)'
+    required: false
+    default: ''
+  xray-version:
+    description: 'Version of xray to install (default: latest)'
+    required: false
+    default: 'latest'
+  commit-message:
+    description: 'Commit message for xray updates'
+    required: false
+    default: 'chore: regenerate xray maps'
+  skip-if-no-changes:
+    description: 'When regeneration changes nothing: true = succeed without committing; false = fail the step (default: true). Changed maps are always committed.'
+    required: false
+    default: 'true'
+  scope:
+    description: 'Run a specific scope from config file'
+    required: false
+    default: ''
+  all-scopes:
+    description: 'Run all scopes defined in config file (default: true if scopes exist)'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version: '22'
+
+    - name: Install xray
+      shell: bash
+      env:
+        XRAY_VERSION: ${{ inputs.xray-version }}
+      run: |
+        # Inputs reach the shell only through env vars, never through
+        # expression substitution, so their content is data, not shell syntax.
+        semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+        if [ "$XRAY_VERSION" != "latest" ] && ! [[ "$XRAY_VERSION" =~ $semver ]]; then
+          printf '::error::xray-version must be "latest" or a semver version such as 1.2.3 or 1.2.3-beta.1, got %q\n' "$XRAY_VERSION"
+          exit 1
+        fi
+
+        if [ "$XRAY_VERSION" = "latest" ]; then
+          npm install -g @hop-top/xray@latest
+        else
+          npm install -g "@hop-top/xray@$XRAY_VERSION"
+        fi
+        echo "✓ Installed xray $(xray --version)"
+
+    - name: Check for xray config
+      id: check-config
+      shell: bash
+      env:
+        CONFIG_PATH: ${{ inputs.config-path }}
+      run: |
+        # A newline would start a new line in $GITHUB_OUTPUT (output injection)
+        # or in the log (workflow-command injection): refuse it up front. Logged
+        # values go through printf %q so ##[...] cannot act as a log command.
+        case "$CONFIG_PATH" in
+          *$'\n'* | *$'\r'*)
+            echo "::error::config-path must not contain line breaks"
+            exit 1
+            ;;
+        esac
+
+        if [ -n "$CONFIG_PATH" ]; then
+          if [ -f "$CONFIG_PATH" ]; then
+            echo "config_exists=true" >> "$GITHUB_OUTPUT"
+            echo "config_path=$CONFIG_PATH" >> "$GITHUB_OUTPUT"
+            printf '✓ Using config file: %q\n' "$CONFIG_PATH"
+          else
+            echo "config_exists=false" >> "$GITHUB_OUTPUT"
+            printf '⚠️  Config file not found: %q\n' "$CONFIG_PATH"
+            exit 1
+          fi
+        elif [ -f ".xrayrc" ] || [ -f ".xrayrc.json" ] || [ -f "xray.config.json" ]; then
+          echo "config_exists=true" >> "$GITHUB_OUTPUT"
+          echo "config_path=" >> "$GITHUB_OUTPUT"
+          echo "✓ Found xray configuration file"
+        else
+          echo "config_exists=false" >> "$GITHUB_OUTPUT"
+          echo "⚠️  No xray configuration file found. Skipping regeneration."
+        fi
+
+    - name: Regenerate xray maps
+      if: steps.check-config.outputs.config_exists == 'true'
+      id: regenerate
+      shell: bash
+      env:
+        CONFIG_PATH: ${{ steps.check-config.outputs.config_path }}
+        SCOPE: ${{ inputs.scope }}
+        ALL_SCOPES: ${{ inputs.all-scopes }}
+      run: |
+        # snapshot: one NUL-terminated "<hash> <path>" record per path that
+        # differs from the index (modified, deleted, untracked, not ignored).
+        snapshot() {
+          local f h
+          git ls-files -z --modified --deleted --others --exclude-standard | sort -zu |
+            while IFS= read -r -d '' f; do
+              if [ -L "$f" ]; then
+                h=$(readlink -- "$f" | git hash-object --stdin)
+              elif [ -f "$f" ]; then
+                h=$(git hash-object -- "$f")
+              else
+                h=deleted
+              fi
+              printf '%s %s\0' "$h" "$f"
+            done
+        }
+
+        case "$SCOPE" in
+          *$'\n'* | *$'\r'*)
+            echo "::error::scope must not contain line breaks"
+            exit 1
+            ;;
+        esac
+
+        echo "🔍 Regenerating xray maps..."
+
+        # Build xray command as an argument array: every value stays one argument.
+        # Values are bound with = so one can never be read as a separate flag.
+        CMD=(xray map)
+
+        if [ -n "$CONFIG_PATH" ]; then
+          CMD+=("--config=$CONFIG_PATH")
+        fi
+
+        # Handle scope options
+        if [ -n "$SCOPE" ]; then
+          CMD+=("--scope=$SCOPE")
+          printf 'Running scope: %q\n' "$SCOPE"
+        elif [ "$ALL_SCOPES" = "true" ]; then
+          CMD+=(--all-scopes)
+          echo "Running all configured scopes"
+        fi
+
+        # What xray wrote = paths whose state differs from before it ran.
+        # Anything already dirty (a leftover secret, build output) is not xray's.
+        export GIT_LITERAL_PATHSPECS=1
+        before="$RUNNER_TEMP/xray-before.snapshot"
+        generated="$RUNNER_TEMP/xray-generated.list"
+        snapshot > "$before"
+
+        "${CMD[@]}"
+
+        : > "$generated"
+        snapshot | while IFS= read -r -d '' rec; do
+          grep -qzFx -- "$rec" "$before" || printf '%s\0' "${rec#* }" >> "$generated"
+        done
+        rm -f "$before"
+
+        if [ -s "$generated" ]; then
+          echo "changes_detected=true" >> "$GITHUB_OUTPUT"
+          echo "✓ Xray maps were updated"
+          tr '\0' '\n' < "$generated" | while IFS= read -r f; do printf '  %q\n' "$f"; done
+        else
+          echo "changes_detected=false" >> "$GITHUB_OUTPUT"
+          echo "✓ Xray maps are already up to date"
+        fi
+
+    - name: Commit and push changes
+      if: steps.regenerate.outputs.changes_detected == 'true'
+      shell: bash
+      env:
+        COMMIT_MSG: ${{ inputs.commit-message }}
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        # Stage and commit only what the regenerate step recorded; anything
+        # else in the checkout or already in the index stays out of the commit.
+        export GIT_LITERAL_PATHSPECS=1
+        generated="$RUNNER_TEMP/xray-generated.list"
+        git add --pathspec-from-file="$generated" --pathspec-file-nul
+        git commit -m "$COMMIT_MSG" --pathspec-from-file="$generated" --pathspec-file-nul || echo "No changes to commit"
+        git push || echo "Failed to push changes"
+
+    - name: Fail when nothing changed
+      if: steps.regenerate.outputs.changes_detected == 'false' && inputs.skip-if-no-changes != 'true'
+      shell: bash
+      run: |
+        echo "::error::xray maps unchanged and skip-if-no-changes is false"
+        exit 1
+
+    - name: Summary
+      shell: bash
+      env:
+        CHANGES_DETECTED: ${{ steps.regenerate.outputs.changes_detected }}
+      run: |
+        echo "## Xray Regeneration Summary" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        if [ "$CHANGES_DETECTED" == "true" ]; then
+          echo "✅ Xray maps were updated and committed" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "✅ Xray maps are already up to date" >> "$GITHUB_STEP_SUMMARY"
+        fi

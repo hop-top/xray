@@ -1,0 +1,106 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for xray
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible to help us understand and evaluate your request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: I'm always frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like
+      placeholder: I would like xray to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you've considered
+      placeholder: I've considered...
+
+  - type: dropdown
+    id: feature-type
+    attributes:
+      label: Feature Type
+      description: What type of feature is this?
+      options:
+        - New command
+        - CLI option/flag
+        - Output format
+        - Language support
+        - GitHub Action enhancement
+        - Performance improvement
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Critical (blocking my work)
+        - High (significantly improves workflow)
+        - Medium (nice to have)
+        - Low (minor enhancement)
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Describe your use case and how this feature would help
+      placeholder: |
+        I want to use xray to...
+        This feature would help me by...
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example Usage
+      description: Show what the feature would look like in practice
+      placeholder: |
+        xray map --new-flag value
+        
+        Output:
+        ...
+      render: bash
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or examples about the feature request
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have considered if this could be implemented as a plugin or external tool
+          required: false
+        - label: I am willing to help implement this feature
+          required: false

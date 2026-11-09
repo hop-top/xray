@@ -1,0 +1,127 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "go": {
+      "module": "tree-sitter-go",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "main.go",
+      "language": "go",
+      "sha256": "57cee6fb5d1fd830afa91a8ade92119e9385bf252192bbcd937f7f57b0ff9e29",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 4,
+          "column": 2,
+          "endLine": 4,
+          "endColumn": 7,
+          "kind": "static",
+          "form": "import",
+          "module": "fmt",
+          "normalized": "fmt",
+          "package": "fmt",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "\"fmt\""
+        },
+        {
+          "line": 5,
+          "column": 2,
+          "endLine": 5,
+          "endColumn": 9,
+          "kind": "static",
+          "form": "import",
+          "module": "fmt",
+          "normalized": "fmt",
+          "package": "fmt",
+          "locality": "stdlib",
+          "alias": "f",
+          "confidence": "syntactic",
+          "evidence": "f \"fmt\""
+        },
+        {
+          "line": 6,
+          "column": 2,
+          "endLine": 6,
+          "endColumn": 10,
+          "kind": "static",
+          "form": "import",
+          "module": "math",
+          "normalized": "math",
+          "package": "math",
+          "locality": "stdlib",
+          "alias": ".",
+          "confidence": "syntactic",
+          "evidence": ". \"math\""
+        },
+        {
+          "line": 7,
+          "column": 2,
+          "endLine": 7,
+          "endColumn": 20,
+          "kind": "static",
+          "form": "import",
+          "module": "net/http/pprof",
+          "normalized": "net/http/pprof",
+          "package": "net",
+          "locality": "stdlib",
+          "alias": "_",
+          "confidence": "syntactic",
+          "evidence": "_ \"net/http/pprof\""
+        },
+        {
+          "line": 8,
+          "column": 2,
+          "endLine": 8,
+          "endColumn": 18,
+          "kind": "static",
+          "form": "import",
+          "module": "unicode/utf8",
+          "normalized": "unicode/utf8",
+          "package": "unicode",
+          "locality": "stdlib",
+          "alias": "β",
+          "confidence": "syntactic",
+          "evidence": "β \"unicode/utf8\""
+        },
+        {
+          "line": 9,
+          "column": 11,
+          "endLine": 9,
+          "endColumn": 20,
+          "kind": "static",
+          "form": "import",
+          "module": "strings",
+          "normalized": "strings",
+          "package": "strings",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "\"strings\""
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 6,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

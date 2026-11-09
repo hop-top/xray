@@ -1,0 +1,156 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "python": {
+      "module": "tree-sitter-python",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "mod.py",
+      "language": "python",
+      "sha256": "b7d5fc0e65b96138e02adada6bf6142c2a367102fbf41bd849db1da4c5f53063",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 8,
+          "endLine": 1,
+          "endColumn": 10,
+          "kind": "static",
+          "form": "import",
+          "module": "os",
+          "normalized": "os",
+          "package": "os",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import os"
+        },
+        {
+          "line": 2,
+          "column": 8,
+          "endLine": 2,
+          "endColumn": 22,
+          "kind": "static",
+          "form": "import",
+          "module": "os.path",
+          "normalized": "os.path",
+          "package": "os",
+          "locality": "stdlib",
+          "alias": "osp",
+          "confidence": "syntactic",
+          "evidence": "import os.path as osp, sys"
+        },
+        {
+          "line": 2,
+          "column": 24,
+          "endLine": 2,
+          "endColumn": 27,
+          "kind": "static",
+          "form": "import",
+          "module": "sys",
+          "normalized": "sys",
+          "package": "sys",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import os.path as osp, sys"
+        },
+        {
+          "line": 3,
+          "column": 8,
+          "endLine": 3,
+          "endColumn": 29,
+          "kind": "static",
+          "form": "import",
+          "module": "xml.etree.ElementTree",
+          "normalized": "xml.etree.ElementTree",
+          "package": "xml",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "import xml.etree.ElementTree"
+        },
+        {
+          "line": 4,
+          "column": 8,
+          "endLine": 4,
+          "endColumn": 19,
+          "kind": "static",
+          "form": "import",
+          "module": "numpy",
+          "normalized": "numpy",
+          "package": "numpy",
+          "locality": "unknown",
+          "alias": "np",
+          "confidence": "syntactic",
+          "evidence": "import numpy as np"
+        },
+        {
+          "line": 5,
+          "column": 19,
+          "endLine": 5,
+          "endColumn": 28,
+          "kind": "static",
+          "form": "import",
+          "module": "json",
+          "normalized": "json",
+          "package": "json",
+          "locality": "stdlib",
+          "alias": "j",
+          "confidence": "syntactic",
+          "evidence": "import json as j"
+        },
+        {
+          "line": 9,
+          "column": 12,
+          "endLine": 9,
+          "endColumn": 32,
+          "kind": "static",
+          "form": "import",
+          "module": "importlib.util",
+          "normalized": "importlib.util",
+          "package": "importlib",
+          "locality": "stdlib",
+          "alias": "iu",
+          "confidence": "syntactic",
+          "evidence": "import importlib.util as iu"
+        },
+        {
+          "line": 14,
+          "column": 12,
+          "endLine": 14,
+          "endColumn": 29,
+          "kind": "static",
+          "form": "import",
+          "module": "ujson",
+          "normalized": "ujson",
+          "package": "ujson",
+          "locality": "unknown",
+          "alias": "fastjson",
+          "confidence": "syntactic",
+          "evidence": "import ujson as fastjson"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 8,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

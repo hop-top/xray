@@ -1,0 +1,313 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "php": {
+      "module": "tree-sitter-php",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "src/Http/Controller.php",
+      "language": "php",
+      "sha256": "ddc99bb0b9886bc4c6eb2ba52f830ee3ebf9aa4b55cfa3c24daf2f880549e052",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 23,
+          "kind": "static",
+          "form": "use",
+          "module": "Vendor\\Pkg\\Client",
+          "normalized": "Vendor\\Pkg\\Client",
+          "package": "Vendor",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use Vendor\\Pkg\\Client;"
+        },
+        {
+          "line": 6,
+          "column": 17,
+          "endLine": 6,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "group-use",
+          "module": "Vendor\\Pkg\\Request",
+          "normalized": "Vendor\\Pkg\\Request",
+          "package": "Vendor",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use Vendor\\Pkg\\{Request, Response as Resp, Sub\\Thing};"
+        },
+        {
+          "line": 6,
+          "column": 26,
+          "endLine": 6,
+          "endColumn": 42,
+          "kind": "static",
+          "form": "group-use",
+          "module": "Vendor\\Pkg\\Response",
+          "normalized": "Vendor\\Pkg\\Response",
+          "package": "Vendor",
+          "locality": "unknown",
+          "alias": "Resp",
+          "confidence": "syntactic",
+          "evidence": "use Vendor\\Pkg\\{Request, Response as Resp, Sub\\Thing};"
+        },
+        {
+          "line": 6,
+          "column": 44,
+          "endLine": 6,
+          "endColumn": 53,
+          "kind": "static",
+          "form": "group-use",
+          "module": "Vendor\\Pkg\\Sub\\Thing",
+          "normalized": "Vendor\\Pkg\\Sub\\Thing",
+          "package": "Vendor",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use Vendor\\Pkg\\{Request, Response as Resp, Sub\\Thing};"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 32,
+          "kind": "static",
+          "form": "use-function",
+          "module": "Vendor\\Pkg\\helper",
+          "normalized": "Vendor\\Pkg\\helper",
+          "package": "Vendor",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use function Vendor\\Pkg\\helper;"
+        },
+        {
+          "line": 8,
+          "column": 1,
+          "endLine": 8,
+          "endColumn": 30,
+          "kind": "static",
+          "form": "use-const",
+          "module": "Vendor\\Pkg\\VERSION",
+          "normalized": "Vendor\\Pkg\\VERSION",
+          "package": "Vendor",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use const Vendor\\Pkg\\VERSION;"
+        },
+        {
+          "line": 10,
+          "column": 1,
+          "endLine": 10,
+          "endColumn": 43,
+          "kind": "require",
+          "form": "require_once",
+          "module": "__DIR__/../bootstrap.php",
+          "normalized": "src/bootstrap.php",
+          "locality": "local",
+          "resolved": {
+            "file": "src/bootstrap.php"
+          },
+          "confidence": "syntactic",
+          "evidence": "require_once __DIR__ . '/../bootstrap.php';"
+        },
+        {
+          "line": 11,
+          "column": 1,
+          "endLine": 11,
+          "endColumn": 21,
+          "kind": "include",
+          "form": "include",
+          "module": "config.php",
+          "normalized": "config.php",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "include 'config.php';"
+        },
+        {
+          "line": 19,
+          "column": 18,
+          "endLine": 19,
+          "endColumn": 33,
+          "kind": "reference",
+          "form": "fqn",
+          "module": "Monolog\\Logger",
+          "normalized": "Monolog\\Logger",
+          "package": "Monolog",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "occurrences": 1,
+          "evidence": "\\Monolog\\Logger"
+        },
+        {
+          "line": 20,
+          "column": 9,
+          "endLine": 20,
+          "endColumn": 18,
+          "kind": "reference",
+          "form": "fqn",
+          "module": "Sub\\Thing",
+          "normalized": "App\\Http\\Sub\\Thing",
+          "package": "App",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "occurrences": 1,
+          "evidence": "Sub\\Thing"
+        },
+        {
+          "line": 21,
+          "column": 9,
+          "endLine": 21,
+          "endColumn": 20,
+          "kind": "reference",
+          "form": "fqn",
+          "module": "Models\\User",
+          "normalized": "App\\Http\\Models\\User",
+          "package": "App",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "occurrences": 1,
+          "evidence": "Models\\User"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/bootstrap.php",
+      "language": "php",
+      "sha256": "a3ddbcb62c4a53aafed3dcd148afd87419aca76a4a1577f90880bb22ff455cd3",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 23,
+          "kind": "static",
+          "form": "use",
+          "module": "Vendor\\Pkg\\Client",
+          "normalized": "Vendor\\Pkg\\Client",
+          "package": "Vendor",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use Vendor\\Pkg\\Client;"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/broken.php",
+      "language": "php",
+      "sha256": "0a1b622feeb7502a4716ea8bde9369e8e9d3ed707070ed1e1d8b52dbff3fbe93",
+      "status": "parse-error",
+      "complete": false,
+      "parseErrors": [
+        {
+          "kind": "error",
+          "start": {
+            "line": 4,
+            "column": 1
+          },
+          "end": {
+            "line": 4,
+            "column": 19
+          }
+        }
+      ],
+      "imports": [
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 23,
+          "kind": "static",
+          "form": "use",
+          "module": "Vendor\\Pkg\\Client",
+          "normalized": "Vendor\\Pkg\\Client",
+          "package": "Vendor",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "use Vendor\\Pkg\\Client;"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "src/dyn.php",
+      "language": "php",
+      "sha256": "af28aac646a0ae539299198a044bc56d6cb600a24c89da657e7743e6adeaf946",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [],
+      "unsupported": [
+        {
+          "line": 6,
+          "column": 1,
+          "construct": "eval",
+          "detail": "eval of code",
+          "evidence": "eval('$x = 1;')"
+        },
+        {
+          "line": 7,
+          "column": 1,
+          "construct": "dynamic-include",
+          "detail": "include with a non-literal path",
+          "evidence": "include $cls . '.php'"
+        },
+        {
+          "line": 8,
+          "column": 6,
+          "construct": "dynamic-new",
+          "detail": "new with a class name computed at run time",
+          "evidence": "new $cls()"
+        },
+        {
+          "line": 9,
+          "column": 1,
+          "construct": "dynamic-static-call",
+          "detail": "static call on a class computed at run time",
+          "evidence": "$cls::boot()"
+        },
+        {
+          "line": 10,
+          "column": 1,
+          "construct": "dynamic-call",
+          "detail": "call_user_func with a non-literal callable",
+          "evidence": "call_user_func($cls)"
+        },
+        {
+          "line": 12,
+          "column": 1,
+          "construct": "dynamic-call",
+          "detail": "call of a function named at run time",
+          "evidence": "$f('x')"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 4,
+    "complete": 2,
+    "imports": 13,
+    "unsupported": 6,
+    "parseErrors": 1
+  }
+}

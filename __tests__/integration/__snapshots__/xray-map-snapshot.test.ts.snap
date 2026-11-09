@@ -1,0 +1,15 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`xray map — backward-compat snapshot (T-0018) produces a stable chunk structure over examples/ 1`] = `
+{
+  "chunkCount": 1,
+  "chunks": [
+    {
+      "bytes": 1695,
+      "hash": "ece3881fac94",
+      "key": "map_plugins.md",
+    },
+  ],
+  "rootChunkKey": "map_plugins.md",
+}
+`;

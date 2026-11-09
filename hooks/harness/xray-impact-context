@@ -1,0 +1,118 @@
+#!/bin/sh
+#
+# xray-impact-context: harness-agnostic core of the xray hook scripts.
+#
+#   xray-impact-context <symbol>
+#
+# Prints, for a function/method <symbol>, a marker line plus the brief
+# `xray impact` report from a saved graph:
+#
+#   [xray impact] <symbol> (graph saved <N>m ago)
+#   <symbol> (<kind>, <file>:L<line>) — <n> callers across <g> groups
+#     <group>: <n> callers — <caller> (<file>:L<line>), …
+#   edges: EXTRACTED <n> · INFERRED <n>
+#
+# Prints nothing when there is no graph, no xray on PATH, no match, zero
+# callers, a failure, or the 5 s budget runs out. Always exits 0: a hook
+# must never fail the agent's tool call.
+#
+# Trust: the brief carries graph text (paths, symbol names, kinds) into
+# the model's context, so only a graph this user's lib/save-graph.sh
+# wrote is read. Silent unless the graph and its directory are not
+# symlinks, it resolves inside the current git work tree, neither it nor
+# anything in its directory (default .xray/) is tracked by git, and its
+# sha256 matches the sidecar save-graph.sh recorded in
+# ${XDG_STATE_HOME:-$HOME/.local/state}/xray/hooks/. A graph committed
+# to, or planted in, a cloned repo is never used. Same checks for
+# $XRAY_GRAPH. Needs git and `sha256sum` or `shasum`. Control characters
+# (C0 except newline, DEL, C1) and ANSI escape sequences are stripped
+# from the output. See lib/graph-trust.sh.
+#
+# Environment:
+#   XRAY_GRAPH         saved graph (default .xray/graph.json, relative to
+#                      the current directory), written by
+#                      lib/save-graph.sh (the session-start adapters run
+#                      it in the background). Add `.xray/` to your
+#                      .gitignore.
+#   XRAY_HOOK_SESSION  session id; when set, each symbol is reported once
+#                      per session (state: ${TMPDIR:-/tmp}/xray-hook-<id>).
+#                      Unset = no dedupe.
+#
+# Adapters (claude/, nerv/, gemini/) wrap this script for their harness.
+
+here=$(cd "$(dirname "$0")" && pwd) || exit 0
+# shellcheck source=hooks/harness/lib/graph-trust.sh
+. "$here/lib/graph-trust.sh" || exit 0
+
+sym=${1-}
+[ -n "$sym" ] || exit 0
+
+graph=${XRAY_GRAPH:-.xray/graph.json}
+[ -f "$graph" ] || exit 0
+command -v xray >/dev/null 2>&1 || exit 0
+command -v git >/dev/null 2>&1 || exit 0
+
+# Trust checks (see the header); any failure is a silent exit 0.
+root=$(xray_work_root) || exit 0
+graph=$(xray_graph_abs "$graph") || exit 0
+xray_inside "$graph" "$root" || exit 0
+git -C "$root" ls-files --error-unmatch -- "$graph" >/dev/null 2>&1 && exit 0
+gdir=${graph%/*}
+if [ "$gdir" != "$root" ] && [ -n "$(git -C "$root" ls-files -- "$gdir" 2>/dev/null)" ]; then
+  exit 0
+fi
+sidecar=$(xray_sidecar "$graph") || exit 0
+[ -f "$sidecar" ] || exit 0
+want=$(cat -- "$sidecar" 2>/dev/null) || exit 0
+have=$(xray_sha256 <"$graph") || exit 0
+[ "$want" = "$have" ] || exit 0
+
+state=
+sid=$(printf '%s' "${XRAY_HOOK_SESSION-}" | tr -cd 'A-Za-z0-9_-')
+if [ -n "$sid" ]; then
+  state="${TMPDIR:-/tmp}"
+  state="${state%/}/xray-hook-$sid"
+  if [ -f "$state" ] && grep -Fqx -- "$sym" "$state" 2>/dev/null; then
+    exit 0
+  fi
+fi
+
+limit=
+if command -v timeout >/dev/null 2>&1; then
+  limit="timeout 5"
+elif command -v gtimeout >/dev/null 2>&1; then
+  limit="gtimeout 5"
+fi
+
+# $limit is intentionally unquoted: empty, or "timeout 5".
+# shellcheck disable=SC2086
+brief=$($limit xray impact "$sym" --graph "$graph" --format brief --quiet 2>/dev/null) || exit 0
+[ -n "$brief" ] || exit 0
+
+# `date -r <file>` (mtime) works on GNU, BSD/macOS and BusyBox date.
+age="graph saved"
+if saved=$(date -r "$graph" +%s 2>/dev/null) && now=$(date +%s); then
+  age="graph saved $(( (now - saved) / 60 ))m ago"
+fi
+
+# Strip ANSI CSI and OSC sequences, UTF-8 C1 controls (U+0080-U+009F;
+# xray prints valid UTF-8, so C1 only appears as C2 80-9F), then C0
+# controls except newline, and DEL. Byte-wise (LC_ALL=C), POSIX tools.
+esc=$(printf '\033')
+bel=$(printf '\007')
+c2=$(printf '\302')
+c1=$(printf '[\200-\237]')
+out=$(printf '[xray impact] %s (%s)\n%s\n' "$sym" "$age" "$brief" \
+  | LC_ALL=C sed \
+      -e "s|${esc}\[[0-?]*[ -/]*[@-~]||g" \
+      -e "s|${esc}][^${bel}${esc}]*${bel}||g" \
+      -e "s|${esc}][^${bel}${esc}]*${esc}\\\\||g" \
+      -e "s|${c2}${c1}||g" \
+  | LC_ALL=C tr -d '\000-\011\013-\037\177')
+[ -n "$out" ] || exit 0
+printf '%s\n' "$out"
+
+if [ -n "$state" ]; then
+  printf '%s\n' "$sym" >>"$state" 2>/dev/null || :
+fi
+exit 0

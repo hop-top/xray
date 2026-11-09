@@ -1,0 +1,109 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "php": {
+      "module": "tree-sitter-php",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "index.php",
+      "language": "php",
+      "sha256": "64c7f78390a48d4ae0def532451ae1c2cb7302b6af509b9434c5f8a73d281f3d",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 35,
+          "kind": "require",
+          "form": "require",
+          "module": "__DIR__/bootstrap.php",
+          "normalized": "bootstrap.php",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "require __DIR__ . '/bootstrap.php';"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 5,
+          "column": 1,
+          "construct": "dynamic-include",
+          "detail": "require with a non-literal path",
+          "evidence": "require $config['path']"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "construct": "dynamic-include",
+          "detail": "include with a non-literal path",
+          "evidence": "include \"plugins/$name.php\""
+        },
+        {
+          "line": 8,
+          "column": 1,
+          "construct": "eval",
+          "detail": "eval of code",
+          "evidence": "eval($code)"
+        },
+        {
+          "line": 10,
+          "column": 12,
+          "construct": "dynamic-new",
+          "detail": "new with a class name computed at run time",
+          "evidence": "new $class($args)"
+        },
+        {
+          "line": 11,
+          "column": 10,
+          "construct": "dynamic-new",
+          "detail": "new with a class name computed at run time",
+          "evidence": "new ('App\\\\' . $kind)"
+        },
+        {
+          "line": 12,
+          "column": 10,
+          "construct": "dynamic-static-call",
+          "detail": "static call on a class computed at run time",
+          "evidence": "$repo::find(1)"
+        },
+        {
+          "line": 14,
+          "column": 1,
+          "construct": "dynamic-call",
+          "detail": "call of a function named at run time",
+          "evidence": "$fn($x)"
+        },
+        {
+          "line": 15,
+          "column": 1,
+          "construct": "dynamic-call",
+          "detail": "call_user_func with a non-literal callable",
+          "evidence": "call_user_func($callback, $x)"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 0,
+    "imports": 1,
+    "unsupported": 8,
+    "parseErrors": 0
+  }
+}

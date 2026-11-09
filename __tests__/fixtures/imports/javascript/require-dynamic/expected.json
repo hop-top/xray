@@ -1,0 +1,202 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "javascript": {
+      "module": "tree-sitter-javascript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "depth.js",
+      "language": "javascript",
+      "sha256": "af282119fb8ab8fbbc8808b27efbcc798e7d05dab21674d282e7a3bebca2c1ba",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 4,
+          "column": 13,
+          "endLine": 4,
+          "endColumn": 34,
+          "kind": "require",
+          "form": "require",
+          "module": "./debug.js",
+          "normalized": "./debug.js",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "require(`./debug.js`)"
+        },
+        {
+          "line": 4,
+          "column": 36,
+          "endLine": 4,
+          "endColumn": 63,
+          "kind": "require",
+          "form": "require",
+          "module": "node:fs/promises",
+          "normalized": "fs/promises",
+          "package": "fs",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "require('node:fs/promises')"
+        },
+        {
+          "line": 6,
+          "column": 34,
+          "endLine": 6,
+          "endColumn": 58,
+          "kind": "dynamic",
+          "form": "import()",
+          "module": "@scope/pkg/sub",
+          "normalized": "@scope/pkg/sub",
+          "package": "@scope/pkg",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import(`@scope/pkg/sub`)"
+        },
+        {
+          "line": 12,
+          "column": 1,
+          "endLine": 12,
+          "endColumn": 21,
+          "kind": "require",
+          "form": "require",
+          "module": "./b\\x2ejs",
+          "normalized": "./b.js",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "require('./b\\x2ejs')"
+        },
+        {
+          "line": 20,
+          "column": 36,
+          "endLine": 20,
+          "endColumn": 59,
+          "kind": "require",
+          "form": "require",
+          "module": "still-global",
+          "normalized": "still-global",
+          "package": "still-global",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "require('still-global')"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 10,
+          "column": 1,
+          "construct": "dynamic-require",
+          "detail": "require with a non-literal argument",
+          "evidence": "require(`./${load.name}.js`)"
+        },
+        {
+          "line": 11,
+          "column": 1,
+          "construct": "dynamic-import",
+          "detail": "import() with a non-literal argument",
+          "evidence": "import('./a' + '.js')"
+        }
+      ]
+    },
+    {
+      "path": "dynamic.js",
+      "language": "javascript",
+      "sha256": "6f926f2c545a989dcf47dcc417fb475912a9c40ebbb501c850d5b3d5f5bd322b",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 11,
+          "endLine": 1,
+          "endColumn": 23,
+          "kind": "require",
+          "form": "require",
+          "module": "x",
+          "normalized": "x",
+          "package": "x",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "require('x')"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 12,
+          "kind": "dynamic",
+          "form": "import()",
+          "module": "y",
+          "normalized": "y",
+          "package": "y",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import('y')"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 4,
+          "column": 1,
+          "construct": "dynamic-require",
+          "detail": "require with a non-literal argument",
+          "evidence": "require(name)"
+        }
+      ]
+    },
+    {
+      "path": "shadow/amd.js",
+      "language": "javascript",
+      "sha256": "c9705d685ff3a2e13eca9f795cec67855cd6b483b7a5dfa4051640fb64a7960b",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 7,
+          "column": 1,
+          "endLine": 7,
+          "endColumn": 24,
+          "kind": "dynamic",
+          "form": "import()",
+          "module": "still-dynamic",
+          "normalized": "still-dynamic",
+          "package": "still-dynamic",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "import('still-dynamic')"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 4,
+          "column": 15,
+          "construct": "dynamic-require",
+          "detail": "require is rebound in this file",
+          "evidence": "require('amd-dep')"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 3,
+    "complete": 0,
+    "imports": 8,
+    "unsupported": 4,
+    "parseErrors": 0
+  }
+}

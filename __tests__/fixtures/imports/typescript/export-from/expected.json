@@ -1,0 +1,145 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "typescript": {
+      "module": "tree-sitter-typescript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "barrel.ts",
+      "language": "typescript",
+      "sha256": "291962493c7602b3571501a962a1bf4044314846dd3a49243d99c130ebd1b08e",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 34,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./ab",
+          "normalized": "./ab",
+          "locality": "local",
+          "names": [
+            {
+              "name": "a"
+            },
+            {
+              "name": "b",
+              "alias": "c"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "export { a, b as c } from './ab';"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 37,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./default",
+          "normalized": "./default",
+          "locality": "local",
+          "names": [
+            {
+              "name": "default"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "export { default } from './default';"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 52,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./named",
+          "normalized": "./named",
+          "locality": "local",
+          "names": [
+            {
+              "name": "default",
+              "alias": "Named"
+            },
+            {
+              "name": "T"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "export { default as Named, type T } from './named';"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 24,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./star",
+          "normalized": "./star",
+          "locality": "local",
+          "wildcard": true,
+          "confidence": "syntactic",
+          "evidence": "export * from './star';"
+        },
+        {
+          "line": 5,
+          "column": 1,
+          "endLine": 5,
+          "endColumn": 37,
+          "kind": "static",
+          "form": "export-from",
+          "module": "@org/space",
+          "normalized": "@org/space",
+          "package": "@org/space",
+          "locality": "unknown",
+          "alias": "space",
+          "confidence": "syntactic",
+          "evidence": "export * as space from '@org/space';"
+        },
+        {
+          "line": 6,
+          "column": 1,
+          "endLine": 6,
+          "endColumn": 39,
+          "kind": "static",
+          "form": "export-from",
+          "module": "str-ns",
+          "normalized": "str-ns",
+          "package": "str-ns",
+          "locality": "unknown",
+          "alias": "string ns",
+          "confidence": "syntactic",
+          "evidence": "export * as \"string ns\" from 'str-ns';"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 6,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

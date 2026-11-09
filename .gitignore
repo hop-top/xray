@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+build/
+dist/
+*.tsbuildinfo
+
+# Generated files
+.xray
+.xray_*
+.xray_cache.db
+
+# Cache
+.cache/
+.eslintcache
+.turbo/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# AI/LLM agent tools
+.tlc/
+.opencode/
+.xray
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+.tmp/
+
+# Test artifacts
+coverage/

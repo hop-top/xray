@@ -1,0 +1,144 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "rust": {
+      "module": "tree-sitter-rust",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "lib.rs",
+      "language": "rust",
+      "sha256": "195875c31770421afc4d2215e17ac0e517a033086471bd71ae774022ef3f7e1f",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 10,
+          "endLine": 1,
+          "endColumn": 28,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "serde",
+          "normalized": "serde",
+          "package": "serde",
+          "locality": "external",
+          "confidence": "syntactic",
+          "occurrences": 2,
+          "evidence": "::serde::Serialize"
+        },
+        {
+          "line": 5,
+          "column": 3,
+          "endLine": 5,
+          "endColumn": 14,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "tokio",
+          "normalized": "tokio",
+          "package": "tokio",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "tokio::main"
+        },
+        {
+          "line": 7,
+          "column": 20,
+          "endLine": 7,
+          "endColumn": 38,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "chrono",
+          "normalized": "chrono",
+          "package": "chrono",
+          "locality": "external",
+          "confidence": "syntactic",
+          "occurrences": 1,
+          "evidence": "::chrono::Utc::now"
+        },
+        {
+          "line": 8,
+          "column": 16,
+          "endLine": 8,
+          "endColumn": 31,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "itertools",
+          "normalized": "itertools",
+          "package": "itertools",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "itertools::join"
+        },
+        {
+          "line": 9,
+          "column": 10,
+          "endLine": 9,
+          "endColumn": 27,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "regex",
+          "normalized": "regex",
+          "package": "regex",
+          "locality": "external",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "regex::Regex::new"
+        },
+        {
+          "line": 13,
+          "column": 35,
+          "endLine": 13,
+          "endColumn": 52,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "std",
+          "normalized": "std",
+          "package": "std",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "occurrences": 1,
+          "evidence": "::std::fmt::Debug"
+        },
+        {
+          "line": 13,
+          "column": 61,
+          "endLine": 13,
+          "endColumn": 76,
+          "kind": "reference",
+          "form": "path-root",
+          "module": "core",
+          "normalized": "core",
+          "package": "core",
+          "locality": "stdlib",
+          "confidence": "inferred",
+          "occurrences": 1,
+          "evidence": "core::mem::swap"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 1,
+    "imports": 7,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}

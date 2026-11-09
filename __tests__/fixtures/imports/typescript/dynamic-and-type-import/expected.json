@@ -1,0 +1,196 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "typescript": {
+      "module": "tree-sitter-typescript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "ambient.ts",
+      "language": "typescript",
+      "sha256": "40f9a55da2827a94fce00613e9ca8511bb9f982e091ccb39cc6056997d6c15da",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 22,
+          "kind": "require",
+          "form": "require",
+          "module": "ambient-ok",
+          "normalized": "ambient-ok",
+          "package": "ambient-ok",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "require('ambient-ok')"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "calls.ts",
+      "language": "typescript",
+      "sha256": "0da4a60ad79f8be9f7f67cdee0dcfb21c648abd1af103ee0cbb51a45c2799e3b",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 27,
+          "kind": "static",
+          "form": "import-equals",
+          "module": "fs",
+          "normalized": "fs",
+          "package": "fs",
+          "locality": "stdlib",
+          "alias": "fs",
+          "confidence": "syntactic",
+          "evidence": "import fs = require('fs');"
+        },
+        {
+          "line": 2,
+          "column": 20,
+          "endLine": 2,
+          "endColumn": 36,
+          "kind": "dynamic",
+          "form": "import()",
+          "module": "./lazy",
+          "normalized": "./lazy",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "import('./lazy')"
+        },
+        {
+          "line": 3,
+          "column": 13,
+          "endLine": 3,
+          "endColumn": 37,
+          "kind": "require",
+          "form": "require",
+          "module": "./config.json",
+          "normalized": "./config.json",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "require('./config.json')"
+        },
+        {
+          "line": 5,
+          "column": 12,
+          "endLine": 5,
+          "endColumn": 29,
+          "kind": "static",
+          "form": "import-type",
+          "module": "./types",
+          "normalized": "./types",
+          "locality": "local",
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import('./types')"
+        },
+        {
+          "line": 6,
+          "column": 15,
+          "endLine": 6,
+          "endColumn": 32,
+          "kind": "static",
+          "form": "import-type",
+          "module": "./query",
+          "normalized": "./query",
+          "locality": "local",
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import('./query')"
+        },
+        {
+          "line": 7,
+          "column": 18,
+          "endLine": 7,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "import-type",
+          "module": "./model",
+          "normalized": "./model",
+          "locality": "local",
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import('./model')"
+        },
+        {
+          "line": 8,
+          "column": 29,
+          "endLine": 8,
+          "endColumn": 45,
+          "kind": "static",
+          "form": "import-type",
+          "module": "./cast",
+          "normalized": "./cast",
+          "locality": "local",
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import('./cast')"
+        },
+        {
+          "line": 10,
+          "column": 26,
+          "endLine": 10,
+          "endColumn": 42,
+          "kind": "static",
+          "form": "import-type",
+          "module": "./item",
+          "normalized": "./item",
+          "locality": "local",
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import('./item')"
+        },
+        {
+          "line": 14,
+          "column": 10,
+          "endLine": 14,
+          "endColumn": 34,
+          "kind": "dynamic",
+          "form": "import()",
+          "module": "./plugins/core",
+          "normalized": "./plugins/core",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "import(`./plugins/core`)"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 13,
+          "column": 9,
+          "construct": "dynamic-import",
+          "detail": "import() with a non-literal argument",
+          "evidence": "import(spec)"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 2,
+    "complete": 1,
+    "imports": 10,
+    "unsupported": 1,
+    "parseErrors": 0
+  }
+}

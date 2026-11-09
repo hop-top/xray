@@ -1,0 +1,87 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "typescript": {
+      "module": "tree-sitter-typescript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "index.ts",
+      "language": "typescript",
+      "sha256": "096f14cc76495acc4ef2503ebffb9e5b6b95118ba1de0978ed6b4c198343c2e1",
+      "status": "ok",
+      "complete": false,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 45,
+          "kind": "static",
+          "form": "import",
+          "module": "node:module",
+          "normalized": "module",
+          "package": "module",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "createRequire"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { createRequire } from 'node:module';"
+        },
+        {
+          "line": 6,
+          "column": 29,
+          "endLine": 6,
+          "endColumn": 47,
+          "kind": "static",
+          "form": "import-type",
+          "module": "./loader",
+          "normalized": "./loader",
+          "locality": "local",
+          "typeOnly": true,
+          "confidence": "syntactic",
+          "evidence": "import('./loader')"
+        }
+      ],
+      "unsupported": [
+        {
+          "line": 3,
+          "column": 17,
+          "construct": "create-require",
+          "detail": "createRequire makes a require the file does not bind",
+          "evidence": "createRequire(import.meta.url)"
+        },
+        {
+          "line": 4,
+          "column": 13,
+          "construct": "dynamic-require",
+          "detail": "require is rebound in this file",
+          "evidence": "require('./package.json')"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 1,
+    "complete": 0,
+    "imports": 2,
+    "unsupported": 2,
+    "parseErrors": 0
+  }
+}

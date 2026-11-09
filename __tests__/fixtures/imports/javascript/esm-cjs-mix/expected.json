@@ -1,0 +1,249 @@
+{
+  "schema": "xray.imports/v1",
+  "xray": {
+    "version": "0.0.0-golden",
+    "extractor": "0.0.0-golden"
+  },
+  "grammars": {
+    "javascript": {
+      "module": "tree-sitter-javascript",
+      "version": "0.0.0-golden",
+      "source": "xray"
+    }
+  },
+  "root": ".",
+  "positions": {
+    "line": "1-based",
+    "column": "1-based, UTF-16 code units"
+  },
+  "files": [
+    {
+      "path": "app.js",
+      "language": "javascript",
+      "sha256": "af4093da12c7b61ed5096b905a608229f305359d1f419e757eebdf0e9fdd1289",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 43,
+          "kind": "static",
+          "form": "import",
+          "module": "express",
+          "normalized": "express",
+          "package": "express",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "default",
+              "alias": "express"
+            },
+            {
+              "name": "Router"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import express, { Router } from 'express';"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 35,
+          "kind": "static",
+          "form": "import",
+          "module": "node:util",
+          "normalized": "util",
+          "package": "util",
+          "locality": "stdlib",
+          "alias": "util",
+          "confidence": "syntactic",
+          "evidence": "import * as util from 'node:util';"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 38,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./helper.js",
+          "normalized": "./helper.js",
+          "locality": "local",
+          "names": [
+            {
+              "name": "helper"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "export { helper } from './helper.js';"
+        },
+        {
+          "line": 4,
+          "column": 1,
+          "endLine": 4,
+          "endColumn": 26,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./all.js",
+          "normalized": "./all.js",
+          "locality": "local",
+          "wildcard": true,
+          "confidence": "syntactic",
+          "evidence": "export * from './all.js';"
+        },
+        {
+          "line": 5,
+          "column": 13,
+          "endLine": 5,
+          "endColumn": 32,
+          "kind": "require",
+          "form": "require",
+          "module": "cjs-only",
+          "normalized": "cjs-only",
+          "package": "cjs-only",
+          "locality": "unknown",
+          "confidence": "syntactic",
+          "evidence": "require('cjs-only')"
+        },
+        {
+          "line": 6,
+          "column": 20,
+          "endLine": 6,
+          "endColumn": 39,
+          "kind": "dynamic",
+          "form": "import()",
+          "module": "./lazy.js",
+          "normalized": "./lazy.js",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "import('./lazy.js')"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "card.jsx",
+      "language": "javascript",
+      "sha256": "5a3a8a451e9190bfe7a5c3877bcc95b078dad8ccbf1aa5ba13f0e348e9297cf0",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 27,
+          "kind": "static",
+          "form": "import",
+          "module": "react",
+          "normalized": "react",
+          "package": "react",
+          "locality": "unknown",
+          "names": [
+            {
+              "name": "default",
+              "alias": "React"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import React from 'react';"
+        },
+        {
+          "line": 3,
+          "column": 1,
+          "endLine": 3,
+          "endColumn": 21,
+          "kind": "static",
+          "form": "import",
+          "module": "./card.css",
+          "normalized": "./card.css",
+          "locality": "local",
+          "confidence": "syntactic",
+          "evidence": "import './card.css';"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "legacy.cjs",
+      "language": "javascript",
+      "sha256": "aabb04a159126d163978e55b5bf7ac1ef05c9e886e61f957d3231d880b4aa607",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 14,
+          "endLine": 1,
+          "endColumn": 29,
+          "kind": "require",
+          "form": "require",
+          "module": "path",
+          "normalized": "path",
+          "package": "path",
+          "locality": "stdlib",
+          "confidence": "syntactic",
+          "evidence": "require('path')"
+        }
+      ],
+      "unsupported": []
+    },
+    {
+      "path": "lib.mjs",
+      "language": "javascript",
+      "sha256": "265c2cfd360e8619468e948dbc57f952593f4a207221e631d92df503e8b6967c",
+      "status": "ok",
+      "complete": true,
+      "parseErrors": [],
+      "imports": [
+        {
+          "line": 1,
+          "column": 1,
+          "endLine": 1,
+          "endColumn": 45,
+          "kind": "static",
+          "form": "import",
+          "module": "node:fs/promises",
+          "normalized": "fs/promises",
+          "package": "fs",
+          "locality": "stdlib",
+          "names": [
+            {
+              "name": "readFile"
+            }
+          ],
+          "confidence": "syntactic",
+          "evidence": "import { readFile } from 'node:fs/promises';"
+        },
+        {
+          "line": 2,
+          "column": 1,
+          "endLine": 2,
+          "endColumn": 37,
+          "kind": "static",
+          "form": "export-from",
+          "module": "./config.mjs",
+          "normalized": "./config.mjs",
+          "locality": "local",
+          "alias": "cfg",
+          "confidence": "syntactic",
+          "evidence": "export * as cfg from './config.mjs';"
+        }
+      ],
+      "unsupported": []
+    }
+  ],
+  "summary": {
+    "files": 4,
+    "complete": 4,
+    "imports": 11,
+    "unsupported": 0,
+    "parseErrors": 0
+  }
+}
