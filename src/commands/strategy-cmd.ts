@@ -218,6 +218,10 @@ export function registerStrategyCommand(): Command {
     .action(async (name, options, cmd: Command) => {
       assertResultFormat(cmd);
       assertStrategyName(name);
+      // A project file named like a built-in would shadow it.
+      if (new StrategyLoader().isBuiltinStrategyFile(name)) {
+        throw new UsageError(`"${name}" is a built-in strategy; choose another name.`);
+      }
       const dir = options.dir || path.join(process.cwd(), '.xray/strategies');
       // The default directory must stay in the project even when .xray or
       // .xray/strategies is a symlink; --dir is the user's own choice.
