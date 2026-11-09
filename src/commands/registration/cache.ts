@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { Strategy } from '../../lib/strategy/types';
 import { Logger } from '../../lib/logger';
-import { projectKey } from '../../lib/storage';
+import { ensurePrivateDir, projectKey } from '../../lib/storage';
 
 // require(): tsconfig moduleResolution 'node' ignores the kit exports map.
 const { cacheDir: xdgCacheDir } = require('@hop-top/kit/xdg') as {
@@ -26,6 +26,17 @@ export interface StrategyCache {
   strategies: CachedStrategy[];
 }
 
+/** Read a file without following a final symlink (where the platform can). */
+async function readNoFollow(file: string): Promise<string> {
+  const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0);
+  const fh = await fs.promises.open(file, flags);
+  try {
+    return await fh.readFile('utf-8');
+  } finally {
+    await fh.close();
+  }
+}
+
 export class StrategyCacheManager {
   private cacheDir: string;
   readonly cacheFile: string;
@@ -45,12 +56,17 @@ export class StrategyCacheManager {
    */
   async getCached(): Promise<CachedStrategy[] | null> {
     try {
+      // A shared XDG dir may hold planted links: read only from a private dir.
+      if (!ensurePrivateDir(this.cacheDir)) {
+        Logger.debug('Strategy cache dir is not private; ignoring cache');
+        return null;
+      }
       if (!fs.existsSync(this.cacheFile)) {
         Logger.debug('Strategy cache not found');
         return null;
       }
 
-      const content = await fs.promises.readFile(this.cacheFile, 'utf-8');
+      const content = await readNoFollow(this.cacheFile);
       const cache: StrategyCache = JSON.parse(content);
 
       // Validate cache version
@@ -80,9 +96,10 @@ export class StrategyCacheManager {
    */
   async save(strategies: Strategy[]): Promise<void> {
     try {
-      // Ensure cache directory exists
-      if (!fs.existsSync(this.cacheDir)) {
-        await fs.promises.mkdir(this.cacheDir, { recursive: true });
+      // Private dir or no cache: never write through a planted link.
+      if (!ensurePrivateDir(this.cacheDir)) {
+        Logger.debug('Strategy cache dir is not private; not caching');
+        return;
       }
 
       const cached: CachedStrategy[] = strategies.map(strategy => ({
@@ -105,11 +122,11 @@ export class StrategyCacheManager {
         strategies: cached
       };
 
-      await fs.promises.writeFile(
-        this.cacheFile,
-        JSON.stringify(cache, null, 2),
-        'utf-8'
-      );
+      // Fresh file + rename: replaces a stale entry (even a link) instead of
+      // writing through it.
+      const tmp = `${this.cacheFile}.${process.pid}.${crypto.randomBytes(4).toString('hex')}`;
+      await fs.promises.writeFile(tmp, JSON.stringify(cache, null, 2), { encoding: 'utf-8', flag: 'wx', mode: 0o600 });
+      await fs.promises.rename(tmp, this.cacheFile);
 
       Logger.debug(`Cached ${cached.length} strategies`);
     } catch (error: any) {

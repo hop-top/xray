@@ -199,3 +199,51 @@ describe('StrategyCacheManager', () => {
     });
   });
 });
+
+// A shared XDG cache dir another user can write to: a planted `strategies`
+// link must not be followed, for reads or writes.
+(process.platform === 'win32' ? describe.skip : describe)('StrategyCacheManager in a hostile XDG cache dir', () => {
+  let root: string;
+  let outside: string;
+  let prevXdg: string | undefined;
+  const strategy = {
+    name: 'planted-probe',
+    version: '0.0.1',
+    detect: async () => true,
+    analyze: async () => ({ tags: [], exports: [], imports: [] }),
+  } as unknown as Strategy;
+
+  beforeEach(() => {
+    prevXdg = process.env.XDG_CACHE_HOME;
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-hostile-xdg-'));
+    outside = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-hostile-target-'));
+    fs.mkdirSync(path.join(root, 'xray'), { mode: 0o700 });
+    fs.symlinkSync(outside, path.join(root, 'xray', 'strategies'));
+    process.env.XDG_CACHE_HOME = root;
+  });
+
+  afterEach(() => {
+    if (prevXdg === undefined) delete process.env.XDG_CACHE_HOME;
+    else process.env.XDG_CACHE_HOME = prevXdg;
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(outside, { recursive: true, force: true });
+  });
+
+  it('does not write through a planted strategies link', async () => {
+    const mgr = new StrategyCacheManager('/some/project');
+    await mgr.save([strategy]);
+    expect(fs.readdirSync(outside)).toEqual([]);
+  });
+
+  it('does not read a cache planted behind the link', async () => {
+    const mgr = new StrategyCacheManager('/some/project');
+    const rel = path.relative(path.join(root, 'xray', 'strategies'), mgr.cacheFile);
+    fs.mkdirSync(path.dirname(path.join(outside, rel)), { recursive: true });
+    const { version } = require('../../../package.json');
+    fs.writeFileSync(path.join(outside, rel), JSON.stringify({
+      version, timestamp: Date.now(),
+      strategies: [{ name: 'planted', version: '9.9.9', hash: 'x' }],
+    }));
+    expect(await mgr.getCached()).toBeNull();
+  });
+});
