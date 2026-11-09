@@ -4,6 +4,7 @@ import { ParserFactory } from '../src/lib/config/parser-factory';
 import { Logger } from '../src/lib/logger';
 import * as path from 'path';
 import { terminalSafe } from '../src/lib/terminal-safe';
+import { compileMatchers } from '../src/lib/path-match';
 
 /**
  * Human headings and lines only in text mode: with `--format json` (or any
@@ -244,16 +245,9 @@ export default class ConfigStrategy implements Strategy {
     }
 
     // Filter using parser factory and ignore patterns
-    const ignorePatterns = this.ignorePatterns();
+    const ignored = compileMatchers(this.ignorePatterns());
     const filtered = allFiles.filter(file => {
-      // Check if file matches ignore patterns
-      for (const ignorePattern of ignorePatterns) {
-        const pattern = ignorePattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*');
-        const regex = new RegExp(pattern);
-        if (regex.test(file)) {
-          return false;
-        }
-      }
+      if (ignored(file)) return false;
 
       // Check if parser can handle this file
       return this.parserFactory.isConfigFile(file);

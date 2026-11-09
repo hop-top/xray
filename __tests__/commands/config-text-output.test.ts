@@ -33,3 +33,22 @@ describe('config text output', () => {
     expect(JSON.parse(p.run('config', 'keys', '--format', 'json').stdout).count).toBe(3);
   });
 });
+
+describe('config list ignores node_modules at any depth', () => {
+  let p: CliProject;
+  beforeAll(() => {
+    p = createCliProject({
+      'package.json': '{"name":"x"}',
+      'config.json': '{"a":1}\n',
+      'node_modules/dep/config.json': '{"d":1}\n',
+      'sub/node_modules/dep/config.json': '{"d":1}\n',
+      'sub/config.json': '{"s":1}\n',
+    });
+  });
+  afterAll(() => p.cleanup());
+
+  it('lists project files only', () => {
+    const doc = JSON.parse(p.run('config', 'list', '--format', 'json').stdout);
+    expect(doc.files.sort()).toEqual(['config.json', 'sub/config.json']);
+  });
+});
