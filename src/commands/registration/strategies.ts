@@ -22,7 +22,8 @@ import {
 } from '../common';
 import { CodedError, EXIT_NOT_FOUND, NotFoundError, UsageError } from '../../lib/error/types';
 import { setCommandGroup } from '../kit-cli';
-import { declareEffect, declareExitCodes } from '../side-effect';
+import { declareEffect, declareExitCodes, emitPlan, previewing } from '../side-effect';
+import type { Effect } from '../kit-cli';
 import {
   OUTPUT_FLAG_NAMES, addOutputFlags, assertFormat, emit, outputRegistry, textFormatter,
   unionColumns,
@@ -139,15 +140,19 @@ function registerStrategyCommand(
       continue;
     }
 
-    // Strategy commands analyze the project and return a result; xray
-    // prints it. They have no write API, so they are reads (opt-in
-    // execution of repo code stays in a sandbox).
+    // Strategy commands are reads unless they declare otherwise
+    // (`StrategyCommand.effect`): they analyze the project and return a
+    // result xray prints, and never run repo code in the read tier. A
+    // command that runs code or changes anything declares its tier, and kit
+    // then gates it (confirmation, --dry-run); MCP exposes reads only.
+    const effect = cmdDef.effect ?? { tier: 'read', idempotent: 'yes' };
+    const cmdBase = strategyCmd
+      .command(cmdName)
+      .description(cmdDef.description || `Execute ${cmdName} command`);
+    if (cmdDef.positional) cmdBase.argument(`<${cmdDef.positional.name}>`, cmdDef.positional.description);
     const cmd = declareEffect(addExtensionOverrideOptions(
-      strategyCmd
-        .command(cmdName)
-        .description(cmdDef.description || `Execute ${cmdName} command`)
-        .option('-p, --path <path>', 'Project path to analyze (default: current directory)')
-    ), 'read', 'yes');
+      cmdBase.option('-p, --path <path>', 'Project path to analyze (default: current directory)')
+    ), effect.tier, effect.idempotent);
     // A --path that is not a directory is not found (see executeStrategyCommand).
     declareExitCodes(cmd, [EXIT_NOT_FOUND]);
 
@@ -181,17 +186,32 @@ function registerStrategyCommand(
     // as commander parse errors → UsageError (exit 2) so typos like
     // `--extenson-threshold` fail loudly instead of being silently
     // swallowed and bypassing the rest of the validation chain.
-    cmd.action(async (options: StrategyCommandOptions, command: Command) => {
+    cmd.action(async (...actionArgs: unknown[]) => {
+      // commander: (...positionals, options, command)
+      const command = actionArgs[actionArgs.length - 1] as Command;
+      const options = actionArgs[actionArgs.length - 2] as StrategyCommandOptions;
       if (registry) assertFormat(command, registry);
-      const normalizedOptions = normalizeExtensionOptions(
+      const normalizedOptions: Record<string, unknown> = normalizeExtensionOptions(
         registry ? withoutOutputFlags(options, command) : options
-      );
+      ) as Record<string, unknown>;
+      if (cmdDef.positional) normalizedOptions[cmdDef.positional.name] = actionArgs[0];
+      // Kit skips confirmation under a root --dry-run for a non-read tier;
+      // the handler then resolves what it would do and returns it as
+      // `{ effects }` instead of acting.
+      const preview = effect.tier !== 'read' && previewing(command);
+      if (preview) normalizedOptions.dryRun = true;
       const result = await executeStrategyCommand(
         extension,
         cmdName,
         cmdDef,
         normalizedOptions
       );
+      // A non-read handler may stream its own output and return nothing.
+      if (result === undefined && effect.tier !== 'read' && !preview) return;
+      if (preview) {
+        emitPlan(command, (result as { effects?: Effect[] } | undefined)?.effects ?? []);
+        return;
+      }
       if (registry) {
         await emit(command, result ?? null, {
           registry,

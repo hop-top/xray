@@ -133,6 +133,16 @@ export interface Strategy {
 export interface StrategyCommand {
   description: string;
   options?: Record<string, ExtensionCommandOption>;
+  /** One required positional argument; its value arrives in `opts[name]`. */
+  positional?: { name: string; description: string };
+  /**
+   * Side-effect tier and idempotency kit gates on. Default: a read
+   * (`read` / `yes`): strategy commands analyze and print. A command that
+   * runs code or changes anything must declare it. Under a root `--dry-run`
+   * a non-read command's handler gets `opts.dryRun === true` and returns
+   * `{ effects }` (kit's plan entries) instead of acting.
+   */
+  effect?: { tier: 'read' | 'write-local' | 'destructive-local' | 'interactive'; idempotent: 'yes' | 'no' | 'conditional' };
   handler(ctx: StrategyContext, opts?: any): Promise<any>;
 }
 

@@ -675,6 +675,28 @@ xray express routes
 
 See [Strategies Guide](strategies.md) for all available strategy commands.
 
+**`xray build run --target <name>`**: prints the command for the target
+(`make build`, `npm run test`, `just ...`, `task ...`) and runs nothing.
+
+**`xray build exec <target>`**: runs the target. The tool is spawned
+directly with an argument list (no shell), in the project root, with
+inherited stdio. The target must be one of the detected targets (unknown:
+exit 3, nothing runs; names starting with `-` are refused). Exit status is
+the child's; a child killed by a signal exits 1 with a message; a build
+tool missing from `PATH` exits 3. Nothing else is printed on stdout, so
+`--format` has no effect.
+
+It executes the repo's own recipe, so it is a `destructive-local`,
+non-idempotent command: without `--confirm=yes` (or an answer at a
+terminal prompt) it is refused with exit 5 and runs nothing. A root
+`--dry-run` prints the plan (the command that would run) and runs nothing.
+The MCP server does not expose it.
+
+```bash
+xray --confirm=yes build exec test
+xray --dry-run build exec test
+```
+
 ### `xray strategy detect`
 
 Detect which strategies apply to your project.

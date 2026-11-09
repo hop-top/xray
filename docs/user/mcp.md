@@ -97,6 +97,9 @@ and `root`; its graph is always built over the call root, so `--graph`
 of `paths` is a path argument: resolved against `root` and held inside
 the server root like `path`; `--output` is not exposed.
 
+Only strategy commands declared `read` are tools; `build exec` (runs the
+repo's build recipe; `destructive-local`) is not exposed.
+
 Not exposed: commands that change state (`cache clear`, `alias set`,
 `strategy install`, `lang add`, ...) and flags that write files, load
 code or reveal secrets: `--output`, `--share`, `--template`, `--preset`,

@@ -150,12 +150,49 @@ Usage: xray build [options] [command]
 Inspect build targets and dependencies (Makefile, package.json scripts)
 
 COMMANDS:
-  targets [--flags]  Show all build targets
-  graph [--flags]    Show build dependency graph
-  run [--flags]      Run a specific build target
+  targets [--flags]        Show all build targets
+  graph [--flags]          Show build dependency graph
+  run [--flags]            Print the command for a build target (does not run
+                           it; see \`build exec\`)
+  exec <target> [--flags]  Run a build target (executes the repo's build recipe)
 
 FLAGS:
-  -h, --help         Display help
+  -h, --help               Display help
+
+
+--- stderr ---
+"
+`;
+
+exports[`cli golden: --help xray build exec --help 1`] = `
+"exit: 0
+--- stdout ---
+Usage: xray build exec [options] <target>
+
+Run a build target (executes the repo's build recipe)
+
+ARGUMENTS:
+  target                              Target name to run
+
+FLAGS:
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
+  --enable-extension <name>           Enable an extension at runtime
+                                      (repeatable) (default: [])
+  --disable-extension <name>          Disable an extension at runtime
+                                      (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
+  --extension-hint <name=value>       Add an extension hint at runtime
+                                      (repeatable) (default: [])
+  --enable-surface <name:surface>     Enable an extension surface at runtime
+                                      (repeatable) (default: [])
+  --disable-surface <name:surface>    Disable an extension surface at runtime
+                                      (repeatable) (default: [])
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
+  -h, --help                          Display help
 
 
 --- stderr ---
@@ -199,7 +236,7 @@ exports[`cli golden: --help xray build run --help 1`] = `
 --- stdout ---
 Usage: xray build run [options]
 
-Run a specific build target
+Print the command for a build target (does not run it; see \`build exec\`)
 
 FLAGS:
   -p, --path <path>                   Project path to analyze (default: current
@@ -216,7 +253,7 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
-  --target <target>                   Target name to run
+  --target <target>                   Target name to print the command for
   --format <fmt>                      Output format: text, json, yaml, table,
                                       csv; dot for graph commands (default:
                                       "text")
@@ -5991,7 +6028,7 @@ exports[`cli golden: introspection describe 1`] = `
         {
           "name": "run",
           "qualifiedName": "build.run",
-          "description": "Run a specific build target",
+          "description": "Print the command for a build target (does not run it; see \`build exec\`)",
           "hidden": false,
           "arguments": [],
           "options": [
@@ -6057,7 +6094,7 @@ exports[`cli golden: introspection describe 1`] = `
               "type": "string",
               "required": false,
               "default": null,
-              "description": "Target name to run"
+              "description": "Target name to print the command for"
             },
             {
               "name": "--format-opt",
@@ -6124,6 +6161,144 @@ exports[`cli golden: introspection describe 1`] = `
             1,
             2,
             3
+          ]
+        },
+        {
+          "name": "exec",
+          "qualifiedName": "build.exec",
+          "description": "Run a build target (executes the repo's build recipe)",
+          "hidden": false,
+          "arguments": [
+            {
+              "name": "target",
+              "required": true,
+              "variadic": false,
+              "description": "Target name to run"
+            }
+          ],
+          "options": [
+            {
+              "name": "--path",
+              "short": "-p",
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Project path to analyze (default: current directory)"
+            },
+            {
+              "name": "--enable-extension",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Enable an extension at runtime (repeatable)"
+            },
+            {
+              "name": "--disable-extension",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Disable an extension at runtime (repeatable)"
+            },
+            {
+              "name": "--extension-threshold",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Override an extension threshold at runtime (repeatable)"
+            },
+            {
+              "name": "--extension-hint",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Add an extension hint at runtime (repeatable)"
+            },
+            {
+              "name": "--enable-surface",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Enable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--disable-surface",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Disable an extension surface at runtime (repeatable)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv; dot for graph commands"
+            }
+          ],
+          "subcommands": [],
+          "sideEffect": "destructive-local",
+          "idempotent": "no",
+          "exitCodes": [
+            0,
+            1,
+            2,
+            3,
+            5
           ]
         }
       ],

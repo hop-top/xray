@@ -54,6 +54,8 @@ const EXTRA_EXIT_CODES: Record<string, number[]> = {
   'strategy.install': [EXIT_NOT_FOUND],
   'strategy.create': [EXIT_CONFLICT],
   'build.run': [EXIT_NOT_FOUND],
+  // Runs the repo's recipe: refused (unauthorized) unless confirmed; unknown target / missing tool: not found.
+  'build.exec': [EXIT_NOT_FOUND, EXIT_UNAUTHORIZED],
   // A root that does not exist (positional or --path) is not found.
   map: [EXIT_NOT_FOUND],
   graph: [EXIT_NOT_FOUND],

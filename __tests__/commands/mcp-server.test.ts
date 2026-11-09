@@ -151,7 +151,7 @@ describe('xray mcp over stdio', () => {
     for (const n of ['map', 'graph', 'explore', 'query', 'impact', 'strategy_list', 'strategy_detect', 'react_hooks', 'markdown_toc']) {
       expect(names).toContain(n);
     }
-    for (const n of ['scan', 'cache_clear', 'alias_set', 'alias_remove', 'strategy_create', 'strategy_install', 'strategy_remove', 'lang_add', 'mcp', 'describe', 'completion']) {
+    for (const n of ['scan', 'cache_clear', 'alias_set', 'alias_remove', 'strategy_create', 'strategy_install', 'strategy_remove', 'build_exec', 'lang_add', 'mcp', 'describe', 'completion']) {
       expect(names).not.toContain(n);
     }
     expect(names.every((n) => /^[A-Za-z0-9_-]+$/.test(n))).toBe(true);

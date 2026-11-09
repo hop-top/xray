@@ -1,5 +1,6 @@
 // strategies/build.ts
 import * as path from 'path';
+import { spawn } from 'child_process';
 import { NotFoundError, UsageError } from '../src/lib/error/types';
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import { BuildTool } from '../src/lib/strategy/build/types';
@@ -170,58 +171,90 @@ export default class BuildStrategy implements Strategy {
       }
     },
     run: {
-      description: 'Run a specific build target',
+      description: 'Print the command for a build target (does not run it; see `build exec`)',
       options: {
-        'target': 'Target name to run'
+        'target': 'Target name to print the command for'
       },
       handler: async (ctx: StrategyContext, opts?: any) => {
         if (!opts || !opts.target) {
           throw new UsageError('No target specified. Use --target=<name>');
         }
-
-        const targetName = opts.target;
-        const files = ctx.globFiles('**/*');
-
-        // Find the build file containing this target
-        for (const tool of this.buildTools) {
-          const buildFile = tool.detect(files);
-          if (buildFile) {
-            const metadata = ctx.getMetadata(buildFile, 'build');
-            if (metadata && metadata.targets) {
-              const target = metadata.targets.find((t: any) => t.name === targetName);
-              if (target) {
-                // Build the command based on the tool
-                let command: string;
-                switch (metadata.buildTool) {
-                  case 'make':
-                    command = `make ${targetName}`;
-                    break;
-                  case 'npm':
-                    command = `npm run ${targetName}`;
-                    break;
-                  case 'just':
-                    command = `just ${targetName}`;
-                    break;
-                  case 'task':
-                    command = `task ${targetName}`;
-                    break;
-                  default:
-                    command = targetName;
-                }
-
-                return {
-                  tool: metadata.buildTool,
-                  command,
-                  target: targetName,
-                  file: buildFile
-                };
-              }
-            }
-          }
+        const r = resolveTarget(this.buildTools, ctx, opts.target);
+        return { tool: r.tool, command: r.argv.join(' '), target: opts.target, file: r.file };
+      }
+    },
+    exec: {
+      description: 'Run a build target (executes the repo\'s build recipe)',
+      positional: { name: 'target', description: 'Target name to run' },
+      effect: { tier: 'destructive-local' as const, idempotent: 'no' as const },
+      handler: async (ctx: StrategyContext, opts?: any) => {
+        if (!opts || !opts.target) {
+          throw new UsageError('No target specified. Use: build exec <target>');
         }
-
-        throw new NotFoundError(`Target "${targetName}" not found in any build file`);
+        const targetName: string = opts.target;
+        // A leading dash would be read as an option by the build tool.
+        if (targetName.startsWith('-')) {
+          throw new UsageError(`Refusing to run target "${targetName}": names starting with "-" are options`);
+        }
+        const r = resolveTarget(this.buildTools, ctx, targetName);
+        const cwd = ctx.getProjectRoot();
+        if (opts.dryRun) {
+          return {
+            effects: [{ kind: 'exec', target: r.argv.join(' '), reversible: false, detail: `runs the repo's recipe in ${cwd}` }]
+          };
+        }
+        // Child output streams to the terminal; no result document follows.
+        await execTarget(r.argv, targetName, r.tool, cwd);
+        return undefined;
       }
     }
   };
+}
+
+/** Find `targetName` in a detected build file; its tool, argv and file. */
+function resolveTarget(
+  buildTools: BuildTool[], ctx: StrategyContext, targetName: string
+): { tool: string; argv: string[]; file: string } {
+  const files = ctx.globFiles('**/*');
+  for (const tool of buildTools) {
+    const buildFile = tool.detect(files);
+    if (!buildFile) continue;
+    const metadata = ctx.getMetadata(buildFile, 'build');
+    if (!metadata || !metadata.targets) continue;
+    if (!metadata.targets.find((t: any) => t.name === targetName)) continue;
+    const argvFor: Record<string, string[]> = {
+      make: ['make', targetName],
+      npm: ['npm', 'run', targetName],
+      just: ['just', targetName],
+      task: ['task', targetName],
+    };
+    return { tool: metadata.buildTool, argv: argvFor[metadata.buildTool] ?? [targetName], file: buildFile };
+  }
+  throw new NotFoundError(`Target "${targetName}" not found in any build file`);
+}
+
+/**
+ * Run a build target: argv array (never a shell string), project root as
+ * cwd, inherited stdio. The child's exit code becomes the process exit
+ * code; a signal exits 1 with a message; a missing build tool exits 3.
+ */
+async function execTarget(argv: string[], target: string, tool: string, cwd: string): Promise<void> {
+  if (!['make', 'npm', 'just', 'task'].includes(tool)) {
+    throw new UsageError(`Cannot run target "${target}": unknown build tool "${tool}"`);
+  }
+  const [bin, ...args] = argv;
+  const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
+    const child = spawn(bin, args, { cwd, stdio: 'inherit', shell: false });
+    child.once('error', reject);
+    child.once('close', (code, signal) => resolve({ code, signal }));
+  }).catch((err: NodeJS.ErrnoException) => {
+    if (err.code === 'ENOENT') {
+      throw new NotFoundError(`Build tool "${bin}" not found on PATH`, err);
+    }
+    throw err;
+  });
+  if (result.signal) {
+    throw new Error(`"${argv.join(' ')}" was terminated by signal ${result.signal}`);
+  }
+  if (result.code) process.exitCode = result.code;
 }

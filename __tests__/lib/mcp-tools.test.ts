@@ -16,6 +16,7 @@ import {
   assertConfigPinned, containPath, isWithin, pinnedConfigArgs, resolveCallRoot, resolveServerConfig,
 } from '../../src/lib/mcp/runner';
 import { setCommandGroup } from '../../src/commands/kit-cli';
+import { declareEffect } from '../../src/commands/side-effect';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const kit = require('@hop-top/kit/mcp') as typeof import('@hop-top/kit/dist/mcp');
@@ -46,11 +47,16 @@ function tree(): Command {
   cache.command('clear');
   const react = root.command('react');
   setCommandGroup(react, 'strategy');
-  react.command('hooks').option('-p, --path <path>', 'Project path').option('--exec-binary', 'run code');
+  declareEffect(react.command('hooks').option('-p, --path <path>', 'Project path').option('--exec-binary', 'run code'), 'read', 'yes');
+  const build = root.command('build');
+  setCommandGroup(build, 'strategy');
+  declareEffect(build.command('run').option('-p, --path <path>', 'Project path').option('--target <t>', 'Target'), 'read', 'yes');
+  declareEffect(build.command('exec').argument('<target>', 'Target').option('-p, --path <path>', 'Project path'), 'destructive-local', 'no');
+  build.command('undeclared').option('-p, --path <path>', 'Project path');
   const config = root.command('config');
   setCommandGroup(config, 'strategy');
-  config.command('keys').option('-p, --path <path>', 'Project path').option('--file <file>', 'Config file');
-  config.command('values').option('-p, --path <path>', 'Project path').option('--show-secrets', 'Secrets');
+  declareEffect(config.command('keys').option('-p, --path <path>', 'Project path').option('--file <file>', 'Config file'), 'read', 'yes');
+  declareEffect(config.command('values').option('-p, --path <path>', 'Project path').option('--show-secrets', 'Secrets'), 'read', 'yes');
   root.command('impact')
     .description('Show transitive callers of a symbol, by area')
     .argument('<symbol>', 'Symbol name or glob')
@@ -91,6 +97,16 @@ describe('isExposedPath', () => {
   });
   it.each([['cache clear'], ['alias set'], ['strategy remove']])('hides %s', (p) => {
     expect(isExposedPath(root, p.split(' '))).toBe(false);
+  });
+  it('exposes a strategy command declared read', () => {
+    expect(isExposedPath(root, ['build', 'run'])).toBe(true);
+  });
+  it('hides a strategy command declared above read (build exec)', () => {
+    expect(isExposedPath(root, ['build', 'exec'])).toBe(false);
+    expect(policyFor(root, ['build', 'exec'])).toBeUndefined();
+  });
+  it('hides a strategy command that declares no tier', () => {
+    expect(isExposedPath(root, ['build', 'undeclared'])).toBe(false);
   });
 });
 

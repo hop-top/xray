@@ -20,6 +20,7 @@ import * as path from 'path';
 import type { Argument, Command, Option } from 'commander';
 import type { FlagSchema, Leaf } from '@hop-top/kit/dist/mcp';
 import { getCommandGroup } from '../../commands/kit-cli';
+import { declaredEffect } from '../../commands/side-effect';
 import { DEFAULT_IMPACT_DEPTH } from '../query/impact';
 
 /** Per-call project scope parameter (a directory inside the server root). */
@@ -203,6 +204,10 @@ export function policyFor(root: Command, path: string[]): ToolPolicy | undefined
   if (path.length !== 2 || path[0] === 'strategy') return undefined;
   const top = (root.commands as Command[]).find((c) => c.name() === path[0]);
   if (top === undefined || getCommandGroup(top) !== 'strategy') return undefined;
+  // Only reads are tools: a strategy command that runs code or writes
+  // (`build exec`) declares a higher tier. No declared tier: not exposed.
+  const leaf = findCommand(root, path);
+  if (leaf === undefined || declaredEffect(leaf).tier !== 'read') return undefined;
   const extra = Object.prototype.hasOwnProperty.call(STRATEGY_NOUN_EXTRA, name) ? STRATEGY_NOUN_EXTRA[name] : {};
   return scoped({ ...STRATEGY_NOUN, ...extra });
 }

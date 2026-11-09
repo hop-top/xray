@@ -79,6 +79,8 @@ describe('failing commands exit with the code describe advertises', () => {
     { name: 'query --graph <missing file>', command: 'query', args: ['query', 'x', '--graph', '/nonexistent/g.json'], code: 3, stderr: /not found/ },
     { name: 'alias remove <no config>', command: 'alias.remove', args: ['alias', 'remove', 'nope'], code: 3, stderr: /No configuration file|not found/ },
     { name: 'clear-cache --confirm=no', command: 'clear-cache', args: ['--confirm=no', 'clear-cache'], code: 5, stderr: /refused/ },
+    { name: 'build exec <target> without confirmation', command: 'build.exec', args: ['--confirm=no', 'build', 'exec', 'all'], code: 5, stderr: /refused/ },
+    { name: 'build exec <unknown> --confirm=yes', command: 'build.exec', args: ['--confirm=yes', 'build', 'exec', 'nope'], code: 3, stderr: /not found/ },
     { name: 'build run (no --target)', command: 'build.run', args: ['build', 'run'], code: 2, stderr: /No target specified/ },
   ];
 
@@ -144,7 +146,9 @@ describe('failing commands exit with the code describe advertises', () => {
     const strategyLeaves = leaves.filter((l) => !builtin.has(l.argv[0]));
     expect(strategyLeaves.length).toBeGreaterThan(20);
     for (const l of strategyLeaves) {
-      const r = run(...l.argv, '--path', '/nonexistent/xray-dir', '--format', 'json');
+      // A destructive command needs confirming and a required positional a value to reach the path check.
+      const confirm = String(l.doc.sideEffect).startsWith('destructive') ? ['--confirm=yes'] : [];
+      const r = run(...confirm, ...l.argv, ...operands(l), '--path', '/nonexistent/xray-dir', '--format', 'json');
       expect({ command: l.command, status: r.status, stdout: r.stdout }).toEqual({ command: l.command, status: 3, stdout: '' });
       expect(JSON.parse(r.stderr)).toMatchObject({ code: 'NOT_FOUND', exit_code: 3 });
       expect(advertised.get(l.command)).toContain(3);
