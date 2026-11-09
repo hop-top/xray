@@ -6,7 +6,7 @@
  */
 import type { Command } from 'commander';
 import { GraphSerializer } from '../lib/graph/serializer';
-import { computeImpact, DEFAULT_IMPACT_DEPTH, editorLine, impactToQueryResult, renderImpactBrief, renderImpactText, type ImpactResult } from '../lib/query/impact';
+import { computeImpact, DEFAULT_IMPACT_DEPTH, impactToQueryResult, renderImpactBrief, renderImpactText, type ImpactResult, withEditorLine } from '../lib/query/impact';
 import type { SerializedGraph } from '../lib/query/types';
 import type { ParseCoverage } from '../lib/xray';
 import { quotePattern } from '../lib/path-match';
@@ -40,13 +40,18 @@ const DEFAULT_IMPACT_COLUMNS = columns('name', 'file', 'line', 'depth', 'group',
 
 function buildRegistry() {
   const base = outputRegistry();
-  const rows = (r: ImpactResult) => r.nodes;
-  /** Table rows: editor (1-based) lines, as query table and impact text show them. */
-  const tableRows = (r: ImpactResult) => r.nodes.map(n => (n.line == null ? n : { ...n, line: editorLine(n.line) }));
+  /** Result nodes with editor (1-based) lines, as text and tree show them. */
+  const rows = (r: ImpactResult) => r.nodes.map(withEditorLine);
+  /** Whole result document with editor lines; the saved graph stays 0-based. */
+  const document = (r: ImpactResult): ImpactResult => ({
+    ...r,
+    symbol: { ...r.symbol, matches: r.symbol.matches.map(withEditorLine) },
+    nodes: rows(r),
+  });
   return outputRegistry(
-    adaptFormatter<ImpactResult>(formatterOf(base, 'json'), (r) => r, true),
-    adaptFormatter<ImpactResult>(formatterOf(base, 'yaml'), (r) => r, true),
-    adaptFormatter<ImpactResult>(formatterOf(base, 'table'), tableRows),
+    adaptFormatter<ImpactResult>(formatterOf(base, 'json'), document, true),
+    adaptFormatter<ImpactResult>(formatterOf(base, 'yaml'), document, true),
+    adaptFormatter<ImpactResult>(formatterOf(base, 'table'), rows),
     adaptFormatter<ImpactResult>(formatterOf(base, 'csv'), rows),
     textFormatter<ImpactResult>('text', (r, put, s) => renderImpactText(r, put, s)),
     textFormatter<ImpactResult>('brief', (r, put) => {

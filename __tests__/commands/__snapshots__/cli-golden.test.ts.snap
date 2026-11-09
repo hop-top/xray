@@ -11371,7 +11371,7 @@ exports[`cli golden: map / query / explore on fixture repo query --format json c
       "id": "b.ts::beta",
       "name": "beta",
       "file": "b.ts",
-      "line": 2,
+      "line": 3,
       "kind": "function",
       "depth": 1
     }

@@ -89,7 +89,7 @@ Dispatch                    internal/dispatch/dispatch.go      86    1      inte
 ```
 
 `table` shows editor lines; record formats (`csv`, `json`, `yaml`)
-carry 0-based lines: add 1 for the editor line.
+carry 1-based editor lines, as `table` does.
 
 | Confidence | Meaning | Treat as |
 |------------|---------|----------|
@@ -238,7 +238,7 @@ declarations; read each hit.
 ```bash
 xray impact RunHooks --depth 1 --strict --format json 2>/dev/null | jq -r '
   .nodes | group_by(.file | sub("/[^/]+$"; ""))[]
-  | "\(.[0].file | sub("/[^/]+$"; "")) (\(length)): \(map("\(.name) \(.file):\(.line + 1)") | join(", "))"'
+  | "\(.[0].file | sub("/[^/]+$"; "")) (\(length)): \(map("\(.name) \(.file):\(.line)") | join(", "))"'
 ```
 
 ```
@@ -312,9 +312,9 @@ Rules:
   starts, not where it calls `RunHooks`
 - Fix: `explore --search` for call lines
 
-**Pitfall 5: Off-by-one lines in JSON**
-- `json`, `yaml`, `csv` lines are 0-based (text, tree, table are 1-based)
-- Fix: add 1, as in the jq recipe above
+**Pitfall 5: Off-by-one lines in the saved graph**
+- Every result format (text, tree, table, `json`, `yaml`, `csv`) is 1-based; the saved graph (`map --format json`) stores 0-based lines
+- Fix: add 1 when reading the saved graph file directly
 
 **Pitfall 6: Cold multi-root runs**
 - The first `--lens` run analyzes every root; it is slower

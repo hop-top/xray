@@ -223,11 +223,17 @@ export function computeImpact(graph: any, symbol: string, opts: ImpactOptions = 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
- * Graph lines are 0-based (tree-sitter rows). Human views (impact text and
- * brief, query/impact tree and table) show editor lines, as the map
- * renderers do; record formats (json, yaml, csv) carry the graph value.
+ * Graph lines are 0-based (tree-sitter rows); the saved graph keeps that
+ * storage form. Every result view (text, brief, tree, table, csv, json,
+ * yaml) shows editor lines, as the map renderers do: convert at the
+ * rendering boundary with this helper.
  */
 export const editorLine = (line: number | undefined) => (line == null ? undefined : line + 1);
+
+/** Copy of `o` with its `line` converted to an editor line (absent stays absent). */
+export function withEditorLine<T extends { line?: number }>(o: T): T {
+  return o.line == null ? o : { ...o, line: o.line + 1 };
+}
 
 /** `file:Lline` (editor line), the form callers and the tree use. */
 function locationOf(file: string, line: number | undefined): string {

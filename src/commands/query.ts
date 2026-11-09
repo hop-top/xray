@@ -5,7 +5,7 @@ import { GraphSerializer } from '../lib/graph/serializer';
 import { QueryAdapterRegistry } from '../lib/query/registry';
 import { FunctionAdapter } from '../lib/query/adapters/function';
 import type { QueryResult, SerializedGraph } from '../lib/query/types';
-import { editorLine } from '../lib/query/impact';
+import { editorLine, withEditorLine } from '../lib/query/impact';
 import { QueryCommandOptions } from '../types/command-options';
 import { Logger } from '../lib/logger';
 import { terminalSafe } from '../lib/terminal-safe';
@@ -52,21 +52,22 @@ export async function handleQueryAction(query: string, options: QueryCommandOpti
 export const QUERY_COLUMNS = columns('name', 'kind', 'file', 'line', 'depth', 'score', 'id');
 const DEFAULT_QUERY_COLUMNS = columns('name', 'kind', 'file', 'line');
 
-const nodeRows = (r: QueryResult) => r.nodes;
-/** Table rows: editor (1-based) lines, as tree, impact and map show them. */
-const tableRows = (r: QueryResult) => r.nodes.map(n => (n.line == null ? n : { ...n, line: editorLine(n.line) }));
+/** Result nodes with editor (1-based) lines, as tree, impact and map show them. */
+const nodeRows = (r: QueryResult) => r.nodes.map(withEditorLine);
+/** Whole result document with editor (1-based) lines; the saved graph stays 0-based. */
+const document = (r: QueryResult): QueryResult => ({ ...r, nodes: r.nodes.map(withEditorLine) });
 
 /**
  * Formats: json/yaml emit the whole QueryResult document (nodes, edges,
- * metadata) and csv the result nodes, all with graph (0-based) lines;
- * table renders result nodes and tree the call tree with editor lines.
+ * metadata) and csv/table the result nodes; tree the call tree. Every
+ * format shows editor (1-based) lines; the saved graph stays 0-based.
  */
 function buildRegistry() {
   const base = outputRegistry();
   return outputRegistry(
-    adaptFormatter<QueryResult>(formatterOf(base, 'json'), (r) => r, true),
-    adaptFormatter<QueryResult>(formatterOf(base, 'yaml'), (r) => r, true),
-    adaptFormatter<QueryResult>(formatterOf(base, 'table'), tableRows),
+    adaptFormatter<QueryResult>(formatterOf(base, 'json'), document, true),
+    adaptFormatter<QueryResult>(formatterOf(base, 'yaml'), document, true),
+    adaptFormatter<QueryResult>(formatterOf(base, 'table'), nodeRows),
     adaptFormatter<QueryResult>(formatterOf(base, 'csv'), nodeRows),
     textFormatter<QueryResult>('tree', (r, put, s) => {
       put(formatTree(r, s).replace(/\n$/, ''));

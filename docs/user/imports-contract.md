@@ -397,7 +397,7 @@ continues.
 Contract positions are 1-based lines and 1-based columns in UTF-16 code
 units (`positions`), as editors show them. The graph outputs (`xray map` /
 `graph --format json|yaml|csv|xml`) keep the graph convention:
-every `line` there is 0-based, including a file node's raw `imports[].line`
+every saved-graph `line` is 0-based (`query` and `impact` results are 1-based), including a file node's raw `imports[].line`
 (`import os` on the first line is `line: 1` here, `line: 0` in the graph).
 Add 1 to compare. See [Output Formats](commands.md#output-formats).
 

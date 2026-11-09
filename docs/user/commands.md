@@ -331,7 +331,8 @@ JSON fields (optional; absent without cf/df and on non-functions):
          "sites": [{ "id": "n3", "line": 2, "label": "for (const x of xs)" }] }
 ```
 
-Lines are 0-based like every line in the JSON graph. Saved graphs with or
+Lines are 0-based like every line the saved graph stores (`query` and
+`impact` results are 1-based). Saved graphs with or
 without these fields work with `query --graph` and `impact --graph`.
 
 **Limits** (what the graphs do not know):
@@ -488,9 +489,9 @@ edges: EXTRACTED 35 · INFERRED 0
 - **Footer** (`edges: EXTRACTED 35 · INFERRED 0`): the number of `calls`
   edges walked (shortest-path edges only), by confidence. It counts
   edges, not callers.
-- Text, tree and table show 1-based editor lines, as `xray query` does.
-  `json`, `yaml` and `csv` carry the raw 0-based graph value (`line: 107`
-  for `run.go:L108`).
+- Results are 1-based in every format (text, tree, table, `json`, `yaml`,
+  `csv`), as `xray query` shows them (`line: 108` for `run.go:L108`); the
+  saved graph stores 0-based lines.
 
 **Brief output** (`--format brief`): the text summary cut down for hook
 scripts and other size-bounded consumers. The same header, one line per
@@ -852,7 +853,7 @@ CSV columns (fixed order, header row; empty = absent):
 
 `root` is the root label for merged graphs and empty for a single root.
 File imports are not a column: they are the `imports` edges (JSON/XML also
-keep the raw import list). Every graph `line` is 0-based, the raw
+keep the raw import list). Every saved-graph `line` is 0-based (`query` and `impact` results are 1-based), the raw
 `imports[].line` included (`import os` on the first line is `line: 0`);
 the [`xray imports`](imports-contract.md#line-numbers) contract is 1-based
 (lines and UTF-16 columns). Load with any CSV tool, e.g.

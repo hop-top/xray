@@ -163,8 +163,9 @@ validateInput  function  src/utils.ts  20
 checkSchema    function  src/utils.ts  30
 ```
 
-`table` and `tree` show 1-based editor lines, as `map` and `impact` do; `json`, `yaml` and `csv` carry the raw 0-based graph value (`line: 9`
-for the `10` above). `line` is blank when the graph has no line for the
+Results are 1-based in every format (`table`, `tree`, `csv`, `json`,
+`yaml`), as `map` and `impact` show them; the saved graph stores 0-based
+lines. `line` is blank when the graph has no line for the
 node. Empty results print nothing on stdout (`No results found` on stderr).
 
 ### Columns, CSV and files

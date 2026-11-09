@@ -339,8 +339,8 @@ describe('xray impact (built CLI)', () => {
     const doc = JSON.parse(r.stdout);
     expect(Object.keys(doc).sort()).toEqual(['counts', 'edges', 'groups', 'nodes', 'symbol']);
     expect(doc.nodes.find((n: any) => n.name === 'B').depth).toBe(1);
-    // Record formats carry the graph's 0-based line; text shows editor lines.
-    expect(doc.symbol.matches[0].line).toBe(10);
+    // Result documents are 1-based like text; the saved graph stays 0-based.
+    expect(doc.symbol.matches[0].line).toBe(11);
   });
 
   test('--format tree prints the call tree', () => {
@@ -365,16 +365,16 @@ describe('xray impact (built CLI)', () => {
     expect(ql.A).toBe('pkg/a.go:L21'); // graph line 20 -> editor line 21
   });
 
-  test('query table shows editor lines; csv and json keep the graph value', () => {
+  test('query table, csv and json all show editor (1-based) lines', () => {
     const q = ['query', '--graph', graphFile, 'callers(T)'];
     const table = run([...q, '--format', 'table']).stdout;
     expect(table).toMatch(/^A\s+function\s+pkg\/a\.go\s+21\s*$/m);
-    expect(run([...q, '--format', 'csv']).stdout).toContain('A,function,pkg/a.go,20');
+    expect(run([...q, '--format', 'csv']).stdout).toContain('A,function,pkg/a.go,21');
     const json = JSON.parse(run([...q, '--format', 'json']).stdout);
-    expect(json.nodes.find((n: any) => n.name === 'A').line).toBe(20);
+    expect(json.nodes.find((n: any) => n.name === 'A').line).toBe(21);
   });
 
-  test('impact table and query table agree on (1-based) lines; impact csv and json keep the graph value', () => {
+  test('impact table and query table agree on (1-based) lines; impact csv and json agree too', () => {
     const lineOf = (out: string, name: string) => out.split('\n').find(l => l.startsWith(name + ' '))?.trim().split(/\s+/);
     const q = run(['query', '--graph', graphFile, '--format', 'table', 'callers(T)']).stdout;
     const i = run(['impact', 'T', '--graph', graphFile, '--format', 'table', '--depth', '1']).stdout;
@@ -382,9 +382,9 @@ describe('xray impact (built CLI)', () => {
     expect(lineOf(i, 'A')?.[2]).toBe('21');
     expect(lineOf(i, 'A')?.[2]).toBe(lineOf(q, 'A')?.[3]);
     expect(lineOf(i, 'B')?.[2]).toBe(lineOf(q, 'B')?.[3]);
-    expect(run(['impact', 'T', '--graph', graphFile, '--format', 'csv']).stdout).toContain('A,pkg/a.go,20,1,pkg,EXTRACTED');
+    expect(run(['impact', 'T', '--graph', graphFile, '--format', 'csv']).stdout).toContain('A,pkg/a.go,21,1,pkg,EXTRACTED');
     const doc = JSON.parse(run(['impact', 'T', '--graph', graphFile, '--format', 'json']).stdout);
-    expect(doc.nodes.find((n: any) => n.name === 'A').line).toBe(20);
+    expect(doc.nodes.find((n: any) => n.name === 'A').line).toBe(21);
   });
 
   test('--depth 1 differs from the default', () => {
