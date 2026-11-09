@@ -56,7 +56,7 @@ maybe(has('make'))('build exec (make)', () => {
         'hello:', '\t@echo hello-from-make; touch ran.marker',
         'where:', '\t@pwd > cwd.marker',
         'fail:', '\t@exit 7',
-        'sig:', '\t@kill -TERM $$PPID',
+        'sig:', '\t@kill -KILL $$PPID',
         '',
       ].join('\n'),
     });
