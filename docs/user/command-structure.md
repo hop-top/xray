@@ -79,6 +79,7 @@ Available for all commands:
 | `-C, --chdir <path>` | Change to `<path>` before running | `-C ../repo` |
 | `-h, --help` | Display help | `--help` |
 | `--help-<group>` | Show one command group (`analyze`, `strategy`, `management`) | `--help-strategy` |
+| `--help-all` | Print every command with its flags (text) | `--help-all` |
 | `-v, --version` | Print version (`xray vX.Y.Z`) and exit | `-v` |
 
 Flags work before or after the subcommand. Root `--help` lists commands
