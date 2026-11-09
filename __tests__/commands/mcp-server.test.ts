@@ -168,8 +168,8 @@ describe('xray mcp over stdio', () => {
     expect(map.properties.query).toMatchObject({ type: 'array', items: { type: 'string' } });
     const goCli = tools.find((t) => t.name === 'go-cli_commands')!.inputSchema;
     for (const f of ['exec-binary', 'binary', 'unsafe-no-sandbox', 'allow-cgo']) expect(goCli.properties[f]).toBeUndefined();
-    expect(tools.find((t) => t.name === 'config_values')!.inputSchema.properties['show-secrets']).toBeUndefined();
-    expect(tools.find((t) => t.name === 'config_keys')!.inputSchema.properties.file.type).toBe('string');
+    expect(tools.find((t) => t.name === 'config-files_values')!.inputSchema.properties['show-secrets']).toBeUndefined();
+    expect(tools.find((t) => t.name === 'config-files_keys')!.inputSchema.properties.file.type).toBe('string');
     expect(tools.find((t) => t.name === 'strategy_list')!.inputSchema.properties.root).toBeUndefined();
     const impact = tools.find((t) => t.name === 'impact')!;
     expect(Object.keys(impact.inputSchema.properties).sort()).toEqual(['depth', 'format', 'lens', 'root', 'scope', 'strict', 'symbol']);
@@ -446,7 +446,7 @@ describe('xray mcp trust boundary', () => {
     ['explore', { root: 'vendor', search: ['vendored'], format: 'json' }],
     ['strategy_detect', { root: 'vendor' }],
     ['react_hooks', { root: 'vendor' }],
-    ['config_list', { root: 'vendor' }],
+    ['config-files_list', { root: 'vendor' }],
   ])('%s with root inside an untrusted subtree runs none of its code', async (name, args) => {
     const r = await client.call(name, args);
     expect(r.result.isError).toBe(false);
@@ -501,9 +501,9 @@ describe('xray mcp trust boundary', () => {
     ['query .ext:http URL', 'map', () => ({ query: [`.ts:http://127.0.0.1:${port}/typescript.scm`] }), /not a URL/],
     ['query URL in comma list', 'map', () => ({ query: [`clean,https://127.0.0.1:${port}/typescript.scm`] }), /not a URL/],
     ['anchor through symlink', 'map', () => ({ anchor: 'escape/typescript.scm' }), /outside the server root/],
-    ['config --file outside root', 'config_keys', () => ({ file: '../outside/typescript.scm' }), /outside the server root/],
+    ['config-files --file outside root', 'config-files_keys', () => ({ file: '../outside/typescript.scm' }), /outside the server root/],
     ['unlisted code-running flag', 'go-cli_commands', () => ({ 'exec-binary': true }), /unknown argument "exec-binary"/],
-    ['unlisted secrets flag', 'config_values', () => ({ 'show-secrets': true }), /unknown argument "show-secrets"/],
+    ['unlisted secrets flag', 'config-files_values', () => ({ 'show-secrets': true }), /unknown argument "show-secrets"/],
     ['unlisted writer flag', 'map', () => ({ share: 'x.md' }), /unknown argument "share"/],
     ['root on an unscoped tool', 'strategy_list', () => ({ root: 'vendor' }), /unknown argument "root"/],
   ])('rejects %s', async (_label, name, args, msg) => {

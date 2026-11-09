@@ -114,7 +114,7 @@ Examples:
     .action(handleClearCacheAction), 'destructive-local', 'yes');
 
   // Introspect xray's own runtime paths (config + cache locations).
-  // Note: distinct from the `config` strategy, which analyzes config files
+  // Note: distinct from the `config-files` strategy, which analyzes config files
   // in the user's project. See docs/dev/cli-config-noun-decision.md.
   registerPathsCommand(program);
 

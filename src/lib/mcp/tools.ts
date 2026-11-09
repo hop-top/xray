@@ -38,7 +38,7 @@ export const ROOT_PARAM = 'root';
  *   every path part is contained like `path`. URLs are refused (the CLI
  *   would fetch them).
  * - `project-file`: a file the command joins onto its project path
- *   (`config keys --file`); contained, then passed project-relative.
+ *   (`config-files keys --file`); contained, then passed project-relative.
  */
 export type ParamKind = 'value' | 'path' | 'dir' | 'query-source' | 'project-file';
 
@@ -167,9 +167,9 @@ const STRATEGY_NOUN: Record<string, ParamKind> = { path: 'path', format: 'value'
  * options) are not exposed.
  */
 const STRATEGY_NOUN_EXTRA: Readonly<Record<string, Record<string, ParamKind>>> = {
-  'config_list': { pattern: 'value' },
-  'config_keys': { file: 'project-file' },
-  'config_values': { file: 'project-file' },
+  'config-files_list': { pattern: 'value' },
+  'config-files_keys': { file: 'project-file' },
+  'config-files_values': { file: 'project-file' },
   'build_run': { target: 'value' },
   'markdown_toc': { depth: 'value' },
 };

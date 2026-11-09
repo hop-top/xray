@@ -66,7 +66,7 @@ overlook `xray paths`.
 We add `xray paths`. The conventional-idiom argument for Option 1 is real
 but is outweighed by:
 
-- The strategy noun is **load-bearing** UX. `xray config list` is what users
+- The strategy noun is **load-bearing** UX. `xray config-files list` is what users
   already type to inspect their `.env`/`*.yml` files. Renaming it for a
   cleanliness win is disproportionate.
 - The introspection use case is small and self-describing — `xray paths` is
@@ -87,9 +87,11 @@ but is outweighed by:
   `global-config`, `cache-db` — one per line). `--format json` emits a flat
   JSON object suitable for scripting.
 
-## Deferred
+## Current state
 
-A future major release MAY rename the `config` strategy to a less generic
-noun (proposed: a `project` strategy group, with `project config-files`,
-`project secrets`, etc.). At that point, `xray config <verb>` could be
-re-purposed as an alias or removed. Out of scope here.
+The strategy is named `config-files` (`xray config-files list|keys|values`).
+`config` is a hidden alias group forwarding to the same handlers: absent from
+help, `describe`, `--help-all`, strategy lists and the MCP tool list. It is
+registered next to the strategy (`RENAMED_STRATEGIES` in
+`src/commands/registration/strategies.ts`) and is removed when the CLI goes
+stable. The `config` noun stays free for a future introspection group.

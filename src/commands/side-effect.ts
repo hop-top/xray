@@ -33,6 +33,19 @@ export function declareEffect<C extends Command>(cmd: C, tier: Tier, idempotent:
   return cmd;
 }
 
+export const OMIT_DESCRIBE_KEY = 'xray/omit-describe';
+
+/** Keep `cmd` (a hidden alias of another command) out of `describe`. */
+export function markOmittedFromDescribe<C extends Command>(cmd: C): C {
+  const target = cmd as unknown as Annotated;
+  target.annotations = { ...target.annotations, [OMIT_DESCRIBE_KEY]: 'yes' };
+  return cmd;
+}
+
+export function omittedFromDescribe(cmd: Command): boolean {
+  return (cmd as unknown as Annotated).annotations?.[OMIT_DESCRIBE_KEY] === 'yes';
+}
+
 export const EXIT_CODES_KEY = 'xray/exit-codes';
 
 /**

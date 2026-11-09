@@ -1,4 +1,4 @@
-// strategies/config.ts
+// strategies/config-files.ts
 import { Strategy, StrategyContext, FileMetadata, StrategyCommand } from '../src/lib/strategy/types';
 import { ParserFactory } from '../src/lib/config/parser-factory';
 import { Logger } from '../src/lib/logger';
@@ -15,7 +15,7 @@ function isTextFormat(opts?: { format?: unknown }): boolean {
 }
 
 export default class ConfigStrategy implements Strategy {
-  name = 'config';
+  name = 'config-files';
   description = 'Inspect project configuration files, keys and values';
   version = '0.1.0';
   private parserFactory: ParserFactory;

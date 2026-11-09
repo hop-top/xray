@@ -53,7 +53,7 @@ function tree(): Command {
   declareEffect(build.command('run').option('-p, --path <path>', 'Project path').option('--target <t>', 'Target'), 'read', 'yes');
   declareEffect(build.command('exec').argument('<target>', 'Target').option('-p, --path <path>', 'Project path'), 'destructive-local', 'no');
   build.command('undeclared').option('-p, --path <path>', 'Project path');
-  const config = root.command('config');
+  const config = root.command('config-files');
   setCommandGroup(config, 'strategy');
   declareEffect(config.command('keys').option('-p, --path <path>', 'Project path').option('--file <file>', 'Config file'), 'read', 'yes');
   declareEffect(config.command('values').option('-p, --path <path>', 'Project path').option('--show-secrets', 'Secrets'), 'read', 'yes');
@@ -125,14 +125,14 @@ describe('shapeLeaf', () => {
   });
 
   it('names nested tools with _', () => {
-    expect(shaped(root, ['config', 'keys']).leaf.path).toEqual(['config_keys']);
+    expect(shaped(root, ['config-files', 'keys']).leaf.path).toEqual(['config-files_keys']);
   });
 
   it('omits options not on the allowlist (writers, code runners, secrets)', () => {
     const hooks = shaped(root, ['react', 'hooks']);
     expect(hooks.leaf.properties['exec-binary']).toBeUndefined();
     expect(hooks.leaf.properties.path.type).toBe('string');
-    expect(shaped(root, ['config', 'values']).leaf.properties['show-secrets']).toBeUndefined();
+    expect(shaped(root, ['config-files', 'values']).leaf.properties['show-secrets']).toBeUndefined();
     const map = shaped(root, ['map']);
     expect(map.def.fileOutput).toBe(true);
     expect(map.leaf.properties['no-chunk'].type).toBe('boolean');
@@ -221,8 +221,8 @@ describe('buildArgv', () => {
     const c = findCommand(root, ['react', 'hooks'])!;
     const d = shaped(root, ['react', 'hooks']).def;
     expect(() => argv(d, c, { 'exec-binary': true })).toThrow(/unknown argument "exec-binary"/);
-    const v = findCommand(root, ['config', 'values'])!;
-    expect(() => argv(shaped(root, ['config', 'values']).def, v, { 'show-secrets': true })).toThrow(/unknown argument/);
+    const v = findCommand(root, ['config-files', 'values'])!;
+    expect(() => argv(shaped(root, ['config-files', 'values']).def, v, { 'show-secrets': true })).toThrow(/unknown argument/);
     const m = findCommand(root, ['map'])!;
     expect(() => argv(shaped(root, ['map']).def, m, { share: 'x.md' })).toThrow(/unknown argument "share"/);
   });
@@ -276,10 +276,10 @@ describe('buildArgv', () => {
 
   it('passes config --file project-relative after containment', () => {
     const scope: PathScope = { dir: '/srv', explicit: false, contain: (v, base) => path.resolve(base, v) };
-    const c = findCommand(root, ['config', 'keys'])!;
-    const d = shaped(root, ['config', 'keys']).def;
+    const c = findCommand(root, ['config-files', 'keys'])!;
+    const d = shaped(root, ['config-files', 'keys']).def;
     expect(argv(d, c, { file: 'cfg/app.json', path: 'pkg' }, scope)).toEqual([
-      'config', 'keys', '--path=/srv/pkg', '--file=cfg/app.json',
+      'config-files', 'keys', '--path=/srv/pkg', '--file=cfg/app.json',
     ]);
   });
 });
@@ -361,11 +361,11 @@ describe('root containment', () => {
 
   it('contains config --file against the project path', () => {
     const r = tree();
-    const c = findCommand(r, ['config', 'keys'])!;
+    const c = findCommand(r, ['config-files', 'keys'])!;
     const scope: PathScope = {
       dir: serverRoot, explicit: false, contain: (v, b, l) => containPath(serverRoot, b, v, l),
     };
-    expect(() => buildArgv(shaped(r, ['config', 'keys']).def, c, { file: '../other/x.json' }, scope)).toThrow(/outside/);
+    expect(() => buildArgv(shaped(r, ['config-files', 'keys']).def, c, { file: '../other/x.json' }, scope)).toThrow(/outside/);
   });
 
   it('without a server config, refuses sub-roots with their own config; with one, accepts all', () => {

@@ -84,8 +84,8 @@ Options are allowlisted per tool: a tool exposes only the options on its
 list (none writes into the project, loads code or reveals secrets), and a
 call with any other argument is a tool error.
 Built-in strategy nouns get `path`, `format` and the extension-override
-flags, plus the options vetted per noun (`config list --pattern`,
-`config keys|values --file`, `build run --target`, `markdown toc
+flags, plus the options vetted per noun (`config-files list --pattern`,
+`config-files keys|values --file`, `build run --target`, `markdown toc
 --depth`). Options a project strategy declares for its own nouns are not
 exposed.
 
@@ -104,7 +104,7 @@ Not exposed: commands that change state (`cache clear`, `alias set`,
 `strategy install`, `lang add`, ...) and flags that write files, load
 code or reveal secrets: `--output`, `--share`, `--template`, `--preset`,
 `--config`, go-cli's `--exec-binary` / `--binary` /
-`--unsafe-no-sandbox` / `--allow-cgo`, and `config values
+`--unsafe-no-sandbox` / `--allow-cgo`, and `config-files values
 --show-secrets`.
 
 Behaviour per tool:
@@ -177,7 +177,7 @@ directory, and `xray mcp` fixes the trusted directory at startup:
   Add a config file to the server root, or start the server with
   `--config <file>`, to scope such sub-roots.
 - Every path-valued argument is held inside the server root: `path`,
-  `anchor`, `graph`, `config keys|values --file`, `imports` `paths`, and each path in
+  `anchor`, `graph`, `config-files keys|values --file`, `imports` `paths`, and each path in
   map's `query` (`path`, `.ext:path`, comma lists). URLs are refused
   wherever a path is expected; the server never makes the CLI fetch a
   remote query file.

@@ -216,20 +216,20 @@ hosts = [
       const output = execSync(`node ${CLI_PATH} strategy detect -p ${testRoot} 2>&1`).toString();
 
       expect(output).toContain('Detected Strategies:');
-      expect(output).toContain('config');
+      expect(output).toContain('config-files');
     });
 
     it('should list config as available strategy', () => {
       const output = execSync(`node ${CLI_PATH} strategy list 2>&1`).toString();
 
       expect(output).toContain('Available Strategies:');
-      expect(output).toContain('config');
+      expect(output).toContain('config-files');
     });
   });
 
   describe('Config Files Listing', () => {
     it('should find all config files', () => {
-      const output = execSync(`node ${CLI_PATH} config list -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files list -p ${testRoot}`).toString();
 
       expect(output).toContain('Configuration Files:');
 
@@ -253,20 +253,20 @@ hosts = [
 
     it('should print paths relative to the project root, not the cwd', () => {
       // CLI runs from the repo (cwd != testRoot); paths must not climb out of testRoot.
-      const output = execSync(`node ${CLI_PATH} config list -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files list -p ${testRoot}`).toString();
       expect(output).not.toContain('../');
       expect(output).toMatch(/^\s+config\/database\.json$/m);
     });
 
     it('should count config files correctly', () => {
-      const output = execSync(`node ${CLI_PATH} config list -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files list -p ${testRoot}`).toString();
 
       // Should find 9 config files total
       expect(output).toMatch(/Total:\s*9\s*file\(s\)/);
     });
 
     it('should work with explore prefix', () => {
-      const output = execSync(`node ${CLI_PATH} config list -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files list -p ${testRoot}`).toString();
 
       expect(output).toContain('Configuration Files:');
       expect(output).toMatch(/Total:\s*9\s*file\(s\)/);
@@ -275,7 +275,7 @@ hosts = [
 
   describe('Config Keys Extraction', () => {
     it('should extract keys from .env files', () => {
-      const output = execSync(`node ${CLI_PATH} config keys -p ${testRoot} --file .env`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files keys -p ${testRoot} --file .env`).toString();
 
       expect(output).toContain('Configuration Keys');
       expect(output).toContain('NODE_ENV');
@@ -287,7 +287,7 @@ hosts = [
     });
 
     it('should extract keys from JSON files', () => {
-      const output = execSync(`node ${CLI_PATH} config keys -p ${testRoot} --file config.json`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files keys -p ${testRoot} --file config.json`).toString();
 
       expect(output).toContain('Configuration Keys');
       expect(output).toContain('app.name');
@@ -302,7 +302,7 @@ hosts = [
     });
 
     it('should extract keys from YAML files', () => {
-      const output = execSync(`node ${CLI_PATH} config keys -p ${testRoot} --file config.yml`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files keys -p ${testRoot} --file config.yml`).toString();
 
       expect(output).toContain('Configuration Keys');
       expect(output).toContain('application.name');
@@ -316,7 +316,7 @@ hosts = [
     });
 
     it('should extract keys from TOML files', () => {
-      const output = execSync(`node ${CLI_PATH} config keys -p ${testRoot} --file config.toml`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files keys -p ${testRoot} --file config.toml`).toString();
 
       expect(output).toContain('Configuration Keys');
       expect(output).toContain('title');
@@ -329,7 +329,7 @@ hosts = [
     });
 
     it('should list all keys when no file specified', () => {
-      const output = execSync(`node ${CLI_PATH} config keys -p ${testRoot}`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files keys -p ${testRoot}`).toString();
 
       // Should include keys from all config files
       expect(output).toContain('NODE_ENV');
@@ -341,7 +341,7 @@ hosts = [
 
   describe('Config Values Display', () => {
     it('should show values from .env files', () => {
-      const output = execSync(`node ${CLI_PATH} config values -p ${testRoot} --file .env`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files values -p ${testRoot} --file .env`).toString();
 
       expect(output).toContain('Configuration Values');
       expect(output).toContain('NODE_ENV');
@@ -353,7 +353,7 @@ hosts = [
     });
 
     it('should show values from JSON files', () => {
-      const output = execSync(`node ${CLI_PATH} config values -p ${testRoot} --file config.json`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files values -p ${testRoot} --file config.json`).toString();
 
       expect(output).toContain('Configuration Values');
       expect(output).toContain('app.name');
@@ -365,7 +365,7 @@ hosts = [
     });
 
     it('should show values from YAML files', () => {
-      const output = execSync(`node ${CLI_PATH} config values -p ${testRoot} --file config.yml`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files values -p ${testRoot} --file config.yml`).toString();
 
       expect(output).toContain('Configuration Values');
       expect(output).toContain('application.name');
@@ -375,7 +375,7 @@ hosts = [
     });
 
     it('should show values from TOML files', () => {
-      const output = execSync(`node ${CLI_PATH} config values -p ${testRoot} --file config.toml`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files values -p ${testRoot} --file config.toml`).toString();
 
       expect(output).toContain('Configuration Values');
       expect(output).toContain('title');
@@ -385,7 +385,7 @@ hosts = [
     });
 
     it('should redact sensitive values by default', () => {
-      const output = execSync(`node ${CLI_PATH} config values -p ${testRoot} --file .env`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files values -p ${testRoot} --file .env`).toString();
 
       // Sensitive keys should be redacted
       expect(output).toContain('API_KEY');
@@ -394,7 +394,7 @@ hosts = [
     });
 
     it('should show sensitive values with --show-secrets flag', () => {
-      const output = execSync(`node ${CLI_PATH} config values -p ${testRoot} --file .env --show-secrets`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files values -p ${testRoot} --file .env --show-secrets`).toString();
 
       // Sensitive keys should be visible with flag
       expect(output).toContain('API_KEY');
@@ -404,14 +404,14 @@ hosts = [
 
   describe('Format-Specific Features', () => {
     it('should handle .env comments', () => {
-      const output = execSync(`node ${CLI_PATH} config keys -p ${testRoot} --file .env`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files keys -p ${testRoot} --file .env`).toString();
 
       // Should not include comment lines
       expect(output).not.toContain('Application Configuration');
     });
 
     it('should handle nested JSON structures', () => {
-      const output = execSync(`node ${CLI_PATH} config keys -p ${testRoot} --file server.config.json`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files keys -p ${testRoot} --file server.config.json`).toString();
 
       // Should flatten nested structures with dot notation
       expect(output).toContain('server.ssl.enabled');
@@ -420,7 +420,7 @@ hosts = [
     });
 
     it('should handle YAML arrays', () => {
-      const output = execSync(`node ${CLI_PATH} config keys -p ${testRoot} --file docker-compose.yaml`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files keys -p ${testRoot} --file docker-compose.yaml`).toString();
 
       // Should show array values
       expect(output).toContain('services.web.ports');
@@ -428,7 +428,7 @@ hosts = [
     });
 
     it('should handle TOML tables', () => {
-      const output = execSync(`node ${CLI_PATH} config keys -p ${testRoot} --file config.toml`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files keys -p ${testRoot} --file config.toml`).toString();
 
       // Should show TOML table sections
       expect(output).toContain('servers.alpha');
@@ -447,8 +447,8 @@ hosts = [
 
       try {
         // Non-detected strategies warn and report nothing (exit 0) instead of failing.
-        const output = execSync(`node ${CLI_PATH} config list -p ${noConfigDir} 2>&1`).toString();
-        expect(output).toContain('Extension "config" did not detect an applicable project');
+        const output = execSync(`node ${CLI_PATH} config-files list -p ${noConfigDir} 2>&1`).toString();
+        expect(output).toContain('Extension "config-files" did not detect an applicable project');
         expect(output).toMatch(/Total:\s*0\s*file\(s\)/);
       } finally {
         fs.rmSync(noConfigDir, { recursive: true, force: true });
@@ -469,7 +469,7 @@ hosts = [
       );
 
       try {
-        execSync(`node ${CLI_PATH} config values -p ${malformedDir} --file config.json 2>&1`);
+        execSync(`node ${CLI_PATH} config-files values -p ${malformedDir} --file config.json 2>&1`);
       } catch (e: any) {
         const output = e.stdout ? e.stdout.toString() : e.stderr.toString();
         expect(output).toContain('Error parsing');
@@ -493,7 +493,7 @@ hosts = [
       );
 
       try {
-        execSync(`node ${CLI_PATH} config values -p ${malformedDir} --file config.yml 2>&1`);
+        execSync(`node ${CLI_PATH} config-files values -p ${malformedDir} --file config.yml 2>&1`);
       } catch (e: any) {
         const output = e.stdout ? e.stdout.toString() : e.stderr.toString();
         expect(output).toContain('Error parsing');
@@ -504,7 +504,7 @@ hosts = [
 
     it('should handle non-existent file', () => {
       // A missing file is reported per-file and yields an empty result (exit 0).
-      const output = execSync(`node ${CLI_PATH} config values -p ${testRoot} --file nonexistent.json 2>&1`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files values -p ${testRoot} --file nonexistent.json 2>&1`).toString();
       expect(output).toContain('Error parsing');
       expect(output).toContain('nonexistent.json');
       expect(output).toContain('ENOENT');
@@ -513,7 +513,7 @@ hosts = [
 
   describe('Pattern Matching', () => {
     it('should filter by pattern', () => {
-      const output = execSync(`node ${CLI_PATH} config list -p ${testRoot} --pattern ".env*"`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files list -p ${testRoot} --pattern ".env*"`).toString();
 
       expect(output).toContain('.env');
       expect(output).toContain('.env.local');
@@ -523,7 +523,7 @@ hosts = [
     });
 
     it('should filter JSON files', () => {
-      const output = execSync(`node ${CLI_PATH} config list -p ${testRoot} --pattern "**/*.json"`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files list -p ${testRoot} --pattern "**/*.json"`).toString();
 
       expect(output).toContain('config.json');
       expect(output).toContain('server.config.json');
@@ -533,7 +533,7 @@ hosts = [
     });
 
     it('should filter YAML files', () => {
-      const output = execSync(`node ${CLI_PATH} config list -p ${testRoot} --pattern "*.{yml,yaml}"`).toString();
+      const output = execSync(`node ${CLI_PATH} config-files list -p ${testRoot} --pattern "*.{yml,yaml}"`).toString();
 
       expect(output).toContain('config.yml');
       expect(output).toContain('docker-compose.yaml');

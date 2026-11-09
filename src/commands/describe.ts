@@ -24,7 +24,7 @@ import {
 } from '../lib/error/types';
 import { JSON_DEFAULT_COMMANDS } from '../lib/error/report';
 import { TELEMETRY_POLICY } from '../lib/telemetry-policy';
-import { declaredEffect, declaredExitCodes } from './side-effect';
+import { declaredEffect, declaredExitCodes, omittedFromDescribe } from './side-effect';
 
 const SCHEMA_URL = 'https://hop-top.dev/schemas/cli-capabilities/v1.json';
 const SPEC = '12fc/v1';
@@ -276,7 +276,7 @@ function walk(cmd: Command, parentPath: string[] = []): CommandDoc {
     hidden: Boolean((cmd as any)._hidden),
     arguments: parseArguments(cmd),
     options: (cmd.options || []).map(parseOption),
-    subcommands: (cmd.commands || []).map((sub) => walk(sub, [...parentPath, name])),
+    subcommands: (cmd.commands || []).filter((sub) => !omittedFromDescribe(sub)).map((sub) => walk(sub, [...parentPath, name])),
     sideEffect: cls.sideEffect,
     idempotent: cls.idempotent,
     exitCodes: cls.exitCodes,
@@ -305,7 +305,7 @@ export function buildDescribeDoc(
       env: [...TELEMETRY_POLICY.env],
       flag: TELEMETRY_POLICY.flag,
     },
-    commands: (root.commands || []).map((cmd) => walk(cmd)),
+    commands: (root.commands || []).filter((cmd) => !omittedFromDescribe(cmd)).map((cmd) => walk(cmd)),
   };
 }
 

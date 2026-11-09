@@ -8,6 +8,7 @@ import { Logger } from '../lib/logger';
 import { jsonErrorsEnabled, reportFailure } from '../lib/error/report';
 import { StrategyLoader, PROJECT_STRATEGIES_ENV, projectStrategiesAllowed, reportSkippedProjectCode } from '../lib/strategy/loader';
 import { installStrategy, findInstalledStrategyPackage, planStrategyInstall, uninstallStrategyPackage } from './strategy-install';
+import { isRenamedStrategyName } from '../lib/strategy/renamed';
 import { StrategyDetector } from '../lib/strategy/detector';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { normalizeDetectedStrategy } from '../lib/strategy/types';
@@ -219,7 +220,7 @@ export function registerStrategyCommand(): Command {
       assertResultFormat(cmd);
       assertStrategyName(name);
       // A project file named like a built-in would shadow it.
-      if (new StrategyLoader().isBuiltinStrategyFile(name)) {
+      if (new StrategyLoader().isBuiltinStrategyFile(name) || isRenamedStrategyName(name)) {
         throw new UsageError(`"${name}" is a built-in strategy; choose another name.`);
       }
       const dir = options.dir || path.join(process.cwd(), '.xray/strategies');

@@ -8,7 +8,7 @@ describe('strategy create refuses built-in names', () => {
   beforeAll(() => { p = createCliProject({ 'package.json': '{"name":"x"}' }); });
   afterAll(() => p.cleanup());
 
-  it.each(['react', 'express', 'config'])('%s -> usage error, nothing written', (name) => {
+  it.each(['react', 'express', 'config-files', 'config'])('%s -> usage error, nothing written', (name) => {
     const r = p.run('strategy', 'create', name);
     expect(r.status).toBe(2);
     expect(r.stderr).toContain('built-in');

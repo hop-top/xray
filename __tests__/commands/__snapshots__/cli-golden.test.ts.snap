@@ -24,7 +24,7 @@ STRATEGY:
   build [command]            Inspect build targets and dependencies (Makefile,
                              package.json scripts)
   cicd [command]             Inspect CI/CD workflows, triggers and deployments
-  config [command]           Inspect project configuration files, keys and
+  config-files [command]     Inspect project configuration files, keys and
                              values
   container [command]        Inspect Dockerfiles and docker-compose services
   express [command]          Inspect Express routes, routers, middleware and
@@ -539,40 +539,6 @@ FLAGS:
 "
 `;
 
-exports[`cli golden: --help xray config keys --help 1`] = `
-"exit: 0
---- stdout ---
-Usage: xray config keys [options]
-
-List all configuration keys
-
-FLAGS:
-  -p, --path <path>                   Project path to analyze (default: current
-                                      directory)
-  --enable-extension <name>           Enable an extension at runtime
-                                      (repeatable) (default: [])
-  --disable-extension <name>          Disable an extension at runtime
-                                      (repeatable) (default: [])
-  --extension-threshold <name=value>  Override an extension threshold at runtime
-                                      (repeatable) (default: [])
-  --extension-hint <name=value>       Add an extension hint at runtime
-                                      (repeatable) (default: [])
-  --enable-surface <name:surface>     Enable an extension surface at runtime
-                                      (repeatable) (default: [])
-  --disable-surface <name:surface>    Disable an extension surface at runtime
-                                      (repeatable) (default: [])
-  --file <file>                       Specific config file to analyze (relative
-                                      to project root)
-  --format <fmt>                      Output format: text, json, yaml, table,
-                                      csv; dot for graph commands (default:
-                                      "text")
-  -h, --help                          Display help
-
-
---- stderr ---
-"
-`;
-
 exports[`cli golden: --help xray config list --help 1`] = `
 "exit: 0
 --- stdout ---
@@ -607,10 +573,98 @@ FLAGS:
 "
 `;
 
-exports[`cli golden: --help xray config values --help 1`] = `
+exports[`cli golden: --help xray config-files --help 1`] = `
 "exit: 0
 --- stdout ---
-Usage: xray config values [options]
+Usage: xray config-files [options] [command]
+
+Inspect project configuration files, keys and values
+
+COMMANDS:
+  list [--flags]    List all configuration files in the project
+  keys [--flags]    List all configuration keys
+  values [--flags]  Display configuration values
+
+FLAGS:
+  -h, --help        Display help
+
+
+--- stderr ---
+"
+`;
+
+exports[`cli golden: --help xray config-files keys --help 1`] = `
+"exit: 0
+--- stdout ---
+Usage: xray config-files keys [options]
+
+List all configuration keys
+
+FLAGS:
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
+  --enable-extension <name>           Enable an extension at runtime
+                                      (repeatable) (default: [])
+  --disable-extension <name>          Disable an extension at runtime
+                                      (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
+  --extension-hint <name=value>       Add an extension hint at runtime
+                                      (repeatable) (default: [])
+  --enable-surface <name:surface>     Enable an extension surface at runtime
+                                      (repeatable) (default: [])
+  --disable-surface <name:surface>    Disable an extension surface at runtime
+                                      (repeatable) (default: [])
+  --file <file>                       Specific config file to analyze (relative
+                                      to project root)
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
+  -h, --help                          Display help
+
+
+--- stderr ---
+"
+`;
+
+exports[`cli golden: --help xray config-files list --help 1`] = `
+"exit: 0
+--- stdout ---
+Usage: xray config-files list [options]
+
+List all configuration files in the project
+
+FLAGS:
+  -p, --path <path>                   Project path to analyze (default: current
+                                      directory)
+  --enable-extension <name>           Enable an extension at runtime
+                                      (repeatable) (default: [])
+  --disable-extension <name>          Disable an extension at runtime
+                                      (repeatable) (default: [])
+  --extension-threshold <name=value>  Override an extension threshold at runtime
+                                      (repeatable) (default: [])
+  --extension-hint <name=value>       Add an extension hint at runtime
+                                      (repeatable) (default: [])
+  --enable-surface <name:surface>     Enable an extension surface at runtime
+                                      (repeatable) (default: [])
+  --disable-surface <name:surface>    Disable an extension surface at runtime
+                                      (repeatable) (default: [])
+  --pattern <pattern>                 Filter files by pattern (e.g., *.env*,
+                                      *.json)
+  --format <fmt>                      Output format: text, json, yaml, table,
+                                      csv; dot for graph commands (default:
+                                      "text")
+  -h, --help                          Display help
+
+
+--- stderr ---
+"
+`;
+
+exports[`cli golden: --help xray config-files values --help 1`] = `
+"exit: 0
+--- stdout ---
+Usage: xray config-files values [options]
 
 Display configuration values
 
@@ -2412,7 +2466,7 @@ STRATEGY:
   build [command]            Inspect build targets and dependencies (Makefile,
                              package.json scripts)
   cicd [command]             Inspect CI/CD workflows, triggers and deployments
-  config [command]           Inspect project configuration files, keys and
+  config-files [command]     Inspect project configuration files, keys and
                              values
   container [command]        Inspect Dockerfiles and docker-compose services
   express [command]          Inspect Express routes, routers, middleware and
@@ -6955,8 +7009,8 @@ exports[`cli golden: introspection describe 1`] = `
       ]
     },
     {
-      "name": "config",
-      "qualifiedName": "config",
+      "name": "config-files",
+      "qualifiedName": "config-files",
       "description": "Inspect project configuration files, keys and values",
       "hidden": false,
       "arguments": [],
@@ -6964,7 +7018,7 @@ exports[`cli golden: introspection describe 1`] = `
       "subcommands": [
         {
           "name": "list",
-          "qualifiedName": "config.list",
+          "qualifiedName": "config-files.list",
           "description": "List all configuration files in the project",
           "hidden": false,
           "arguments": [],
@@ -7102,7 +7156,7 @@ exports[`cli golden: introspection describe 1`] = `
         },
         {
           "name": "keys",
-          "qualifiedName": "config.keys",
+          "qualifiedName": "config-files.keys",
           "description": "List all configuration keys",
           "hidden": false,
           "arguments": [],
@@ -7240,7 +7294,7 @@ exports[`cli golden: introspection describe 1`] = `
         },
         {
           "name": "values",
-          "qualifiedName": "config.values",
+          "qualifiedName": "config-files.values",
           "description": "Display configuration values",
           "hidden": false,
           "arguments": [],

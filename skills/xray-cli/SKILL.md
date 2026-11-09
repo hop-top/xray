@@ -67,9 +67,9 @@ xray build graph
 xray container analyze
 xray container services
 xray container stages
-xray config list
-xray config keys
-xray config values
+xray config-files list
+xray config-files keys
+xray config-files values
 xray cicd workflows
 xray cicd graph
 xray cicd deploy
@@ -219,9 +219,9 @@ Goal: understand project configuration.
 
 Commands:
 ```bash
-xray config list
-xray config keys --file <file>
-xray config values --file <file>
+xray config-files list
+xray config-files keys --file <file>
+xray config-files values --file <file>
 ```
 
 ## Infrastructure as code

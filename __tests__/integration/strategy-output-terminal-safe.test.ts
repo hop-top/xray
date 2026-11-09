@@ -91,14 +91,14 @@ describe('config strategy text: newlines in repo fields cannot forge lines', () 
     return r.stdout.split('\n');
   };
 
-  it('config list: a filename stays on one line', () => {
-    const out = lines('config', 'list');
+  it('config-files list: a filename stays on one line', () => {
+    const out = lines('config-files', 'list');
     expect(out).toContain('  app\\nFORGED_FILE.config.json');
     for (const l of out) expect(l).not.toMatch(/^FORGED/);
   });
 
-  it('config values: filename, key and value stay on one line', () => {
-    const out = lines('config', 'values');
+  it('config-files values: filename, key and value stay on one line', () => {
+    const out = lines('config-files', 'values');
     expect(out).toContain('  k\\nFORGED_KEY = v\\nFORGED_VALUE');
     expect(out).toContain('app\\nFORGED_FILE.config.json:');
     for (const l of out) expect(l).not.toMatch(/^FORGED/);

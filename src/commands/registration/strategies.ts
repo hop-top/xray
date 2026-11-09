@@ -22,8 +22,9 @@ import {
 } from '../common';
 import { CodedError, EXIT_NOT_FOUND, NotFoundError, UsageError } from '../../lib/error/types';
 import { setCommandGroup } from '../kit-cli';
-import { declareEffect, declareExitCodes, emitPlan, previewing } from '../side-effect';
+import { declareEffect, declareExitCodes, emitPlan, markOmittedFromDescribe, previewing } from '../side-effect';
 import type { Effect } from '../kit-cli';
+import { RENAMED_STRATEGIES } from '../../lib/strategy/renamed';
 import {
   OUTPUT_FLAG_NAMES, addOutputFlags, assertFormat, emit, outputRegistry, textFormatter,
   unionColumns,
@@ -83,6 +84,10 @@ export async function registerExtensionCommands(
     for (const extension of extensions) {
       try {
         registerStrategyCommand(program, extension);
+        const old = RENAMED_STRATEGIES[extension.name];
+        if (old !== undefined && !program.commands.some((c) => c.name() === old)) {
+          registerStrategyCommand(program, extension, old);
+        }
       } catch (error: any) {
         Logger.warn(`Failed to register extension "${extension.name}": ${error.message}`);
       }
@@ -113,11 +118,13 @@ function handleStrategyDiscoveryError(error: any): void {
 }
 
 /**
- * Register a single extension and its commands
+ * Register a single extension and its commands. `hiddenAs` registers the
+ * same commands under that (old) name, hidden.
  */
 function registerStrategyCommand(
   program: Command,
-  extension: Strategy | Extension
+  extension: Strategy | Extension,
+  hiddenAs?: string
 ): void {
   if (!extension.commands || Object.keys(extension.commands).length === 0) {
     Logger.debug(`Extension "${extension.name}" has no commands, skipping`);
@@ -125,9 +132,11 @@ function registerStrategyCommand(
   }
 
   const strategyCmd = program
-    .command(extension.name)
+    .command(hiddenAs ?? extension.name, hiddenAs === undefined ? undefined : { hidden: true })
     .description(extension.description ?? `${extension.name} commands`);
-  setCommandGroup(strategyCmd, 'strategy');
+  // The hidden alias gets no group: MCP tools and help sections follow it.
+  if (hiddenAs === undefined) setCommandGroup(strategyCmd, 'strategy');
+  else markOmittedFromDescribe(strategyCmd);
 
   for (const [cmdName, cmdDef] of Object.entries(
     extension.commands as Record<string, StrategyCommand>
