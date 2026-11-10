@@ -29,9 +29,7 @@ describe('docs use space-separated strategy commands', () => {
 
 describe('docs do not present removed libraries as current', () => {
   const files = [...walk(path.join(ROOT, 'docs')), path.join(ROOT, 'README.md')]
-    .filter(f => fs.existsSync(f))
-    // historical reviews describe the code as it was when reviewed
-    .filter(f => !/(type-safety-review|error-handling-review|dependency-decisions)\.md$/.test(f));
+    .filter(f => fs.existsSync(f));
 
   test.each(files.map(f => [path.relative(ROOT, f), f]))('%s', (_n, f) => {
     const text = fs.readFileSync(f, 'utf8');
