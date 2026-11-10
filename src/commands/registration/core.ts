@@ -115,7 +115,7 @@ Examples:
 
   // Introspect xray's own runtime paths (config + cache locations).
   // Note: distinct from the `config-files` strategy, which analyzes config files
-  // in the user's project. See docs/dev/cli-config-noun-decision.md.
+  // in the user's project.
   registerPathsCommand(program);
 
   // Machine-readable capability surface (12fc Factor 1).

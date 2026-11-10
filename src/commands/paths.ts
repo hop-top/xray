@@ -3,7 +3,7 @@
 // Introspect xray's own runtime paths: which config file xray is reading,
 // where it caches its SQLite analysis DB, and what it considers the project
 // root. Distinct from the `config-files` strategy (which inspects the *user's*
-// project config files — see docs/dev/cli-config-noun-decision.md).
+// project config files).
 
 import * as fs from 'fs';
 import * as path from 'path';
