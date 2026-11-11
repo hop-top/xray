@@ -804,7 +804,7 @@ omits descriptions. A missing or unknown shell exits 2.
 | Flag | Description | Default |
 |------|-------------|---------|
 | `-p, --path <paths...>` | Root directories to analyze (repeatable) | current directory |
-| `-o, --output <path>` | Output file path | `.xray` (see below) |
+| `-o, --output <path>` | Output file path, or `-` for stdout | `.xray` (see below) |
 | `-l, --limit <number>` | Token limit for output | 4096 |
 
 **Output File Behavior:**
@@ -812,6 +812,7 @@ omits descriptions. A missing or unknown shell exits 2.
 - **Output with dot prefix** (e.g., `.myoutput`): Used as-is, no extension added
 - **Output with extension** (e.g., `analysis.txt`): Used as-is
 - **Output without extension** (e.g., `mymap`): Auto-appends format extension
+- **`-o -`**: Prints one document to stdout and writes no file: text is unchunked, `json` and `xml` are the whole graph. `csv` (two tables) and `--share` without a path are usage errors (exit 2)
 
 **Note:** Multiple paths are analyzed separately and compacted together with clear separators.
 

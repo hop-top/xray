@@ -52,7 +52,7 @@ export const resolveShareOutputPath = (options: SharePathOptions): string => {
 export const buildShareSummary = (options: ShareSummaryOptions): string => {
   const projectName = getProjectName(options.projectPath);
   const generatedAt = new Date().toISOString();
-  const outputDisplay = toDisplayPath(options.outputPath, options.projectPath);
+  const outputDisplay = options.outputPath === '-' ? 'stdout' : toDisplayPath(options.outputPath, options.projectPath);
   const rootChunkDisplay = options.rootChunk ? toDisplayPath(options.rootChunk, options.projectPath) : undefined;
 
   const fileNodes = options.rankedNodes.filter(node => node.attributes?.type === 'file');

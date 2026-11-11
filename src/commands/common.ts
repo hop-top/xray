@@ -285,7 +285,7 @@ export const addCommonOptions = (cmd: Command) => {
     .option('-p, --path <path>', 'Root directory to analyze (repeatable; with --format json|csv|xml all roots merge into one graph) [default: current directory]', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
-    .option('-o, --output <path>', 'Output file path [default: .xray, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]')
+    .option('-o, --output <path>', 'Output file path, or - for stdout (one document; not csv) [default: .xray, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]')
     .option('-l, --limit <number>', 'Token limit per chunk [default: 4096]')
     .option('-w, --with <feature>', 'Include feature: vars, incs, cost, docs, df, cf (repeatable) [df, cf: TypeScript, JavaScript, Python, Go]', (value: string, previous: string[]) => {
       return previous.concat([value]);
