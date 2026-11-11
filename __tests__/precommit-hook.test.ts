@@ -51,6 +51,29 @@ const snapshot = (cwd = repo) => ({
   index: git(cwd, 'ls-files', '-s', '-z'),
 });
 
+// Run the hook with the stub hung mid-map. The hook runs in its own process
+// group so the whole tree (hook, its subshell, the stub) can be signalled as
+// one, like a terminal does. Signalling only the hook orphans the subshell,
+// whose `|| xray map` fallback then respawns the stub; if the test's tmp dir
+// (and the marker that makes the stub hang only once) is already gone, that
+// second stub hangs for 30s and outlives the suite.
+async function hangHook(cwd: string, marker: string) {
+  const child = spawn(HOOK, [], {
+    cwd,
+    env: { ...baseEnv(), XSTUB_HANG: marker },
+    stdio: 'ignore',
+    detached: true,
+  });
+  const closed = new Promise(res => child.on('close', res));
+  for (let i = 0; i < 200 && !fs.existsSync(marker); i++) await new Promise(r => setTimeout(r, 50));
+  expect(fs.existsSync(marker)).toBe(true);
+  const killGroup = async (sig: NodeJS.Signals) => {
+    process.kill(-child.pid!, sig);
+    await closed;
+  };
+  return { killGroup };
+}
+
 function initRepo(dir: string, commit: boolean) {
   fs.mkdirSync(dir, { recursive: true });
   git(dir, 'init', '-q');
@@ -136,13 +159,8 @@ describe('hooks/pre-commit: maps the index, touches nothing else', () => {
     const before = snapshot();
     const marker = path.join(tmp, 'stub.pid');
 
-    const child = spawn(HOOK, [], { cwd: repo, env: { ...baseEnv(), XSTUB_HANG: marker }, stdio: 'ignore' });
-    const closed = new Promise(res => child.on('close', res));
-    for (let i = 0; i < 200 && !fs.existsSync(marker); i++) await new Promise(r => setTimeout(r, 50));
-    expect(fs.existsSync(marker)).toBe(true);
-    child.kill('SIGKILL');
-    await closed;
-    process.kill(Number(fs.readFileSync(marker, 'utf8').trim()), 'SIGKILL');
+    const hung = await hangHook(repo, marker);
+    await hung.killGroup('SIGKILL');
 
     expect(snapshot()).toEqual(before);
     expect(read('other.txt')).toBe('dirty\n');
@@ -163,13 +181,9 @@ describe('hooks/pre-commit: maps the index, touches nothing else', () => {
     git(repo, 'add', 'src/a.ts');
     const before = snapshot();
     const marker = path.join(tmp, 'stub.pid');
-    const child = spawn(HOOK, [], { cwd: repo, env: { ...baseEnv(), XSTUB_HANG: marker }, stdio: 'ignore' });
-    const closed = new Promise(res => child.on('close', res));
-    for (let i = 0; i < 200 && !fs.existsSync(marker); i++) await new Promise(r => setTimeout(r, 50));
+    const hung = await hangHook(repo, marker);
     // a terminal sends the signal to the whole group: hook and xray
-    child.kill('SIGTERM');
-    process.kill(Number(fs.readFileSync(marker, 'utf8').trim()), 'SIGTERM');
-    await closed;
+    await hung.killGroup('SIGTERM');
     expect(snapshot()).toEqual(before);
     expect(fs.existsSync(path.join(repo, '.git', 'xray-precommit'))).toBe(false);
   });
@@ -229,14 +243,10 @@ describe('hooks/pre-commit: maps the index, touches nothing else', () => {
     write('src/a.ts', 'w\n', wt);
     git(wt, 'add', 'src/a.ts');
     const marker = path.join(tmp, 'stub.pid');
-    const child = spawn(HOOK, [], { cwd: wt, env: { ...baseEnv(), XSTUB_HANG: marker }, stdio: 'ignore' });
-    const closed = new Promise(res => child.on('close', res));
-    for (let i = 0; i < 200 && !fs.existsSync(marker); i++) await new Promise(r => setTimeout(r, 50));
+    const hung = await hangHook(wt, marker);
     const gd = git(wt, 'rev-parse', '--absolute-git-dir').trim();
     expect(fs.existsSync(path.join(gd, 'xray-precommit', 'tree', 'src', 'a.ts'))).toBe(true);
-    child.kill('SIGKILL');
-    await closed;
-    process.kill(Number(fs.readFileSync(marker, 'utf8').trim()), 'SIGKILL');
+    await hung.killGroup('SIGKILL');
   });
 
   test('unstaged edits to a generated file stop the commit and are kept', () => {
