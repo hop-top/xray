@@ -12,7 +12,7 @@ import { EXIT_CONFLICT, EXIT_NOT_FOUND, EXIT_UNAUTHORIZED } from '../../src/lib/
 
 const CLI = path.join(__dirname, '../../bin/cli.js');
 
-interface DescribedCommand { name: string; exitCodes: number[]; subcommands: DescribedCommand[] }
+interface DescribedCommand { name: string; sideEffect: string; exitCodes: number[]; subcommands: DescribedCommand[] }
 
 describe('failing commands exit with the code describe advertises', () => {
   let root: string;
