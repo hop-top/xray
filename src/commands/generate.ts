@@ -139,6 +139,13 @@ const writeFileEnsuringDir = (file: string, content: string): void => {
   fs.writeFileSync(file, content);
 };
 
+/** `-o -`: the result goes to stdout as one document, no file is written. */
+const STDOUT = '-';
+
+const emitToStdout = (text: string): void => {
+  process.stdout.write(text.endsWith('\n') ? text : text + '\n');
+};
+
 /**
  * Write a graph in a graph format. JSON/XML: one file at `outputPath`.
  * CSV: two files, `<base>.nodes.csv` and `<base>.edges.csv`, where `<base>`
@@ -149,6 +156,10 @@ const writeGraphOutput = (
   format: 'json' | 'csv' | 'xml',
   outputPath: string
 ): string[] => {
+  if (outputPath === STDOUT) {
+    emitToStdout(format === 'json' ? JSON.stringify(graph, null, 2) : graphToXml(graph));
+    return [];
+  }
   const files: Array<[string, string]> =
     format === 'json'
       ? [[outputPath, JSON.stringify(graph, null, 2) + '\n']]
@@ -395,7 +406,7 @@ const plannedWrites = (
       reversible: false,
       detail: 'one file per directory or community; names known after analysis',
     });
-  } else {
+  } else if (outputPath !== STDOUT) {
     write(outputPath, format === 'txt' ? 'analysis' : `graph (${format})`);
   }
   const shareOption = mergedOptions.share;
@@ -428,7 +439,21 @@ export const runSingleXray = async (
 
   assertFlowFormat(mergedOptions, format);
 
-  const outputPath = resolveOutputPath(mergedOptions.output, format, mergedOptions.chunked !== false);
+  const toStdout = mergedOptions.output === STDOUT;
+  if (toStdout) {
+    if (format === 'csv') {
+      throw new UsageError('--format csv writes two tables and cannot go to stdout: give -o a path');
+    }
+    if (mergedOptions.share !== undefined && mergedOptions.share !== false && typeof mergedOptions.share !== 'string') {
+      throw new UsageError('--share derives its file name from the output path: with -o - use --share <path>');
+    }
+    // stdout carries one document: chunking is a multi-file layout.
+    mergedOptions.chunked = false;
+  }
+
+  const outputPath = toStdout
+    ? STDOUT
+    : resolveOutputPath(mergedOptions.output, format, mergedOptions.chunked !== false);
 
   if (plan) {
     plan.push(...plannedWrites(mergedOptions, format, outputPath!, runRoots(mergedOptions)));
@@ -726,11 +751,15 @@ export const runSingleXray = async (
 
     const finalOutput = outputs.join('\n');
 
-    try {
-      writeFileEnsuringDir(outputPath!, finalOutput);
-      Logger.success(`Analysis written to ${outputPath}`);
-    } catch (err: any) {
-      throw new FileWriteError(outputPath!, err);
+    if (toStdout) {
+      emitToStdout(finalOutput);
+    } else {
+      try {
+        writeFileEnsuringDir(outputPath!, finalOutput);
+        Logger.success(`Analysis written to ${outputPath}`);
+      } catch (err: any) {
+        throw new FileWriteError(outputPath!, err);
+      }
     }
 
     if (shareRequested) {

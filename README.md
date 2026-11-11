@@ -365,7 +365,7 @@ declarative YAML strategies always load.
 | Flag | Description | Default |
 |------|-------------|---------|
 | `-p, --path <paths...>` | Directories to analyze | current directory |
-| `-o, --output <path>` | Output file (base name for chunks) | `.xray` |
+| `-o, --output <path>` | Output file (base name for chunks), or `-` for stdout | `.xray` |
 | `-l, --limit <number>` | Token limit per chunk | 4096 |
 | `--no-chunk` | Disable chunked output | false (chunking enabled) |
 | `-d, --depth <number>` | Maximum directory depth | unlimited |

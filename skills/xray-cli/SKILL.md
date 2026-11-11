@@ -19,7 +19,7 @@ Start cheap. Add detail only when the cheaper output leaves the question open.
 
 Keep every call narrow: `--path <dir>`, `--depth <n>`, `--anchor <file>` (ranks the graph around that file), `--catch '*Name*'` (function and class names).
 
-`map` and `graph` write files into the current directory and print only a summary: read `.xray_*.md` (chunks), or `.xray.txt` with `--no-chunk`, or the path given to `-o`. `impact`, `query` and strategy commands print to stdout.
+`map` and `graph` write files into the current directory and print only a summary: read `.xray_*.md` (chunks), or `.xray.txt` with `--no-chunk`, or the path given to `-o`; `-o -` prints one unchunked document instead. `impact`, `query` and strategy commands print to stdout.
 
 On a first map, `--preset onboarding` appends clusters and suggested questions.
 
