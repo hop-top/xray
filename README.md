@@ -244,7 +244,7 @@ Once installed, Claude Code can use xray to:
 - Analyze infrastructure (`xray infrastructure resources`, `xray cicd workflows`)
 - Understand build systems (`xray build targets`, `xray package-manager list-dependencies`)
 
-The skill includes 17 use-case-driven workflows. See [`skills/xray-cli/SKILL.md`](skills/xray-cli/SKILL.md) for the full command reference.
+The skill is one short file, [`skills/xray-cli/SKILL.md`](skills/xray-cli/SKILL.md): when to reach for which command, and what `--help` does not say.
 
 The skill only helps when Claude decides to use it. For tool access, add
 the MCP server (`claude mcp add xray -- xray -C /path/to/project mcp`,
