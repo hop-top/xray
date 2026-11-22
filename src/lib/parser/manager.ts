@@ -14,11 +14,37 @@ import { terminalSafe } from '../terminal-safe';
 
 export class ParserManager {
   private root: string;
+  private parsers = new WeakMap<object, Parser>();
+  private compiledQueries = new WeakMap<object, Map<string, Parser.Query>>();
   /** Functions without flow graphs, by why (see FlowResult.skipped); reported once after a run. */
   readonly flowSkipped: Partial<Record<NonNullable<FlowResult['skipped']>, number>> = {};
 
   constructor(root: string) {
     this.root = root;
+  }
+
+  private getParser(language: any): Parser {
+    let parser = this.parsers.get(language);
+    if (!parser) {
+      parser = new Parser();
+      parser.setLanguage(language);
+      this.parsers.set(language, parser);
+    }
+    return parser;
+  }
+
+  private getQuery(language: any, queryStr: string): Parser.Query {
+    let byQuery = this.compiledQueries.get(language);
+    if (!byQuery) {
+      byQuery = new Map<string, Parser.Query>();
+      this.compiledQueries.set(language, byQuery);
+    }
+    let query = byQuery.get(queryStr);
+    if (!query) {
+      query = new Parser.Query(language, queryStr);
+      byQuery.set(queryStr, query);
+    }
+    return query;
   }
 
   /**
@@ -48,8 +74,7 @@ export class ParserManager {
       return { tags: [], imports: [], skipped: isUnavailable(ext) };
     }
 
-    const parser = new Parser();
-    parser.setLanguage(langConfig.grammar);
+    const parser = this.getParser(langConfig.grammar);
 
     const tree = parser.parse(content);
 
@@ -78,7 +103,7 @@ export class ParserManager {
 
     try {
       // In tree-sitter v0.21.0+, use new Parser.Query(language, queryString)
-      const query = new Parser.Query(language, queryStr);
+      const query = this.getQuery(language, queryStr);
       const captures = query.captures(tree.rootNode);
 
       // Track seen names to avoid duplicates (e.g., arrow functions matched as both function and variable)
@@ -316,7 +341,7 @@ export class ParserManager {
     if (!queryStr) return imports;
 
     try {
-      const query = new Parser.Query(language, queryStr);
+      const query = this.getQuery(language, queryStr);
       const captures = query.captures(tree.rootNode);
 
       // Map to store imports by range to combine source and text
