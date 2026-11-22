@@ -73,6 +73,10 @@ export interface BaseTagNodeAttributes {
   cfg?: Cfg;
   /** Data flow graph of a function/method (`--with df`). */
   dfg?: Dfg;
+  /** Whether the symbol is exported/public. */
+  exported?: boolean;
+  /** Base classes / implemented interfaces on class/interface/struct nodes. */
+  supertypes?: string[];
 }
 
 /**

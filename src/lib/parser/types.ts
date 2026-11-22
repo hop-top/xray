@@ -18,6 +18,8 @@ export interface Tag {
   callSites?: Record<string, CallSite[]>; // 0-based call-site positions keyed by reference name
   cfg?: Cfg; // Control flow graph (functions/methods, `--with cf`)
   dfg?: Dfg; // Data flow graph (functions/methods, `--with df`)
+  exported?: boolean; // Whether symbol is exported/public
+  supertypes?: string[]; // Base classes / implemented interfaces
   source?: 'tree-sitter' | 'ctags' | 'regex';
 }
 

@@ -45,9 +45,10 @@ const { open } = require('@hop-top/kit/sqlstore') as {
  *     per use-tree leaf, `line` / `kind`); entries carry the contract
  *     `records` and the extractor version they came from.
  *  8: same layout; Tag carries `callSites` (0-based line/col per reference).
+ *  9: same layout; Tag carries `exported` and `supertypes`.
  * Any other value is invalidated (wiped) on open.
  */
-export const CACHE_SCHEMA_VERSION = 8;
+export const CACHE_SCHEMA_VERSION = 9;
 
 const LEGACY_TABLES = ['tags', 'files_v2', 'file_analysis'];
 const TAGS_PREFIX = 'tags:';

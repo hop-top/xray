@@ -4,6 +4,7 @@ import { styles, type Styles } from '../lib/tui';
 import { GraphSerializer } from '../lib/graph/serializer';
 import { QueryAdapterRegistry } from '../lib/query/registry';
 import { FunctionAdapter } from '../lib/query/adapters/function';
+import { evaluateFilter, parseFilterDsl } from '../lib/query/filter-dsl';
 import type { QueryResult, SerializedGraph } from '../lib/query/types';
 import { editorLine, formatCallSitesCell, withEditorCallSites, withEditorLine } from '../lib/query/impact';
 import { QueryCommandOptions } from '../types/command-options';
@@ -29,6 +30,8 @@ export async function handleQueryAction(query: string, options: QueryCommandOpti
     throw new UsageError('Query is required');
   }
 
+  const filterAst = options.filter !== undefined ? parseFilterDsl(options.filter) : undefined;
+
   const graph = new GraphSerializer().deserialize(await obtainGraph(options));
   const registry = new QueryAdapterRegistry();
   registry.register(new FunctionAdapter());
@@ -38,11 +41,41 @@ export async function handleQueryAction(query: string, options: QueryCommandOpti
     throw new UsageError('No query adapter found');
   }
 
+  let result: QueryResult;
   try {
-    return adapter.execute(query, graph);
+    result = adapter.execute(query, graph);
   } catch (error) {
     throw new UsageError((error as Error).message, error as Error);
   }
+
+  if (!filterAst) {
+    return result;
+  }
+
+  const keptIds = new Set<string>();
+  const filteredNodes = result.nodes.filter((n) => {
+    const attrs = graph.hasNode(n.id) ? graph.getNodeAttributes(n.id) : {};
+    const ok = evaluateFilter(filterAst, {
+      file: n.file ?? attrs.file,
+      name: n.name ?? attrs.label,
+      kind: n.kind ?? attrs.kind,
+      community: attrs.community,
+      confidence: (n as any).confidence ?? attrs.confidence,
+    });
+    if (ok) keptIds.add(n.id);
+    return ok;
+  });
+  const filteredEdges = result.edges.filter((e) => keptIds.has(e.from) && keptIds.has(e.to));
+
+  return {
+    ...result,
+    nodes: filteredNodes,
+    edges: filteredEdges,
+    metadata: {
+      ...result.metadata,
+      resultCount: filteredNodes.length,
+    },
+  };
 }
 
 /** Table/csv columns (and the `--cols` vocabulary) for result nodes. */
