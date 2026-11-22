@@ -5,7 +5,7 @@ import { GraphSerializer } from '../lib/graph/serializer';
 import { QueryAdapterRegistry } from '../lib/query/registry';
 import { FunctionAdapter } from '../lib/query/adapters/function';
 import type { QueryResult, SerializedGraph } from '../lib/query/types';
-import { editorLine, withEditorLine } from '../lib/query/impact';
+import { editorLine, formatCallSitesCell, withEditorCallSites, withEditorLine } from '../lib/query/impact';
 import { QueryCommandOptions } from '../types/command-options';
 import { Logger } from '../lib/logger';
 import { obtainGraph } from './graph-source';
@@ -46,13 +46,20 @@ export async function handleQueryAction(query: string, options: QueryCommandOpti
 }
 
 /** Table/csv columns (and the `--cols` vocabulary) for result nodes. */
-export const QUERY_COLUMNS = columns('name', 'kind', 'file', 'line', 'depth', 'score', 'id');
+export const QUERY_COLUMNS = columns('name', 'kind', 'file', 'line', 'callSites', 'depth', 'score', 'id');
 const DEFAULT_QUERY_COLUMNS = columns('name', 'kind', 'file', 'line');
 
 /** Result nodes with editor (1-based) lines, as tree, impact and map show them. */
-const nodeRows = (r: QueryResult) => r.nodes.map(withEditorLine);
+const nodeRows = (r: QueryResult) => r.nodes.map(n => ({
+  ...withEditorLine(n),
+  callSites: formatCallSitesCell(n.callSites),
+}));
 /** Whole result document with editor (1-based) lines; the saved graph stays 0-based. */
-const document = (r: QueryResult): QueryResult => ({ ...r, nodes: r.nodes.map(withEditorLine) });
+const document = (r: QueryResult): QueryResult => ({
+  ...r,
+  nodes: r.nodes.map(n => withEditorCallSites(withEditorLine(n))),
+  edges: r.edges.map(withEditorCallSites),
+});
 
 /**
  * Formats: json/yaml emit the whole QueryResult document (nodes, edges,
@@ -142,8 +149,12 @@ function listAdapters(): string {
  * ` (file:Lline)` suffix with the editor line (graph line + 1); graph
  * line 0 is a real line, only null/undefined is absent.
  */
-function nodeLocation(node: { file?: string; line?: number }): string {
-  return node.file && node.line != null ? ' (' + terminalSafe(node.file) + ':L' + editorLine(node.line) + ')' : '';
+function nodeLocation(node: { file?: string; line?: number; callSites?: Array<{ line: number; col: number }> }): string {
+  const loc = node.file && node.line != null ? ' (' + terminalSafe(node.file) + ':L' + editorLine(node.line) + ')' : '';
+  const sites = node.callSites && node.callSites.length > 0
+    ? ' (called at ' + node.callSites.map(s => 'L' + editorLine(s.line)).join(', ') + ')'
+    : '';
+  return loc + sites;
 }
 
 /** Render the call tree for a query result. */

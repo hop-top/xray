@@ -1,4 +1,5 @@
 import type { QueryAdapter, QueryResult } from '../types';
+import type { CallSite } from '../../parser/types';
 import { findNodes } from '../match';
 
 /**
@@ -158,11 +159,13 @@ export class FunctionAdapter implements QueryAdapter {
             const targetAttrs = graph.getNodeAttributes(target);
             if (targetAttrs.type === 'tag' && !visited.has(target)) {
               visited.add(target);
+              const callSites = this.edgeCallSites(edgeAttrs);
               nodes.push(this.nodeToResult(target, targetAttrs, 1));
               edges.push({
                 from: sourceId,
                 to: target,
                 type: 'calls',
+                ...(callSites ? { callSites } : {}),
               });
             }
           }
@@ -231,11 +234,16 @@ export class FunctionAdapter implements QueryAdapter {
             const sourceAttrs = graph.getNodeAttributes(source);
             if (sourceAttrs.type === 'tag' && !visited.has(source)) {
               visited.add(source);
-              nodes.push(this.nodeToResult(source, sourceAttrs, 1));
+              const callSites = this.edgeCallSites(edgeAttrs);
+              nodes.push({
+                ...this.nodeToResult(source, sourceAttrs, 1),
+                ...(callSites ? { callSites } : {}),
+              });
               edges.push({
                 from: source,
                 to: targetId,
                 type: 'calls',
+                ...(callSites ? { callSites } : {}),
               });
             }
           }
@@ -265,15 +273,20 @@ export class FunctionAdapter implements QueryAdapter {
         const sourceAttrs = graph.getNodeAttributes(source);
 
         if (sourceAttrs.type === 'tag') {
+          const callSites = this.edgeCallSites(edgeAttrs);
           edges.push({
             from: source,
             to: nodeId,
             type: 'calls',
+            ...(callSites ? { callSites } : {}),
           });
 
           if (!visited.has(source)) {
             visited.add(source);
-            nodes.push(this.nodeToResult(source, sourceAttrs, currentDepth + 1));
+            nodes.push({
+              ...this.nodeToResult(source, sourceAttrs, currentDepth + 1),
+              ...(callSites ? { callSites } : {}),
+            });
             this.traverseCallers(source, currentDepth + 1, maxDepth, visited, nodes, edges, graph);
           }
         }
@@ -390,6 +403,12 @@ export class FunctionAdapter implements QueryAdapter {
 
   private findNodes(pattern: string, graph: any): string[] {
     return findNodes(pattern, graph);
+  }
+
+  private edgeCallSites(edgeAttrs: any): CallSite[] | undefined {
+    return Array.isArray(edgeAttrs?.callSites) && edgeAttrs.callSites.length > 0
+      ? edgeAttrs.callSites
+      : undefined;
   }
 
   private nodeToResult(nodeId: string, attrs: any, depth: number): any {

@@ -540,8 +540,8 @@ describe('xray impact (built CLI)', () => {
       expect(r.status).toBe(0);
       expect(r.stdout.split('\n').slice(0, 4)).toEqual([
         'Hello (function, alpha/greet/greet.go:L3) — 4 callers across 3 groups',
-        '  alpha/internal: 2 callers — Start (alpha/internal/run/run.go:L5), Again (alpha/internal/run/run.go:L7)',
-        '  alpha/cmd: 1 caller — main (alpha/cmd/app/main.go:L5)',
+        '  alpha/internal: 2 callers — Start (alpha/internal/run/run.go:L5) (called at L5), Again (alpha/internal/run/run.go:L7) (called at L7)',
+        '  alpha/cmd: 1 caller — main (alpha/cmd/app/main.go:L5) (called at L5)',
         '  beta/pkg: 1 caller — Use (beta/pkg/use/use.go:L5)',
       ]);
     });

@@ -18,6 +18,8 @@
  * `strict` ignores every non-EXTRACTED edge during the walk.
  */
 import type { Confidence } from '../../types/graph';
+import type { CallSite } from '../parser/types';
+import { mergeCallSites } from '../graph/builder';
 import type { Styles } from '../tui';
 import type { QueryResult } from './types';
 import { findNodes } from './match';
@@ -54,6 +56,7 @@ export interface ImpactNode extends ImpactSymbol {
   depth: number;
   group: string;
   confidence: Confidence;
+  callSites?: CallSite[];
 }
 
 export interface ImpactEdge {
@@ -63,6 +66,7 @@ export interface ImpactEdge {
   to: string;
   type: 'calls';
   confidence: Confidence;
+  callSites?: CallSite[];
 }
 
 export interface ImpactGroup {
@@ -136,6 +140,7 @@ export function computeImpact(graph: any, symbol: string, opts: ImpactOptions = 
   }
 
   const edges = new Map<string, ImpactEdge>();
+  const callerSites = new Map<string, CallSite[]>();
   let frontier = seeds;
   for (let d = 0; d < maxDepth && frontier.length > 0; d++) {
     const next: string[] = [];
@@ -156,10 +161,26 @@ export function computeImpact(graph: any, symbol: string, opts: ImpactOptions = 
           return; // not on a shortest path
         }
 
+        const edgeSites: CallSite[] | undefined =
+          Array.isArray(attrs.callSites) && attrs.callSites.length > 0 ? attrs.callSites : undefined;
+        if (edgeSites) {
+          callerSites.set(caller, mergeCallSites(callerSites.get(caller), edgeSites));
+        }
+
         const key = caller + '\0' + callee;
         const prev = edges.get(key);
-        if (!prev) edges.set(key, { from: caller, to: callee, type: 'calls', confidence: c });
-        else if (c === 'EXTRACTED') prev.confidence = c;
+        if (!prev) {
+          edges.set(key, {
+            from: caller,
+            to: callee,
+            type: 'calls',
+            confidence: c,
+            ...(edgeSites ? { callSites: edgeSites } : {}),
+          });
+        } else {
+          if (c === 'EXTRACTED') prev.confidence = c;
+          if (edgeSites) prev.callSites = mergeCallSites(prev.callSites, edgeSites);
+        }
 
         if (c === 'EXTRACTED' && conf.get(callee) === 'EXTRACTED') extracted.add(caller);
         else if (!weakest.has(caller)) weakest.set(caller, c === 'EXTRACTED' ? conf.get(callee)! : c);
@@ -174,7 +195,14 @@ export function computeImpact(graph: any, symbol: string, opts: ImpactOptions = 
   for (const [id, depth] of dist) {
     if (depth === 0) continue;
     const attrs = graph.getNodeAttributes(id);
-    nodes.push({ ...toSymbol(id, attrs), depth, group: groupKey(attrs.file, opts.roots), confidence: conf.get(id)! });
+    const sites = callerSites.get(id);
+    nodes.push({
+      ...toSymbol(id, attrs),
+      depth,
+      group: groupKey(attrs.file, opts.roots),
+      confidence: conf.get(id)!,
+      ...(sites && sites.length > 0 ? { callSites: sites } : {}),
+    });
   }
   nodes.sort((a, b) =>
     a.depth - b.depth ||
@@ -235,6 +263,20 @@ export function withEditorLine<T extends { line?: number }>(o: T): T {
   return o.line == null ? o : { ...o, line: o.line + 1 };
 }
 
+/** Copy of `o` with `callSites[].line` converted to 1-based editor lines. */
+export function withEditorCallSites<T extends { callSites?: CallSite[] }>(o: T): T {
+  if (!o.callSites || o.callSites.length === 0) return o;
+  return {
+    ...o,
+    callSites: o.callSites.map(s => ({ line: s.line + 1, col: s.col })),
+  };
+}
+
+/** Format 0-based call sites as `L22, L35` for table/csv cells. */
+export function formatCallSitesCell(sites?: CallSite[]): string {
+  return sites && sites.length > 0 ? sites.map(s => `L${s.line + 1}`).join(', ') : '';
+}
+
 /** `file:Lline` (editor line), the form callers and the tree use. */
 function locationOf(file: string, line: number | undefined): string {
   const l = editorLine(line);
@@ -253,12 +295,15 @@ function definedAt(s: ImpactSymbol): string {
 const confidenceNote = (c: Confidence): string | undefined =>
   c === 'EXTRACTED' ? undefined : c.toLowerCase();
 
-/** `fn (file:Ldef)`: callers are reported with their definition line. */
+/** `fn (file:Ldef) (called at L22, L35)`: callers are reported with their definition line and call-site lines. */
 function callerRef(n: ImpactNode): string {
   const name = terminalSafe(n.name);
-  const ref = n.file ? `${name} (${locationOf(n.file, n.line)})` : name;
+  const loc = n.file ? `${name} (${locationOf(n.file, n.line)})` : name;
+  const sites = n.callSites && n.callSites.length > 0
+    ? ` (called at ${n.callSites.map(s => `L${editorLine(s.line)}`).join(', ')})`
+    : '';
   const note = confidenceNote(n.confidence);
-  return note ? `${ref} (${note})` : ref;
+  return `${loc}${sites}${note ? ` (${note})` : ''}`;
 }
 
 /** `<symbol> (<where>) — N callers across M groups`: first line of text and brief. */
@@ -357,13 +402,19 @@ export function renderImpactBrief(r: ImpactResult): string {
 export function impactToQueryResult(r: ImpactResult): QueryResult {
   const nodes: QueryResult['nodes'] = [
     ...r.symbol.matches.map(({ id, name, kind, file, line }) => ({ id, name, kind, file, line, depth: 0 })),
-    ...r.nodes.map(({ id, name, kind, file, line, depth, confidence }) => ({
+    ...r.nodes.map(({ id, name, kind, file, line, depth, confidence, callSites }) => ({
       id, name, kind, file, line, depth, note: confidenceNote(confidence),
+      ...(callSites && callSites.length > 0 ? { callSites } : {}),
     })),
   ];
   return {
     nodes,
-    edges: r.edges.map(e => ({ from: e.to, to: e.from, type: e.type })),
+    edges: r.edges.map(e => ({
+      from: e.to,
+      to: e.from,
+      type: e.type,
+      ...(e.callSites && e.callSites.length > 0 ? { callSites: e.callSites } : {}),
+    })),
     metadata: { syntax: 'impact', queryType: 'impact', executionTime: 0, resultCount: r.nodes.length },
   };
 }
