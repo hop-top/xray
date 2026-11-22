@@ -600,6 +600,7 @@ export interface HandbookAnalysisData {
   headSha: string | null;
   lastUpdatedAt: string;
   lastUpdatedCommit: string;
+  graph: XrayGraph;
   subsystems: SubsystemInfo[];
   matrix: Map<string, Map<string, number>>;
   detected: DetectedStrategy[];
@@ -644,6 +645,7 @@ export async function analyzeHandbook(opts: GenerateHandbookOptions): Promise<Ha
     headSha,
     lastUpdatedAt,
     lastUpdatedCommit,
+    graph,
     subsystems,
     matrix,
     detected,
@@ -657,7 +659,7 @@ export async function generateHandbook(opts: GenerateHandbookOptions): Promise<G
   checkOverwriteGuard(outputDir, opts.confirm === true);
 
   const analysis = await analyzeHandbook({ ...opts, root, outputDir });
-  const { headSha, lastUpdatedAt, lastUpdatedCommit, subsystems, matrix, detected } = analysis;
+  const { headSha, lastUpdatedAt, lastUpdatedCommit, graph, subsystems, matrix, detected } = analysis;
   const meta = { lastUpdatedAt, lastUpdatedCommit };
 
   fs.mkdirSync(outputDir, { recursive: true });
