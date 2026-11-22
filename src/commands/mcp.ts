@@ -89,12 +89,27 @@ Example (Claude Code):
 export function registerMcpCommand(program: Command): Command {
   return declareEffect(addResultFormat(program
     .command('mcp')
-    .description('Serve analysis commands as MCP tools over stdio')
-    .option('--timeout <seconds>', 'Per-call timeout in seconds', '300'),
+    .description('Serve analysis commands as MCP tools over stdio or Streamable HTTP')
+    .option('--timeout <seconds>', 'Per-call timeout in seconds', '300')
+    .option('--transport <mode>', 'Transport mode: stdio or http', 'stdio')
+    .option('--host <host>', 'HTTP bind host (default: 127.0.0.1)', '127.0.0.1')
+    .option('--port <port>', 'HTTP bind port (default: 3000)', '3000')
+    .option('--token <secret>', 'Bearer token for HTTP transport (or XRAY_MCP_TOKEN env)'),
     'Output format: json (the protocol is JSON-RPC on stdout; with json, errors are JSON on stderr)',
     ['json'])
     .addHelpText('after', HELP_AFTER)
-    .action(async (opts: { timeout: string; config?: string; format?: string }, cmd: Command) => {
+    .action(async (
+      opts: {
+        timeout: string;
+        config?: string;
+        format?: string;
+        transport: string;
+        host: string;
+        port: string;
+        token?: string;
+      },
+      cmd: Command
+    ) => {
       if (opts.format !== undefined && opts.format.toLowerCase() !== 'json') {
         throw new UsageError(`invalid --format '${opts.format}' (expected: json)`);
       }
@@ -102,17 +117,40 @@ export function registerMcpCommand(program: Command): Command {
       if (!Number.isFinite(seconds) || seconds <= 0) {
         throw new UsageError(`invalid --timeout '${opts.timeout}' (expected a positive number of seconds)`);
       }
+      const transport = opts.transport.toLowerCase();
+      if (transport !== 'stdio' && transport !== 'http') {
+        throw new UsageError(`invalid --transport '${opts.transport}' (expected: stdio or http)`);
+      }
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const server = require('../lib/mcp/server') as typeof import('../lib/mcp/server');
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { resolveServerConfig } = require('../lib/mcp/runner') as typeof import('../lib/mcp/runner');
       const serverRoot = fs.realpathSync(process.cwd());
-      await server.startMcpServer(cmd.parent ?? cmd, {
+      const baseOpts = {
         serverRoot,
         serverConfig: resolveServerConfig(serverRoot, opts.config),
         entry: server.defaultEntry(),
         timeoutMs: Math.round(seconds * 1000),
         version,
-      });
+      };
+
+      if (transport === 'http') {
+        const port = Number(opts.port);
+        if (!Number.isInteger(port) || port < 0 || port > 65535) {
+          throw new UsageError(`invalid --port '${opts.port}' (expected an integer 0..65535)`);
+        }
+        const token = opts.token ?? process.env.XRAY_MCP_TOKEN;
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const httpTransport = require('../lib/mcp/http-transport') as typeof import('../lib/mcp/http-transport');
+        await httpTransport.startMcpHttpServer(cmd.parent ?? cmd, {
+          ...baseOpts,
+          host: opts.host,
+          port,
+          ...(token ? { token } : {}),
+        });
+        return;
+      }
+
+      await server.startMcpServer(cmd.parent ?? cmd, baseOpts);
     }), 'interactive', 'no');
 }
