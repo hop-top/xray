@@ -148,3 +148,28 @@ export function rustImportBindings(root: Parser.SyntaxNode): ImportBinding[] {
   }
   return out;
 }
+
+/**
+ * Local names a Python `from ... import ...` statement binds, or null when the
+ * statement text is unavailable, a wildcard (`*`), or a whole-module `import`.
+ */
+export function pythonImportBindings(text: string | undefined): Set<string> | null {
+  if (!text) return null;
+  const cleaned = text.replace(/#[^\n]*/g, '').replace(/\s+/g, ' ').trim();
+  const fromMatch = /^from\s+\S+\s+import\s+(.+)$/.exec(cleaned);
+  if (!fromMatch) return null;
+  let clause = fromMatch[1].trim();
+  if (clause.startsWith('(') && clause.endsWith(')')) {
+    clause = clause.slice(1, -1).trim();
+  }
+  if (clause === '*') return null;
+  const out = new Set<string>();
+  for (const part of clause.split(',')) {
+    const spec = part.trim();
+    if (!spec) continue;
+    if (spec === '*') return null;
+    const asMatch = /^[\w.]+\s+as\s+(\w+)$/.exec(spec);
+    out.add(asMatch ? asMatch[1] : spec);
+  }
+  return out.size > 0 ? out : null;
+}

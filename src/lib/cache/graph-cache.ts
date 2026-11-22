@@ -84,8 +84,8 @@ function statToken(abs: string): string {
 
 /**
  * Compute per-file manifest (`relPath -> "${mtimeMs}:${size}"`), `manifestHash`
- * (covering `package.json`, `go.mod`, `go.work`, `.gitignore`, `tsconfig.json`),
- * and the combined `fingerprint` for one root.
+ * (covering `package.json`, `go.mod`, `go.work`, `.gitignore`, `tsconfig.json`,
+ * `Cargo.toml`, `pyproject.toml`), and the combined `fingerprint` for one root.
  */
 export function computeRootManifest(root: string): RootManifest {
   const prev = Logger.getLevel();
@@ -110,6 +110,8 @@ export function computeRootManifest(root: string): RootManifest {
   manifestLines.push(statLine(path.join(root, 'package.json'), '@package.json'));
   manifestLines.push(statLine(path.join(root, '.gitignore'), '@.gitignore'));
   manifestLines.push(statLine(path.join(root, 'tsconfig.json'), '@tsconfig.json'));
+  manifestLines.push(statLine(path.join(root, 'Cargo.toml'), '@Cargo.toml'));
+  manifestLines.push(statLine(path.join(root, 'pyproject.toml'), '@pyproject.toml'));
   const go = files.some(f => f.endsWith('.go')) ? detectGoModules(root, files) : null;
   for (const dir of [...(go?.moduleDirs ?? [])].sort()) {
     manifestLines.push(statLine(path.join(dir, 'go.mod'), `@go.mod:${path.relative(root, dir)}`));
