@@ -6,7 +6,7 @@ import { ParserManager } from './parser/manager';
 import { updateLanguageQuery } from './parser/language-registry';
 import { flowCacheKey, flowTableFor, flowLanguages } from './flow';
 import { beginLanguageRun, packForExtension, reportSkippedLanguages, type SkippedSummary } from './parser/grammars';
-import { GraphBuilder } from './graph/builder';
+import { GraphBuilder, type ParsedFileInput } from './graph/builder';
 import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
 import { ChunkedRenderer } from './renderer/chunked-renderer';
@@ -89,6 +89,9 @@ export interface XrayConfig {
 
   // Config file to read (root `--config`). Unset: discover from `path`.
   configPath?: string;
+
+  // Preset digest scoping per-file cache entries ('none' when unset).
+  presetDigest?: string;
 
   // Internal
   onProgress?: (current: number, total: number, file: string) => void;
@@ -412,6 +415,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     const enableCfg = this.config.features?.cf || false;
     const enableDfg = this.config.features?.df || false;
     const flowKey = flowCacheKey(enableCfg, enableDfg);
+    const presetDigest = this.config.presetDigest || 'none';
     // Languages seen that have no flow table: reported once, after the run.
     const noFlow = new Map<string, number>();
     const flowOn = enableCfg || enableDfg;
@@ -443,7 +447,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       // root scanned from it, so a root-relative key lets `a/main.ts` and
       // `b/main.ts` (same relative path, equal mtime) serve each other's tags.
       const cacheKey = absPath;
-      const cached = this.useFileCache ? this.cache.get(cacheKey, stats.mtimeMs, includeDocs, includeVars, flowKey) : null;
+      const cached = this.useFileCache ? this.cache.get(cacheKey, stats.mtimeMs, includeDocs, includeVars, flowKey, presetDigest) : null;
 
       if (cached) {
         // Event: Cache hit - use sequential since listeners can modify cached data
@@ -517,7 +521,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           if (!skipped) {
             parsed++;
             noteNoFlow(file);
-            if (this.useFileCache) this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars, records, flowKey);
+            if (this.useFileCache) this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars, records, flowKey, presetDigest);
           }
         } catch (error) {
           // Event: Parse error
@@ -616,5 +620,88 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     });
 
     return { rankedNodes, graph };
+  }
+
+  /**
+   * Incrementally parse `changedFiles` and patch `existingGraph` in-place via
+   * `GraphBuilder.patchFiles`, avoiding a full-repo re-parse.
+   */
+  async patchGraph(
+    existingGraph: XrayGraph,
+    changedFiles: string[],
+    removedFiles: string[],
+    totalFiles: number
+  ): Promise<{ rankedNodes: RankedNode[]; graph: XrayGraph }> {
+    beginLanguageRun(this.config.languages ?? loadConfig(this.config.configPath, this.config.path)?.languages);
+
+    const parser = new ParserManager(this.config.path);
+    const graphBuilder = new GraphBuilder();
+    const scanner = new FileScanner(this.config.path);
+    const manifestNames = new Set(IMPORT_MANIFESTS);
+    const allFiles = scanner.scan([...FileScanner.supportedExtensions(), ...IMPORT_MANIFESTS.map(m => path.extname(m))]);
+    this.manifests = allFiles.filter(f => manifestNames.has(path.basename(f)));
+    const sourceFiles = allFiles.filter(f => !manifestNames.has(path.basename(f)));
+
+    if (sourceFiles.some(f => f.endsWith('.go'))) {
+      graphBuilder.setGoModule(detectGoModules(this.config.path, sourceFiles));
+    }
+    if (sourceFiles.some(f => contractLanguageOf(f.split(path.sep).join('/')) !== undefined)) {
+      graphBuilder.setResolutionInputs(this.readManifests());
+    }
+
+    const includeVars = this.config.features?.vars || false;
+    const includeDocs = this.config.features?.docs ? 'all' : 'none';
+    const enableCfg = this.config.features?.cf || false;
+    const enableDfg = this.config.features?.df || false;
+    const flowKey = flowCacheKey(enableCfg, enableDfg);
+    const presetDigest = this.config.presetDigest || 'none';
+    const maxFileSizeBytes = this.config.maxFileSizeBytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
+
+    const parsedChanged: ParsedFileInput[] = [];
+    let parsed = 0;
+    for (const file of changedFiles) {
+      const absPath = path.join(this.config.path, file);
+      if (!fs.existsSync(absPath)) continue;
+      const stats = fs.statSync(absPath);
+      const cached = this.useFileCache ? this.cache.get(absPath, stats.mtimeMs, includeDocs, includeVars, flowKey, presetDigest) : null;
+      if (cached) {
+        parsedChanged.push({ file, tags: cached.tags, imports: cached.imports, records: cached.records });
+        parsed++;
+        continue;
+      }
+      let content: string;
+      try {
+        content = readTextSafe(this.config.path, file);
+      } catch {
+        continue;
+      }
+      if (Buffer.byteLength(content, 'utf8') > maxFileSizeBytes || isMinifiedContent(content)) {
+        continue;
+      }
+      try {
+        const res = await parser.parse(file, content, includeVars, includeDocs, enableCfg, enableDfg);
+        parsedChanged.push({ file, tags: res.tags, imports: res.imports, records: res.records });
+        if (!res.skipped) {
+          parsed++;
+          if (this.useFileCache) {
+            this.cache.set(absPath, stats.mtimeMs, res.tags, res.imports, includeDocs, includeVars, res.records, flowKey, presetDigest);
+          }
+        }
+      } catch {
+        // Skip unparseable file
+      }
+    }
+
+    const skippedGrammars = reportSkippedLanguages({ format: this.config.format });
+    this.lastCoverage = { files: totalFiles, parsed, skipped: skippedGrammars };
+
+    const result = await graphBuilder.patchFiles(existingGraph, {
+      parsedChanged,
+      removedFiles,
+      anchor: this.config.anchor,
+    });
+    this.lastGraph = result.graph;
+    this.lastRankedNodes = result.rankedNodes;
+    return result;
   }
 }

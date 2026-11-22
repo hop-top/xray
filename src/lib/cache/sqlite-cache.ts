@@ -58,6 +58,8 @@ interface TagsEntry {
   includeVariables: boolean;
   /** Flow selection the tags were parsed with (flowCacheKey); absent or '' = none. */
   flow?: string;
+  /** Preset digest the tags were parsed with; absent or 'none' = no presets. */
+  presetDigest?: string;
   tags: Tag[];
   imports: Import[];
   /** Imports contract records (contract languages only). */
@@ -116,14 +118,29 @@ export class SqliteCache {
     }
   }
 
-  get(file: string, mtime: number, docConfig: string, includeVariables: boolean, flow: string = ''): { tags: Tag[], imports: Import[], records?: ImportRecord[] } | null {
-    const entry = this.read<TagsEntry>(TAGS_PREFIX + file, file);
+  private static tagsKey(file: string, presetDigest: string): string {
+    return presetDigest && presetDigest !== 'none'
+      ? `${TAGS_PREFIX}${presetDigest}:${file}`
+      : `${TAGS_PREFIX}${file}`;
+  }
+
+  get(
+    file: string,
+    mtime: number,
+    docConfig: string,
+    includeVariables: boolean,
+    flow: string = '',
+    presetDigest: string = 'none'
+  ): { tags: Tag[], imports: Import[], records?: ImportRecord[] } | null {
+    const normalizedPreset = presetDigest || 'none';
+    const entry = this.read<TagsEntry>(SqliteCache.tagsKey(file, normalizedPreset), file);
     if (
       !entry ||
       entry.mtime !== mtime ||
       entry.docConfig !== docConfig ||
       entry.includeVariables !== includeVariables ||
       (entry.flow ?? '') !== flow ||
+      (entry.presetDigest ?? 'none') !== normalizedPreset ||
       entry.extractor !== IMPORTS_EXTRACTOR_VERSION
     ) {
       return null;
@@ -138,12 +155,24 @@ export class SqliteCache {
     return entry.records ? { tags: entry.tags, imports: entry.imports, records: entry.records } : { tags: entry.tags, imports: entry.imports };
   }
 
-  set(file: string, mtime: number, tags: Tag[], imports: Import[], docConfig: string, includeVariables: boolean, records?: ImportRecord[], flow: string = '') {
+  set(
+    file: string,
+    mtime: number,
+    tags: Tag[],
+    imports: Import[],
+    docConfig: string,
+    includeVariables: boolean,
+    records?: ImportRecord[],
+    flow: string = '',
+    presetDigest: string = 'none'
+  ) {
+    const normalizedPreset = presetDigest || 'none';
     const entry: TagsEntry = { mtime, docConfig, includeVariables, tags, imports: imports ?? [], extractor: IMPORTS_EXTRACTOR_VERSION };
     if (flow) entry.flow = flow;
+    if (normalizedPreset !== 'none') entry.presetDigest = normalizedPreset;
     if (records) entry.records = records;
     try {
-      this.store.put(TAGS_PREFIX + file, entry);
+      this.store.put(SqliteCache.tagsKey(file, normalizedPreset), entry);
     } catch (err) {
       throw new CacheWriteError('sqlite', err as Error);
     }
