@@ -46,7 +46,7 @@ export interface GenerateHandbookResult {
   lastUpdatedCommit: string;
 }
 
-interface SubsystemInfo {
+export interface SubsystemInfo {
   slug: string;
   name: string;
   files: string[];
@@ -143,7 +143,7 @@ function buildFrontmatter(meta: {
   ].join('\n');
 }
 
-function checkOverwriteGuard(outputDir: string, confirm: boolean): void {
+export function checkOverwriteGuard(outputDir: string, confirm: boolean): void {
   if (!fs.existsSync(outputDir) || confirm) return;
   const entries = fs.readdirSync(outputDir, { withFileTypes: true });
   const unowned: string[] = [];
@@ -453,7 +453,7 @@ function buildSubsystems(
   return { subsystems, matrix };
 }
 
-function renderReadme(
+export function renderReadme(
   subsystems: SubsystemInfo[],
   matrix: Map<string, Map<string, number>>,
   detected: DetectedStrategy[],
@@ -514,7 +514,7 @@ function renderReadme(
   return lines.join('\n');
 }
 
-function renderSubsystemPage(
+export function renderSubsystemPage(
   sub: SubsystemInfo,
   headSha: string | null,
   meta: { lastUpdatedAt: string; lastUpdatedCommit: string },
@@ -594,11 +594,20 @@ function renderSubsystemPage(
   return lines.join('\n');
 }
 
-export async function generateHandbook(opts: GenerateHandbookOptions): Promise<GenerateHandbookResult> {
+export interface HandbookAnalysisData {
+  root: string;
+  outputDir: string;
+  headSha: string | null;
+  lastUpdatedAt: string;
+  lastUpdatedCommit: string;
+  subsystems: SubsystemInfo[];
+  matrix: Map<string, Map<string, number>>;
+  detected: DetectedStrategy[];
+}
+
+export async function analyzeHandbook(opts: GenerateHandbookOptions): Promise<HandbookAnalysisData> {
   const root = path.resolve(opts.root);
   const outputDir = path.resolve(root, opts.outputDir ?? path.join('.xray', 'handbook'));
-
-  checkOverwriteGuard(outputDir, opts.confirm === true);
 
   const xray = new Xray({
     path: root,
@@ -627,9 +636,29 @@ export async function generateHandbook(opts: GenerateHandbookOptions): Promise<G
     }
   });
   const lastUpdatedAt = await resolveLastUpdatedAt(root, headSha, fileList);
-  const meta = { lastUpdatedAt, lastUpdatedCommit };
-
   const { subsystems, matrix } = buildSubsystems(root, graph, rankedNodes, surprises, questions);
+
+  return {
+    root,
+    outputDir,
+    headSha,
+    lastUpdatedAt,
+    lastUpdatedCommit,
+    subsystems,
+    matrix,
+    detected,
+  };
+}
+
+export async function generateHandbook(opts: GenerateHandbookOptions): Promise<GenerateHandbookResult> {
+  const root = path.resolve(opts.root);
+  const outputDir = path.resolve(root, opts.outputDir ?? path.join('.xray', 'handbook'));
+
+  checkOverwriteGuard(outputDir, opts.confirm === true);
+
+  const analysis = await analyzeHandbook({ ...opts, root, outputDir });
+  const { headSha, lastUpdatedAt, lastUpdatedCommit, subsystems, matrix, detected } = analysis;
+  const meta = { lastUpdatedAt, lastUpdatedCommit };
 
   fs.mkdirSync(outputDir, { recursive: true });
 

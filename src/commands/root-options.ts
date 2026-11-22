@@ -36,6 +36,7 @@ const ROOT_OPTION_KEYS = [
   'quiet',
   'color',
   'chdir',
+  'offline',
 ] as const;
 
 export const VERBOSITY_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'] as const;
