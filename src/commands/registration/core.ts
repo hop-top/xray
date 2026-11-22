@@ -14,6 +14,7 @@ import { registerAliasCommand } from '../alias';
 import { registerPathsCommand } from '../paths';
 import { registerLangCommand } from '../lang';
 import { registerMcpCommand } from '../mcp';
+import { registerWatchCommand } from '../watch';
 import { registerUpgradeCommand } from '../upgrade';
 import { setCommandGroup, type HelpGroupId } from '../kit-cli';
 import { declareEffect } from '../side-effect';
@@ -27,6 +28,7 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   query: 'analyze',
   impact: 'analyze',
   imports: 'analyze',
+  watch: 'analyze',
   strategy: 'strategy',
   alias: 'management',
   lang: 'management',
@@ -88,6 +90,9 @@ Examples:
 
   // Imports command - per-file imports as the xray.imports/v1 contract
   registerImportsCommand(program);
+
+  // Watch command - live incremental background indexer
+  registerWatchCommand(program);
 
   // Strategy management command
   program.addCommand(registerStrategyCommand());
