@@ -1,6 +1,7 @@
 import type { QueryAdapter, QueryResult } from '../types';
 import type { CallSite } from '../../parser/types';
 import { findNodes } from '../match';
+import { compileSymbolGlob } from '../../path-match';
 
 /**
  * FunctionAdapter implements the function-based query syntax.
@@ -43,6 +44,15 @@ export class FunctionAdapter implements QueryAdapter {
       case 'deps':
         ({ nodes, edges } = this.executeDeps(parsed.args, graph));
         break;
+      case 'implementations':
+        ({ nodes, edges } = this.executeImplementations(parsed.args, graph));
+        break;
+      case 'cycles':
+        ({ nodes, edges } = this.executeCycles(parsed.args, graph));
+        break;
+      case 'deadcode':
+        ({ nodes, edges } = this.executeDeadcode(graph));
+        break;
       default:
         throw new Error(`Unknown operation: ${parsed.operation}`);
     }
@@ -70,8 +80,9 @@ export class FunctionAdapter implements QueryAdapter {
     const [, operation, argsStr] = match;
     const args: Record<string, any> = {};
 
-    // hotspots() can have optional parameters
-    if (!argsStr.trim() && operation !== 'hotspots') {
+    // hotspots(), cycles(), and deadcode() can have 0 arguments
+    const zeroArgOps = new Set(['hotspots', 'cycles', 'deadcode']);
+    if (!argsStr.trim() && !zeroArgOps.has(operation)) {
       throw new Error(`${operation}() requires parameters`);
     }
 
@@ -399,6 +410,168 @@ export class FunctionAdapter implements QueryAdapter {
   private executeDeps(args: Record<string, any>, graph: any): { nodes: any[]; edges: any[] } {
     // TODO: Implement dependency queries
     return { nodes: [], edges: [] };
+  }
+
+  private executeImplementations(args: Record<string, any>, graph: any): { nodes: any[]; edges: any[] } {
+    const target = args.target;
+    if (!target || typeof target !== 'string') {
+      throw new Error('implementations() requires a target type name');
+    }
+
+    const isGlob = target.includes('*') || target.includes('?');
+    const matcher = isGlob ? compileSymbolGlob(target) : null;
+    const nodes: any[] = [];
+
+    graph.forEachNode((nodeId: string, attrs: any) => {
+      if (attrs.type !== 'tag') return;
+      if (!Array.isArray(attrs.supertypes) || attrs.supertypes.length === 0) return;
+
+      const matched = attrs.supertypes.some((st: string) =>
+        matcher ? matcher(st) : st === target
+      );
+      if (matched) {
+        nodes.push(this.nodeToResult(nodeId, attrs, 0));
+      }
+    });
+
+    return { nodes, edges: [] };
+  }
+
+  private executeCycles(args: Record<string, any>, graph: any): { nodes: any[]; edges: any[] } {
+    const kind = String(args.kind || args.target || 'calls');
+    if (kind !== 'calls' && kind !== 'imports') {
+      throw new Error(`cycles() kind must be "calls" or "imports", got "${kind}"`);
+    }
+
+    // Build adjacency list and self-loop set for edges of `kind`
+    const adj = new Map<string, Set<string>>();
+    const selfLoops = new Set<string>();
+    const rawEdges: Array<{ from: string; to: string }> = [];
+
+    graph.forEachEdge((_: string, attrs: any, source: string, target: string) => {
+      if (attrs?.type !== kind) return;
+      if (source === target) {
+        selfLoops.add(source);
+      }
+      let next = adj.get(source);
+      if (!next) {
+        next = new Set<string>();
+        adj.set(source, next);
+      }
+      next.add(target);
+      if (!adj.has(target)) {
+        adj.set(target, new Set<string>());
+      }
+      rawEdges.push({ from: source, to: target });
+    });
+
+    // Tarjan's Strongly Connected Components
+    let index = 0;
+    const indices = new Map<string, number>();
+    const lowlink = new Map<string, number>();
+    const onStack = new Set<string>();
+    const stack: string[] = [];
+    const sccs: string[][] = [];
+
+    const strongConnect = (v: string): void => {
+      indices.set(v, index);
+      lowlink.set(v, index);
+      index++;
+      stack.push(v);
+      onStack.add(v);
+
+      const neighbors = adj.get(v);
+      if (neighbors) {
+        for (const w of neighbors) {
+          if (!indices.has(w)) {
+            strongConnect(w);
+            lowlink.set(v, Math.min(lowlink.get(v)!, lowlink.get(w)!));
+          } else if (onStack.has(w)) {
+            lowlink.set(v, Math.min(lowlink.get(v)!, indices.get(w)!));
+          }
+        }
+      }
+
+      if (lowlink.get(v) === indices.get(v)) {
+        const component: string[] = [];
+        while (true) {
+          const w = stack.pop()!;
+          onStack.delete(w);
+          component.push(w);
+          if (w === v) break;
+        }
+        if (component.length > 1 || (component.length === 1 && selfLoops.has(component[0]))) {
+          sccs.push(component);
+        }
+      }
+    };
+
+    for (const nodeId of adj.keys()) {
+      if (!indices.has(nodeId)) {
+        strongConnect(nodeId);
+      }
+    }
+
+    const nodeToScc = new Map<string, number>();
+    const nodes: any[] = [];
+    sccs.forEach((scc, sccIdx) => {
+      for (const nodeId of scc) {
+        nodeToScc.set(nodeId, sccIdx);
+        const attrs = graph.getNodeAttributes(nodeId);
+        nodes.push({
+          id: nodeId,
+          name: attrs.label ?? nodeId,
+          file: attrs.file ?? nodeId,
+          line: attrs.line ?? 0,
+          kind: attrs.kind ?? attrs.type,
+          depth: 0,
+        });
+      }
+    });
+
+    const edges: any[] = [];
+    for (const e of rawEdges) {
+      const sccFrom = nodeToScc.get(e.from);
+      const sccTo = nodeToScc.get(e.to);
+      if (sccFrom !== undefined && sccFrom === sccTo) {
+        edges.push({ from: e.from, to: e.to, type: kind });
+      }
+    }
+
+    return { nodes, edges };
+  }
+
+  private executeDeadcode(graph: any): { nodes: any[]; edges: any[] } {
+    const excludedNames = new Set(['main', 'init', 'constructor', '__init__']);
+    const isTestFile = (filePath: unknown): boolean => {
+      if (typeof filePath !== 'string') return false;
+      const norm = filePath.replace(/\\/g, '/');
+      return (
+        /(^|\/)(__tests__|tests?|spec)\//i.test(norm) ||
+        /\.(test|spec)\.[^.]+$/i.test(norm) ||
+        /_test\.[^.]+$/i.test(norm) ||
+        /(^|\/)test_[^/]+\.py$/i.test(norm)
+      );
+    };
+
+    const nodes: any[] = [];
+    graph.forEachNode((nodeId: string, attrs: any) => {
+      if (attrs.type !== 'tag') return;
+      if (attrs.kind !== 'function' && attrs.kind !== 'method') return;
+      if (attrs.exported !== false) return;
+      if (excludedNames.has(attrs.label)) return;
+      if (isTestFile(attrs.file)) return;
+
+      const hasInboundCall = graph.inEdges(nodeId).some((edge: string) => {
+        const edgeAttrs = graph.getEdgeAttributes(edge);
+        return edgeAttrs?.type === 'calls';
+      });
+      if (!hasInboundCall) {
+        nodes.push(this.nodeToResult(nodeId, attrs, 0));
+      }
+    });
+
+    return { nodes, edges: [] };
   }
 
   private findNodes(pattern: string, graph: any): string[] {

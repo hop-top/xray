@@ -74,6 +74,7 @@ export function registerCoreCommands(program: Command): void {
       .description('Query call graph using function-based syntax')
       .argument('[query]', 'Query string (e.g., "calls(main)", "callers(processData)")')
   ))
+    .option('--filter <expr>', 'Filter query results using boolean DSL (e.g., "kind:function -file:test")')
     .option('--list-adapters', 'List available query adapters')
     .addHelpText('after', `
 Without --graph the graph is built in memory for the configured roots
