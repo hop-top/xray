@@ -10,12 +10,16 @@ export class Ranker {
     this.graph = graph;
   }
 
-  rank(focusNode?: string): RankedNode[] {
+  rank(focusNode?: string | string[], churnMap?: Map<string, number>): RankedNode[] {
     // PageRank throws "failed to converge" on an empty graph (e.g. every
     // file skipped or no parseable files); nothing to rank.
     if (this.graph.order === 0) {
       return [];
     }
+
+    const focusNodes = new Set(
+      Array.isArray(focusNode) ? focusNode : focusNode ? [focusNode] : []
+    );
 
     // 1. Compute PageRank (Standard)
     const scores = pagerank.pagerank(this.graph, {
@@ -24,7 +28,7 @@ export class Ranker {
       maxIterations: 50
     });
 
-    // 2. Apply Heuristics (HSIR) & Focus Boosting
+    // 2. Apply Heuristics (HSIR), Focus Boosting & Churn Weighting
     const ranked: RankedNode[] = [];
 
     this.graph.forEachNode((node: string, attr: NodeAttributes) => {
@@ -41,12 +45,26 @@ export class Ranker {
         score *= 0.5;
       }
 
-      // Focus Boosting
-      if (focusNode) {
-        if (node === focusNode) {
-          score *= 100.0; // Super boost for the focus file
-        } else if (this.graph.hasEdge(focusNode, node) || this.graph.hasEdge(node, focusNode)) {
-          score *= 10.0; // Boost direct neighbors (dependencies/dependents)
+      // Focus Boosting (single anchor or multi-anchor diff files)
+      if (focusNodes.size > 0) {
+        if (focusNodes.has(node)) {
+          score *= 100.0; // Super boost for the focus file(s)
+        } else {
+          for (const fn of focusNodes) {
+            if (this.graph.hasEdge(fn, node) || this.graph.hasEdge(node, fn)) {
+              score *= 10.0; // Boost direct neighbors (dependencies/dependents)
+              break;
+            }
+          }
+        }
+      }
+
+      // Churn Weighting
+      if (churnMap) {
+        const fileKey = attr.type === 'file' ? node : attr.file;
+        const commits = fileKey ? (churnMap.get(fileKey) ?? 0) : 0;
+        if (commits > 0) {
+          score *= 1 + Math.log1p(commits) * 0.35;
         }
       }
 

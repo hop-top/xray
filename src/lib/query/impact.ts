@@ -18,6 +18,7 @@
  * `strict` ignores every non-EXTRACTED edge during the walk.
  */
 import type { Confidence } from '../../types/graph';
+import type { DiffFile } from '../git';
 import type { CallSite } from '../parser/types';
 import { mergeCallSites } from '../graph/builder';
 import type { Styles } from '../tui';
@@ -125,12 +126,71 @@ function toSymbol(id: string, attrs: any): ImpactSymbol {
   return s;
 }
 
+export interface ResolvedChangedSymbols {
+  symbolIds: string[];
+  fileIds: string[];
+}
+
+/**
+ * Map unified diff hunks (1-based `changedLines`) onto graph file and tag
+ * nodes. Explicitly converts 1-based `{ start, end }` to 0-based
+ * `[start - 1, end - 1]` before intersecting with `Tag.line..Tag.endLine`.
+ */
+export function resolveChangedSymbols(graph: any, hunks: DiffFile[]): ResolvedChangedSymbols {
+  const fileIds = new Set<string>();
+  const symbolIds = new Set<string>();
+
+  for (const hunk of hunks) {
+    const filePath = hunk.path.replace(/\\/g, '/');
+    if (!graph.hasNode(filePath)) continue;
+    const fileAttrs = graph.getNodeAttributes(filePath);
+    if (fileAttrs?.type !== 'file') continue;
+
+    fileIds.add(filePath);
+
+    if (hunk.changedLines.length === 0) continue;
+
+    const zeroBasedRanges = hunk.changedLines.map((r) => ({
+      start: r.start - 1,
+      end: r.end - 1,
+    }));
+
+    graph.forEachOutEdge(filePath, (_e: string, eAttrs: any, _s: string, target: string, _sa: any, tAttrs: any) => {
+      if (eAttrs?.type !== 'defines' || tAttrs?.type !== 'tag') return;
+      const tagStart: number = typeof tAttrs.line === 'number' ? tAttrs.line : 0;
+      const tagEnd: number = typeof tAttrs.endLine === 'number' ? tAttrs.endLine : tagStart;
+
+      for (const range of zeroBasedRanges) {
+        if (range.start <= tagEnd && range.end >= tagStart) {
+          symbolIds.add(target);
+          break;
+        }
+      }
+    });
+  }
+
+  return {
+    symbolIds: Array.from(symbolIds),
+    fileIds: Array.from(fileIds),
+  };
+}
+
 /** Compute the callers of `symbol` up to `depth` levels. */
 export function computeImpact(graph: any, symbol: string, opts: ImpactOptions = {}): ImpactResult {
+  const seeds = findNodes(symbol, graph);
+  return computeImpactFromSeeds(graph, seeds, symbol, opts);
+}
+
+/** Compute the callers of an explicit set of seed tag IDs up to `depth` levels. */
+export function computeImpactFromSeeds(
+  graph: any,
+  seeds: string[],
+  queryLabel: string,
+  opts: ImpactOptions = {}
+): ImpactResult {
   const maxDepth = opts.depth ?? DEFAULT_IMPACT_DEPTH;
   const strict = Boolean(opts.strict);
 
-  const seeds = findNodes(symbol, graph);
   const seedSet = new Set(seeds);
   const dist = new Map<string, number>();
   const conf = new Map<string, Confidence>();
@@ -236,7 +296,7 @@ export function computeImpact(graph: any, symbol: string, opts: ImpactOptions = 
 
   return {
     symbol: {
-      query: symbol,
+      query: queryLabel,
       depth: maxDepth,
       strict,
       matches: seeds.map(id => toSymbol(id, graph.getNodeAttributes(id))),

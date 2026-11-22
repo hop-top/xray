@@ -173,7 +173,11 @@ export class MapRenderer {
         fileRange = `(L${fileStart}-L${fileEnd})`;
       }
 
-      const fileLine = `${file} ${fileRange}:`;
+      const changed = this.safeGetNodeAttribute<boolean>(file, 'changed');
+      const fileAuthor = this.safeGetNodeAttribute<string>(file, 'author');
+      const changedTag = changed ? ' [CHANGED]' : '';
+      const authorTag = fileAuthor ? ` @${fileAuthor}` : '';
+      const fileLine = `${file} ${fileRange}${changedTag}${authorTag}:`;
       outputLines.push(fileLine);
       currentTokens += await this.estimateTokens(fileLine);
 
@@ -206,6 +210,9 @@ export class MapRenderer {
         }
 
         let line = `│ ${lineRange} ${tag.attributes.kind} ${tag.attributes.label}${signature}`;
+        if (tag.attributes.author) {
+          line += ` @${tag.attributes.author}`;
+        }
 
         if (tag.attributes.doc) {
           const doc = tag.attributes.doc.length > 50 ? tag.attributes.doc.substring(0, 47) + '...' : tag.attributes.doc;

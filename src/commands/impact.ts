@@ -5,8 +5,10 @@
  * `--scope`; no strategy auto-detect), without writing a map file.
  */
 import type { Command } from 'commander';
+import * as path from 'path';
+import { getDiff } from '../lib/git';
 import { GraphSerializer } from '../lib/graph/serializer';
-import { computeImpact, DEFAULT_IMPACT_DEPTH, formatCallSitesCell, impactToQueryResult, renderImpactBrief, renderImpactText, type ImpactResult, withEditorCallSites, withEditorLine } from '../lib/query/impact';
+import { computeImpact, computeImpactFromSeeds, DEFAULT_IMPACT_DEPTH, formatCallSitesCell, impactToQueryResult, renderImpactBrief, renderImpactText, resolveChangedSymbols, type ImpactResult, withEditorCallSites, withEditorLine } from '../lib/query/impact';
 import { UsageError } from '../lib/error/types';
 import {
   adaptFormatter, addOutputFlags, assertFormat, colsRequested, columns, emit, formatterOf,
@@ -21,6 +23,8 @@ export { coverageLine, matchNote } from './graph-source';
 export interface ImpactCommandOptions {
   depth?: string;
   strict?: boolean;
+  since?: string;
+  changed?: boolean;
   graph?: string;
   path?: string[];
   lens?: string;
@@ -77,13 +81,36 @@ export function parseImpactDepth(raw: string | undefined): number {
 }
 
 /** Compute the impact result (no rendering). */
-export async function handleImpactAction(symbol: string, options: ImpactCommandOptions): Promise<ImpactResult> {
-  if (!symbol || !symbol.trim()) throw new UsageError('<symbol> is required');
+export async function handleImpactAction(symbol: string | undefined, options: ImpactCommandOptions): Promise<ImpactResult> {
+  const hasSymbol = Boolean(symbol && symbol.trim());
+  const hasSince = Boolean(options.since && options.since.trim());
+  const hasChanged = Boolean(options.changed);
+  if (!hasSymbol && !hasSince && !hasChanged) {
+    throw new UsageError('<symbol> is required (or pass --since <ref> / --changed)');
+  }
+  if (hasSince && hasChanged) {
+    throw new UsageError('--since and --changed cannot be combined');
+  }
   const depth = parseImpactDepth(options.depth);
   const serialized = await obtainGraph(options);
   const graph = new GraphSerializer().deserialize(serialized);
   try {
-    return computeImpact(graph, symbol.trim(), {
+    if (hasSince || hasChanged) {
+      const gitRoot = path.resolve(
+        (options.path && options.path.length > 0 ? options.path[0] : undefined) || process.cwd()
+      );
+      const hunks = hasChanged
+        ? await getDiff(gitRoot, 'WORKING')
+        : await getDiff(gitRoot, options.since!.trim(), 'HEAD');
+      const { symbolIds } = resolveChangedSymbols(graph, hunks);
+      const queryLabel = hasChanged ? 'changed' : `since:${options.since!.trim()}`;
+      return computeImpactFromSeeds(graph, symbolIds, queryLabel, {
+        depth,
+        strict: Boolean(options.strict),
+        roots: serialized.metadata?.roots,
+      });
+    }
+    return computeImpact(graph, symbol!.trim(), {
       depth,
       strict: Boolean(options.strict),
       roots: serialized.metadata?.roots,
@@ -95,7 +122,7 @@ export async function handleImpactAction(symbol: string, options: ImpactCommandO
 }
 
 /** Commander action: compute, then render through the kit format registry. */
-export async function runImpactCommand(symbol: string, options: ImpactCommandOptions, cmd: Command): Promise<void> {
+export async function runImpactCommand(symbol: string | undefined, options: ImpactCommandOptions, cmd: Command): Promise<void> {
   assertFormat(cmd, impactRegistry);
   parseImpactDepth(options.depth); // fail fast (exit 2) before any build
   const result = await handleImpactAction(symbol, options);
@@ -136,7 +163,9 @@ export function registerImpactCommand(program: Command): Command {
   const cmd = addGraphSourceOptions(program
     .command('impact')
     .description('Show transitive callers of a symbol, by area')
-    .argument('<symbol>', 'Symbol name or glob (e.g. "createSession", "New*")')
+    .argument('[symbol]', 'Symbol name or glob (e.g. "createSession", "New*")')
+    .option('--since <ref>', 'Impact of symbols changed since <ref> (e.g. main, HEAD~1)')
+    .option('--changed', 'Impact of staged and unstaged working-tree changes vs HEAD')
     .option('--depth <n>', `Caller levels to follow (default: ${DEFAULT_IMPACT_DEPTH})`)
     .option('--strict', 'Follow EXTRACTED call edges only (drop INFERRED)'));
   addOutputFlags(cmd, impactRegistry, {

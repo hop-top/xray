@@ -36,6 +36,12 @@ export interface SerializedNode {
   cfg?: Cfg;
   /** Data flow graph of a function/method; only with `--with df`. */
   dfg?: Dfg;
+  /** Primary git blame author (`--with blame`). */
+  author?: string;
+  /** Whether this file was touched in a diff-scoped run (`--since` / `--changed`). */
+  changed?: boolean;
+  /** Commit count within the churn window (`--with churn`). */
+  churn?: number;
 }
 
 /**
