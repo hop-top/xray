@@ -94,7 +94,8 @@ export function registerMcpCommand(program: Command): Command {
     .option('--transport <mode>', 'Transport mode: stdio or http', 'stdio')
     .option('--host <host>', 'HTTP bind host (default: 127.0.0.1)', '127.0.0.1')
     .option('--port <port>', 'HTTP bind port (default: 3000)', '3000')
-    .option('--token <secret>', 'Bearer token for HTTP transport (or XRAY_MCP_TOKEN env)'),
+    .option('--token <secret>', 'Bearer token for HTTP transport (or XRAY_MCP_TOKEN env)')
+    .option('--audit-log <path>', 'Append JSONL audit log for auth, scoped-token, gateway, and admin events'),
     'Output format: json (the protocol is JSON-RPC on stdout; with json, errors are JSON on stderr)',
     ['json'])
     .addHelpText('after', HELP_AFTER)
@@ -107,6 +108,7 @@ export function registerMcpCommand(program: Command): Command {
         host: string;
         port: string;
         token?: string;
+        auditLog?: string;
       },
       cmd: Command
     ) => {
@@ -126,12 +128,14 @@ export function registerMcpCommand(program: Command): Command {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { resolveServerConfig } = require('../lib/mcp/runner') as typeof import('../lib/mcp/runner');
       const serverRoot = fs.realpathSync(process.cwd());
+      const offline = Boolean(cmd.optsWithGlobals?.().offline);
       const baseOpts = {
         serverRoot,
         serverConfig: resolveServerConfig(serverRoot, opts.config),
         entry: server.defaultEntry(),
         timeoutMs: Math.round(seconds * 1000),
         version,
+        offline,
       };
 
       if (transport === 'http') {
@@ -147,6 +151,7 @@ export function registerMcpCommand(program: Command): Command {
           host: opts.host,
           port,
           ...(token ? { token } : {}),
+          ...(opts.auditLog ? { auditLog: opts.auditLog } : {}),
         });
         return;
       }

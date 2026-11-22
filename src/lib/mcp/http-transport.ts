@@ -27,6 +27,8 @@ import {
   timingSafeEqualStrings,
 } from './scoped-token';
 import { WarmWorkspaceManager } from './workspace';
+import { actorFromRequest, createAuditLogger } from '../server/audit';
+import { loadGatewayUpstreams, McpGateway } from '../server/gateway';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
@@ -35,6 +37,7 @@ export interface HttpTransportOptions extends StartOptions {
   host?: string;
   port?: number;
   token?: string;
+  auditLog?: string;
 }
 
 export interface McpHttpServerInstance {
@@ -132,6 +135,7 @@ export function createMcpHttpServer(
   }
 
   const workspace = options.workspace;
+  const audit = createAuditLogger(options.auditLog);
   const tokenManager = masterToken ? new ScopedTokenManager(masterToken) : null;
   const mcpHandler: McpHandler = createXrayMcpHandler(program, {
     ...options,
@@ -141,8 +145,10 @@ export function createMcpHttpServer(
   let boundPort = requestedPort;
 
   const server = http.createServer(async (req, res) => {
+    const actor = actorFromRequest(req);
     try {
       if (!isAllowedOrigin(req.headers.origin)) {
+        audit?.log({ event: 'auth.forbidden_origin', actor, target: req.url ?? '/', status: 'denied' });
         sendJson(res, 403, { error: 'forbidden origin' });
         return;
       }
@@ -157,11 +163,13 @@ export function createMcpHttpServer(
 
       if (pathname === '/auth/scoped-token' || pathname.startsWith('/auth/scoped-token/')) {
         if (!masterToken || !tokenManager) {
+          audit?.log({ event: 'auth.denied', actor, target: pathname, status: 'denied' });
           sendJson(res, 403, { error: 'scoped tokens require master --token' });
           return;
         }
         const bearer = extractBearerToken(req);
         if (!bearer || !timingSafeEqualStrings(bearer, masterToken)) {
+          audit?.log({ event: 'auth.denied', actor, target: pathname, status: 'denied' });
           sendJson(res, 401, { error: 'unauthorized' });
           return;
         }
@@ -173,12 +181,14 @@ export function createMcpHttpServer(
             if (raw.trim() !== '') {
               const v = JSON.parse(raw);
               if (v === null || typeof v !== 'object' || Array.isArray(v)) {
+                audit?.log({ event: 'scoped_token.mint', actor: 'master', target: pathname, status: 'error' });
                 sendJson(res, 400, { error: 'invalid JSON body' });
                 return;
               }
               parsedBody = v as Record<string, unknown>;
             }
           } catch {
+            audit?.log({ event: 'scoped_token.mint', actor: 'master', target: pathname, status: 'error' });
             sendJson(res, 400, { error: 'invalid JSON body' });
             return;
           }
@@ -192,11 +202,13 @@ export function createMcpHttpServer(
           ) {
             roots = parsedBody.roots;
           } else {
+            audit?.log({ event: 'scoped_token.mint', actor: 'master', target: pathname, status: 'error' });
             sendJson(res, 400, { error: 'roots must be an array of strings' });
             return;
           }
 
           const minted = tokenManager.mintDetailed(roots);
+          audit?.log({ event: 'scoped_token.mint', actor: 'master', target: minted.claims.jti, status: 'ok' });
           sendJson(res, 200, {
             token: minted.token,
             jti: minted.claims.jti,
@@ -209,10 +221,12 @@ export function createMcpHttpServer(
         if (method === 'DELETE' && pathname.startsWith('/auth/scoped-token/')) {
           const jti = decodeURIComponent(pathname.slice('/auth/scoped-token/'.length));
           if (!jti || jti.includes('/')) {
+            audit?.log({ event: 'scoped_token.revoke', actor: 'master', target: jti || pathname, status: 'error' });
             sendJson(res, 400, { error: 'invalid token jti' });
             return;
           }
           tokenManager.revoke(jti);
+          audit?.log({ event: 'scoped_token.revoke', actor: 'master', target: jti, status: 'ok' });
           sendJson(res, 200, { revoked: true, jti });
           return;
         }
@@ -227,6 +241,7 @@ export function createMcpHttpServer(
         if (masterToken && tokenManager) {
           const bearer = extractBearerToken(req);
           if (!bearer) {
+            audit?.log({ event: 'auth.denied', actor, target: '/mcp', status: 'denied' });
             sendJson(res, 401, { error: 'unauthorized' });
             return;
           }
@@ -235,12 +250,14 @@ export function createMcpHttpServer(
           } else if (bearer.startsWith(SCOPED_TOKEN_PREFIX)) {
             const claims = tokenManager.verify(bearer);
             if (!claims) {
+              audit?.log({ event: 'auth.scoped_token_invalid', actor, target: '/mcp', status: 'denied' });
               sendJson(res, 401, { error: 'invalid or expired scoped token' });
               return;
             }
             const serverAllowed = workspace?.getAllowedRoots() ?? options.allowedRoots ?? new Set([options.serverRoot]);
             scopedRoots = intersectAllowedRoots(claims.roots, serverAllowed, options.serverRoot);
           } else {
+            audit?.log({ event: 'auth.denied', actor, target: '/mcp', status: 'denied' });
             sendJson(res, 401, { error: 'unauthorized' });
             return;
           }
@@ -289,12 +306,29 @@ export function createMcpHttpServer(
           if (addr && typeof addr === 'object') {
             boundPort = addr.port;
           }
+          const formattedHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+          audit?.log({
+            event: 'admin.server_start',
+            actor: 'system',
+            target: `http://${formattedHost}:${boundPort}`,
+            status: 'ok',
+          });
           resolve();
         });
       }),
     stop: () =>
       new Promise<void>((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
+        server.close((err) => {
+          const formattedHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+          audit?.log({
+            event: 'admin.server_stop',
+            actor: 'system',
+            target: `http://${formattedHost}:${boundPort}`,
+            status: err ? 'error' : 'ok',
+          });
+          if (err) reject(err);
+          else resolve();
+        });
       }),
   };
 }
@@ -305,7 +339,19 @@ export async function startMcpHttpServer(
   options: HttpTransportOptions
 ): Promise<void> {
   const workspace = options.workspace ?? new WarmWorkspaceManager(options.serverRoot, options.serverConfig);
-  const instance = createMcpHttpServer(program, { ...options, workspace });
+  let gateway = options.gateway;
+  if (!gateway) {
+    const upstreams = loadGatewayUpstreams({
+      serverRoot: options.serverRoot,
+      serverConfig: options.serverConfig,
+    });
+    if (Object.keys(upstreams).length > 0) {
+      const audit = createAuditLogger(options.auditLog);
+      gateway = new McpGateway({ upstreams, offline: options.offline, audit });
+      await gateway.discoverTools();
+    }
+  }
+  const instance = createMcpHttpServer(program, { ...options, workspace, gateway });
   try {
     await instance.start();
     process.stderr.write(`xray mcp http listening on ${instance.url}/mcp\n`);
