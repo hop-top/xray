@@ -8,11 +8,17 @@ Use this document to determine which xray command to run for any given scenario.
 |---------|----------|-----------|-------|
 | `strategy detect` | Identify frameworks | Low (50t) | Fast |
 | `explore --match` | Find files by pattern | Low (50-100t) | Fast |
-| `map` | Understand structure | Medium (300-500t) | Medium |
+| `explore --search` | Trigram/regex code search (`--filter`) | Low (50-200t) | Fast |
+| `map` | Understand structure (`--group community`, `--since`/`--changed`) | Medium (300-500t) | Medium |
+| `handbook` | Generate architectural handbook (`.xray/handbook/`) | Low-Med (200-400t) | Fast |
+| `diagram` | Export Mermaid architecture/call/CFG/DFG | Low-Med (150-350t) | Fast |
+| `query` | Call-graph queries (`calls`, `callers`, `implementations`, `cycles`, `deadcode`) | Low (50-200t) | Fast |
 | `explore` | Find patterns (React components, routes, etc.) | Low-Med (100-200t) | Fast |
 | `graph` | Control/data flow per function (TypeScript, JavaScript, Python, Go) | Grows with function size: roughly 1-2 output lines per source line | Medium |
 | `map --with incs` | Understand dependencies | Medium-High (400-600t) | Medium |
-| `impact <symbol>` | What breaks if a function changes (transitive callers) | Low-Med (150-750t) | Medium |
+| `impact [symbol]` | What breaks if a function or `--since`/`--changed` diff changes | Low-Med (150-750t) | Medium |
+| `review --base <ref>` | Deterministic diff review (impact, CFG/DFG delta, stale docs) | Low-Med (200-500t) | Fast |
+| `ask "<question>"` | BYOK LLM Q&A over read-only xray tools | Medium | Medium |
 
 ## Master Decision Tree
 

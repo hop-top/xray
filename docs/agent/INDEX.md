@@ -36,6 +36,10 @@ docs/agent/
     └── prompts/user-prompts.md      User prompt patterns
 ```
 
+### "How do I call xray over MCP or use workspace skills?"
+- **MCP Server:** [MCP Server](../user/mcp.md) (stdio & Streamable HTTP, `read_file`, `list_tree`, git/handbook/skills tools)
+- **Workspace skills:** `xray skills list` / `xray skills show <slug>` (and `/<slug>` in `xray ask`)
+
 ## Quick Navigation by Question
 
 ### "When should I use xray?"

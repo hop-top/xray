@@ -2,21 +2,33 @@
 
 `xray mcp` serves xray's analysis commands as
 [Model Context Protocol](https://modelcontextprotocol.io) tools over
-stdin/stdout, so an MCP client (Claude Code, Cursor, any stdio MCP host)
+stdin/stdout (`--transport stdio`, default) or Streamable HTTP (`--transport http`),
+so an MCP client (Claude Code, Cursor, any stdio or HTTP MCP host)
 can map, search and query a codebase without shelling out. No tool writes
 into the project: `map` and `graph`, which the CLI runs by writing
 `.xray_*.md` files next to the code, write to a private temp directory
 under MCP and return its content (details under Tools).
 
 ```bash
-xray mcp                       # serve the current directory
-xray -C /path/to/project mcp   # serve another directory
-xray mcp --timeout 120         # per-call timeout in seconds (default 300)
+xray mcp                                         # serve the current directory (stdio)
+xray -C /path/to/project mcp                     # serve another directory (stdio)
+xray mcp --timeout 120                           # per-call timeout in seconds (default 300)
+xray mcp --transport http --port 3000            # Streamable HTTP on 127.0.0.1:3000
+xray mcp --transport http --host 0.0.0.0 --token "$XRAY_MCP_TOKEN" --audit-log audit.jsonl
 ```
 
-The server speaks MCP `2024-11-05` (newline-delimited JSON-RPC on
+Stdio mode speaks MCP `2024-11-05` (newline-delimited JSON-RPC on
 stdio): `initialize`, `ping`, `tools/list`, `tools/call`. stdout carries
 protocol messages only; diagnostics go to stderr.
+
+## Streamable HTTP & Scoped Tokens
+
+When running with `--transport http` (or mounted via `xray serve --mcp` at `/mcp`):
+- `--host` defaults to `127.0.0.1` and `--port` defaults to `3000` (for `xray mcp`).
+- Non-loopback `--host` requires a bearer token via `--token <secret>` or `XRAY_MCP_TOKEN`.
+- **Scoped tokens (`xrst_`)**: The HTTP transport supports signed `xrst_` bearer tokens alongside the master token, verified in constant time.
+- **`--audit-log <path>`**: Appends JSONL audit events for authentication, scoped-token usage, gateway calls, and admin events.
+- **MCP Gateway (`gateway.upstreams`)**: Optional upstream HTTP or stdio MCP servers configured under `gateway.upstreams` in global config (repo-local `gateway` config is ignored unless `XRAY_ALLOW_PROJECT_GATEWAY=1` is set).
 
 ## Client configuration
 
@@ -69,6 +81,14 @@ Any other stdio client: run `xray -C <project> mcp`.
 | `query` | `xray query <query>` | call-graph query result |
 | `impact` | `xray impact <symbol>` | transitive callers by area ("what breaks if I change X") |
 | `imports` | `xray imports [paths...]` | the [`xray.imports/v1`](imports-contract.md) document: per-file imports, parse errors, unsupported constructs |
+| `read_file` | — | read bounded file contents inside the server root (with line range) |
+| `list_tree` | — | list directory tree entries inside the server root |
+| `list_branches` | — | list git branches in the repository |
+| `list_commits` | — | list recent git commits |
+| `get_diff` | — | read git diff between refs or working tree |
+| `handbook` | `xray handbook` | read/generate architectural handbook pages |
+| `list_skills` | `xray skills list` | list available workspace skills |
+| `read_skill` | `xray skills show <slug>` | read a workspace skill manifest by slug |
 | `strategy_list` | `xray strategy list` | available strategies |
 | `strategy_detect` | `xray strategy detect` | strategies detected for the project |
 | `<strategy>_<noun>` | `xray <strategy> <noun>` | strategy insight, e.g. `react_hooks`, `express_routes`, `markdown_toc` |

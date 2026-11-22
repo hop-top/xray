@@ -17,8 +17,16 @@ ANALYZE:
                              JSON contract
   handbook [path] [--flags]  Generate deterministic architectural handbook pages
                              (.xray/handbook/)
+  diagram [paths] [--flags]  Export deterministic Mermaid architecture, call,
+                             CFG, or DFG diagrams
+  ask <question> [--flags]   Ask a question about the codebase using read-only
+                             xray tools and BYOK LLM
+  review [--flags]           Review a git diff deterministically (impact,
+                             CFG/DFG delta, stale docs) or with --llm
   watch [paths] [--flags]    Watch workspace files and incrementally update
                              GraphCache
+  tui [path]                 Launch interactive terminal codebase explorer
+  serve [paths] [--flags]    Launch local Web UI and read-only REST API server
   explore [--flags]          Quickly find files by patterns, search code for
                              keywords, or explore codebase [default command]
 
@@ -46,6 +54,7 @@ STRATEGY:
 
 MANAGEMENT:
   alias [command]            Manage command aliases
+  skills [command]           Discover and inspect workspace skills
   lang [command]             Manage language packs (tree-sitter grammars)
   cache [command]            Cache management
   paths [--flags]            Show xray's active config, cache DB, and project
@@ -54,7 +63,8 @@ MANAGEMENT:
                              Factor 1)
   upgrade [--flags]          Check whether a newer xray release is available
                              (--check)
-  mcp [--flags]              Serve analysis commands as MCP tools over stdio
+  mcp [--flags]              Serve analysis commands as MCP tools over stdio or
+                             Streamable HTTP
   completion [command]       Generate the autocompletion script for the
                              specified shell
 
@@ -1110,13 +1120,14 @@ FLAGS:
   -c, --catch <pattern>               Match function/class name (prefix ! to
                                       negate) (repeatable) (default: [])
   --format <fmt>                      Output format: txt (default), json, csv
-                                      (nodes+edges tables), xml
+                                      (nodes+edges tables), xml, mermaid
   --txt                               Alias of --format txt
   --csv                               Alias of --format csv (<out>.nodes.csv +
                                       <out>.edges.csv)
   --xml                               Alias of --format xml (one <graph>
                                       document)
   --json                              Alias of --format json (raw JSON graph)
+  --mermaid                           Alias of --format mermaid (.mmd diagram)
   --no-chunk                          Disable chunked output (single file
                                       output)
   --group <mode>                      Chunk grouping mode: directory (default)
@@ -1547,13 +1558,14 @@ FLAGS:
   -c, --catch <pattern>               Match function/class name (prefix ! to
                                       negate) (repeatable) (default: [])
   --format <fmt>                      Output format: txt (default), json, csv
-                                      (nodes+edges tables), xml
+                                      (nodes+edges tables), xml, mermaid
   --txt                               Alias of --format txt
   --csv                               Alias of --format csv (<out>.nodes.csv +
                                       <out>.edges.csv)
   --xml                               Alias of --format xml (one <graph>
                                       document)
   --json                              Alias of --format json (raw JSON graph)
+  --mermaid                           Alias of --format mermaid (.mmd diagram)
   --no-chunk                          Disable chunked output (single file
                                       output)
   --group <mode>                      Chunk grouping mode: directory (default)
@@ -1824,10 +1836,17 @@ exports[`cli golden: --help xray mcp --help 1`] = `
 --- stdout ---
 Usage: xray mcp [options]
 
-Serve analysis commands as MCP tools over stdio
+Serve analysis commands as MCP tools over stdio or Streamable HTTP
 
 FLAGS:
   --timeout <seconds>  Per-call timeout in seconds (default: "300")
+  --transport <mode>   Transport mode: stdio or http (default: "stdio")
+  --host <host>        HTTP bind host (default: 127.0.0.1) (default:
+                       "127.0.0.1")
+  --port <port>        HTTP bind port (default: 3000) (default: "3000")
+  --token <secret>     Bearer token for HTTP transport (or XRAY_MCP_TOKEN env)
+  --audit-log <path>   Append JSONL audit log for auth, scoped-token, gateway,
+                       and admin events
   --format <fmt>       Output format: json (the protocol is JSON-RPC on stdout;
                        with json, errors are JSON on stderr)
   -h, --help           Display help
@@ -2498,8 +2517,16 @@ ANALYZE:
                              JSON contract
   handbook [path] [--flags]  Generate deterministic architectural handbook pages
                              (.xray/handbook/)
+  diagram [paths] [--flags]  Export deterministic Mermaid architecture, call,
+                             CFG, or DFG diagrams
+  ask <question> [--flags]   Ask a question about the codebase using read-only
+                             xray tools and BYOK LLM
+  review [--flags]           Review a git diff deterministically (impact,
+                             CFG/DFG delta, stale docs) or with --llm
   watch [paths] [--flags]    Watch workspace files and incrementally update
                              GraphCache
+  tui [path]                 Launch interactive terminal codebase explorer
+  serve [paths] [--flags]    Launch local Web UI and read-only REST API server
   explore [--flags]          Quickly find files by patterns, search code for
                              keywords, or explore codebase [default command]
 
@@ -2527,6 +2554,7 @@ STRATEGY:
 
 MANAGEMENT:
   alias [command]            Manage command aliases
+  skills [command]           Discover and inspect workspace skills
   lang [command]             Manage language packs (tree-sitter grammars)
   cache [command]            Cache management
   paths [--flags]            Show xray's active config, cache DB, and project
@@ -2535,7 +2563,8 @@ MANAGEMENT:
                              Factor 1)
   upgrade [--flags]          Check whether a newer xray release is available
                              (--check)
-  mcp [--flags]              Serve analysis commands as MCP tools over stdio
+  mcp [--flags]              Serve analysis commands as MCP tools over stdio or
+                             Streamable HTTP
   completion [command]       Generate the autocompletion script for the
                              specified shell
 
@@ -2620,13 +2649,14 @@ FLAGS:
   -c, --catch <pattern>               Match function/class name (prefix ! to
                                       negate) (repeatable) (default: [])
   --format <fmt>                      Output format: txt (default), json, csv
-                                      (nodes+edges tables), xml
+                                      (nodes+edges tables), xml, mermaid
   --txt                               Alias of --format txt
   --csv                               Alias of --format csv (<out>.nodes.csv +
                                       <out>.edges.csv)
   --xml                               Alias of --format xml (one <graph>
                                       document)
   --json                              Alias of --format json (raw JSON graph)
+  --mermaid                           Alias of --format mermaid (.mmd diagram)
   --no-chunk                          Disable chunked output (single file
                                       output)
   --group <mode>                      Chunk grouping mode: directory (default)
@@ -4155,7 +4185,7 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": null,
-          "description": "Output format: txt (default), json, csv (nodes+edges tables), xml"
+          "description": "Output format: txt (default), json, csv (nodes+edges tables), xml, mermaid"
         },
         {
           "name": "--txt",
@@ -4188,6 +4218,14 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": null,
           "description": "Alias of --format json (raw JSON graph)"
+        },
+        {
+          "name": "--mermaid",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Alias of --format mermaid (.mmd diagram)"
         },
         {
           "name": "--no-chunk",
@@ -4452,7 +4490,7 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": null,
-          "description": "Output format: txt (default), json, csv (nodes+edges tables), xml"
+          "description": "Output format: txt (default), json, csv (nodes+edges tables), xml, mermaid"
         },
         {
           "name": "--txt",
@@ -4485,6 +4523,14 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": null,
           "description": "Alias of --format json (raw JSON graph)"
+        },
+        {
+          "name": "--mermaid",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Alias of --format mermaid (.mmd diagram)"
         },
         {
           "name": "--no-chunk",
@@ -5099,6 +5145,38 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Output directory (defaults to .xray/handbook)"
         },
         {
+          "name": "--llm",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Enrich handbook pages using optional 3-stage BYOK LLM pipeline"
+        },
+        {
+          "name": "--delta",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "With --llm, only re-survey subsystems with git changes since lastUpdatedCommit"
+        },
+        {
+          "name": "--max-tokens",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Maximum total token budget for --llm runs"
+        },
+        {
+          "name": "--max-cost",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Maximum USD cost budget for --llm runs"
+        },
+        {
           "name": "--format",
           "short": null,
           "type": "string",
@@ -5109,6 +5187,239 @@ exports[`cli golden: introspection describe 1`] = `
       ],
       "subcommands": [],
       "sideEffect": "write-local",
+      "idempotent": "yes",
+      "exitCodes": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "diagram",
+      "qualifiedName": "diagram",
+      "description": "Export deterministic Mermaid architecture, call, CFG, or DFG diagrams",
+      "hidden": false,
+      "arguments": [
+        {
+          "name": "paths",
+          "required": false,
+          "variadic": true,
+          "description": "Root directories to analyze (same as --path; not combinable with it)"
+        }
+      ],
+      "options": [
+        {
+          "name": "--graph",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Read a saved graph (map --format json) instead of building one"
+        },
+        {
+          "name": "--path",
+          "short": "-p",
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Root directory to analyze (repeatable) [default: config paths or current directory]"
+        },
+        {
+          "name": "--lens",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use named lens (config-file option overlay)"
+        },
+        {
+          "name": "--scope",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use specific scope from config file"
+        },
+        {
+          "name": "--context",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use named context (multi-root glob) from config file"
+        },
+        {
+          "name": "--lang",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Languages to parse, comma-separated names or bundles (repeatable)"
+        },
+        {
+          "name": "--view",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "architecture",
+          "description": "Diagram view: architecture (default), calls, cfg, dfg"
+        },
+        {
+          "name": "--anchor",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Anchor file or symbol to center BFS on"
+        },
+        {
+          "name": "--catch",
+          "short": "-c",
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Match function/class name (prefix ! to negate) (repeatable)"
+        },
+        {
+          "name": "--depth",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Maximum BFS depth from --anchor"
+        },
+        {
+          "name": "--max-nodes",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "60",
+          "description": "Maximum nodes to render (default: 60)"
+        },
+        {
+          "name": "--output",
+          "short": "-o",
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Write Mermaid output to file instead of stdout"
+        }
+      ],
+      "subcommands": [],
+      "sideEffect": "read",
+      "idempotent": "yes",
+      "exitCodes": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "ask",
+      "qualifiedName": "ask",
+      "description": "Ask a question about the codebase using read-only xray tools and BYOK LLM",
+      "hidden": false,
+      "arguments": [
+        {
+          "name": "question",
+          "required": true,
+          "variadic": false,
+          "description": "Question to answer about the codebase"
+        }
+      ],
+      "options": [
+        {
+          "name": "--path",
+          "short": "-p",
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Project root directory (defaults to current working directory)"
+        },
+        {
+          "name": "--max-steps",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "12",
+          "description": "Maximum tool-loop steps (default 12)"
+        },
+        {
+          "name": "--out",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Write shareable markdown transcript to <file>"
+        },
+        {
+          "name": "--format",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Output format: text (default) or json"
+        }
+      ],
+      "subcommands": [],
+      "sideEffect": "read",
+      "idempotent": "no",
+      "exitCodes": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "review",
+      "qualifiedName": "review",
+      "description": "Review a git diff deterministically (impact, CFG/DFG delta, stale docs) or with --llm",
+      "hidden": false,
+      "arguments": [],
+      "options": [
+        {
+          "name": "--base",
+          "short": null,
+          "type": "string",
+          "required": true,
+          "default": null,
+          "description": "Base git ref to diff against"
+        },
+        {
+          "name": "--head",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "HEAD",
+          "description": "Head git ref to diff up to"
+        },
+        {
+          "name": "--llm",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Synthesize review findings with BYOK LLM"
+        },
+        {
+          "name": "--path",
+          "short": "-p",
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Project root directory (defaults to current working directory)"
+        },
+        {
+          "name": "--format",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Output format: text (default) or json"
+        }
+      ],
+      "subcommands": [],
+      "sideEffect": "read",
       "idempotent": "yes",
       "exitCodes": [
         0,
@@ -5179,6 +5490,101 @@ exports[`cli golden: introspection describe 1`] = `
         1,
         2,
         3
+      ]
+    },
+    {
+      "name": "tui",
+      "qualifiedName": "tui",
+      "description": "Launch interactive terminal codebase explorer",
+      "hidden": false,
+      "arguments": [
+        {
+          "name": "path",
+          "required": false,
+          "variadic": false,
+          "description": "Root directory to explore"
+        }
+      ],
+      "options": [],
+      "subcommands": [],
+      "sideEffect": "interactive",
+      "idempotent": "no",
+      "exitCodes": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "serve",
+      "qualifiedName": "serve",
+      "description": "Launch local Web UI and read-only REST API server",
+      "hidden": false,
+      "arguments": [
+        {
+          "name": "paths",
+          "required": false,
+          "variadic": true,
+          "description": "Root directories to serve (defaults to current directory)"
+        }
+      ],
+      "options": [
+        {
+          "name": "--port",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "4173",
+          "description": "HTTP bind port (default: 4173)"
+        },
+        {
+          "name": "--host",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "127.0.0.1",
+          "description": "HTTP bind host (default: 127.0.0.1)"
+        },
+        {
+          "name": "--token",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Bearer token (required for non-loopback --host, or XRAY_SERVE_TOKEN env)"
+        },
+        {
+          "name": "--api-only",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Serve JSON REST API only without static Web UI"
+        },
+        {
+          "name": "--mcp",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Mount Streamable HTTP MCP endpoint at /mcp"
+        },
+        {
+          "name": "--audit-log",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Append JSONL audit log for auth, gateway, and admin events"
+        }
+      ],
+      "subcommands": [],
+      "sideEffect": "interactive",
+      "idempotent": "no",
+      "exitCodes": [
+        0,
+        1,
+        2
       ]
     },
     {
@@ -5683,6 +6089,144 @@ exports[`cli golden: introspection describe 1`] = `
       ]
     },
     {
+      "name": "skills",
+      "qualifiedName": "skills",
+      "description": "Discover and inspect workspace skills",
+      "hidden": false,
+      "arguments": [],
+      "options": [],
+      "subcommands": [
+        {
+          "name": "list",
+          "qualifiedName": "skills.list",
+          "description": "List available workspace skills",
+          "hidden": false,
+          "arguments": [],
+          "options": [
+            {
+              "name": "--path",
+              "short": "-p",
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Project root directory (defaults to current working directory)"
+            },
+            {
+              "name": "--format-opt",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Per-format option as key=value (repeatable; bool keys may omit =value)"
+            },
+            {
+              "name": "--format-help",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Show available formats and their options (use --format-help <key> for one)"
+            },
+            {
+              "name": "--cols",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Restrict columns to this comma-separated list (repeatable)"
+            },
+            {
+              "name": "--columns",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": [],
+              "description": "Alias for --cols"
+            },
+            {
+              "name": "--template",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "eta template applied to results (mutually exclusive with --cols)"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "type": "string",
+              "required": false,
+              "default": "",
+              "description": "Write output to path (use - or empty for stdout)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": "text",
+              "description": "Output format: text, json, yaml, table, csv"
+            }
+          ],
+          "subcommands": [],
+          "sideEffect": "read",
+          "idempotent": "yes",
+          "exitCodes": [
+            0,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "show",
+          "qualifiedName": "skills.show",
+          "description": "Show a workspace skill by slug",
+          "hidden": false,
+          "arguments": [
+            {
+              "name": "slug",
+              "required": true,
+              "variadic": false,
+              "description": ""
+            }
+          ],
+          "options": [
+            {
+              "name": "--path",
+              "short": "-p",
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Project root directory (defaults to current working directory)"
+            },
+            {
+              "name": "--format",
+              "short": null,
+              "type": "string",
+              "required": false,
+              "default": null,
+              "description": "Output format: text (default) or json"
+            }
+          ],
+          "subcommands": [],
+          "sideEffect": "read",
+          "idempotent": "yes",
+          "exitCodes": [
+            0,
+            1,
+            2
+          ]
+        }
+      ],
+      "sideEffect": "read",
+      "idempotent": "yes",
+      "exitCodes": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
       "name": "lang",
       "qualifiedName": "lang",
       "description": "Manage language packs (tree-sitter grammars)",
@@ -6024,7 +6568,7 @@ exports[`cli golden: introspection describe 1`] = `
     {
       "name": "mcp",
       "qualifiedName": "mcp",
-      "description": "Serve analysis commands as MCP tools over stdio",
+      "description": "Serve analysis commands as MCP tools over stdio or Streamable HTTP",
       "hidden": false,
       "arguments": [],
       "options": [
@@ -6035,6 +6579,46 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": "300",
           "description": "Per-call timeout in seconds"
+        },
+        {
+          "name": "--transport",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "stdio",
+          "description": "Transport mode: stdio or http"
+        },
+        {
+          "name": "--host",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "127.0.0.1",
+          "description": "HTTP bind host (default: 127.0.0.1)"
+        },
+        {
+          "name": "--port",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "3000",
+          "description": "HTTP bind port (default: 3000)"
+        },
+        {
+          "name": "--token",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Bearer token for HTTP transport (or XRAY_MCP_TOKEN env)"
+        },
+        {
+          "name": "--audit-log",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Append JSONL audit log for auth, scoped-token, gateway, and admin events"
         },
         {
           "name": "--format",

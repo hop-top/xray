@@ -140,7 +140,27 @@ WHAT DOES USER WANT TO UNDERSTAND?
     │           TOKENS: 800-1000
     │           NEXT: Complete flow understanding
     │
-    └─ "I'm not sure what I need"
+    ├─ "Find code matching a keyword or regex?"
+    │   └─ COMMAND: xray explore --search "<term>" [--regex] [--filter "lang:ts -file:test"]
+    │       TOKENS: 50-200
+    │       NEXT: Inspect matched files/lines
+    │
+    ├─ "What breaks if I change X (or my current diff)?"
+    │   └─ COMMAND: xray impact <symbol>   # or: xray impact --changed / --since <ref>
+    │       TOKENS: 150-750
+    │       NEXT: Inspect callers with call-site lines
+    │
+    ├─ "Find implementations, cycles, or dead code?"
+    │   └─ COMMAND: xray query "implementations(Type)" | "cycles()" | "deadcode()"
+    │       TOKENS: 50-200
+    │       NEXT: Narrow with --filter if needed
+    │
+    ├─ "Review a git diff or generate a handbook / Mermaid diagram?"
+    │   ├─ Diff review → xray review --base <ref>
+    │   ├─ Handbook → xray handbook
+    │   └─ Diagram → xray diagram --view architecture|calls|cfg|dfg
+    │
+    ├─ "I'm not sure what I need"
         └─ START: xray strategy detect (discover frameworks)
             THEN: xray map --depth 1 (understand structure)
             THEN: Ask user clarifying question

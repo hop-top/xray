@@ -75,7 +75,22 @@ Do you want to...
 │  └─> xray map --anchor src/file.ts --with incs
 │
 ├─ Find where something is called? / What breaks if I change it?
-│  └─> xray impact functionName
+│  └─> xray impact functionName          # or: xray impact --changed
+│
+├─ Search code with trigram index / regex?
+│  └─> xray explore --search "pattern" --regex --filter "lang:typescript -file:test"
+│
+├─ Query call graph (implementations, cycles, deadcode)?
+│  └─> xray query "implementations(MyInterface)"
+│
+├─ Generate an architectural handbook or Mermaid diagram?
+│  └─> xray handbook    # or: xray diagram --view architecture -o arch.mmd
+│
+├─ Review a git diff or ask a question about the codebase?
+│  └─> xray review --base main    # or: xray ask "How does auth work?"
+│
+├─ Explore interactively or keep GraphCache warm?
+│  └─> xray tui    # or: xray serve --port 4173   /   xray watch
 │
 ├─ Share with AI?
 │  └─> xray map --anchor src/main --with incs --limit 4000 --no-chunk
@@ -103,6 +118,8 @@ Do you want to...
 | `cost` | Estimate AI cost (need `OPENAI_API_KEY`) |
 | `cf` | Control flow graph (for understanding logic) |
 | `df` | Data flow graph (for debugging) |
+| `churn` | Git commit churn metrics per file |
+| `blame` | Git blame author/recency metadata per file |
 
 **Most common**: `--with incs --with vars`
 

@@ -7,23 +7,29 @@ Agent guidance for xray. Full guide at [`docs/agent/`](docs/agent/).
 | Intent | Command |
 |--------|---------|
 | First-pass codebase understanding | `xray map` |
+| Generate architectural handbook | `xray handbook` |
+| Export Mermaid diagram | `xray diagram --view architecture` |
 | Find / discover files | `xray explore --match <pattern>` |
+| Search code for a keyword (trigram/regex) | `xray explore --search <keyword>` |
 | Control + data flow graphs | `xray graph` |
 | Call-graph queries | `xray query "calls(<fn>)"` |
-| What breaks if I change X? | `xray impact <symbol>` ([workflow](docs/agent/workflows/impact-analysis.md)) |
+| What breaks if I change X? (or diff) | `xray impact <symbol>` / `xray impact --changed` ([workflow](docs/agent/workflows/impact-analysis.md)) |
+| Review a git diff | `xray review --base <ref>` |
+| Ask a codebase question (BYOK LLM) | `xray ask "<question>"` |
+| Live incremental index | `xray watch` |
+| Interactive terminal explorer / Web UI | `xray tui` / `xray serve` |
+| Workspace skills | `xray skills list` |
 | Framework-aware insights | `xray <strategy> <noun>` |
-| List available strategies | `xray strategy list` |
-| Detect applicable strategies | `xray strategy detect` |
-| Search code for a keyword | `xray explore --search <keyword>` |
+| List / detect strategies | `xray strategy list` / `xray strategy detect` |
 
 ## Surface
 
 `xray --help` — top-level commands. Functional groups:
 
-- Analysis: `map`, `graph`, `query`, `impact`, `explore`
+- Analysis: `map`, `graph`, `query`, `impact`, `imports`, `handbook`, `diagram`, `ask`, `review`, `watch`, `tui`, `serve`, `explore`
 - Strategy: `strategy` + dynamic noun commands
-- Management: `alias`, `clear-cache`, `completion`
-- Integration: `mcp` — stdio MCP server ([`docs/user/mcp.md`](docs/user/mcp.md)); harness hooks in `hooks/harness/` push `xray impact` into Claude Code / nerv / Gemini CLI sessions ([`docs/user/harness-integration.md`](docs/user/harness-integration.md))
+- Management: `alias`, `skills`, `lang`, `cache`, `paths`, `describe`, `upgrade`, `mcp`, `completion`
+- Integration: `mcp` — stdio and Streamable HTTP MCP server ([`docs/user/mcp.md`](docs/user/mcp.md)); `serve` — local Web UI, REST API, and optional `/mcp`; harness hooks in `hooks/harness/` push `xray impact` into Claude Code / nerv / Gemini CLI sessions ([`docs/user/harness-integration.md`](docs/user/harness-integration.md))
 
 ## Reference
 

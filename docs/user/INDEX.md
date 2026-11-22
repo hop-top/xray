@@ -207,7 +207,16 @@ Start here, then pick your next path based on what you want to do.
 - [Command Aliases](aliases.md) - Create shortcuts for frequently-used commands
 - [Chunked Output Guide](README.md#3-chunked-output) - Multi-file output
 - [Automation Guide](automation.md) - GitHub Actions & hooks
-- [MCP Server](mcp.md) - Expose xray analysis to MCP clients over stdio
+- [MCP Server](mcp.md) - Expose xray analysis to MCP clients over stdio or Streamable HTTP
+
+### New & Interactive Workflows
+- [Commands: `xray handbook`](commands.md#xray-handbook) - Generate architectural handbook pages (`.xray/handbook/`)
+- [Commands: `xray diagram`](commands.md#xray-diagram) - Export Mermaid architecture, call, CFG, or DFG diagrams
+- [Commands: `xray review`](commands.md#xray-review) - Deterministic diff-grounded PR reviewer (`--base`, `--llm`)
+- [Commands: `xray ask`](commands.md#xray-ask) - BYOK codebase Q&A with read-only xray tools and `/<slug>` skills
+- [Commands: `xray watch`](commands.md#xray-watch) - Live incremental `GraphCache` indexer
+- [Commands: `xray tui` & `xray serve`](commands.md#xray-tui) - Terminal explorer, Web UI, and read-only REST API
+- [Commands: `xray skills`](commands.md#xray-skills) - Workspace skills manifest discovery
 
 ### Integrations
 - [Harness Integration](harness-integration.md) - Skill, MCP and hooks for coding agents

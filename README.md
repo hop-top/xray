@@ -35,11 +35,13 @@ ls .xray_*.md
 - 🎯 **Intelligent Ranking** - PageRank algorithm surfaces the most important files and functions first
 - 🤖 **AI-Optimized** - Token-efficient output designed for Claude, GPT, and other LLMs
 - 📦 **Chunked Output** - Automatically splits large codebases into navigable chunks (NEW!)
-- 📊 **Multi-Language** - 17 languages via opt-in tree-sitter packs (`xray lang add`)
-- 🔍 **Framework-Aware** - Built-in strategies for React, Express, Go CLI, and more
-- ⚡ **Smart Caching** - SQLite cache for fast subsequent runs
-- 🔗 **Dependency Tracking** - Shows imports, exports, and cross-file relationships
-- 💥 **Impact Analysis** - `xray impact <symbol>` answers "what breaks if I change this?" with AST-resolved callers, grouped by package, across one repo or your whole workspace
+- 📊 **Multi-Language** - 17 languages via opt-in tree-sitter packs (`xray lang add`) plus Linguist 100+ language detection and Universal Ctags / regex fallback
+- 🔍 **Framework-Aware** - Built-in strategies for React, Express, Go CLI, Markdown (pure-TS parser, coverage, stale links), and more
+- 🔎 **Fast Code Search** - SQLite FTS5 trigram-indexed `xray explore --search` with `--regex`, `--case-sensitive`, pagination, and boolean `--filter` DSL
+- ⚡ **Live & Warm Caching** - SQLite `GraphCache` with incremental patching (`xray watch`) and warm in-process MCP workspace
+- 🔗 **Dependency Tracking** - Cross-root resolution (`tsconfig.json`, `Cargo.toml`, `pyproject.toml`), imports, exports, and `implementations()`/`cycles()`/`deadcode()` queries
+- 💥 **Impact & Diff Review** - `xray impact [symbol]` (or `--since <ref>` / `--changed`) with 1-based call-site lines, plus `xray review --base <ref>`
+- 📘 **Handbooks, Diagrams & Q&A** - `xray handbook`, `xray diagram` (Mermaid), `xray ask` (BYOK LLM), `xray tui`, `xray serve` (Web UI + REST API), and `xray skills`
 - ⚙️  **Automation Ready** - GitHub Actions and pre-commit hooks included
 - 🔌 **Custom Strategies** - Add framework-specific analysis and commands with `@hop-top/xray/strategy`; see [docs/dev/strategy-development.md](docs/dev/strategy-development.md)
 - 🧭 **Logical Clustering** - Group chunks by graph community with `--group community` (NEW!)
@@ -131,10 +133,47 @@ Built-in strategy commands register automatically. Strategies in a project (`.xr
 
 [See all strategies →](docs/user/strategies.md)
 
-### `xray explore` - File Discovery
+### `xray explore` - File Discovery & Trigram Code Search
 
 ```bash
 xray explore --path ./src --match "*.ts" --match "!*.test.ts"
+xray explore --search "createSession" --filter "lang:typescript -file:test"
+xray explore --search "handle.*Error" --regex --case-sensitive --limit 50
+```
+
+### `xray query` - Call-Graph Queries
+
+```bash
+xray query "calls(main)"
+xray query "implementations(Storage)" --filter "kind:class"
+xray query "cycles(calls)"
+xray query "deadcode()"
+```
+
+### `xray handbook`, `xray diagram`, `xray review`, `xray ask`
+
+```bash
+# Deterministic architectural handbook in .xray/handbook/ (optional --llm)
+xray handbook
+
+# Export deterministic Mermaid architecture, call, CFG, or DFG diagrams
+xray diagram --view architecture -o arch.mmd
+xray diagram --view calls --anchor src/main.ts --depth 2
+
+# Deterministic diff-grounded PR review (optional --llm)
+xray review --base main
+
+# BYOK LLM Q&A grounded in read-only xray tools (supports /<slug> skill expansion)
+xray ask "How does auth middleware work?"
+```
+
+### `xray watch`, `xray tui`, `xray serve`, `xray skills`
+
+```bash
+xray watch --debounce 150              # Live incremental GraphCache indexer
+xray tui                               # Interactive terminal codebase explorer
+xray serve --port 4173 --mcp           # Local Web UI, REST API, and optional /mcp
+xray skills list                       # Discover workspace skills
 ```
 
 ### `xray graph` - Control/Data Flow
@@ -380,6 +419,8 @@ declarative YAML strategies always load.
 | `cost` | Estimate AI cost (requires `OPENAI_API_KEY`) |
 | `cf` | Control Flow Graph per function (TypeScript, JavaScript, Python, Go) |
 | `df` | Data Flow Graph per function (TypeScript, JavaScript, Python, Go) |
+| `churn` | Git commit churn metrics per file |
+| `blame` | Git blame author/recency metadata per file |
 
 ### Filtering
 
@@ -422,7 +463,7 @@ xray lang list                  # installed / missing, plus what your repo needs
 xray lang add go typescript     # or a bundle: web, go, systems, jvm, scripting, full
 ```
 
-Missing grammars never fail a scan; xray warns once per language and continues.
+Missing grammars never fail a scan; xray warns once per language and continues, using Linguist 100+ language detection and Universal Ctags / regex fallback (disable with `--no-fallback-ctags`).
 Pin languages with `"languages": ["go", "typescript"]` in `.xrayrc.json`.
 [Language packs guide →](docs/user/language-packs.md)
 
