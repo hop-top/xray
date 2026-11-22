@@ -132,11 +132,15 @@ describe('xray mcp over stdio', () => {
       capabilities: {},
       clientInfo: { name: 'test', version: '0' },
     });
-    expect(r.result).toEqual({
-      protocolVersion: '2024-11-05',
-      capabilities: { tools: {} },
-      serverInfo: { name: 'xray', version: require('../../package.json').version },
-    });
+    const result = r.result as Record<string, any>;
+    expect(result.protocolVersion).toBe('2024-11-05');
+    expect(result.capabilities).toEqual({ tools: {} });
+    expect(result.serverInfo).toEqual({ name: 'xray', version: require('../../package.json').version });
+    expect(typeof result.instructions).toBe('string');
+    expect(result.instructions.length).toBeGreaterThan(0);
+    for (const tool of ['explore', 'query', 'impact', 'map']) {
+      expect(result.instructions).toContain(tool);
+    }
     client.notify('notifications/initialized');
   });
 

@@ -9,6 +9,8 @@ import * as path from 'path';
 import { getDiff } from '../lib/git';
 import { GraphSerializer } from '../lib/graph/serializer';
 import { computeImpact, computeImpactFromSeeds, DEFAULT_IMPACT_DEPTH, formatCallSitesCell, impactToQueryResult, renderImpactBrief, renderImpactText, resolveChangedSymbols, type ImpactResult, withEditorCallSites, withEditorLine } from '../lib/query/impact';
+import type { SerializedGraph } from '../lib/query/types';
+import type { XrayGraph } from '../types/graph';
 import { UsageError } from '../lib/error/types';
 import {
   adaptFormatter, addOutputFlags, assertFormat, colsRequested, columns, emit, formatterOf,
@@ -37,7 +39,7 @@ export interface ImpactCommandOptions {
 
 /** Table/csv columns (and the `--cols` vocabulary) for callers. */
 export const IMPACT_COLUMNS = columns('name', 'kind', 'file', 'line', 'callSites', 'depth', 'group', 'confidence', 'id');
-const DEFAULT_IMPACT_COLUMNS = columns('name', 'file', 'line', 'depth', 'group', 'confidence');
+export const DEFAULT_IMPACT_COLUMNS = columns('name', 'file', 'line', 'depth', 'group', 'confidence');
 
 function buildRegistry() {
   const base = outputRegistry();
@@ -68,7 +70,7 @@ function buildRegistry() {
     })
   );
 }
-const impactRegistry = buildRegistry();
+export const impactRegistry = buildRegistry();
 
 /** `--depth` as a positive integer; anything else is a usage error. */
 export function parseImpactDepth(raw: string | undefined): number {
@@ -91,24 +93,25 @@ export async function handleImpactAction(symbol: string | undefined, options: Im
   if (hasSince && hasChanged) {
     throw new UsageError('--since and --changed cannot be combined');
   }
+  return impactFromSerialized(await obtainGraph(options), symbol, options);
+}
+
+/**
+ * Impact over an already-built graph document (no I/O): the in-process MCP
+ * path feeds the warm workspace's serialized graph here.
+ */
+export async function impactFromSerialized(
+  serialized: SerializedGraph,
+  symbol: string | undefined,
+  options: ImpactCommandOptions
+): Promise<ImpactResult> {
   const depth = parseImpactDepth(options.depth);
-  const serialized = await obtainGraph(options);
   const graph = new GraphSerializer().deserialize(serialized);
+  const hasSince = Boolean(options.since && options.since.trim());
+  const hasChanged = Boolean(options.changed);
   try {
     if (hasSince || hasChanged) {
-      const gitRoot = path.resolve(
-        (options.path && options.path.length > 0 ? options.path[0] : undefined) || process.cwd()
-      );
-      const hunks = hasChanged
-        ? await getDiff(gitRoot, 'WORKING')
-        : await getDiff(gitRoot, options.since!.trim(), 'HEAD');
-      const { symbolIds } = resolveChangedSymbols(graph, hunks);
-      const queryLabel = hasChanged ? 'changed' : `since:${options.since!.trim()}`;
-      return computeImpactFromSeeds(graph, symbolIds, queryLabel, {
-        depth,
-        strict: Boolean(options.strict),
-        roots: serialized.metadata?.roots,
-      });
+      return impactOfChanges(graph, serialized, options, depth);
     }
     return computeImpact(graph, symbol!.trim(), {
       depth,
@@ -119,6 +122,29 @@ export async function handleImpactAction(symbol: string | undefined, options: Im
     // findNodes rejects over-complex globs.
     throw new UsageError((error as Error).message, error as Error);
   }
+}
+
+/** `--since` / `--changed`: resolve changed symbols from git, then impact them. */
+async function impactOfChanges(
+  graph: XrayGraph,
+  serialized: SerializedGraph,
+  options: ImpactCommandOptions,
+  depth: number
+): Promise<ImpactResult> {
+  const hasChanged = Boolean(options.changed);
+  const gitRoot = path.resolve(
+    (options.path && options.path.length > 0 ? options.path[0] : undefined) || process.cwd()
+  );
+  const hunks = hasChanged
+    ? await getDiff(gitRoot, 'WORKING')
+    : await getDiff(gitRoot, options.since!.trim(), 'HEAD');
+  const { symbolIds } = resolveChangedSymbols(graph, hunks);
+  const queryLabel = hasChanged ? 'changed' : `since:${options.since!.trim()}`;
+  return computeImpactFromSeeds(graph, symbolIds, queryLabel, {
+    depth,
+    strict: Boolean(options.strict),
+    roots: serialized.metadata?.roots,
+  });
 }
 
 /** Commander action: compute, then render through the kit format registry. */

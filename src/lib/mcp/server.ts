@@ -2,8 +2,10 @@
  * `xray mcp`: stdio MCP server over xray's read-only analysis commands.
  *
  * Kit's `commanderBridge` enumerates the command tree and gates calls;
- * `tools.ts` narrows and reshapes the leaves; each call runs as a CLI
- * child (`runner.ts`); `stdio.ts` binds kit's handler to stdin/stdout.
+ * `tools.ts` narrows and reshapes the leaves; built-in read-only analysis
+ * tools run in-process over the warm workspace (`workspace.ts`,
+ * `inprocess.ts`), while untrusted project strategies run as a CLI child
+ * (`runner.ts`); `stdio.ts` binds kit's handler to stdin/stdout.
  *
  * Loaded lazily from the `mcp` command action so ordinary CLI runs
  * never load the MCP protocol stack.
@@ -12,19 +14,36 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { Command } from 'commander';
 import type * as KitMcp from '@hop-top/kit/dist/mcp';
-import type { Invocation, InvokeResult, Leaf, McpBridge } from '@hop-top/kit/dist/mcp';
+import type {
+  FlagSchema, Invocation, InvocationMeta, InvokeResult, Leaf, McpHandler, McpHttpResponse, McpBridge,
+} from '@hop-top/kit/dist/mcp';
 import { findCommand, isExposedPath, policyFor, shapeLeaf, buildArgv, type PathScope, type ToolDef } from './tools';
 import {
   assertConfigPinned, collectOutput, containPath, makeOutputDir, pinnedConfigArgs, resolveCallRoot, runChild,
   type ChildResult,
 } from './runner';
+import { canRunInProcess, runInProcess } from './inprocess';
 import { serveStdio } from './stdio';
+import { WarmWorkspaceManager } from './workspace';
 
 // tsconfig's legacy `node` resolution ignores the kit exports map: types
 // from the dist path, runtime through the exported `./mcp` subpath.
 function kitMcp(): typeof KitMcp {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require('@hop-top/kit/mcp') as typeof KitMcp;
+}
+
+/**
+ * A non-CLI tool served directly by the bridge. Registered by the server
+ * after the command-tree leaves so it is listed and invocable like any
+ * analysis tool, but with no commander command behind it.
+ */
+export interface DirectToolDef {
+  name: string;
+  description: string;
+  properties: Record<string, FlagSchema>;
+  required?: readonly string[];
+  invoke(args: Record<string, unknown> | undefined): InvokeResult | Promise<InvokeResult>;
 }
 
 export interface XrayBridgeOptions {
@@ -42,6 +61,21 @@ export interface XrayBridgeOptions {
   entry: string;
   /** Per-call child timeout. */
   timeoutMs: number;
+  /** Warm in-process graph workspace; built-in tools use it when present. */
+  workspace?: WarmWorkspaceManager;
+  /** Additional roots authorized beyond the server root (user global contexts). */
+  allowedRoots?: ReadonlySet<string>;
+  /** Non-CLI tools merged into `leaves()`/`invoke()` after the built-ins. */
+  directTools?: ReadonlyMap<string, DirectToolDef>;
+}
+
+/** One tool call as the bridge sees it; `meta` is optional for programmatic calls. */
+export type BridgeInvocation = Omit<Invocation, 'meta'> & { meta?: InvocationMeta };
+
+/** The xray bridge: kit's `McpBridge` plus programmatic invocation. */
+export interface XrayBridge extends McpBridge {
+  leaves(): Leaf[];
+  invoke(inv: BridgeInvocation): Promise<InvokeResult>;
 }
 
 /** CLI entry next to this module once built (dist/lib/mcp → dist/index.js). */
@@ -50,20 +84,58 @@ export function defaultEntry(): string {
 }
 
 /**
+ * Tool-selection guidance for agents, returned in the MCP `initialize`
+ * response. Concise by design: it says which tool answers which question.
+ */
+export const MCP_INSTRUCTIONS = [
+  'xray serves read-only code analysis over the served project root.',
+  'Pick a tool by intent:',
+  '- explore: find files (--match), search code (--search), or list/stats before mapping.',
+  '- query: one call-graph question in a single call, e.g. "calls(fn)" or "callers(fn)".',
+  '- impact: every transitive caller of a symbol before renaming or changing its signature.',
+  '- map: the full code map or serialized graph (format json is large; reach for query/impact first).',
+  '- graph: control/data-flow graphs for a symbol or directory.',
+  '- imports: per-file import records for dependency questions.',
+  '- strategy_*: framework-aware extras when one applies.',
+  'Use read_file (or your editor) to open file contents; these tools return analysis, not file text.',
+  'Paths resolve against the project root; pass root to analyze a subdirectory. Relative paths inside the project only.',
+].join('\n');
+
+function directLeaves(direct: ReadonlyMap<string, DirectToolDef> | undefined): Leaf[] {
+  if (!direct) return [];
+  return [...direct.values()].map((d) => ({
+    path: [d.name],
+    description: d.description,
+    properties: d.properties,
+    ...(d.required && d.required.length > 0 ? { required: [...d.required] } : {}),
+  }));
+}
+
+/**
  * McpBridge over the xray tree: kit's commanderBridge for enumeration,
  * schema and the policy gate, wrapped to expose only read-only tools
- * under client-safe names and to run each call as a CLI child.
+ * under client-safe names. Built-in analysis tools run in-process over
+ * the warm workspace; every other call runs as a CLI child.
  */
-export function createXrayBridge(program: Command, o: XrayBridgeOptions): McpBridge {
+export function createXrayBridge(program: Command, o: XrayBridgeOptions): XrayBridge {
   const kit = kitMcp();
   const pending = new WeakMap<Invocation, ToolDef>();
+  const allowedRoots = o.workspace?.getAllowedRoots() ?? o.allowedRoots;
 
   const inner = kit.commanderBridge(program, {
     enabled: (leaf) => (isExposedPath(program, leaf.path) ? undefined : { mcp: false }),
     run: (inv, cmd) => {
       const def = pending.get(inv);
       if (!def) throw new kit.UnknownCommandError(`unknown command: ${inv.path.join(' ')}`);
-      return runTool(def, cmd, inv.flags, o);
+      if (o.workspace && canRunInProcess(def, inv.flags, o.serverRoot)) {
+        return runInProcess(def, inv.flags, {
+          serverRoot: o.serverRoot,
+          serverConfig: o.serverConfig,
+          workspace: o.workspace,
+          allowedRoots,
+        });
+      }
+      return runTool(def, cmd, inv.flags, o, allowedRoots);
     },
   });
 
@@ -79,12 +151,17 @@ export function createXrayBridge(program: Command, o: XrayBridgeOptions): McpBri
   };
 
   return {
-    leaves: () => tools().map((t) => t.leaf),
+    leaves: () => [...tools().map((t) => t.leaf), ...directLeaves(o.directTools)],
     invoke: async (inv) => {
       const name = inv.path.length === 1 ? inv.path[0] : '';
+      const direct = o.directTools?.get(name);
+      if (direct) {
+        return direct.invoke(inv.flags as Record<string, unknown> | undefined);
+      }
       const tool = tools().find((t) => t.def.name === name);
       if (!tool) throw new kit.UnknownCommandError(`unknown tool: ${inv.path.join('.')}`);
-      const real: Invocation = { ...inv, path: tool.def.path };
+      const meta: InvocationMeta = inv.meta ?? { surface: 'mcp', requestedAt: new Date() };
+      const real: Invocation = { ...inv, path: tool.def.path, meta };
       pending.set(real, tool.def);
       return inner.invoke(real);
     },
@@ -105,24 +182,25 @@ async function withOutputDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 }
 
 /**
- * Run one tool call; argument errors throw (kit renders them as tool
- * errors). The child's cwd is always the server root: project
- * strategies, `node_modules` strategies and the strategy cache load from
- * the trusted root only; with a server config, it is passed as
- * `--config`, so no config walk-up from `--path` happens. The per-call `root` reaches the
- * command as its project path (`--path`), never as cwd.
+ * Run one tool call as a CLI child; argument errors throw (kit renders
+ * them as tool errors). The child's cwd is always the server root:
+ * project strategies, `node_modules` strategies and the strategy cache
+ * load from the trusted root only; with a server config, it is passed as
+ * `--config`, so no config walk-up from `--path` happens. The per-call
+ * `root` reaches the command as its project path (`--path`), never as cwd.
  */
 async function runTool(
   def: ToolDef,
   cmd: Command,
   args: Record<string, unknown> | undefined,
-  o: XrayBridgeOptions
+  o: XrayBridgeOptions,
+  allowedRoots?: ReadonlySet<string>
 ): Promise<InvokeResult> {
-  const callRoot = resolveCallRoot(o.serverRoot, args?.root);
+  const callRoot = resolveCallRoot(o.serverRoot, args?.root, allowedRoots);
   const scope: PathScope = {
     dir: callRoot,
     explicit: callRoot !== o.serverRoot,
-    contain: (value, base, label) => containPath(o.serverRoot, base, value, label),
+    contain: (value, base, label) => containPath(o.serverRoot, base, value, label, allowedRoots),
     isDirectory: (abs) => {
       try {
         return fs.statSync(abs).isDirectory();
@@ -170,6 +248,46 @@ async function runTool(
   return toResult(await runChild(argv, run));
 }
 
+/**
+ * Inject the tool-selection instructions into the `initialize` result.
+ * Kit's legacy handler has no instructions slot, so the server adds one.
+ */
+function withInstructions(res: McpHttpResponse): McpHttpResponse {
+  if (!res.body) return res;
+  try {
+    const msg = JSON.parse(res.body) as {
+      result?: { protocolVersion?: unknown; instructions?: unknown };
+    };
+    const result = msg.result;
+    if (
+      result !== null &&
+      typeof result === 'object' &&
+      'protocolVersion' in result &&
+      result.instructions === undefined
+    ) {
+      result.instructions = MCP_INSTRUCTIONS;
+      return { ...res, body: JSON.stringify(msg) };
+    }
+  } catch {
+    // Not JSON: leave the response untouched.
+  }
+  return res;
+}
+
+/**
+ * Build the MCP request handler for `program`: the bridge above plus the
+ * initialize instructions. Shared by stdio serving and tests.
+ */
+export function createXrayMcpHandler(program: Command, o: StartOptions): McpHandler {
+  const kit = kitMcp();
+  const inner = kit.createMcpHandler(createXrayBridge(program, o), {
+    serverInfo: { name: 'xray', version: o.version },
+    // stdio has no HTTP headers; the 2026-07-28 era is header-routed.
+    specVersions: [kit.MCP_SPEC_2024_11_05],
+  });
+  return async (req) => withInstructions(await inner(req));
+}
+
 export interface StartOptions extends XrayBridgeOptions {
   version: string;
 }
@@ -179,17 +297,13 @@ export interface StartOptions extends XrayBridgeOptions {
  * lines only: every other in-process stdout write is routed to stderr.
  */
 export async function startMcpServer(program: Command, o: StartOptions): Promise<void> {
-  const kit = kitMcp();
   const protocolWrite = process.stdout.write.bind(process.stdout);
   process.stdout.write = ((chunk: any, enc?: any, cb?: any) =>
     process.stderr.write(chunk, enc, cb)) as typeof process.stdout.write;
 
+  const workspace = new WarmWorkspaceManager(o.serverRoot, o.serverConfig);
   try {
-    const handler = kit.createMcpHandler(createXrayBridge(program, o), {
-      serverInfo: { name: 'xray', version: o.version },
-      // stdio has no HTTP headers; the 2026-07-28 era is header-routed.
-      specVersions: [kit.MCP_SPEC_2024_11_05],
-    });
+    const handler = createXrayMcpHandler(program, { ...o, workspace });
     await serveStdio(handler, {
       input: process.stdin,
       write: (line) => {
@@ -198,6 +312,7 @@ export async function startMcpServer(program: Command, o: StartOptions): Promise
       log: (msg) => process.stderr.write(`${msg}\n`),
     });
   } finally {
+    workspace.close();
     process.stdout.write = protocolWrite;
   }
 }

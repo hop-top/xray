@@ -26,6 +26,50 @@ const CODE_EXTENSIONS = new Set(['.js', '.ts']);
 const PACKAGE_PREFIX = 'xray-strategy-';
 
 /**
+ * A strategy package declaring a code entry; a YAML entry runs no code.
+ * Reads its package.json only.
+ */
+function packageEntryIsCode(dir: string): boolean {
+  try {
+    const pkg = JSON.parse(readTextSafe(dir, 'package.json'));
+    const entry = pkg?.['xray-strategy']?.entry;
+    return typeof entry === 'string' && !isDeclarative(entry);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether `root` holds project strategy code that would load when project
+ * code is allowed (`XRAY_ALLOW_PROJECT_STRATEGIES=1`): `.xray/strategies`
+ * files or `xray-strategy-*` packages in `node_modules`.
+ *
+ * Inspects names and manifests only; nothing is imported or run. Used by
+ * the MCP server to keep explore on the child path when the server root's
+ * own strategies would load (the child runs them; in-process would not).
+ */
+export function hasProjectStrategyCode(root: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  if (!projectStrategiesAllowed(env)) return false;
+  for (const dir of [path.join(root, '.xray/strategies'), path.join(root, 'node_modules')]) {
+    let names: string[];
+    try {
+      names = listEntries(dir);
+    } catch {
+      continue;
+    }
+    for (const name of names) {
+      const target = path.join(dir, name);
+      if (path.basename(name).startsWith(PACKAGE_PREFIX)) {
+        if (packageEntryIsCode(target)) return true;
+      } else if (CODE_EXTENSIONS.has(path.extname(name))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * Entry names to consider in a directory of packages. Besides the plain
  * names, a `node_modules` directory also yields `@scope/xray-strategy-*`.
  * The scan is bounded: one `readdir` per `@*` directory, one level deep,
@@ -232,7 +276,7 @@ export class StrategyLoader {
         const file = path.join(dir, name);
         // Discovery treats every `xray-strategy-*` entry as a package.
         const skip = path.basename(name).startsWith(PACKAGE_PREFIX)
-          ? this.packageEntryIsCode(file)
+          ? packageEntryIsCode(file)
           : CODE_EXTENSIONS.has(path.extname(name));
         if (skip) skipped.push(path.relative(cwd, file));
       }
@@ -266,17 +310,6 @@ export class StrategyLoader {
       if (names.has(word)) return true;
     }
     return false;
-  }
-
-  /** A strategy package declaring a code entry; a YAML entry runs no code. */
-  private packageEntryIsCode(dir: string): boolean {
-    try {
-      const pkg = JSON.parse(readTextSafe(dir, 'package.json'));
-      const entry = pkg?.['xray-strategy']?.entry;
-      return typeof entry === 'string' && !isDeclarative(entry);
-    } catch {
-      return false;
-    }
   }
 
   /** Directories the user manages: `XRAY_STRATEGIES_PATH`, `.xray/strategies`, the XDG data dir. */

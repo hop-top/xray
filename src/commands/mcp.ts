@@ -71,12 +71,15 @@ export function applyMcpChdir(argv: string[], req: McpRequest): string[] {
   return out;
 }
 
-const HELP_AFTER = `Serves map, graph, explore, query, strategy list/detect and every
-<strategy> <noun> command as MCP tools over stdin/stdout. Each call runs
-the CLI command in a child process inside the server root (the working
-directory, or -C <dir>); the optional "root" tool argument selects a
-directory inside it. Project strategies and config load from the server
-root only, as for any xray run there. See docs/user/mcp.md.
+const HELP_AFTER = `Serves map, graph, explore, query, impact, imports, strategy list/detect and
+every <strategy> <noun> command as MCP tools over stdin/stdout. Built-in
+read-only analysis tools (map/graph graph formats, explore, query, impact,
+imports) run in-process over a warm graph workspace: repeat calls reuse the
+parsed graph instead of spawning a CLI child. Untrusted project strategies
+(and the chunked text map) run as a CLI child inside the server root (the
+working directory, or -C <dir>); the optional "root" tool argument selects a
+directory inside it. Project strategies and config load from the server root
+only, as for any xray run there. See docs/user/mcp.md.
 
 Example (Claude Code):
   claude mcp add xray -- xray -C /path/to/project mcp
