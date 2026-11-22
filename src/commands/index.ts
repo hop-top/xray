@@ -54,6 +54,10 @@ function registerExploreCommand(): void {
     .option('-s, --search <keyword>', 'Search for keyword in code (repeatable)', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
+    .option('--regex', 'Treat --search patterns as regular expressions')
+    .option('--case-sensitive', 'Make --search matching case-sensitive')
+    .option('--offset <n>', 'Skip first N --search matches', (value: string) => parseInt(value, 10))
+    .option('--limit <n>', 'Maximum --search matches to return (default: 100, max: 500)', (value: string) => parseInt(value, 10))
     .option('-t, --type <ext>', 'Filter by file extension (e.g., ts, js, py) (repeatable)', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])

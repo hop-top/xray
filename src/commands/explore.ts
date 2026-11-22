@@ -5,6 +5,8 @@ import { NotFoundError } from '../lib/error/types';
 import { FileScanner } from '../lib/scanner';
 import { terminalSafe } from '../lib/terminal-safe';
 import { readTextSafe } from '../lib/safe-read';
+import { TrigramIndex, DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT } from '../lib/search/trigram-index';
+import { windowSlice } from '../lib/output-guardrails';
 import { assertPatternLengths, compileMatchers } from '../lib/path-match';
 import { resolvePath } from './common';
 import { UsageError } from '../lib/error/types';
@@ -179,35 +181,62 @@ export const handleExploreAction = async (
 
     // Search for keyword in code
     if (searching) {
+      const offset = options.offset ?? 0;
+      const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
+      if (!Number.isInteger(offset) || offset < 0) {
+        throw new UsageError('--offset must be a non-negative integer');
+      }
+      if (!Number.isInteger(limit) || limit < 1) {
+        throw new UsageError('--limit must be a positive integer');
+      }
+
       Logger.info(`Searching for ${keywords.length} keyword(s) in ${files.length} files...\n`);
 
-      const rows: SearchRow[] = [];
+      const allRows: SearchRow[] = [];
       const fileSet = new Set<string>();
+      const effectiveCap = Math.min(limit, MAX_SEARCH_LIMIT);
 
-      for (const file of files) {
+      for (const [root, rootEntries] of groupBy(entries, (e) => e.root)) {
+        const index = new TrigramIndex(root);
         try {
-          const content = readText(file);
-          const lines = content.split('\n');
-
-          lines.forEach((line, idx) => {
-            keywords.forEach((keyword: string) => {
-              if (line.toLowerCase().includes(keyword.toLowerCase())) {
-                rows.push({ file, line: idx + 1, keyword, content: line.trim() });
-                fileSet.add(file);
-              }
+          index.sync(root, rootEntries);
+          const allowed = new Set(rootEntries.map((e) => e.rel));
+          for (const keyword of keywords) {
+            const res = index.search(keyword, {
+              regex: options.regex,
+              caseSensitive: options.caseSensitive,
+              offset: 0,
+              limit: offset + effectiveCap,
+              allowedRelPaths: allowed,
             });
-          });
-        } catch (error) {
-          // Skip files that can't be read or are refused (tallied for the exit notice)
+            for (const m of res.matches) {
+              allRows.push({ file: m.file, line: m.line, keyword: m.keyword, content: m.content });
+              fileSet.add(m.file);
+            }
+          }
+        } finally {
+          index.close();
         }
       }
 
-      if (rows.length === 0) {
+      const window = windowSlice(allRows, {
+        offset,
+        limit: effectiveCap,
+        maxLimit: MAX_SEARCH_LIMIT,
+      });
+
+      if (window.items.length === 0) {
         Logger.warn(`No matches found for keyword(s): ${keywords.map(terminalSafe).join(', ')}`);
       } else {
         Logger.success(`Found matches in ${fileSet.size} file(s):\n`);
+        if (window.hasMore) {
+          Logger.info(
+            `Showing ${window.items.length} of ${window.total} match(es) ` +
+            `(offset ${window.offset}; use --offset ${window.offset + window.items.length} for more)`
+          );
+        }
       }
-      await render<SearchRow>(cmd, rows, searchText, columns('file', 'line', 'keyword', 'content'));
+      await render<SearchRow>(cmd, window.items, searchText, columns('file', 'line', 'keyword', 'content'));
       return;
     }
 
