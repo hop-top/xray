@@ -36,6 +36,12 @@ export interface BaseFileNodeAttributes {
   imports?: Import[];
   /** Logical community id assigned by the clustering plugin. Sentinel: -1. */
   community?: number;
+  /** Primary git blame author (`--with blame`). */
+  author?: string;
+  /** Whether this file was touched in a diff-scoped run (`--since` / `--changed`). */
+  changed?: boolean;
+  /** Commit count within the churn window (`--with churn`). */
+  churn?: number;
 }
 
 /**
@@ -54,6 +60,8 @@ export interface BaseTagNodeAttributes {
   col?: number;
   signature?: string;
   doc?: string;
+  /** Primary git blame author (`--with blame`). */
+  author?: string;
   /** Logical community id assigned by the clustering plugin. Sentinel: -1. */
   community?: number;
   /**

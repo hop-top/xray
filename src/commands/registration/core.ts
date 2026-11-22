@@ -51,6 +51,8 @@ export function registerCoreCommands(program: Command): void {
   // Both write the analysis output (`.xray_*.md` chunks, or the file
   // `-o` names) into the project; re-running rewrites the same files.
   declareEffect(addCommonOptions(program.command('map').argument('[paths...]', POSITIONAL_ROOTS))
+    .option('--since <ref>', 'Focus ranking on files changed since <ref> (e.g. main, HEAD~1)')
+    .option('--changed', 'Focus ranking on staged and unstaged working-tree changes vs HEAD')
     .description('Generate visual map of codebase')
     .action(handleGenerateCommand), 'write-local', 'conditional');
 
@@ -61,7 +63,7 @@ export function registerCoreCommands(program: Command): void {
   const withOption = graphCmd.options.find(o => o.long === '--with');
   if (withOption) {
     withOption.description =
-      'Include feature: vars, incs, cost, docs, df, cf (repeatable); cf and df are on unless one is named, then only those [TypeScript, JavaScript, Python, Go]';
+      'Include feature: vars, incs, cost, docs, df, cf, churn, blame (repeatable); cf and df are on unless one is named, then only those [TypeScript, JavaScript, Python, Go]';
   }
   declareEffect(graphCmd, 'write-local', 'conditional');
 
