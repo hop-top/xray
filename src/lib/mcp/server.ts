@@ -36,6 +36,7 @@ import { canRunInProcess, runInProcess } from './inprocess';
 import { serveStdio } from './stdio';
 import { WarmWorkspaceManager } from './workspace';
 import { listHandbookPages, readHandbookPage } from '../handbook/generator';
+import { SkillRegistry } from '../skills/registry';
 
 // tsconfig's legacy `node` resolution ignores the kit exports map: types
 // from the dist path, runtime through the exported `./mcp` subpath.
@@ -112,7 +113,7 @@ function directLeaves(direct: ReadonlyMap<string, DirectToolDef> | undefined): L
   }));
 }
 
-function createDefaultDirectTools(serverRoot: string): Map<string, DirectToolDef> {
+function createDefaultDirectTools(serverRoot: string, serverConfig: string | null = null): Map<string, DirectToolDef> {
   const handbookDir = path.join(serverRoot, '.xray', 'handbook');
   const map = new Map<string, DirectToolDef>();
   map.set('handbook', {
@@ -154,6 +155,47 @@ function createDefaultDirectTools(serverRoot: string): Map<string, DirectToolDef
       return { stdout: '', stderr: 'action must be "list" or "read"', exitCode: 2 };
     },
   });
+  map.set('list_skills', {
+    name: 'list_skills',
+    description: 'List available workspace skills (.xray/skills/*/SKILL.md and configured skill directories).',
+    properties: {},
+    invoke: () => {
+      try {
+        const registry = new SkillRegistry(serverRoot, { configPath: serverConfig ?? undefined });
+        const skills = registry.list();
+        return { stdout: JSON.stringify({ skills }, null, 2), stderr: '', exitCode: 0 };
+      } catch (err: any) {
+        return { stdout: '', stderr: err?.message ?? 'Failed to list skills', exitCode: 2 };
+      }
+    },
+  });
+  map.set('read_skill', {
+    name: 'read_skill',
+    description: 'Read a workspace skill by slug.',
+    properties: {
+      slug: {
+        type: 'string',
+        description: 'Skill slug to read.',
+      },
+    },
+    required: ['slug'],
+    invoke: (args) => {
+      const slug = typeof args?.slug === 'string' ? args.slug : '';
+      if (!slug.trim()) {
+        return { stdout: '', stderr: 'slug is required', exitCode: 2 };
+      }
+      try {
+        const registry = new SkillRegistry(serverRoot, { configPath: serverConfig ?? undefined });
+        const skill = registry.read(slug);
+        if (skill === null) {
+          return { stdout: '', stderr: `Skill not found: ${slug}`, exitCode: 1 };
+        }
+        return { stdout: skill.raw, stderr: '', exitCode: 0 };
+      } catch (err: any) {
+        return { stdout: '', stderr: err?.message ?? 'Invalid skill slug', exitCode: 2 };
+      }
+    },
+  });
   return map;
 }
 
@@ -167,7 +209,7 @@ export function createXrayBridge(program: Command, o: XrayBridgeOptions): XrayBr
   const kit = kitMcp();
   const pending = new WeakMap<Invocation, ToolDef>();
   const allowedRoots = o.workspace?.getAllowedRoots() ?? o.allowedRoots;
-  const directTools = new Map<string, DirectToolDef>(createDefaultDirectTools(o.serverRoot));
+  const directTools = new Map<string, DirectToolDef>(createDefaultDirectTools(o.serverRoot, o.serverConfig));
   if (o.workspace) {
     for (const [k, v] of buildPrimitiveDirectTools(o.workspace)) directTools.set(k, v);
   }

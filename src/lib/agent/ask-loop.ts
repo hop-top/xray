@@ -5,7 +5,7 @@ import { impactFromSerialized } from '../../commands/impact';
 import { queryFromSerialized } from '../../commands/query';
 import type { ExploreCommandOptions } from '../../types/command-options';
 import { isWithin } from '../confine';
-import { UsageError } from '../error/types';
+import { NotFoundError, UsageError } from '../error/types';
 import { execFileNoThrow } from '../../utils/execFileNoThrow';
 import { getHeadSha, isGitRepo } from '../git';
 import { analyzeHandbook, listHandbookPages, readHandbookPage } from '../handbook/generator';
@@ -13,6 +13,7 @@ import { LlmClient, type LlmMessage, type LlmProvider, type LlmToolCall } from '
 import { buildPrimitiveDirectTools, type DirectToolDef } from '../mcp/tools';
 import { WarmWorkspaceManager } from '../mcp/workspace';
 import { capOutputBytes } from '../output-guardrails';
+import { SkillRegistry } from '../skills/registry';
 
 export const DEFAULT_MAX_STEPS = 12;
 const DEFAULT_MAX_TOOL_OUTPUT_BYTES = 64_000;
@@ -422,14 +423,29 @@ function formatTranscriptMarkdown(result: Omit<AskLoopResult, 'outFile'>): strin
  * Run the bounded multi-step read-only Q&A loop against an LLM provider.
  */
 export async function runAskLoop(options: AskLoopOptions): Promise<AskLoopResult> {
-  const question = options.question?.trim();
-  if (!question) {
+  const rawQuestion = options.question?.trim();
+  if (!rawQuestion) {
     throw new UsageError('A non-empty <question> is required');
   }
 
   const maxSteps = parseMaxSteps(options.maxSteps);
   const maxToolOutputBytes = options.maxToolOutputBytes ?? DEFAULT_MAX_TOOL_OUTPUT_BYTES;
   const root = fs.realpathSync(path.resolve(options.root));
+
+  let question = rawQuestion;
+  let skillPrefix: string | null = null;
+  const slashMatch = rawQuestion.match(/^\/([^\s]+)(?:\s+([\s\S]*))?$/);
+  if (slashMatch) {
+    const slug = slashMatch[1];
+    const registry = new SkillRegistry(root, { configPath: options.configPath });
+    const skill = registry.read(slug);
+    if (!skill) {
+      throw new NotFoundError(`Skill not found: ${slug}`);
+    }
+    skillPrefix = `# Skill: ${skill.name} (${skill.slug})\n${skill.body}`;
+    const remainder = (slashMatch[2] ?? '').trim();
+    question = remainder || `Apply skill "${skill.name}" (${skill.slug}).`;
+  }
 
   const client = new LlmClient({
     provider: options.provider,
@@ -445,7 +461,8 @@ export async function runAskLoop(options: AskLoopOptions): Promise<AskLoopResult
   try {
     const tools = buildAskTools(workspace, root, options.configPath);
     const headSha = (await isGitRepo(root)) ? await getHeadSha(root) : null;
-    const system = buildSystemPrompt(tools, headSha);
+    const baseSystem = buildSystemPrompt(tools, headSha);
+    const system = skillPrefix ? `${skillPrefix}\n\n${baseSystem}` : baseSystem;
 
     const messages: LlmMessage[] = [{ role: 'user', content: question }];
     const steps: AskStepTrace[] = [];
