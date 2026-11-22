@@ -17,6 +17,7 @@ import { registerMcpCommand } from '../mcp';
 import { registerWatchCommand } from '../watch';
 import { registerTuiCommand } from '../tui';
 import { registerUpgradeCommand } from '../upgrade';
+import { registerHandbookCommand } from '../handbook';
 import { setCommandGroup, type HelpGroupId } from '../kit-cli';
 import { declareEffect } from '../side-effect';
 import { addResultFormat } from '../../lib/result-format';
@@ -29,6 +30,7 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   query: 'analyze',
   impact: 'analyze',
   imports: 'analyze',
+  handbook: 'analyze',
   watch: 'analyze',
   tui: 'analyze',
   strategy: 'strategy',
@@ -95,6 +97,9 @@ Examples:
 
   // Imports command - per-file imports as the xray.imports/v1 contract
   registerImportsCommand(program);
+
+  // Handbook command - deterministic architectural handbook generator
+  registerHandbookCommand(program);
 
   // Watch command - live incremental background indexer
   registerWatchCommand(program);
