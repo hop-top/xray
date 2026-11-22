@@ -182,6 +182,9 @@ export class ParserManager {
             callSites = extracted.callSites;
           }
 
+          const exported = this.extractExported(node, defNodeForLine, tagName, file);
+          const supertypes = this.extractSupertypes(defNodeForLine, kind);
+
           tags.push({
             file,
             name: tagName,
@@ -193,6 +196,8 @@ export class ParserManager {
             doc,
             references,
             callSites,
+            exported,
+            ...(supertypes && supertypes.length > 0 ? { supertypes } : {}),
             cfg: cflogram,
             dfg: dflogram
           });
@@ -211,6 +216,135 @@ export class ParserManager {
 
     const allowed = config.split(',').map(s => s.trim());
     return allowed.includes(kind);
+  }
+
+  private extractExported(
+    nameNode: Parser.SyntaxNode,
+    defNode: Parser.SyntaxNode,
+    tagName: string,
+    file: string
+  ): boolean {
+    const ext = file.slice(file.lastIndexOf('.')).toLowerCase();
+
+    // Go: uppercase first rune
+    if (ext === '.go') {
+      return tagName.length > 0 && /^\p{Lu}/u.test(tagName);
+    }
+
+    // Python: no leading underscore
+    if (ext === '.py') {
+      return !tagName.startsWith('_');
+    }
+
+    // Rust: `visibility_modifier` starting with `pub`
+    if (ext === '.rs') {
+      for (let i = 0; i < defNode.childCount; i++) {
+        const child = defNode.child(i);
+        if (child && child.type === 'visibility_modifier' && child.text.startsWith('pub')) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // TS / JS: `export_statement` ancestor, unless marked `private` or `#` private field
+    if (['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'].includes(ext)) {
+      if (tagName.startsWith('#')) return false;
+      for (let i = 0; i < defNode.childCount; i++) {
+        const child = defNode.child(i);
+        if (child && child.type === 'accessibility_modifier' && child.text === 'private') {
+          return false;
+        }
+      }
+      let cur: Parser.SyntaxNode | null = defNode;
+      while (cur) {
+        if (cur.type === 'export_statement') return true;
+        cur = cur.parent;
+      }
+      // Also check from nameNode in case defNode stopped at variable_declarator
+      cur = nameNode.parent;
+      while (cur) {
+        if (cur.type === 'export_statement') return true;
+        cur = cur.parent;
+      }
+      return false;
+    }
+
+    // Java / C# / Kotlin / PHP / Scala: look for `public` modifier
+    for (let i = 0; i < defNode.childCount; i++) {
+      const child = defNode.child(i);
+      if (child && (child.type === 'modifiers' || child.type === 'visibility_modifier' || child.type === 'modifier')) {
+        if (/\bpublic\b/.test(child.text)) return true;
+      }
+    }
+
+    return false;
+  }
+
+  private extractSupertypes(defNode: Parser.SyntaxNode, kind: string): string[] | undefined {
+    if (kind !== 'class' && kind !== 'interface' && kind !== 'type') {
+      return undefined;
+    }
+
+    const heritageTypes = new Set([
+      'class_heritage',
+      'extends_clause',
+      'implements_clause',
+      'extends_type_clause',
+      'superclass',
+      'super_interfaces',
+      'extends_interfaces',
+      'base_list',
+      'base_class_clause',
+      'delegation_specifier',
+      'base_clause',
+      'class_interface_clause',
+      'argument_list', // Python class_definition superclasses
+    ]);
+
+    const nameTypes = new Set([
+      'identifier',
+      'type_identifier',
+      'nested_type_identifier',
+      'scoped_type_identifier',
+      'member_expression',
+      'attribute',
+      'qualified_name',
+    ]);
+
+    const collectNames = (root: Parser.SyntaxNode, out: Set<string>) => {
+      if (root.type === 'generic_type' || root.type === 'type_application' || root.type === 'expression_with_type_arguments') {
+        const base = root.firstNamedChild;
+        if (base) collectNames(base, out);
+        return;
+      }
+      if (nameTypes.has(root.type)) {
+        const text = root.text.trim();
+        if (text) out.add(text);
+        return;
+      }
+      for (let i = 0; i < root.namedChildCount; i++) {
+        const child = root.namedChild(i);
+        if (child) collectNames(child, out);
+      }
+    };
+
+    const result = new Set<string>();
+
+    // Python class_definition has a named `superclasses` field
+    const superclasses = defNode.childForFieldName('superclasses');
+    if (superclasses) {
+      collectNames(superclasses, result);
+    }
+
+    for (let i = 0; i < defNode.namedChildCount; i++) {
+      const child = defNode.namedChild(i);
+      if (child && heritageTypes.has(child.type)) {
+        collectNames(child, result);
+      }
+    }
+
+    return result.size > 0 ? Array.from(result) : undefined;
   }
 
   private extractDoc(nameNode: Parser.SyntaxNode, content: string): string | undefined {

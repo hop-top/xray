@@ -8,6 +8,7 @@ import { readTextSafe } from '../lib/safe-read';
 import { TrigramIndex, DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT } from '../lib/search/trigram-index';
 import { windowSlice } from '../lib/output-guardrails';
 import { assertPatternLengths, compileMatchers } from '../lib/path-match';
+import { evaluateFilter, parseFilterDsl, type FilterNode } from '../lib/query/filter-dsl';
 import { resolvePath } from './common';
 import { UsageError } from '../lib/error/types';
 import type { Command } from 'commander';
@@ -126,6 +127,9 @@ export const handleExploreAction = async (
     const searching = keywords.length > 0;
     if (searching && options.stats) throw new UsageError('--search and --stats are exclusive: pick one');
 
+    const filterAst: FilterNode | undefined =
+      options.filter !== undefined ? parseFilterDsl(options.filter) : undefined;
+
   const paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()])
       .map(resolvePath)
       .filter(Boolean) as string[];
@@ -165,6 +169,10 @@ export const handleExploreAction = async (
       assertPatternLengths(options.match!, '--match');
       const matches = compileMatchers(options.match!);
       entries = entries.filter(e => matches(e.rel));
+    }
+
+    if (filterAst && !searching) {
+      entries = entries.filter(e => evaluateFilter(filterAst, { file: e.rel }));
     }
 
     const files = entries.map(e => e.abs);
@@ -210,6 +218,9 @@ export const handleExploreAction = async (
               allowedRelPaths: allowed,
             });
             for (const m of res.matches) {
+              if (filterAst && !evaluateFilter(filterAst, { file: m.relPath, content: m.content })) {
+                continue;
+              }
               allRows.push({ file: m.file, line: m.line, keyword: m.keyword, content: m.content });
               fileSet.add(m.file);
             }

@@ -46,6 +46,10 @@ export class GraphSerializer {
       if (attrs.imports !== undefined) node.imports = attrs.imports;
       if (attrs.cfg !== undefined) node.cfg = attrs.cfg;
       if (attrs.dfg !== undefined) node.dfg = attrs.dfg;
+      if (attrs.exported !== undefined) node.exported = attrs.exported;
+      if (Array.isArray(attrs.supertypes) && attrs.supertypes.length > 0) {
+        node.supertypes = [...attrs.supertypes];
+      }
       if (opts.references && Array.isArray(attrs.references) && attrs.references.length > 0) {
         node.references = [...attrs.references];
       }
@@ -109,6 +113,10 @@ export class GraphSerializer {
       if (node.imports !== undefined) attrs.imports = node.imports;
       if (node.cfg !== undefined) attrs.cfg = node.cfg;
       if (node.dfg !== undefined) attrs.dfg = node.dfg;
+      if (node.exported !== undefined) attrs.exported = node.exported;
+      if (Array.isArray(node.supertypes) && node.supertypes.length > 0) {
+        attrs.supertypes = [...node.supertypes];
+      }
       if (node.references !== undefined) attrs.references = [...node.references];
 
       graph.addNode(node.id, attrs);
