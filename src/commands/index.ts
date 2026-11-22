@@ -62,6 +62,7 @@ function registerExploreCommand(): void {
     .option('-t, --type <ext>', 'Filter by file extension (e.g., ts, js, py) (repeatable)', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
+    .option('--filter <expr>', 'Filter results using boolean DSL (e.g., "lang:typescript -file:test")')
     .option('--stats', 'Show codebase statistics')
     .option('--list-strategies', 'List all available strategies');
   addExploreOutputFlags(explore)

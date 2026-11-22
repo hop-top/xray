@@ -157,6 +157,9 @@ export interface QueryCommandOptions extends BaseCommandOptions {
   /** Output format: table (default), json, yaml, csv, tree */
   format?: string;
 
+  /** Boolean filter DSL expression */
+  filter?: string;
+
   /** List available query adapters */
   listAdapters?: boolean;
 }
@@ -191,6 +194,9 @@ export interface ExploreCommandOptions extends BaseCommandOptions {
 
   /** Filter by file extension (e.g., ts, js, py) (repeatable) */
   type?: string[];
+
+  /** Boolean filter DSL expression */
+  filter?: string;
 
   /** List all available strategies */
   listStrategies?: boolean;

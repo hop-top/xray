@@ -42,6 +42,10 @@ export interface SerializedNode {
   changed?: boolean;
   /** Commit count within the churn window (`--with churn`). */
   churn?: number;
+  /** Whether the symbol is exported/public. */
+  exported?: boolean;
+  /** Base classes / implemented interfaces on class/interface/struct nodes. */
+  supertypes?: string[];
 }
 
 /**

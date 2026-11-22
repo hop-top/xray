@@ -140,6 +140,8 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
             endLine: tag.endLine,
             signature: tag.signature,
             doc: tag.doc,
+            ...(tag.exported !== undefined ? { exported: tag.exported } : {}),
+            ...(tag.supertypes && tag.supertypes.length > 0 ? { supertypes: tag.supertypes } : {}),
             ...(tag.cfg ? { cfg: tag.cfg } : {}),
             ...(tag.dfg ? { dfg: tag.dfg } : {})
           },
