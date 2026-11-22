@@ -22,6 +22,7 @@ import { registerHandbookCommand } from '../handbook';
 import { registerDiagramCommand } from '../diagram';
 import { registerAskCommand } from '../ask';
 import { registerReviewCommand } from '../review';
+import { registerSkillsCommand } from '../skills';
 import { setCommandGroup, type HelpGroupId } from '../kit-cli';
 import { declareEffect } from '../side-effect';
 import { addResultFormat } from '../../lib/result-format';
@@ -43,6 +44,7 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   serve: 'analyze',
   strategy: 'strategy',
   alias: 'management',
+  skills: 'management',
   lang: 'management',
   cache: 'management',
   paths: 'management',
@@ -132,6 +134,9 @@ Examples:
 
   // Alias management command
   program.addCommand(registerAliasCommand());
+
+  // Skills management command
+  registerSkillsCommand(program);
 
   // Language pack management command
   program.addCommand(registerLangCommand());

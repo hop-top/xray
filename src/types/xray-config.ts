@@ -61,6 +61,10 @@ export interface XrayLlmConfig {
   maxCost?: number;
 }
 
+export interface XraySkillsConfig {
+  dirs?: string[];
+}
+
 export interface XrayConfig extends XrayScopeConfig {
   lenses?: {
     [name: string]: XrayScopeConfig;
@@ -75,4 +79,5 @@ export interface XrayConfig extends XrayScopeConfig {
     [name: string]: string;
   };
   llm?: XrayLlmConfig;
+  skills?: XraySkillsConfig;
 }
