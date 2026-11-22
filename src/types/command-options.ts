@@ -167,6 +167,18 @@ export interface ExploreCommandOptions extends BaseCommandOptions {
   /** Search for keyword in code (repeatable) */
   search?: string[];
 
+  /** Treat --search patterns as regular expressions */
+  regex?: boolean;
+
+  /** Case-sensitive --search matching */
+  caseSensitive?: boolean;
+
+  /** Skip first N --search matches */
+  offset?: number;
+
+  /** Maximum number of --search matches to return */
+  limit?: number;
+
   /** Filter by file extension (e.g., ts, js, py) (repeatable) */
   type?: string[];
 
