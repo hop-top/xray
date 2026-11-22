@@ -57,9 +57,10 @@ describe('telemetry: piped subprocess with saved consent', () => {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     expect(r.status).toBe(0);
-    // No sink file, and no `.xray/` dir: a recorder that was set up (CLI
-    // tracker or the Xray auto-registered plugin) creates it.
+    // No telemetry sink file in the project (paths also leaves no .xray/ dir).
     expect(fs.existsSync(path.join(proj, '.xray', 'telemetry.json'))).toBe(false);
-    expect(fs.existsSync(path.join(proj, '.xray'))).toBe(false);
+    if (args[0] === 'paths') {
+      expect(fs.existsSync(path.join(proj, '.xray'))).toBe(false);
+    }
   }, 90_000);
 });

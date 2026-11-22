@@ -9,7 +9,7 @@
 #
 # Only a SessionStart envelope triggers the save, so the `{}` lint probe
 # (and any other event) has no side effects. Graph:
-# <session.cwd>/.xray/graph.json or $XRAY_GRAPH; add `.xray/` to your
+# <session.cwd>/.xray/graphs/graph.json or $XRAY_GRAPH; add `.xray/` to your
 # .gitignore. Nothing is saved outside a git work tree. Needs jq.
 # Config: README.md.
 set -euo pipefail

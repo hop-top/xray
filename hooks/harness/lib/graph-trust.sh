@@ -44,13 +44,16 @@ xray_work_root() {
 }
 
 # xray_graph_abs <graph>: physical absolute path of <graph>; refuses when
-# <graph> or its directory is a symlink. The directory must exist.
+# <graph> or its directory (or parent dir such as .xray/) is a symlink.
+# The directory must exist.
 xray_graph_abs() {
   [ -L "$1" ] && return 1
   _xt_b=$(basename -- "$1")
   case $_xt_b in .|..|/) return 1 ;; esac
   _xt_d=$(dirname -- "$1")
   [ -L "$_xt_d" ] && return 1
+  _xt_p=$(dirname -- "$_xt_d")
+  case $_xt_p in .|..) ;; *) [ -L "$_xt_p" ] && return 1 ;; esac
   _xt_d=$(cd -P -- "$_xt_d" 2>/dev/null && pwd -P) || return 1
   printf '%s/%s\n' "${_xt_d%/}" "$_xt_b"
 }

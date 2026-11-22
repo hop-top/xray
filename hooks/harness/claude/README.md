@@ -5,7 +5,7 @@ a function the moment it greps for it:
 
 | Hook | Script | Does |
 |---|---|---|
-| `SessionStart` | `session-start.sh` | Saves the code graph to `.xray/graph.json` in the background; prints a one-line `[xray]` orientation (plain stdout becomes context). |
+| `SessionStart` | `session-start.sh` | Saves the code graph to `.xray/graphs/graph.json` in the background; prints a one-line `[xray]` orientation (plain stdout becomes context). |
 | `PreToolUse` (`Grep`, `Bash`) | `pretooluse-impact.sh` | For a `Grep` pattern or `grep`/`rg` command on a plain identifier, adds `[xray impact] <symbol> …` as `additionalContext`. Never blocks or changes the tool call. |
 
 Rules: always exit 0; silent on regexes, paths, `xray …` commands, no
@@ -17,10 +17,10 @@ match, zero callers or no saved graph; each symbol once per session
 The impact text comes from the graph (file paths, symbol names, kinds)
 and goes straight into the model's context, so the hooks only read a
 graph this user's `lib/save-graph.sh` wrote. A cloned repo that ships,
-or plants, a crafted `.xray/graph.json` is ignored. The impact hook is
+or plants, a crafted `.xray/graphs/graph.json` is ignored. The impact hook is
 silent unless:
 
-- the graph and its directory (`.xray/`) are not symlinks, and the graph
+- the graph and its directory (`.xray/`, `.xray/graphs/`) are not symlinks, and the graph
   resolves inside the project's git work tree (also for `$XRAY_GRAPH`);
 - neither the graph nor any other file in its directory is tracked by
   git (keep `.xray/` in `.gitignore`, never commit it);
@@ -89,7 +89,7 @@ Merge into `~/.claude/settings.json` (all projects) or
 cd your-project
 echo '{"session_id":"t","cwd":"'"$PWD"'","hook_event_name":"SessionStart"}' \
   | ~/.local/share/xray/hooks/harness/claude/session-start.sh
-# wait for .xray/graph.json, then:
+# wait for .xray/graphs/graph.json, then:
 echo '{"session_id":"t","cwd":"'"$PWD"'","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"grep -rn SomeFunction ."}}' \
   | ~/.local/share/xray/hooks/harness/claude/pretooluse-impact.sh
 ```

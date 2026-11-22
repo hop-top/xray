@@ -90,9 +90,9 @@ xray strategy detect       # What frameworks are here?
 
 ### 3. Chunked Output
 Large codebases are split into digestible chunks (one per directory level). Navigate between them:
-- `.xray_root.md` - Root overview
-- `.xray_src.md` - src/ directory
-- `.xray_src_lib.md` - src/lib/ directory
+- `.xray/maps/map_root.md` - Root overview
+- `.xray/maps/map_src.md` - src/ directory
+- `.xray/maps/map_src_lib.md` - src/lib/ directory
 
 Each chunk has navigation links. Perfect for AI assistants that work with one file at a time.
 
@@ -233,14 +233,14 @@ In an agent session the same answer can arrive by hook: [Use cases](use-cases.md
 xray map --anchor src/api/index.ts --with incs --with docs --no-chunk
 
 # Share the output file with Claude/GPT
-cat .xray.txt | xclip  # or copy to clipboard
+cat .xray/maps/map.txt | xclip  # or copy to clipboard
 ```
 
 ## Next Steps
 
 1. **Install**: `npm install -g @hop-top/xray`
 2. **Run**: `xray map` in your project
-3. **View**: open the `Root chunk:` file xray prints (see `.xray_*.md`) in an editor
+3. **View**: open the `Root chunk:` file xray prints (see `.xray/maps/map_*.md`) in an editor
 4. **Learn**: Pick a guide from above based on your need
 
 ## Resources

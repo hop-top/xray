@@ -8,7 +8,7 @@ dist/
 *.tsbuildinfo
 
 # Generated files
-.xray
+.xray/
 .xray_*
 .xray_cache.db
 

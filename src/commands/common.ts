@@ -4,6 +4,7 @@ import { StrategyContextImpl } from '../lib/strategy/context';
 import { ExtensionOverrideCommandOptions } from '../types/command-options';
 import type { XrayExtensionConfig } from '../types/xray-config';
 import { UsageError } from '../lib/error/types';
+import { defaultOutputBase } from '../lib/project-paths';
 import { bindFlag, staticValues } from './completion';
 
 const appendOptionValue = (
@@ -30,18 +31,17 @@ export const resolvePath = (p: string | undefined): string | undefined => {
 };
 
 // Helper to determine output path with smart extension handling.
-// Default (no -o): `.xray` is a DIRECTORY (strategy detection state), so no
-// single-file default may use that bare name. Graph formats and single-file
-// text write `.xray.<ext>`; csv takes `.xray` as the base of
-// `.xray.{nodes,edges}.csv`; chunked text takes it as the chunk prefix
-// (`.xray_*.md`).
+// Default (no -o): writes under `$PWD/.xray/maps/map*` (for `map`) or
+// `$PWD/.xray/graphs/graph*` (for `graph`) so generated artifacts never
+// pollute the project root or clobber each other.
 export const resolveOutputPath = (
   outputOption: string | undefined,
   format: 'txt' | 'csv' | 'xml' | 'json' | 'mermaid',
-  chunked = true
+  chunked = true,
+  kind: 'map' | 'graph' = 'map'
 ): string | undefined => {
   if (!outputOption) {
-    const base = require('path').resolve(process.cwd(), '.xray');
+    const base = defaultOutputBase(kind);
     if (format === 'json' || format === 'xml') return `${base}.${format}`;
     if (format === 'mermaid') return `${base}.mmd`;
     if (format === 'txt' && !chunked) return `${base}.txt`;
@@ -287,7 +287,7 @@ export const addCommonOptions = (cmd: Command) => {
     .option('-p, --path <path>', 'Root directory to analyze (repeatable; with --format json|csv|xml all roots merge into one graph) [default: current directory]', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
-    .option('-o, --output <path>', 'Output file path, or - for stdout (one document; not csv) [default: .xray, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]')
+    .option('-o, --output <path>', 'Output file path, or - for stdout (one document; not csv) [default: .xray/maps/map, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]')
     .option('-l, --limit <number>', 'Token limit per chunk [default: 4096]')
     .option('-w, --with <feature>', 'Include feature: vars, incs, cost, docs, df, cf, churn, blame (repeatable) [df, cf: TypeScript, JavaScript, Python, Go]', (value: string, previous: string[]) => {
       return previous.concat([value]);

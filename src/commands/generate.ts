@@ -518,9 +518,10 @@ const plannedWrites = (
     write(`${base}.edges.csv`, 'graph edges');
   } else if (chunked) {
     const ext = path.extname(outputPath) || '.md';
+    const base = outputPath.endsWith(ext) ? outputPath.slice(0, -ext.length) : outputPath;
     effects.push({
       kind: 'write',
-      target: `${outputPath.replace(ext, '')}_*${ext}`,
+      target: `${base}_*${ext}`,
       reversible: false,
       detail: 'one file per directory or community; names known after analysis',
     });
@@ -570,9 +571,10 @@ export const runSingleXray = async (
     mergedOptions.chunked = false;
   }
 
+  const outputKind: 'map' | 'graph' = mergedOptions.outputKind === 'graph' ? 'graph' : 'map';
   const outputPath = toStdout
     ? STDOUT
-    : resolveOutputPath(mergedOptions.output, format, mergedOptions.chunked !== false);
+    : resolveOutputPath(mergedOptions.output, format, mergedOptions.chunked !== false, outputKind);
 
   if (plan) {
     plan.push(...plannedWrites(mergedOptions, format, outputPath!, runRoots(mergedOptions)));
@@ -725,7 +727,7 @@ export const runSingleXray = async (
       let filesWritten = 0;
       for (const [chunkPath, content] of chunks.entries()) {
         try {
-          fs.writeFileSync(chunkPath, content);
+          writeFileEnsuringDir(chunkPath, content);
           filesWritten++;
         } catch (err: any) {
           throw new FileWriteError(chunkPath, err);
@@ -839,7 +841,7 @@ export const runSingleXray = async (
       let filesWritten = 0;
       for (const [chunkPath, content] of chunks.entries()) {
         try {
-          fs.writeFileSync(chunkPath, content);
+          writeFileEnsuringDir(chunkPath, content);
           filesWritten++;
         } catch (err: any) {
           throw new FileWriteError(chunkPath, err);
@@ -1146,7 +1148,7 @@ export const handleGenerateCommand = async (
     }
     options = { ...options, path: [...paths] };
   }
-  if (cmd?.name() === 'graph') options = withGraphFlow(options);
+  if (cmd?.name() === 'graph') options = { ...withGraphFlow(options), outputKind: 'graph' };
   return handleGenerateAction(options, cmd && previewing(cmd) ? cmd : undefined);
 };
 

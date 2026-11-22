@@ -946,7 +946,7 @@ xray skills show <slug> [-p <dir>] [--format text|json]
 | `-l, --limit <number>` | Token limit for output | 4096 |
 
 **Output File Behavior:**
-- **No output specified**: Writes to the current directory. `.xray/` is a directory (user strategies), so single files never use that bare name: text chunks `.xray_*.md`; `--no-chunk` text `.xray.txt`; `--format json` `.xray.json`; `--format xml` `.xray.xml`; `--format csv` `.xray.nodes.csv` + `.xray.edges.csv`
+- **No output specified**: Writes under `$PWD/.xray/maps/` (or `$PWD/.xray/graphs/` for `graph`): text chunks `.xray/maps/map_*.md`; `--no-chunk` text `.xray/maps/map.txt`; `--format json` `.xray/maps/map.json`; `--format xml` `.xray/maps/map.xml`; `--format mermaid` `.xray/maps/map.mmd`; `--format csv` `.xray/maps/map.nodes.csv` + `.xray/maps/map.edges.csv` (and `graph` uses `.xray/graphs/graph*`).
 - **Output with dot prefix** (e.g., `.myoutput`): Used as-is, no extension added
 - **Output with extension** (e.g., `analysis.txt`): Used as-is
 - **Output without extension** (e.g., `mymap`): Auto-appends format extension

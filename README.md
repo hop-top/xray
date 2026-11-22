@@ -25,7 +25,7 @@ cd /path/to/your/project
 xray map
 
 # List the chunk files; xray also prints "Root chunk: <path>" - open that one
-ls .xray_*.md
+ls .xray/maps/map_*.md
 ```
 
 **That's it!** You now have a structured overview of your codebase.
@@ -67,10 +67,10 @@ xray map --anchor src/main.ts --with incs --limit 8192
 
 **NEW: Chunked Output**
 
-By default, xray generates multiple files organized by directory structure:
-- `.xray_root.md` - Root directory
-- `.xray_src.md` - src/ directory
-- `.xray_src_lib.md` - src/lib/ directory
+By default, xray generates multiple files under `.xray/maps/` organized by directory structure:
+- `.xray/maps/map_root.md` - Root directory
+- `.xray/maps/map_src.md` - src/ directory
+- `.xray/maps/map_src_lib.md` - src/lib/ directory
 - etc.
 
 Each chunk includes parent ↔ child navigation links. Use `--no-chunk` for single-file output.

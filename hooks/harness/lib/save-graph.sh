@@ -15,13 +15,13 @@
 # graph whose sha256 matches. Without `sha256sum` or `shasum` no sidecar
 # is written, so the impact hooks stay silent. See graph-trust.sh.
 #
-# Target: $XRAY_GRAPH, else <project dir>/.xray/graph.json. It must
+# Target: $XRAY_GRAPH, else <project dir>/.xray/graphs/graph.json. It must
 # resolve inside the git work tree. Add `.xray/` to your .gitignore.
 #
 # Does nothing (prints nothing) outside a git work tree, so a session
 # opened in $HOME does not map the whole home directory; when xray is
 # not on PATH; or when the target is unsafe: the graph's directory
-# (.xray), the graph, or its lock is a symlink, or the graph resolves
+# (.xray or .xray/graphs), the graph, or its lock is a symlink, or the graph resolves
 # outside the work-tree root. Always exits 0.
 #
 # Used by claude/session-start.sh, gemini/session-start.sh and
@@ -38,7 +38,7 @@ command -v git >/dev/null 2>&1 || exit 0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 root=$(xray_work_root) || exit 0
 
-graph=${XRAY_GRAPH:-.xray/graph.json}
+graph=${XRAY_GRAPH:-.xray/graphs/graph.json}
 case $graph in
   /*) ;;
   *) graph="$(pwd)/$graph" ;;
@@ -53,6 +53,7 @@ anc=$out_dir
 while [ ! -e "$anc" ] && [ ! -L "$anc" ]; do
   anc=$(dirname -- "$anc")
 done
+[ -L "$anc" ] && exit 0
 anc=$(cd -P -- "$anc" 2>/dev/null && pwd -P) || exit 0
 case $anc/ in
   "$root"/*) ;;

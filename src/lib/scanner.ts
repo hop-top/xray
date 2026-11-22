@@ -44,7 +44,7 @@ export class FileScanner {
     }
 
     // Add standard ignores
-    this.ig.add(['.git', 'node_modules', 'dist', 'build', '*.min.js', '*.map', '.xray_cache.db']);
+    this.ig.add(['.git', 'node_modules', '.xray', 'dist', 'build', '*.min.js', '*.map', '.xray_cache.db']);
   }
 
   /**

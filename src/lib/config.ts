@@ -883,6 +883,7 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     // Resolved selection (see resolveFormatFlags): CLI beats config, and a
     // CLI choice on an axis must not be re-overridden by config booleans.
     outputFormat: cliOptions.outputFormat ?? (baseConfig.json ? 'json' : baseConfig.format),
+    ...(cliOptions.outputKind ? { outputKind: cliOptions.outputKind } : {}),
     // commander's `--no-chunk` defaults `chunk` to true: only an explicit false is a CLI choice.
     chunked: cliOptions.chunk === false ? false : baseConfig.chunked !== false,
     detect: cliOptions.detect ?? false,

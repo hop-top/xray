@@ -50,19 +50,19 @@ cd /path/to/your/project
 xray map
 
 # List the chunk files; xray also prints "Root chunk: <path>" - open that one
-ls .xray_*.md
+ls .xray/maps/map_*.md
 ```
 
 That's it! You now have a hierarchical map of your codebase.
 
 ### What You Just Generated
 
-- **`.xray_root.md`** - Overview of root directory
-- **`.xray_src.md`** - Overview of src/
-- **`.xray_src_lib.md`** - Detailed view of src/lib/
+- **`.xray/maps/map_root.md`** - Overview of root directory
+- **`.xray/maps/map_src.md`** - Overview of src/
+- **`.xray/maps/map_src_lib.md`** - Detailed view of src/lib/
 - etc.
 
-(A project with no files at its top level has no `.xray_root.md`; the first directory's chunk is the root.)
+(A project with no files at its top level has no `.xray/maps/map_root.md`; the first directory's chunk is the root.)
 
 These files have **navigation links** so you can browse like a document.
 
@@ -148,8 +148,8 @@ This gives a focused, detailed view of your entry point limited to 4000 tokens.
 ```bash
 # Generate and copy
 xray map --anchor src/main.ts --with incs --no-chunk
-cat .xray.txt | xclip  # Linux
-cat .xray.txt | pbcopy  # macOS
+cat .xray/maps/map.txt | xclip  # Linux
+cat .xray/maps/map.txt | pbcopy  # macOS
 
 # Paste into Claude, GPT, etc. with your question
 ```

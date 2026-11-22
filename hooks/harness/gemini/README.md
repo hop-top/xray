@@ -2,7 +2,7 @@
 
 | Hook | Script | Does |
 |---|---|---|
-| `SessionStart` | `session-start.sh` | Saves the code graph to `.xray/graph.json` in the background; one-line `[xray]` orientation as `additionalContext`. |
+| `SessionStart` | `session-start.sh` | Saves the code graph to `.xray/graphs/graph.json` in the background; one-line `[xray]` orientation as `additionalContext`. |
 | `AfterTool` (`grep_search`, `search_file_content`, `run_shell_command`) | `after-tool-impact.sh` | For a search on a plain identifier, appends `[xray impact] <symbol> …` to the tool result via `hookSpecificOutput.additionalContext`. |
 
 Why `AfterTool`, not `BeforeTool`: Gemini's `BeforeTool` has no
@@ -20,10 +20,10 @@ zero callers or no saved graph; each symbol once per session (state file
 The impact text comes from the graph (file paths, symbol names, kinds)
 and goes straight into the model's context, so the hooks only read a
 graph this user's `lib/save-graph.sh` wrote. A cloned repo that ships,
-or plants, a crafted `.xray/graph.json` is ignored. The impact hook is
+or plants, a crafted `.xray/graphs/graph.json` is ignored. The impact hook is
 silent unless:
 
-- the graph and its directory (`.xray/`) are not symlinks, and the graph
+- the graph and its directory (`.xray/`, `.xray/graphs/`) are not symlinks, and the graph
   resolves inside the project's git work tree (also for `$XRAY_GRAPH`);
 - neither the graph nor any other file in its directory is tracked by
   git (keep `.xray/` in `.gitignore`, never commit it);

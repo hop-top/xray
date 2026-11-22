@@ -17,6 +17,7 @@ import {
   addOutputFlags, assertFormat, columns, emit, outputRegistry, textFormatter,
 } from '../lib/output';
 import { isWithin, realpathLoose } from '../lib/confine';
+import { assertDefaultOutputConfined, xrayWorkspaceDir } from '../lib/project-paths';
 import { addResultFormat, assertResultFormat, emitResult } from '../lib/result-format';
 
 /** Longest strategy name `strategy create` accepts. */
@@ -39,14 +40,7 @@ export function assertStrategyName(name: string): void {
 
 /** The project's strategies directory must resolve (symlinks included) inside the working directory. */
 function assertInsideProject(dir: string): void {
-  const project = realpathLoose(process.cwd());
-  const real = realpathLoose(dir);
-  if (!isWithin(project, real)) {
-    throw new UsageError(
-      `refusing to write: ${terminalSafe(dir)} resolves to ${terminalSafe(real)}, outside the project ` +
-      `${terminalSafe(project)} (a symlink in .xray?); pass --dir to choose a directory`
-    );
-  }
+  assertDefaultOutputConfined(dir, process.cwd(), '--dir');
 }
 
 function pathExists(p: string): boolean {
@@ -223,7 +217,7 @@ export function registerStrategyCommand(): Command {
       if (new StrategyLoader().isBuiltinStrategyFile(name) || isRenamedStrategyName(name)) {
         throw new UsageError(`"${name}" is a built-in strategy; choose another name.`);
       }
-      const dir = options.dir || path.join(process.cwd(), '.xray/strategies');
+      const dir = options.dir || xrayWorkspaceDir(process.cwd(), 'strategies');
       // The default directory must stay in the project even when .xray or
       // .xray/strategies is a symlink; --dir is the user's own choice.
       if (!options.dir) assertInsideProject(dir);

@@ -131,4 +131,20 @@ describe('ChunkedRenderer navigation links', () => {
     walk(result.rootChunk);
     expect([...seen].sort()).toEqual([...result.chunks.keys()].sort());
   });
+
+  it('strips only a trailing extension when a parent directory name contains .md', async () => {
+    const { graph, ranked } = fixture(['a.ts', 'src/b.ts']);
+    const renderer = new ChunkedRenderer({
+      root: '/project',
+      ranked,
+      graph: graph as any,
+      tokenLimit: 4096,
+    });
+    const base = path.join(tmp, 'dir.md', '.xray', 'maps', 'map');
+    const result = await renderer.renderChunked(base);
+    expect(result.rootChunk).toBe(path.join(tmp, 'dir.md', '.xray', 'maps', 'map_root.md'));
+    expect(Array.from(result.chunks.keys())).toContain(
+      path.join(tmp, 'dir.md', '.xray', 'maps', 'map_src.md')
+    );
+  });
 });

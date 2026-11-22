@@ -3,7 +3,7 @@
   "description": "Example xray configuration with telemetry enabled",
 
   "paths": ["./src"],
-  "output": ".xray",
+  "output": ".xray/maps/map",
   "limit": 4096,
 
   "features": {

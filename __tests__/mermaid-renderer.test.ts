@@ -207,7 +207,8 @@ describe('mermaid format resolution and CLI integration', () => {
   test('resolveFormatFlags and resolveOutputPath support mermaid / .mmd', () => {
     expect(resolveFormatFlags({ format: 'mermaid' })).toEqual({ format: 'mermaid' });
     expect(resolveFormatFlags({ mermaid: true })).toEqual({ format: 'mermaid' });
-    expect(resolveOutputPath(undefined, 'mermaid')).toMatch(/\.xray\.mmd$/);
+    expect(resolveOutputPath(undefined, 'mermaid')).toMatch(/[/\\]\.xray[/\\]maps[/\\]map\.mmd$/);
+    expect(resolveOutputPath(undefined, 'mermaid', true, 'graph')).toMatch(/[/\\]\.xray[/\\]graphs[/\\]graph\.mmd$/);
     expect(resolveOutputPath('diagram-out', 'mermaid')).toMatch(/diagram-out\.mmd$/);
   });
 

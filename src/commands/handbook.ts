@@ -5,6 +5,7 @@ import { generateHandbook } from '../lib/handbook/generator';
 import { runHandbookLlmPipeline } from '../lib/handbook/llm-pipeline';
 import { addResultFormat, assertResultFormat, emitResult } from '../lib/result-format';
 import { Logger } from '../lib/logger';
+import { assertDefaultOutputConfined, xrayWorkspaceDir } from '../lib/project-paths';
 import { declareEffect, emitPlan, previewing } from './side-effect';
 
 export interface HandbookCommandOptions {
@@ -36,7 +37,13 @@ export function registerHandbookCommand(program: Command): Command {
     assertResultFormat(command);
     const globals = command.optsWithGlobals() as HandbookCommandOptions;
     const root = path.resolve(argPath ?? opts.path ?? process.cwd());
-    const outputDir = path.resolve(root, opts.output ?? path.join('.xray', 'handbook'));
+    const outputDir = opts.output
+      ? path.resolve(root, opts.output)
+      : (() => {
+          const dir = xrayWorkspaceDir(root, 'handbook');
+          assertDefaultOutputConfined(dir, root);
+          return dir;
+        })();
 
     if (previewing(command)) {
       emitPlan(command, [

@@ -61,6 +61,9 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
   /** Output file path */
   output?: string;
 
+  /** Internal output kind for default path resolution ('map' | 'graph') */
+  outputKind?: 'map' | 'graph';
+
   /** Token limit per chunk (default: 4096) */
   limit?: string | number;
 
