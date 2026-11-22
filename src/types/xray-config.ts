@@ -65,6 +65,22 @@ export interface XraySkillsConfig {
   dirs?: string[];
 }
 
+export interface XrayGatewayUpstreamConfig {
+  transport: 'http' | 'stdio';
+  url?: string;
+  command?: string;
+  args?: string[];
+  headerEnv?: Record<string, string>;
+  allowTools?: string[];
+  blockTools?: string[];
+}
+
+export interface XrayGatewayConfig {
+  upstreams?: {
+    [name: string]: XrayGatewayUpstreamConfig;
+  };
+}
+
 export interface XrayConfig extends XrayScopeConfig {
   lenses?: {
     [name: string]: XrayScopeConfig;
@@ -80,4 +96,5 @@ export interface XrayConfig extends XrayScopeConfig {
   };
   llm?: XrayLlmConfig;
   skills?: XraySkillsConfig;
+  gateway?: XrayGatewayConfig;
 }
