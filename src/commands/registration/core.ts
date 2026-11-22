@@ -18,6 +18,7 @@ import { registerWatchCommand } from '../watch';
 import { registerTuiCommand } from '../tui';
 import { registerUpgradeCommand } from '../upgrade';
 import { registerHandbookCommand } from '../handbook';
+import { registerDiagramCommand } from '../diagram';
 import { setCommandGroup, type HelpGroupId } from '../kit-cli';
 import { declareEffect } from '../side-effect';
 import { addResultFormat } from '../../lib/result-format';
@@ -31,6 +32,7 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   impact: 'analyze',
   imports: 'analyze',
   handbook: 'analyze',
+  diagram: 'analyze',
   watch: 'analyze',
   tui: 'analyze',
   strategy: 'strategy',
@@ -100,6 +102,9 @@ Examples:
 
   // Handbook command - deterministic architectural handbook generator
   registerHandbookCommand(program);
+
+  // Diagram command - deterministic Mermaid architecture, call, CFG, and DFG exporter
+  registerDiagramCommand(program);
 
   // Watch command - live incremental background indexer
   registerWatchCommand(program);

@@ -85,7 +85,7 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
   /** Match function/class name (prefix ! to negate) (repeatable) */
   catch?: string[];
 
-  /** Output format: txt (default), csv, xml, json */
+  /** Output format: txt (default), csv, xml, json, mermaid */
   format?: string;
 
   /** Alias of --format txt */
@@ -99,6 +99,9 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
 
   /** Alias of --format json (raw JSON graph) */
   json?: boolean;
+
+  /** Alias of --format mermaid (.mmd) */
+  mermaid?: boolean;
 
   /** Disable chunked output (single file output) */
   chunk?: boolean;

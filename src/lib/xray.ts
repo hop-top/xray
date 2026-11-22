@@ -87,7 +87,7 @@ export interface XrayConfig {
   };
 
   // Output options
-  format?: 'txt' | 'csv' | 'xml' | 'json';
+  format?: 'txt' | 'csv' | 'xml' | 'json' | 'mermaid';
   chunked?: boolean;     // enable chunked output (default: true)
 
   // Advanced

@@ -18,6 +18,7 @@ import { GraphCache, computeRootManifest, diffFileManifest, optionsDigest } from
 import { compileMatchers } from '../lib/path-match';
 import { resolveCrossRootReferences } from '../lib/graph/cross-root';
 import { graphToEdgesCsv, graphToNodesCsv, graphToXml } from '../lib/graph/export';
+import { renderMermaid } from '../lib/renderer/mermaid-renderer';
 import type { SerializedGraph } from '../lib/query/types';
 import { FileScanner } from '../lib/scanner';
 import { StrategyLoader } from '../lib/strategy/loader';
@@ -181,21 +182,35 @@ const writeFileEnsuringDir = (file: string, content: string): void => {
  */
 const writeGraphOutput = (
   graph: SerializedGraph,
-  format: 'json' | 'csv' | 'xml',
-  outputPath: string
+  format: 'json' | 'csv' | 'xml' | 'mermaid',
+  outputPath: string,
+  mermaidOpts?: { anchor?: string; catch?: string[]; depth?: number }
 ): string[] => {
   const files: Array<[string, string]> =
     format === 'json'
       ? [[outputPath, JSON.stringify(graph, null, 2) + '\n']]
       : format === 'xml'
         ? [[outputPath, graphToXml(graph)]]
-        : (() => {
-            const base = outputPath.replace(/\.csv$/i, '');
-            return [
-              [`${base}.nodes.csv`, graphToNodesCsv(graph)],
-              [`${base}.edges.csv`, graphToEdgesCsv(graph)],
-            ] as Array<[string, string]>;
-          })();
+        : format === 'mermaid'
+          ? [[outputPath, (() => {
+              const g = new GraphSerializer().deserialize(graph);
+              const hasComm = g.someNode((_id: string, a: Record<string, any>) => typeof a.community === 'number' && a.community >= 0);
+              if (!hasComm) cluster(g);
+              return renderMermaid(g, {
+                view: 'architecture',
+                root: graph.metadata?.projectPath,
+                anchor: mermaidOpts?.anchor,
+                catch: mermaidOpts?.catch,
+                depth: mermaidOpts?.depth,
+              });
+            })()]]
+          : (() => {
+              const base = outputPath.replace(/\.csv$/i, '');
+              return [
+                [`${base}.nodes.csv`, graphToNodesCsv(graph)],
+                [`${base}.edges.csv`, graphToEdgesCsv(graph)],
+              ] as Array<[string, string]>;
+            })();
   for (const [file, content] of files) {
     try {
       writeFileEnsuringDir(file, content);
@@ -321,7 +336,7 @@ export const cacheLine = (cache: NonNullable<BuiltGraph['cache']>): string =>
 export const buildGraphForRoots = async (
   mergedOptions: any,
   configPath: string | undefined,
-  opts: { format?: 'json' | 'csv' | 'xml'; quiet?: boolean; cache?: boolean } = {}
+  opts: { format?: 'json' | 'csv' | 'xml' | 'mermaid'; quiet?: boolean; cache?: boolean } = {}
 ): Promise<BuiltGraph> => {
   const uniquePaths = Array.from(new Set(runRoots(mergedOptions)));
   const cwd = process.cwd();
@@ -478,7 +493,7 @@ export const buildGraphForRoots = async (
  */
 const plannedWrites = (
   mergedOptions: any,
-  format: 'txt' | 'csv' | 'xml' | 'json',
+  format: 'txt' | 'csv' | 'xml' | 'json' | 'mermaid',
   outputPath: string,
   paths: string[]
 ): Effect[] => {
@@ -523,11 +538,12 @@ export const runSingleXray = async (
   // Determine format first (needed for output path resolution)
   // `outputFormat` is the resolved --format/legacy-flag/config selection;
   // the boolean chain is the fallback for callers passing raw flags.
-  const format: 'txt' | 'csv' | 'xml' | 'json' =
+  const format: 'txt' | 'csv' | 'xml' | 'json' | 'mermaid' =
     mergedOptions.outputFormat ??
     (mergedOptions.json ? 'json' :
      mergedOptions.csv ? 'csv' :
-     mergedOptions.xml ? 'xml' : 'txt');
+     mergedOptions.xml ? 'xml' :
+     mergedOptions.mermaid ? 'mermaid' : 'txt');
 
   assertFlowFormat(mergedOptions, format);
 
@@ -600,14 +616,17 @@ export const runSingleXray = async (
   // Determine if chunked output is enabled
   const chunkedEnabled = mergedOptions.chunked !== false;
 
-  if (format === 'json' || format === 'csv' || format === 'xml') {
-    // Graph formats (json | csv | xml) are not renderings: chunking (a
-    // token-budget concern of the text renderers) does not apply, and one
-    // graph (merged across all --path roots) is written with or without
-    // --no-chunk.
+  if (format === 'json' || format === 'csv' || format === 'xml' || format === 'mermaid') {
+    // Graph/diagram formats (json | csv | xml | mermaid) are not chunked text renderings:
+    // one graph (merged across all --path roots) is written with or without --no-chunk.
     if (chunkedEnabled) Logger.debug(`--format ${format}: chunking does not apply; writing the graph once`);
     const { graph: merged, shareInputs } = await buildGraphForRoots(mergedOptions, configPath, { format, cache: !shareRequested });
-    const written = writeGraphOutput(merged, format, outputPath!);
+    const parsedDepth = mergedOptions.depth ? parseInt(mergedOptions.depth, 10) : undefined;
+    const written = writeGraphOutput(merged, format, outputPath!, {
+      anchor: mergedOptions.anchor,
+      catch: mergedOptions.catch,
+      depth: Number.isFinite(parsedDepth) ? parsedDepth : undefined,
+    });
     for (const f of written) Logger.success(`Graph written to ${f}`);
 
     if (shareRequested) {

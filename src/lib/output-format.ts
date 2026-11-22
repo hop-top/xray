@@ -16,9 +16,9 @@ export function isMachineFormat(format?: string): boolean {
 // Output flag resolution (map / graph)
 // ---------------------------------------------------------------------------
 
-export type DataFormat = 'txt' | 'csv' | 'xml' | 'json';
+export type DataFormat = 'txt' | 'csv' | 'xml' | 'json' | 'mermaid';
 
-const DATA_FORMATS: readonly DataFormat[] = ['txt', 'csv', 'xml', 'json'];
+const DATA_FORMATS: readonly DataFormat[] = ['txt', 'csv', 'xml', 'json', 'mermaid'];
 
 export interface FormatFlagOptions {
   format?: string;
@@ -26,6 +26,7 @@ export interface FormatFlagOptions {
   csv?: boolean;
   xml?: boolean;
   json?: boolean;
+  mermaid?: boolean;
 }
 
 export interface ResolvedFormat {

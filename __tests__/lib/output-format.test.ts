@@ -6,23 +6,24 @@ describe('resolveFormatFlags', () => {
     expect(resolveFormatFlags({})).toEqual({ format: undefined });
   });
 
-  test.each(['txt', 'csv', 'xml', 'json'] as const)('legacy --%s alias', f => {
+  test.each(['txt', 'csv', 'xml', 'json', 'mermaid'] as const)('legacy --%s alias', f => {
     expect(resolveFormatFlags({ [f]: true }).format).toBe(f);
   });
 
   test('--format selects data format, case-insensitive', () => {
     expect(resolveFormatFlags({ format: 'JSON' })).toEqual({ format: 'json' });
+    expect(resolveFormatFlags({ format: 'MERMAID' })).toEqual({ format: 'mermaid' });
   });
 
-  test.each(['mermaid', 'dot'])('--format %s is a usage error listing valid formats', f => {
+  test('--format dot is a usage error listing valid formats', () => {
     let err: any;
-    try { resolveFormatFlags({ format: f }); } catch (e) { err = e; }
+    try { resolveFormatFlags({ format: 'dot' }); } catch (e) { err = e; }
     expect(err).toBeInstanceOf(UsageError);
-    expect(err.message).toBe(`invalid --format '${f}' (expected one of: txt, csv, xml, json)`);
+    expect(err.message).toBe(`invalid --format 'dot' (expected one of: txt, csv, xml, json, mermaid)`);
   });
 
-  test.each(['mermaid', 'dot'])('--%s legacy flag no longer selects anything', f => {
-    expect(resolveFormatFlags({ [f]: true } as any)).toEqual({ format: undefined });
+  test('--dot legacy flag no longer selects anything', () => {
+    expect(resolveFormatFlags({ dot: true } as any)).toEqual({ format: undefined });
   });
 
   test('--format wins over a legacy flag on the same axis', () => {
