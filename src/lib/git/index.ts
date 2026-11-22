@@ -189,19 +189,35 @@ export async function listCommits(
   return { commits, page, perPage, hasMore, totalCount };
 }
 
-function extractFallbackDiffPath(headerLine: string): string {
+/**
+ * Prefixes a `diff --git` header uses for its two sides: `a/… b/…` normally,
+ * but `c/… w/…` (commit/worktree), `i/…`, `o/…` with `diff.mnemonicPrefix`,
+ * and none at all with `diff.noprefix`. Read from the header so the body
+ * lines (`---` / `+++`) are matched with the same prefixes git chose.
+ */
+function diffPrefixes(headerLine: string): { old: string; new: string } {
   const rest = headerLine.slice('diff --git '.length);
+  const match = /^([^\s/]+)\/(.*) ([^\s/]+)\/(.*)$/.exec(rest);
+  if (match && match[2].length > 0 && match[4].length > 0) {
+    return { old: `${match[1]}/`, new: `${match[3]}/` };
+  }
+  return { old: 'a/', new: 'b/' };
+}
+
+function extractFallbackDiffPath(headerLine: string, prefixes: { old: string; new: string }): string {
+  const rest = headerLine.slice('diff --git '.length);
+  const { old: oldPrefix, new: newPrefix } = prefixes;
   const mid = (rest.length - 1) / 2;
   if (
     Number.isInteger(mid) &&
-    rest.startsWith('a/') &&
-    rest.slice(mid, mid + 3) === ' b/' &&
-    rest.slice(2, mid) === rest.slice(mid + 3)
+    rest.startsWith(oldPrefix) &&
+    rest.slice(mid, mid + newPrefix.length + 1) === ` ${newPrefix}` &&
+    rest.slice(oldPrefix.length, mid) === rest.slice(mid + newPrefix.length + 1)
   ) {
-    return rest.slice(2, mid);
+    return rest.slice(oldPrefix.length, mid);
   }
-  const idx = rest.lastIndexOf(' b/');
-  return idx >= 0 ? rest.slice(idx + 3) : rest;
+  const idx = rest.lastIndexOf(` ${newPrefix}`);
+  return idx >= 0 ? rest.slice(idx + newPrefix.length + 1) : rest;
 }
 
 function parseUnifiedDiff(output: string): DiffFile[] {
@@ -215,10 +231,11 @@ function parseUnifiedDiff(output: string): DiffFile[] {
   let changedLines: DiffLineRange[] = [];
   let inSection = false;
   let seenHunk = false;
+  let prefixes = { old: 'a/', new: 'b/' };
 
   const flush = (): void => {
     if (!inSection) return;
-    const resolvedPath = path || extractFallbackDiffPath(currentLines[0] ?? '');
+    const resolvedPath = path || extractFallbackDiffPath(currentLines[0] ?? '', prefixes);
     const patch = currentLines.join('\n').replace(/\n+$/, '');
     const entry: DiffFile = {
       path: resolvedPath,
@@ -243,6 +260,7 @@ function parseUnifiedDiff(output: string): DiffFile[] {
       oldPath = undefined;
       status = 'M';
       changedLines = [];
+      prefixes = diffPrefixes(line);
       continue;
     }
 
@@ -274,10 +292,10 @@ function parseUnifiedDiff(output: string): DiffFile[] {
     } else if (line.startsWith('rename to ')) {
       status = 'R';
       path = line.slice('rename to '.length);
-    } else if (line.startsWith('+++ b/') && !path) {
-      path = line.slice('+++ b/'.length);
-    } else if (line.startsWith('--- a/') && !path && status === 'D') {
-      path = line.slice('--- a/'.length);
+    } else if (line.startsWith(`+++ ${prefixes.new}`) && !path) {
+      path = line.slice(4 + prefixes.new.length);
+    } else if (line.startsWith(`--- ${prefixes.old}`) && !path && status === 'D') {
+      path = line.slice(4 + prefixes.old.length);
     }
   }
 

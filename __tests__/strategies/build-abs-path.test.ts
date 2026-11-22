@@ -18,13 +18,13 @@ describe('build analyze with absolute paths', () => {
 
   it('parses a Makefile', async () => {
     const r = await run('Makefile', 'all: build\nbuild:\n\techo b\n');
-    expect(r.metadata.buildTool).toBe('make');
+    expect(r.metadata?.buildTool).toBe('make');
     expect(r.tags).toEqual(expect.arrayContaining(['build:all', 'build:build']));
   });
 
   it('parses package.json scripts', async () => {
     const r = await run('package.json', '{"scripts":{"build":"tsc","test":"jest"}}');
-    expect(r.metadata.buildTool).toBe('npm');
+    expect(r.metadata?.buildTool).toBe('npm');
     expect(r.tags).toEqual(expect.arrayContaining(['build:build', 'build:test']));
   });
 });

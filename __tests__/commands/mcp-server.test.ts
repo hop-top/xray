@@ -173,7 +173,10 @@ describe('xray mcp over stdio', () => {
     expect(tools.find((t) => t.name === 'strategy_list')!.inputSchema.properties.root).toBeUndefined();
     const impact = tools.find((t) => t.name === 'impact')!;
     expect(Object.keys(impact.inputSchema.properties).sort()).toEqual(['depth', 'format', 'lens', 'root', 'scope', 'strict', 'symbol']);
-    expect(impact.inputSchema.required).toEqual(['symbol']);
+    // `impact [symbol]`: optional since --since/--changed can name the symbols instead
+    // (neither is exposed here), so the schema cannot make it required.
+    expect(impact.inputSchema.required).toBeUndefined();
+    expect(impact.inputSchema.properties.symbol.type).toBe('string');
     expect(impact.inputSchema.properties.strict.type).toBe('boolean');
     expect(impact.description).toMatch(/what breaks/i);
   });
@@ -216,6 +219,13 @@ describe('xray mcp over stdio', () => {
     expect(r.error).toBeUndefined();
     expect(r.result.isError).toBe(true);
     expect(text(r)).toMatch(/unknown argument "graph"/);
+  });
+
+  it('impact with no symbol is a tool error: the CLI still requires one', async () => {
+    const r = await client.call('impact', { format: 'json' });
+    expect(r.error).toBeUndefined();
+    expect(r.result.isError).toBe(true);
+    expect(text(r)).toMatch(/symbol> is required/);
   });
 
   it.each(['map', 'graph'])('%s offers no positional paths: only the contained path option', async name => {
