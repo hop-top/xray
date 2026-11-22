@@ -97,20 +97,22 @@ describe('--format', () => {
     }
   });
 
-  test('--format mermaid / dot -> usage error (exit 2) listing valid formats', () => {
-    for (const f of ['mermaid', 'dot']) {
-      const r = run(args('map', '--format', f));
-      expect(r.status).toBe(2);
-      expect(r.stderr).toContain(`invalid --format '${f}' (expected one of: txt, csv, xml, json)`);
-    }
+  test('--format dot -> usage error (exit 2) listing valid formats', () => {
+    const r = run(args('map', '--format', 'dot'));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain(`invalid --format 'dot' (expected one of: txt, csv, xml, json, mermaid)`);
   });
 
-  test('--mermaid / --dot flags are unknown options (exit 2)', () => {
-    for (const f of ['--mermaid', '--dot']) {
-      const r = run(args('map', f));
-      expect(r.status).toBe(2);
-      expect(r.stderr).toMatch(/unknown option/);
-    }
+  test('--dot flag is unknown option (exit 2)', () => {
+    const r = run(args('map', '--dot'));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/unknown option/);
+  });
+
+  test('--format mermaid / --mermaid are accepted', () => {
+    const r = run(args('map', '--format', 'mermaid'));
+    expect(r.status).toBe(0);
+    expect(fs.readFileSync(out, 'utf-8')).toMatch(/^flowchart LR\n/);
   });
 
   test('unknown --format value -> usage error (exit 2)', () => {

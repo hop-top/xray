@@ -13,6 +13,7 @@ import { StrategyDetector } from '../strategy/detector';
 import { StrategyContextImpl } from '../strategy/context';
 import { DetectedStrategy } from '../strategy/types';
 import { UsageError } from '../error/types';
+import { renderMermaid } from '../renderer/mermaid-renderer';
 import {
   XrayGraph,
   RankedNode,
@@ -516,7 +517,8 @@ function renderReadme(
 function renderSubsystemPage(
   sub: SubsystemInfo,
   headSha: string | null,
-  meta: { lastUpdatedAt: string; lastUpdatedCommit: string }
+  meta: { lastUpdatedAt: string; lastUpdatedCommit: string },
+  architectureDiagram?: string
 ): string {
   const lines: string[] = [
     buildFrontmatter({ ...meta, subsystem: sub.slug }),
@@ -532,6 +534,10 @@ function renderSubsystemPage(
     lines.push(`- ${formatCitation(f, 1, headSha)}`);
   }
   lines.push('');
+
+  if (architectureDiagram) {
+    lines.push('## Architecture', '', '```mermaid', architectureDiagram.trimEnd(), '```', '');
+  }
 
   lines.push('## Top Symbols (PageRank)', '');
   if (sub.topSymbols.length === 0) {
@@ -634,7 +640,13 @@ export async function generateHandbook(opts: GenerateHandbookOptions): Promise<G
 
   for (const sub of subsystems) {
     const subPath = path.join(outputDir, `${sub.slug}.md`);
-    fs.writeFileSync(subPath, renderSubsystemPage(sub, headSha, meta), 'utf-8');
+    const diagram = renderMermaid(graph, {
+      view: 'architecture',
+      root,
+      files: sub.files,
+      maxNodes: 30,
+    });
+    fs.writeFileSync(subPath, renderSubsystemPage(sub, headSha, meta, diagram), 'utf-8');
     written.push(subPath);
   }
 
