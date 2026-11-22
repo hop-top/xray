@@ -21,6 +21,8 @@ export interface XrayScopeConfig {
     cost?: boolean;
     cf?: boolean;
     df?: boolean;
+    churn?: boolean;
+    blame?: boolean;
   };
   anchor?: string;
   depth?: number;

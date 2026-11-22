@@ -28,6 +28,8 @@ import { loadConfig } from './config';
 import { FileReadError, FileAccessError } from './error/types';
 import { XrayGraph, RankedNode } from '../types/graph';
 import { openCacheDbPath } from './storage';
+import { getDiff, getFileBlame, getFileChurn, type BlameLine } from './git';
+import { resolveChangedSymbols } from './query/impact';
 
 // Export strategy module
 export * as strategy from './strategy';
@@ -66,6 +68,8 @@ export interface XrayConfig {
 
   // Focus and filtering
   anchor?: string;
+  since?: string;
+  changed?: boolean;
   depth?: number;
   match?: string[];
   catch?: string[];
@@ -78,6 +82,8 @@ export interface XrayConfig {
     cost?: boolean;      // estimate cost
     df?: boolean;        // data flow graph
     cf?: boolean;        // control flow graph
+    churn?: boolean;     // git commit churn weighting
+    blame?: boolean;     // git blame primary author metadata
   };
 
   // Output options
@@ -619,20 +625,101 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       edgeCount: graph.size
     });
 
+    // Diff-scoped focus (`--since` / `--changed`), git churn (`--with churn`),
+    // and primary blame author (`--with blame`).
+    let focusNodes: string | string[] | undefined = this.config.anchor;
+    if (this.config.since || this.config.changed) {
+      const hunks = this.config.changed
+        ? await getDiff(this.config.path, 'WORKING')
+        : await getDiff(this.config.path, this.config.since!, 'HEAD');
+      const { fileIds } = resolveChangedSymbols(graph, hunks);
+      for (const fileId of fileIds) {
+        if (graph.hasNode(fileId)) {
+          graph.setNodeAttribute(fileId, 'changed', true);
+        }
+      }
+      if (fileIds.length > 0) {
+        focusNodes = this.config.anchor ? [this.config.anchor, ...fileIds] : fileIds;
+      }
+    }
+
+    let churnMap: Map<string, number> | undefined;
+    if (this.config.features?.churn) {
+      churnMap = await getFileChurn(this.config.path);
+      for (const [filePath, commits] of churnMap.entries()) {
+        if (commits > 0 && graph.hasNode(filePath)) {
+          graph.setNodeAttribute(filePath, 'churn', commits);
+        }
+      }
+    }
+
+    if (this.config.features?.blame) {
+      await this.attachBlameAuthors(graph);
+    }
+
     // Ranking - use parallel for observers
     await this.emitAsyncParallel('rank:start', { graph, anchor: this.config.anchor });
     const ranker = new Ranker(graph);
-    const rankedNodes = ranker.rank(this.config.anchor);
+    const rankedNodes = ranker.rank(focusNodes, churnMap);
 
     // Rank complete - sequential: listeners can modify rankings or stamp
     // edge attrs through the graph reference.
-    const rankCompleteEvent = { graph, rankedNodes };
+    const rankCompleteEvent = { graph, rankedNodes, ...(churnMap ? { churnMap } : {}) };
     await this.emitAsync('rank:complete', rankCompleteEvent);
 
     this.lastGraph = graph;
     this.lastRankedNodes = rankCompleteEvent.rankedNodes;
 
     return { rankedNodes: rankCompleteEvent.rankedNodes, graph };
+  }
+
+  /** Attach primary git blame author to file and symbol nodes (`--with blame`). */
+  private async attachBlameAuthors(graph: XrayGraph): Promise<void> {
+    const fileIds: string[] = [];
+    graph.forEachNode((nodeId: string, attrs: any) => {
+      if (attrs.type === 'file') fileIds.push(nodeId);
+    });
+
+    const primaryAuthorOf = (lines: BlameLine[]): string | undefined => {
+      if (lines.length === 0) return undefined;
+      const counts = new Map<string, number>();
+      for (const l of lines) {
+        if (!l.author) continue;
+        counts.set(l.author, (counts.get(l.author) ?? 0) + 1);
+      }
+      let best: string | undefined;
+      let bestCount = 0;
+      for (const [author, count] of counts.entries()) {
+        if (count > bestCount || (count === bestCount && best !== undefined && author < best)) {
+          best = author;
+          bestCount = count;
+        }
+      }
+      return best;
+    };
+
+    await Promise.all(
+      fileIds.map(async (fileId) => {
+        const blameLines = await getFileBlame(this.config.path, fileId);
+        if (blameLines.length === 0) return;
+
+        const fileAuthor = primaryAuthorOf(blameLines);
+        if (fileAuthor) {
+          graph.setNodeAttribute(fileId, 'author', fileAuthor);
+        }
+
+        graph.forEachOutEdge(fileId, (_e: string, eAttrs: any, _s: string, target: string, _sa: any, tAttrs: any) => {
+          if (eAttrs?.type !== 'defines' || tAttrs?.type !== 'tag') return;
+          const start1 = (typeof tAttrs.line === 'number' ? tAttrs.line : 0) + 1;
+          const end1 = (typeof tAttrs.endLine === 'number' ? tAttrs.endLine : start1 - 1) + 1;
+          const slice = blameLines.filter((b) => b.line >= start1 && b.line <= end1);
+          const tagAuthor = primaryAuthorOf(slice) ?? fileAuthor;
+          if (tagAuthor) {
+            graph.setNodeAttribute(target, 'author', tagAuthor);
+          }
+        });
+      })
+    );
   }
 
   /**

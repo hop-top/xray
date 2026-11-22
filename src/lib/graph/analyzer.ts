@@ -24,6 +24,7 @@ export type ReasonCode =
   | 'confidence-gradient'
   | 'peripheral-hub'
   | 'cross-type-kind'
+  | 'churn-hotspot'
   | 'missing-input';
 
 /** A structured reason produced by a heuristic. */
@@ -54,6 +55,11 @@ export interface RankIndex {
 
 /** Options bag passed to heuristics and scoreEdges. */
 export interface SurpriseOptions {
+  /**
+   * Optional per-file git commit churn counts (`--with churn`).
+   * Enables `churnHotspotHeuristic` when provided.
+   */
+  churnMap?: Map<string, number>;
   /**
    * Whether `focusNode` was set at rank time. When truthy, peripheral→hub
    * quartiles are anchor-relative (see spec R3) and the heuristic appends
@@ -353,6 +359,41 @@ export const crossTypeKindHeuristic: Heuristic = defineHeuristic(
     return {
       score: 1.0,
       reason: { code: 'cross-type-kind', detail: `${sKind}→${tKind}` },
+    };
+  }
+);
+
+/**
+ * Churn-hotspot heuristic.
+ *
+ * Fires when churn data is available (`opts.churnMap` or `churn` node
+ * attributes) and at least one endpoint lives in a file with commit churn.
+ */
+export const churnHotspotHeuristic: Heuristic = defineHeuristic(
+  'churn-hotspot',
+  (ctx: HeuristicContext): HeuristicResult => {
+    const { graph, source, target, opts } = ctx;
+    const sAttrs = graph.getNodeAttributes(source) as NodeAttributes;
+    const tAttrs = graph.getNodeAttributes(target) as NodeAttributes;
+    const sFile = sAttrs.type === 'file' ? source : sAttrs.file;
+    const tFile = tAttrs.type === 'file' ? target : tAttrs.file;
+
+    const hasNodeChurn = typeof sAttrs.churn === 'number' || typeof tAttrs.churn === 'number';
+    if (!opts.churnMap && !hasNodeChurn) return null;
+
+    const sCommits = opts.churnMap
+      ? (sFile ? opts.churnMap.get(sFile) ?? 0 : 0)
+      : (typeof sAttrs.churn === 'number' ? sAttrs.churn : 0);
+    const tCommits = opts.churnMap
+      ? (tFile ? opts.churnMap.get(tFile) ?? 0 : 0)
+      : (typeof tAttrs.churn === 'number' ? tAttrs.churn : 0);
+
+    const maxCommits = Math.max(sCommits, tCommits);
+    if (maxCommits <= 0) return null;
+
+    return {
+      score: Math.min(1.0, Math.log1p(maxCommits) * 0.35),
+      reason: { code: 'churn-hotspot', detail: `${maxCommits} commits` },
     };
   }
 );

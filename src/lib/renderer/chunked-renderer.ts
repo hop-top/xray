@@ -350,7 +350,11 @@ export class ChunkedRenderer {
 
       const fileRange = fileEnd > fileStart ? `(L${fileStart}-L${fileEnd})` : `(L${fileStart})`;
 
-      const fileLine = `${file} ${fileRange}:`;
+      const changed = this.safeGetNodeAttribute<boolean>(file, 'changed');
+      const fileAuthor = this.safeGetNodeAttribute<string>(file, 'author');
+      const changedTag = changed ? ' [CHANGED]' : '';
+      const authorTag = fileAuthor ? ` @${fileAuthor}` : '';
+      const fileLine = `${file} ${fileRange}${changedTag}${authorTag}:`;
       outputLines.push(fileLine);
       currentTokens += await this.estimateTokens(fileLine);
 
@@ -377,6 +381,9 @@ export class ChunkedRenderer {
         const lineRange = endLine > startLine ? `[L${startLine}-L${endLine}]` : `[L${startLine}]`;
 
         let line = `│ ${lineRange} ${tag.attributes.kind} ${tag.attributes.label}${signature}`;
+        if (tag.attributes.author) {
+          line += ` @${tag.attributes.author}`;
+        }
 
         if (tag.attributes.doc) {
           const doc = tag.attributes.doc.length > 50 ? tag.attributes.doc.substring(0, 47) + '...' : tag.attributes.doc;
@@ -590,7 +597,11 @@ export class ChunkedRenderer {
         fileEnd = lastTag.attributes.endLine ? lastTag.attributes.endLine + 1 : lastTag.attributes.line + 1;
       }
       const fileRange = fileEnd > fileStart ? `(L${fileStart}-L${fileEnd})` : `(L${fileStart})`;
-      const fileLine = `${file} ${fileRange}:`;
+      const changed = this.safeGetNodeAttribute<boolean>(file, 'changed');
+      const fileAuthor = this.safeGetNodeAttribute<string>(file, 'author');
+      const changedTag = changed ? ' [CHANGED]' : '';
+      const authorTag = fileAuthor ? ` @${fileAuthor}` : '';
+      const fileLine = `${file} ${fileRange}${changedTag}${authorTag}:`;
       lines.push(fileLine);
       tokens += await this.estimateTokens(fileLine);
 
@@ -613,6 +624,9 @@ export class ChunkedRenderer {
         const endLine = tag.attributes.endLine ? tag.attributes.endLine + 1 : startLine;
         const lineRange = endLine > startLine ? `[L${startLine}-L${endLine}]` : `[L${startLine}]`;
         let line = `│ ${lineRange} ${tag.attributes.kind} ${tag.attributes.label}${signature}`;
+        if (tag.attributes.author) {
+          line += ` @${tag.attributes.author}`;
+        }
         if (tag.attributes.doc) {
           const doc = tag.attributes.doc.length > 50
             ? tag.attributes.doc.substring(0, 47) + '...'

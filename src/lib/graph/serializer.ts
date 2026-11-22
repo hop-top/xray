@@ -46,6 +46,9 @@ export class GraphSerializer {
       if (attrs.imports !== undefined) node.imports = attrs.imports;
       if (attrs.cfg !== undefined) node.cfg = attrs.cfg;
       if (attrs.dfg !== undefined) node.dfg = attrs.dfg;
+      if (attrs.author !== undefined) node.author = attrs.author;
+      if (attrs.changed !== undefined) node.changed = attrs.changed;
+      if (attrs.churn !== undefined) node.churn = attrs.churn;
       if (opts.references && Array.isArray(attrs.references) && attrs.references.length > 0) {
         node.references = [...attrs.references];
       }
@@ -109,6 +112,9 @@ export class GraphSerializer {
       if (node.imports !== undefined) attrs.imports = node.imports;
       if (node.cfg !== undefined) attrs.cfg = node.cfg;
       if (node.dfg !== undefined) attrs.dfg = node.dfg;
+      if (node.author !== undefined) attrs.author = node.author;
+      if (node.changed !== undefined) attrs.changed = node.changed;
+      if (node.churn !== undefined) attrs.churn = node.churn;
       if (node.references !== undefined) attrs.references = [...node.references];
 
       graph.addNode(node.id, attrs);

@@ -769,6 +769,8 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
       else if (feature === 'cost') features.cost = true;
       else if (feature === 'cf') features.cf = true;
       else if (feature === 'df') features.df = true;
+      else if (feature === 'churn') features.churn = true;
+      else if (feature === 'blame') features.blame = true;
     });
   }
 
@@ -816,6 +818,8 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     // a config file is present.
     preset: cliOptions.preset || [],
     lens,
+    since: cliOptions.since,
+    changed: cliOptions.changed,
     with: Object.entries(features)
       .filter(([_, enabled]) => enabled)
       .map(([feature, _]) => feature),
