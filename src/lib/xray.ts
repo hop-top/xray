@@ -6,6 +6,9 @@ import { ParserManager } from './parser/manager';
 import { updateLanguageQuery } from './parser/language-registry';
 import { flowCacheKey, flowTableFor, flowLanguages } from './flow';
 import { beginLanguageRun, packForExtension, reportSkippedLanguages, type SkippedSummary } from './parser/grammars';
+import { isSupportedFallbackFile, linguistExtensions } from './parser/linguist-map';
+import { extractFallbackTags, hasUniversalCtags } from './parser/ctags-fallback';
+import type { Import, Tag } from './parser/types';
 import { GraphBuilder } from './graph/builder';
 import { Ranker } from './graph/ranker';
 import { MapRenderer } from './renderer/map-renderer';
@@ -35,6 +38,7 @@ export interface ParseCoverage {
   parsed: number;
   skipped: SkippedSummary[];
   skippedFiles?: Array<{ file: string; reason: 'too-large' | 'minified' }>;
+  fallback?: { ctags: number; regex: number };
 }
 
 const DEFAULT_MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
@@ -86,6 +90,9 @@ export interface XrayConfig {
 
   // Languages (names or bundles) to parse; each is required. Default: auto-detect.
   languages?: string[];
+
+  // Fallback to Universal Ctags / regex for files without a tree-sitter grammar (default: true).
+  fallbackCtags?: boolean;
 
   // Config file to read (root `--config`). Unset: discover from `path`.
   configPath?: string;
@@ -308,10 +315,21 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     // One listing for sources and the manifests imports resolution reads.
     const scanner = new FileScanner(this.config.path);
     const sourceExts = new Set(FileScanner.supportedExtensions());
+    const fallbackEnabled = this.config.fallbackCtags !== false;
+    const scanExts = fallbackEnabled
+      ? new Set([...sourceExts, ...linguistExtensions()])
+      : sourceExts;
     const manifestNames = new Set(IMPORT_MANIFESTS);
-    const listed = scanner.scan([...sourceExts, ...IMPORT_MANIFESTS.map(m => path.extname(m))]);
+    const listed = scanner.scan(
+      [...scanExts, ...IMPORT_MANIFESTS.map(m => path.extname(m))],
+      fallbackEnabled ? isSupportedFallbackFile : undefined
+    );
     this.manifests = listed.filter(f => manifestNames.has(path.basename(f)));
-    let files = listed.filter(f => sourceExts.has(path.extname(f)) && !manifestNames.has(path.basename(f)));
+    let files = listed.filter(f => {
+      if (manifestNames.has(path.basename(f))) return false;
+      if (sourceExts.has(path.extname(f))) return true;
+      return fallbackEnabled && isSupportedFallbackFile(f);
+    });
     // `match` narrows the source files to analyze (same semantics as
     // `explore --match`); manifests stay: import resolution reads them.
     const patterns = this.config.match ?? [];
@@ -421,10 +439,24 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       if (lang) noFlow.set(lang, (noFlow.get(lang) ?? 0) + 1);
     };
 
+    const sourceExts = new Set(FileScanner.supportedExtensions());
     const maxFileSizeBytes = this.config.maxFileSizeBytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
     const skippedFiles: Array<{ file: string; reason: 'too-large' | 'minified' }> = [];
     let processed = 0;
     let parsed = 0;
+    let fallbackCtagsCount = 0;
+    let fallbackRegexCount = 0;
+    const recordFallbackBackend = async (tags: Tag[]): Promise<void> => {
+      if (tags.some(t => t.source === 'ctags')) {
+        fallbackCtagsCount++;
+      } else if (tags.some(t => t.source === 'regex')) {
+        fallbackRegexCount++;
+      } else if (await hasUniversalCtags()) {
+        fallbackCtagsCount++;
+      } else {
+        fallbackRegexCount++;
+      }
+    };
     for (const file of files) {
       // Event: Check if file should be skipped
       const scanEvent = { file, skip: false };
@@ -451,7 +483,11 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         await this.emitAsync('cache:hit', cacheHitEvent);
         await graphBuilder.loadFromCache(file, cacheHitEvent.tags, cacheHitEvent.imports, cached.records);
         parsed++;
-        noteNoFlow(file);
+        if (sourceExts.has(path.extname(file))) {
+          noteNoFlow(file);
+        } else {
+          await recordFallbackBackend(cacheHitEvent.tags);
+        }
       } else {
         // Event: Cache miss - use parallel for observers
         await this.emitAsyncParallel('cache:miss', { file });
@@ -488,14 +524,28 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         }
 
         try {
-          const { tags, imports, records, skipped } = await parser.parse(
-            file,
-            parseBeforeEvent.content,
-            includeVars,
-            includeDocs,
-            enableCfg,
-            enableDfg
-          );
+          const isTreeSitter = sourceExts.has(path.extname(file));
+          let tags: Tag[];
+          let imports: Import[];
+          let records: Awaited<ReturnType<ParserManager['parse']>>['records'];
+          let skipped: boolean | undefined;
+
+          if (isTreeSitter) {
+            ({ tags, imports, records, skipped } = await parser.parse(
+              file,
+              parseBeforeEvent.content,
+              includeVars,
+              includeDocs,
+              enableCfg,
+              enableDfg
+            ));
+          } else {
+            tags = await extractFallbackTags(absPath, file, parseBeforeEvent.content);
+            imports = [];
+            records = undefined;
+            skipped = false;
+            await recordFallbackBackend(tags);
+          }
 
           // Event: After parse (listeners can modify results)
           const parseAfterEvent = { file, tags, imports };
@@ -516,7 +566,7 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
           // installing it later must take effect without touching the file.
           if (!skipped) {
             parsed++;
-            noteNoFlow(file);
+            if (isTreeSitter) noteNoFlow(file);
             if (this.useFileCache) this.cache.set(cacheKey, stats.mtimeMs, cacheWriteEvent.tags, cacheWriteEvent.imports, includeDocs, includeVars, records, flowKey);
           }
         } catch (error) {
@@ -550,6 +600,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       parsed,
       skipped: skippedGrammars,
       ...(skippedFiles.length > 0 ? { skippedFiles } : {}),
+      ...(fallbackCtagsCount > 0 || fallbackRegexCount > 0
+        ? { fallback: { ctags: fallbackCtagsCount, regex: fallbackRegexCount } }
+        : {}),
     };
 
     const graph = await graphBuilder.getGraph();
