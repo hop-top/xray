@@ -34,6 +34,24 @@ export interface ParseCoverage {
   files: number;
   parsed: number;
   skipped: SkippedSummary[];
+  skippedFiles?: Array<{ file: string; reason: 'too-large' | 'minified' }>;
+}
+
+const DEFAULT_MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+const MINIFIED_FIRST_LINES_CHECK = 20;
+const MINIFIED_MAX_LINE_LENGTH = 10_000;
+const MINIFIED_MAX_AVG_LINE_LENGTH = 500;
+
+function isMinifiedContent(content: string): boolean {
+  if (!content) return false;
+  const lines = content.split(/\r?\n/);
+  const headLimit = Math.min(lines.length, MINIFIED_FIRST_LINES_CHECK);
+  for (let i = 0; i < headLimit; i++) {
+    if (lines[i].length > MINIFIED_MAX_LINE_LENGTH) {
+      return true;
+    }
+  }
+  return content.length / Math.max(1, lines.length) > MINIFIED_MAX_AVG_LINE_LENGTH;
 }
 
 export interface XrayConfig {
@@ -64,6 +82,7 @@ export interface XrayConfig {
 
   // Advanced
   queries?: Record<string, string>;
+  maxFileSizeBytes?: number;
 
   // Languages (names or bundles) to parse; each is required. Default: auto-detect.
   languages?: string[];
@@ -402,6 +421,8 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       if (lang) noFlow.set(lang, (noFlow.get(lang) ?? 0) + 1);
     };
 
+    const maxFileSizeBytes = this.config.maxFileSizeBytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
+    const skippedFiles: Array<{ file: string; reason: 'too-large' | 'minified' }> = [];
     let processed = 0;
     let parsed = 0;
     for (const file of files) {
@@ -454,6 +475,17 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
         const parseBeforeEvent = { file, content, skip: false };
         await this.emitAsync('parse:before', parseBeforeEvent);
         if (parseBeforeEvent.skip) continue;
+
+        if (Buffer.byteLength(parseBeforeEvent.content, 'utf8') > maxFileSizeBytes) {
+          skippedFiles.push({ file, reason: 'too-large' });
+          processed++;
+          continue;
+        }
+        if (isMinifiedContent(parseBeforeEvent.content)) {
+          skippedFiles.push({ file, reason: 'minified' });
+          processed++;
+          continue;
+        }
 
         try {
           const { tags, imports, records, skipped } = await parser.parse(
@@ -513,7 +545,12 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
       Logger.warn(`cf/df: skipped ${skippedFlow.map(([k, n]) => `${n} ${n === 1 ? 'function' : 'functions'} (${why[k] ?? k})`).join(', ')}; no graphs for them`);
     }
     const skippedGrammars = reportSkippedLanguages({ format: this.config.format });
-    this.lastCoverage = { files: files.length, parsed, skipped: skippedGrammars };
+    this.lastCoverage = {
+      files: files.length,
+      parsed,
+      skipped: skippedGrammars,
+      ...(skippedFiles.length > 0 ? { skippedFiles } : {}),
+    };
 
     const graph = await graphBuilder.getGraph();
 
