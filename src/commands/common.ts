@@ -316,6 +316,7 @@ export const addCommonOptions = (cmd: Command) => {
       return previous.concat(value.split(',').map(s => s.trim()).filter(Boolean));
     }, [])
     .option('--skip-detect', 'Skip strategy detection and auto-configuration')
+    .option('--no-fallback-ctags', 'Disable Universal Ctags / regex fallback for unsupported languages')
     .option('--share [path]', 'Generate a shareable summary markdown (optional path override)')
     .option(
       '--preset <spec>',

@@ -79,6 +79,9 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
   /** Match filename pattern (prefix ! to negate) (repeatable) */
   match?: string[];
 
+  /** Enable Universal Ctags / regex fallback for unsupported languages (default: true) */
+  fallbackCtags?: boolean;
+
   /** Match function/class name (prefix ! to negate) (repeatable) */
   catch?: string[];
 
