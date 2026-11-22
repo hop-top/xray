@@ -19,6 +19,8 @@ import { registerTuiCommand } from '../tui';
 import { registerUpgradeCommand } from '../upgrade';
 import { registerHandbookCommand } from '../handbook';
 import { registerDiagramCommand } from '../diagram';
+import { registerAskCommand } from '../ask';
+import { registerReviewCommand } from '../review';
 import { setCommandGroup, type HelpGroupId } from '../kit-cli';
 import { declareEffect } from '../side-effect';
 import { addResultFormat } from '../../lib/result-format';
@@ -33,6 +35,8 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   imports: 'analyze',
   handbook: 'analyze',
   diagram: 'analyze',
+  ask: 'analyze',
+  review: 'analyze',
   watch: 'analyze',
   tui: 'analyze',
   strategy: 'strategy',
@@ -105,6 +109,12 @@ Examples:
 
   // Diagram command - deterministic Mermaid architecture, call, CFG, and DFG exporter
   registerDiagramCommand(program);
+
+  // Ask command - read-only BYOK codebase Q&A
+  registerAskCommand(program);
+
+  // Review command - deterministic diff review (with optional --llm)
+  registerReviewCommand(program);
 
   // Watch command - live incremental background indexer
   registerWatchCommand(program);
