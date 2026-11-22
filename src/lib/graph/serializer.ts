@@ -7,7 +7,7 @@ import type { SerializedGraph, SerializedNode, SerializedEdge } from '../query/t
  * attributes on SerializedEdge so the serializer stays in sync with
  * the type system rather than relying on ad-hoc memory.
  */
-const WELL_KNOWN_EDGE_KEYS = ['type', 'confidence', 'community', 'crossRoot'] as const;
+const WELL_KNOWN_EDGE_KEYS = ['type', 'confidence', 'community', 'crossRoot', 'callSites'] as const;
 
 /**
  * GraphSerializer handles serialization and deserialization of graphology graphs

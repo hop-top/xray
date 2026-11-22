@@ -44,9 +44,10 @@ const { open } = require('@hop-top/kit/sqlstore') as {
  *     TS/JS) derived from the imports contract extractor (more forms, Rust
  *     per use-tree leaf, `line` / `kind`); entries carry the contract
  *     `records` and the extractor version they came from.
+ *  8: same layout; Tag carries `callSites` (0-based line/col per reference).
  * Any other value is invalidated (wiped) on open.
  */
-export const CACHE_SCHEMA_VERSION = 7;
+export const CACHE_SCHEMA_VERSION = 8;
 
 const LEGACY_TABLES = ['tags', 'files_v2', 'file_analysis'];
 const TAGS_PREFIX = 'tags:';

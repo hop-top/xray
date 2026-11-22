@@ -1,5 +1,6 @@
 import type { Confidence } from '../../types/graph';
 import type { Cfg, Dfg } from '../flow/types';
+import type { CallSite } from '../parser/types';
 
 /**
  * Import specification for a module
@@ -52,6 +53,8 @@ export interface SerializedEdge {
   community?: string;
   /** Calls edge created by the cross-root pass of a merged multi-root graph. */
   crossRoot?: boolean;
+  /** 0-based call-site positions on `calls` edges. */
+  callSites?: CallSite[];
   // Index signature is `any` (not `unknown`) because plugins extend edges
   // with arbitrary attributes; tightening to `unknown` would force every
   // existing consumer to type-narrow. Declared keys above stay typed.
@@ -96,11 +99,13 @@ export interface QueryResult {
     score?: number;
     /** Tree-view suffix after the location, e.g. `inferred` -> ` (inferred)`. */
     note?: string;
+    callSites?: CallSite[];
   }>;
   edges: Array<{
     from: string;
     to: string;
     type: string;
+    callSites?: CallSite[];
   }>;
   metadata: {
     syntax: string;

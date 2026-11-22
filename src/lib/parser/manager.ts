@@ -2,7 +2,7 @@ import * as path from 'path';
 import Parser from 'tree-sitter';
 import { getLanguageConfig, CallShape } from './language-registry';
 import { isUnavailable } from './grammars';
-import { Tag, Import } from './types';
+import { Tag, Import, CallSite } from './types';
 import type { Cfg, Dfg } from '../flow/types';
 import { Logger } from '../logger';
 import { extractTreeImports } from '../imports/tree';
@@ -175,8 +175,11 @@ export class ParserManager {
 
           // Extract function call references for functions/methods
           let references: string[] | undefined;
+          let callSites: Record<string, CallSite[]> | undefined;
           if (kind === 'function' || kind === 'method') {
-            references = this.extractReferences(defNodeForLine, calls);
+            const extracted = this.extractReferencesWithCallSites(defNodeForLine, calls);
+            references = extracted.references;
+            callSites = extracted.callSites;
           }
 
           tags.push({
@@ -189,6 +192,7 @@ export class ParserManager {
             signature,
             doc,
             references,
+            callSites,
             cfg: cflogram,
             dfg: dflogram
           });
@@ -311,8 +315,16 @@ export class ParserManager {
   }
 
   private extractReferences(defNode: Parser.SyntaxNode, calls?: CallContext): string[] {
+    return this.extractReferencesWithCallSites(defNode, calls).references;
+  }
+
+  private extractReferencesWithCallSites(
+    defNode: Parser.SyntaxNode,
+    calls?: CallContext
+  ): { references: string[]; callSites?: Record<string, CallSite[]> } {
     const references = new Set<string>();
-    if (!calls) return [];
+    const sitesByRef = new Map<string, Map<string, CallSite>>();
+    if (!calls) return { references: [] };
 
     // Iterative traversal with stack to avoid stack overflow
     const stack: Parser.SyntaxNode[] = [defNode];
@@ -321,7 +333,18 @@ export class ParserManager {
       const node = stack.pop()!;
 
       const name = calledName(node, calls);
-      if (name) references.add(name);
+      if (name) {
+        references.add(name);
+        const line = node.startPosition.row;
+        const col = node.startPosition.column;
+        let byPos = sitesByRef.get(name);
+        if (!byPos) {
+          byPos = new Map();
+          sitesByRef.set(name, byPos);
+        }
+        const key = `${line}:${col}`;
+        if (!byPos.has(key)) byPos.set(key, { line, col });
+      }
 
       // Add children to stack in reverse order to maintain depth-first traversal order
       for (let i = node.childCount - 1; i >= 0; i--) {
@@ -332,7 +355,15 @@ export class ParserManager {
       }
     }
 
-    return Array.from(references);
+    const callSites: Record<string, CallSite[]> = {};
+    for (const [name, byPos] of sitesByRef) {
+      callSites[name] = Array.from(byPos.values()).sort((a, b) => a.line - b.line || a.col - b.col);
+    }
+
+    return {
+      references: Array.from(references),
+      ...(Object.keys(callSites).length > 0 ? { callSites } : {}),
+    };
   }
 
   /** `@import.source` / `@import.statement` captures (languages outside the imports contract). */
