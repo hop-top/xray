@@ -1,9 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { globSync } from 'glob';
 import { Logger } from './logger';
 import {
   XrayScopeConfig,
+  XrayContextConfig,
   XrayConfig,
   XrayExtensionConfig,
 } from '../types/xray-config';
@@ -270,6 +272,19 @@ function mergeConfigs(global: XrayConfig | null, project: XrayConfig | null): Xr
   return merged;
 }
 
+function expandHome(p: string): string {
+  if (p === '~') return os.homedir();
+  if (p.startsWith('~/') || p.startsWith('~\\')) return path.join(os.homedir(), p.slice(2));
+  return p;
+}
+
+function resolveContextPattern(dir: string, pattern: string, keepWildcardPrefix = false): string {
+  if (typeof pattern !== 'string' || pattern === '') return pattern;
+  const expanded = expandHome(pattern);
+  if (keepWildcardPrefix && expanded.startsWith('**/')) return expanded;
+  return path.resolve(dir, expanded);
+}
+
 /** `paths` entries resolved against `dir`; non-arrays / non-strings untouched. */
 function resolveAgainst(dir: string, paths: string[] | undefined): string[] | undefined {
   return Array.isArray(paths)
@@ -344,6 +359,25 @@ export function resolveConfigPaths(config: XrayConfig, filepath: string): XrayCo
   if (config.scopes && typeof config.scopes === 'object') {
     resolved.scopes = withResolvedPaths(dir, config.scopes);
   }
+  if (config.contexts && typeof config.contexts === 'object') {
+    const resolvedContexts: Record<string, XrayContextConfig> = {};
+    for (const [name, entry] of Object.entries(config.contexts)) {
+      if (entry && typeof entry === 'object') {
+        resolvedContexts[name] = {
+          ...entry,
+          include: Array.isArray(entry.include)
+            ? entry.include.map(p => resolveContextPattern(dir, p))
+            : entry.include,
+          exclude: Array.isArray(entry.exclude)
+            ? entry.exclude.map(p => resolveContextPattern(dir, p, true))
+            : entry.exclude,
+        };
+      } else {
+        resolvedContexts[name] = entry;
+      }
+    }
+    resolved.contexts = resolvedContexts;
+  }
   return resolved;
 }
 
@@ -363,6 +397,8 @@ export interface ConfineOptions {
   scope?: string;
   /** `--all-scopes`: every scope is checked. */
   allScopes?: boolean;
+  /** `--context <name>`: only that context is checked, besides the top level. */
+  context?: string;
 }
 
 /** Whether `file` is the user's own global config (their choice; never confined). */
@@ -442,6 +478,16 @@ export function assertConfigConfined(config: XrayConfig, file: string, o: Confin
   };
   named(config.lenses, 'lenses', o.lens);
   named(config.scopes, 'scopes', o.scope, o.allScopes);
+  if (o.context && config.contexts && typeof config.contexts === 'object') {
+    const ctx = config.contexts[o.context];
+    if (ctx && typeof ctx === 'object' && Array.isArray(ctx.include)) {
+      ctx.include.forEach((p, i) => {
+        if (typeof p === 'string' && p !== '') {
+          check(`contexts.${o.context}.include[${i}]`, expandHome(p), '--path');
+        }
+      });
+    }
+  }
 }
 
 /**
@@ -538,6 +584,43 @@ export function getScope(config: XrayConfig | null, scopeName: string): XrayScop
     return null;
   }
   return config.scopes[scopeName];
+}
+
+/**
+ * Resolve a named context (`config.contexts[name]`) into concrete, sorted,
+ * unique directory roots by expanding `include` globs and filtering `exclude`.
+ */
+export function resolveContextRoots(
+  config: XrayConfig | null,
+  name: string,
+  configDir: string = process.cwd()
+): string[] {
+  if (!config?.contexts || !Object.prototype.hasOwnProperty.call(config.contexts, name)) {
+    throw new NotFoundError(`Context "${name}" not found in config file`);
+  }
+  const ctx = config.contexts[name];
+  if (!ctx || !Array.isArray(ctx.include)) {
+    throw new UsageError(`Context "${name}" must define an "include" array of patterns`);
+  }
+  const excludes = Array.isArray(ctx.exclude)
+    ? ctx.exclude
+        .filter((p): p is string => typeof p === 'string' && p !== '')
+        .map(p => resolveContextPattern(configDir, p, true))
+    : [];
+  const found = new Set<string>();
+  for (const raw of ctx.include) {
+    if (typeof raw !== 'string' || raw === '') continue;
+    const pattern = resolveContextPattern(configDir, raw);
+    const matches = globSync(pattern, { ignore: excludes, absolute: true });
+    for (const m of matches) {
+      if (isDirectory(m)) found.add(path.resolve(m));
+    }
+  }
+  const roots = Array.from(found).sort();
+  if (roots.length === 0) {
+    throw new NotFoundError(`Context "${name}" matched no existing directories`);
+  }
+  return roots;
 }
 
 /**

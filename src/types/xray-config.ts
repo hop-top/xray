@@ -43,12 +43,20 @@ export interface XrayScopeConfig {
   };
 }
 
+export interface XrayContextConfig {
+  include: string[];
+  exclude?: string[];
+}
+
 export interface XrayConfig extends XrayScopeConfig {
   lenses?: {
     [name: string]: XrayScopeConfig;
   };
   scopes?: {
     [name: string]: XrayScopeConfig;
+  };
+  contexts?: {
+    [name: string]: XrayContextConfig;
   };
   aliases?: {
     [name: string]: string;

@@ -311,6 +311,7 @@ export const addCommonOptions = (cmd: Command) => {
     .option('--lens <name>', 'Use named lens (config-file option overlay)')
     .option('--scope <name>', 'Use specific scope from config file')
     .option('--all-scopes', 'Run all scopes defined in config file')
+    .option('--context <name>', 'Use named context (multi-root glob) from config file')
     .option('--detect', 'Enable strategy detection (auto-detects when no path is provided)')
     .option('--lang <list>', 'Languages to parse, comma-separated names or bundles (e.g. go,ts or web); overrides config `languages`; each must be installed (repeatable)', (value: string, previous: string[]) => {
       return previous.concat(value.split(',').map(s => s.trim()).filter(Boolean));

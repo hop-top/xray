@@ -6,11 +6,14 @@ import { styles, fileProgress } from '../lib/tui';
 import { QueryResolver } from '../lib/query-resolver';
 import { Logger, LogLevel } from '../lib/logger';
 import { reportFailure } from '../lib/error/report';
-import { loadConfig, mergeConfig, type ConfineOptions, getScopes, getScope, mergeScopeWithBase, validateScanRoots } from '../lib/config';
+import { loadConfig, mergeConfig, type ConfineOptions, getScopes, getScope, mergeScopeWithBase, validateScanRoots, resolveContextRoots } from '../lib/config';
 import { CodedError, FileWriteError, NotFoundError, UsageError } from '../lib/error/types';
 import { resolveFormatFlags } from '../lib/output-format';
 import { GraphSerializer } from '../lib/graph/serializer';
 import { deriveRootLabels, mergeSerializedGraphs } from '../lib/graph/merge';
+import { Ranker } from '../lib/graph/ranker';
+import { cluster } from '../lib/graph/cluster';
+import { isWithin } from '../lib/confine';
 import { GraphCache, computeRootManifest, diffFileManifest, optionsDigest } from '../lib/cache/graph-cache';
 import { compileMatchers } from '../lib/path-match';
 import { resolveCrossRootReferences } from '../lib/graph/cross-root';
@@ -659,6 +662,93 @@ export const runSingleXray = async (
 
   // Process each path and collect results
   if (chunkedEnabled) {
+    if (paths.length > 1) {
+      const { graph: mergedSerialized, shareInputs } = await buildGraphForRoots(
+        mergedOptions,
+        configPath,
+        { format: 'json', cache: false }
+      );
+      const mergedGraph = new GraphSerializer().deserialize(mergedSerialized);
+      const groupingOpt: 'directory' | 'community' =
+        mergedOptions.group === 'community' ? 'community' : 'directory';
+      if (groupingOpt === 'community') {
+        cluster(mergedGraph);
+      }
+      let focusNode: string | undefined;
+      if (anchor && mergedSerialized.metadata.roots) {
+        const owner = mergedSerialized.metadata.roots.find(r => isWithin(r.path, anchor));
+        if (owner) {
+          const rel = path.relative(owner.path, anchor).split(path.sep).join('/');
+          focusNode = `${owner.label}/${rel}`;
+        }
+      }
+      const ranker = new Ranker(mergedGraph);
+      const rankedNodes = ranker.rank(focusNode);
+      for (const rn of rankedNodes) {
+        mergedGraph.setNodeAttribute(rn.id, 'rank', rn.rank);
+      }
+      const chunkedRenderer = new ChunkedRenderer({
+        root: mergedSerialized.metadata.projectPath,
+        ranked: rankedNodes,
+        graph: mergedGraph,
+        tokenLimit: parseInt(mergedOptions.limit),
+        maxDepth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
+        includeImports: features.incs || false,
+        grouping: groupingOpt,
+      });
+      const { chunks, metadata, rootChunk } = await chunkedRenderer.renderChunked(outputPath!);
+      let filesWritten = 0;
+      for (const [chunkPath, content] of chunks.entries()) {
+        try {
+          fs.writeFileSync(chunkPath, content);
+          filesWritten++;
+        } catch (err: any) {
+          throw new FileWriteError(chunkPath, err);
+        }
+      }
+      Logger.success(`Analysis written to ${filesWritten} chunk files`);
+      Logger.info(`Root chunk: ${rootChunk}`);
+      Logger.info(`Total chunks: ${metadata.length}`);
+      if (metadata.length > 0) {
+        Logger.info('\nChunk Summary:');
+        metadata.forEach(m => {
+          const indent = '  '.repeat(m.depth);
+          Logger.info(`${indent}${m.directory} (${m.fileCount} files, ${m.tokenCount} tokens)`);
+        });
+      }
+      if (shareRequested) {
+        shareInputs.forEach(({ currentPath, rankedNodes: rootRanked, graph: rootGraph }, i) => {
+          const sharePath = resolveShareOutputPath({
+            outputPath: outputPath!,
+            projectPath: currentPath,
+            shareOption,
+            pathIndex: i,
+            totalPaths: shareInputs.length,
+          });
+          const summary = buildShareSummary({
+            projectPath: currentPath,
+            outputPath: outputPath!,
+            rootChunk,
+            chunked: true,
+            metadata,
+            rankedNodes: rootRanked,
+            graph: rootGraph,
+            command: commandUsed,
+            detectedStrategies,
+            tokenLimit: parseInt(mergedOptions.limit),
+          });
+          try {
+            writeFileEnsuringDir(sharePath, summary);
+            Logger.success(`Share summary written to ${sharePath}`);
+            Logger.info('Share this summary in a PR, doc, or AI prompt for quick context.');
+          } catch (err: any) {
+            throw new FileWriteError(sharePath, err);
+          }
+        });
+      }
+      return;
+    }
+
     // Chunked output mode - generate multiple files per directory
     for (let i = 0; i < paths.length; i++) {
       const currentPath = paths[i];
@@ -904,18 +994,41 @@ export const assertAllScopesStandalone = (options: { allScopes?: boolean; output
  * `--path`: see assertAllScopesStandalone).
  * `writes: false` is for a run that writes no output file (impact).
  */
+export const assertContextExclusive = (
+  options: { context?: string; path?: string[]; scope?: string; allScopes?: boolean; graph?: string },
+  positionalPaths?: string[]
+): void => {
+  if (!options.context) return;
+  if (positionalPaths && positionalPaths.length > 0) {
+    throw new UsageError('--context and positional [paths...] are exclusive');
+  }
+  if (options.path && options.path.length > 0) {
+    throw new UsageError('--context and --path are exclusive');
+  }
+  if (options.scope) {
+    throw new UsageError('--context and --scope are exclusive');
+  }
+  if (options.allScopes) {
+    throw new UsageError('--context and --all-scopes are exclusive');
+  }
+  if (options.graph) {
+    throw new UsageError('--context and --graph are exclusive');
+  }
+};
+
 export const confineFor = (
-  options: { path?: string[]; output?: string; query?: string[]; share?: unknown; lens?: string; scope?: string; allScopes?: boolean },
+  options: { path?: string[]; output?: string; query?: string[]; share?: unknown; lens?: string; scope?: string; allScopes?: boolean; context?: string },
   writes = true
 ): ConfineOptions => {
   return {
-    paths: !(options.path && options.path.length > 0),
+    paths: !(options.path && options.path.length > 0) && !options.context,
     output: writes && !options.output,
     queries: !(options.query && options.query.length > 0),
     share: writes && options.share === undefined,
     lens: options.lens,
     scope: options.scope,
     allScopes: options.allScopes,
+    context: options.context,
   };
 };
 
@@ -963,6 +1076,14 @@ export const resolveRunOptions = (
   )
 ): { mergedOptions: any; scopeName?: string } => {
   assertLensNotScoped(normalizedOptions);
+  assertContextExclusive(normalizedOptions);
+  if (normalizedOptions.context) {
+    const contextRoots = resolveContextRoots(config, normalizedOptions.context);
+    const merged = mergeConfig(config, normalizedOptions, normalizedOptions.lens);
+    return {
+      mergedOptions: { ...merged, path: contextRoots, pathSource: 'config' },
+    };
+  }
   if (normalizedOptions.scope) {
     const scopeConfig = getScope(config, normalizedOptions.scope);
     if (!scopeConfig) {
@@ -987,6 +1108,7 @@ export const handleGenerateCommand = async (
   options: CommonAnalysisOptions,
   cmd?: Command
 ) => {
+  assertContextExclusive(options, paths);
   if (paths && paths.length > 0) {
     if (options.path && options.path.length > 0) {
       throw new UsageError(
@@ -1020,6 +1142,7 @@ export const handleGenerateAction = async (options: CommonAnalysisOptions, previ
 
     assertLensNotScoped(normalizedOptions);
     assertAllScopesStandalone(normalizedOptions);
+    assertContextExclusive(normalizedOptions);
     await preflightPresets(normalizedOptions.preset, !previewOf);
 
     // Load config file

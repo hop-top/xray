@@ -112,6 +112,9 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
   /** Run all scopes defined in config file */
   allScopes?: boolean;
 
+  /** Named context (multi-root glob) from config file */
+  context?: string;
+
   /** Enable strategy detection */
   detect?: boolean;
 
@@ -143,9 +146,10 @@ export interface QueryCommandOptions extends BaseCommandOptions {
   /** Root directories to analyze when no graph file is given (repeatable) */
   path?: string[];
 
-  /** Named lens / scope from the config file */
+  /** Named lens / scope / context from the config file */
   lens?: string;
   scope?: string;
+  context?: string;
 
   /** Languages to parse */
   lang?: string[];
@@ -163,6 +167,9 @@ export interface QueryCommandOptions extends BaseCommandOptions {
 export interface ExploreCommandOptions extends BaseCommandOptions {
   /** Root directory to explore (repeatable) */
   path?: string[];
+
+  /** Named context (multi-root glob) from config file */
+  context?: string;
 
   /** Find files matching pattern (e.g., wildcard patterns) (repeatable) */
   match?: string[];

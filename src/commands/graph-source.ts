@@ -12,7 +12,7 @@ import { Logger } from '../lib/logger';
 import { loadConfig } from '../lib/config';
 import { UsageError } from '../lib/error/types';
 import { graphFileArg } from './common';
-import { buildGraphForRoots, cacheLine, confineFor, resolveRunOptions, validateRunRoots, type BuiltGraph } from './generate';
+import { assertContextExclusive, buildGraphForRoots, cacheLine, confineFor, resolveRunOptions, validateRunRoots, type BuiltGraph } from './generate';
 import { readSerializedGraph } from './query';
 
 export interface GraphSourceOptions {
@@ -20,11 +20,12 @@ export interface GraphSourceOptions {
   path?: string[];
   lens?: string;
   scope?: string;
+  context?: string;
   lang?: string[];
   config?: string;
 }
 
-/** Add `--graph`, `-p/--path`, `--lens`, `--scope`, `--lang` (the graph source flags). */
+/** Add `--graph`, `-p/--path`, `--lens`, `--scope`, `--context`, `--lang` (the graph source flags). */
 export function addGraphSourceOptions(cmd: Command): Command {
   return cmd
     .option('--graph <file>', 'Read a saved graph (map --format json) instead of building one', graphFileArg)
@@ -32,6 +33,7 @@ export function addGraphSourceOptions(cmd: Command): Command {
       (value: string, previous: string[]) => previous.concat([value]), [])
     .option('--lens <name>', 'Use named lens (config-file option overlay)')
     .option('--scope <name>', 'Use specific scope from config file')
+    .option('--context <name>', 'Use named context (multi-root glob) from config file')
     .option('--lang <list>', 'Languages to parse, comma-separated names or bundles (repeatable)',
       (value: string, previous: string[]) => previous.concat(value.split(',').map(s => s.trim()).filter(Boolean)), []);
 }
@@ -59,6 +61,7 @@ export function matchNote(patterns: readonly string[] | undefined): string | nul
 }
 
 export async function obtainGraph(options: GraphSourceOptions): Promise<SerializedGraph> {
+  assertContextExclusive(options);
   if (options.graph) {
     const building = (options.path?.length ?? 0) > 0 || options.lens || options.scope;
     if (building) {
@@ -66,7 +69,7 @@ export async function obtainGraph(options: GraphSourceOptions): Promise<Serializ
     }
     return readSerializedGraph(options.graph);
   }
-  const cli = { path: options.path ?? [], lens: options.lens, scope: options.scope, lang: options.lang ?? [], config: options.config };
+  const cli = { path: options.path ?? [], lens: options.lens, scope: options.scope, context: options.context, lang: options.lang ?? [], config: options.config };
   // no output file is written: only scan roots and query files must stay in their project.
   const config = loadConfig(cli.config, cli.path[0], { resolvePaths: true, confine: confineFor(cli, false) });
   const { mergedOptions } = resolveRunOptions(cli, config);

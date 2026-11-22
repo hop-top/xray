@@ -25,6 +25,7 @@ export interface SerializedNode {
   signature?: string;
   doc?: string;
   rank?: number;
+  community?: number;
   imports?: Import[];
   /**
    * Unresolved references of a tag (raw parser form). Only on per-root
