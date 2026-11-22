@@ -37,12 +37,13 @@ export const resolvePath = (p: string | undefined): string | undefined => {
 // (`.xray_*.md`).
 export const resolveOutputPath = (
   outputOption: string | undefined,
-  format: 'txt' | 'csv' | 'xml' | 'json',
+  format: 'txt' | 'csv' | 'xml' | 'json' | 'mermaid',
   chunked = true
 ): string | undefined => {
   if (!outputOption) {
     const base = require('path').resolve(process.cwd(), '.xray');
     if (format === 'json' || format === 'xml') return `${base}.${format}`;
+    if (format === 'mermaid') return `${base}.mmd`;
     if (format === 'txt' && !chunked) return `${base}.txt`;
     return base;
   }
@@ -64,7 +65,8 @@ export const resolveOutputPath = (
     txt: '.txt',
     csv: '.csv',
     xml: '.xml',
-    json: '.json'
+    json: '.json',
+    mermaid: '.mmd',
   };
 
   return resolvePath(outputOption + outputExtensions[format]);
@@ -301,11 +303,12 @@ export const addCommonOptions = (cmd: Command) => {
     .option('-c, --catch <pattern>', 'Match function/class name (prefix ! to negate) (repeatable)', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
-    .option('--format <fmt>', 'Output format: txt (default), json, csv (nodes+edges tables), xml')
+    .option('--format <fmt>', 'Output format: txt (default), json, csv (nodes+edges tables), xml, mermaid')
     .option('--txt', 'Alias of --format txt')
     .option('--csv', 'Alias of --format csv (<out>.nodes.csv + <out>.edges.csv)')
     .option('--xml', 'Alias of --format xml (one <graph> document)')
     .option('--json', 'Alias of --format json (raw JSON graph)')
+    .option('--mermaid', 'Alias of --format mermaid (.mmd diagram)')
     .option('--no-chunk', 'Disable chunked output (single file output)')
     .option('--group <mode>', 'Chunk grouping mode: directory (default) or community', 'directory')
     .option('--lens <name>', 'Use named lens (config-file option overlay)')
@@ -326,7 +329,7 @@ export const addCommonOptions = (cmd: Command) => {
       []
     )
   );
-  bindFlag(out, 'format', staticValues('txt', 'json', 'csv', 'xml'));
+  bindFlag(out, 'format', staticValues('txt', 'json', 'csv', 'xml', 'mermaid'));
   bindFlag(out, 'preset', staticValues(...BUILTIN_PRESET_NAMES));
   return out;
 };
