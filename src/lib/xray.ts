@@ -757,4 +757,9 @@ export class Xray extends AsyncEventEmitter<XrayEvents> {
     this.lastRankedNodes = result.rankedNodes;
     return result;
   }
+
+  /** Close the underlying SQLite cache connection. */
+  close(): void {
+    this.cache.close();
+  }
 }
