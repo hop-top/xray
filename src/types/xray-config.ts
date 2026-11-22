@@ -50,6 +50,17 @@ export interface XrayContextConfig {
   exclude?: string[];
 }
 
+export type LlmProvider = 'openai' | 'anthropic';
+
+export interface XrayLlmConfig {
+  provider?: LlmProvider;
+  model?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  maxTokens?: number;
+  maxCost?: number;
+}
+
 export interface XrayConfig extends XrayScopeConfig {
   lenses?: {
     [name: string]: XrayScopeConfig;
@@ -63,4 +74,5 @@ export interface XrayConfig extends XrayScopeConfig {
   aliases?: {
     [name: string]: string;
   };
+  llm?: XrayLlmConfig;
 }
