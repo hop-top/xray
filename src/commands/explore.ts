@@ -86,9 +86,34 @@ export function addExploreOutputFlags(cmd: Command): Command {
   });
 }
 
+/** What one explore run produced, for callers that render it themselves. */
+export interface ExploreOutcome {
+  rows: unknown[];
+  text: Formatter<any>;
+  cols: ColumnSpec[];
+}
+
+/**
+ * Collects an explore run's result instead of printing it. Used by the
+ * in-process MCP path, which renders `outcome` through its own registry.
+ */
+export interface ExploreCapture {
+  outcome?: ExploreOutcome;
+  /** Render nothing; the caller uses `outcome`. */
+  mute?: boolean;
+  /**
+   * Warm `--search` index for a scan root. The in-process MCP path supplies
+   * the workspace's cached handle; a fresh index is opened and closed when
+   * absent.
+   */
+  indexFor?: (root: string) => TrigramIndex;
+}
+
 async function render<T>(
-  cmd: Command | undefined, rows: T[], text: Formatter<T[]>, cols: ColumnSpec[]
+  cmd: Command | undefined, rows: T[], text: Formatter<T[]>, cols: ColumnSpec[], capture?: ExploreCapture
 ): Promise<void> {
+  if (capture) capture.outcome = { rows, text: text as Formatter<any>, cols };
+  if (capture?.mute) return;
   if (!cmd) {
     // Programmatic call without a command: human view on stdout.
     text.render(process.stdout, rows, {}, []);
@@ -105,7 +130,8 @@ export const ROUTED_SELF_KEY = 'routedSelf';
 
 export const handleExploreAction = async (
   options: ExploreCommandOptions,
-  cmd?: Command
+  cmd?: Command,
+  capture?: ExploreCapture
 ) => {
     if (cmd) assertFormat(cmd, exploreRegistry);
 
@@ -195,7 +221,7 @@ export const handleExploreAction = async (
     // Find files by pattern, against the path under each explore root
     if (matching && !searching && !options.stats) {
       Logger.info(`Found ${files.length} file(s) matching pattern(s):\n`);
-      await render<MatchRow>(cmd, files.map((f) => ({ path: f })), matchText, columns('path'));
+      await render<MatchRow>(cmd, files.map((f) => ({ path: f })), matchText, columns('path'), capture);
       return;
     }
 
@@ -217,7 +243,8 @@ export const handleExploreAction = async (
       const effectiveCap = Math.min(limit, MAX_SEARCH_LIMIT);
 
       for (const [root, rootEntries] of groupBy(entries, (e) => e.root)) {
-        const index = new TrigramIndex(root);
+        const warm = capture?.indexFor?.(root);
+        const index = warm ?? new TrigramIndex(root);
         try {
           index.sync(root, rootEntries);
           const allowed = new Set(rootEntries.map((e) => e.rel));
@@ -238,7 +265,7 @@ export const handleExploreAction = async (
             }
           }
         } finally {
-          index.close();
+          if (!warm) index.close();
         }
       }
 
@@ -259,7 +286,7 @@ export const handleExploreAction = async (
           );
         }
       }
-      await render<SearchRow>(cmd, window.items, searchText, columns('file', 'line', 'keyword', 'content'));
+      await render<SearchRow>(cmd, window.items, searchText, columns('file', 'line', 'keyword', 'content'), capture);
       return;
     }
 
@@ -283,7 +310,7 @@ export const handleExploreAction = async (
 
       Logger.info('Codebase Statistics:\n');
       const rows = [...byExt.values()].sort((a, b) => b.files - a.files);
-      await render<StatsRow>(cmd, rows, statsText, columns('type', 'files', 'lines'));
+      await render<StatsRow>(cmd, rows, statsText, columns('type', 'files', 'lines'), capture);
       return;
     }
 
@@ -295,5 +322,5 @@ export const handleExploreAction = async (
     const rows: ListRow[] = [...byExt.entries()]
       .sort((a, b) => b[1].length - a[1].length)
       .flatMap(([ext, list]) => list.map((f) => ({ type: ext, path: f })));
-    await render<ListRow>(cmd, rows, listText, columns('type', 'path'));
+    await render<ListRow>(cmd, rows, listText, columns('type', 'path'), capture);
 };
