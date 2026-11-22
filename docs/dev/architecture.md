@@ -185,13 +185,28 @@ Renders analysis results in various formats with support for both single-file an
 
 **Components:**
 - `src/lib/renderer/map-renderer.ts` - Single-file tree-structured output
-- `src/lib/renderer/chunked-renderer.ts` - Multi-file chunked output (default)
+- `src/lib/renderer/chunked-renderer.ts` - Multi-file chunked output (default, directory or Louvain `community` grouping)
+- Mermaid exporter (`xray diagram`, `map --format mermaid`)
 
 **Output Formats:**
 - **Text**: Tree-structured output (default)
+- **Mermaid**: Architecture, call, CFG, and DFG `.mmd` diagrams
 - **JSON**: Raw graph data
 - **CSV**: Tabular data
 - **XML**: Structured markup
+
+### 9. Additional Subsystems
+
+- **Trigram Search (`src/lib/search/`)**: SQLite FTS5 trigram index backing `xray explore --search` with `--regex`, `--case-sensitive`, pagination, and boolean `--filter` DSL (`src/lib/query/filter-dsl.ts`).
+- **Git Reader (`src/lib/git/`)**: Extracts `--since` / `--changed` diffs, `churn`, and `blame` metadata for `map`, `graph`, `impact`, and `review`.
+- **Warm MCP Workspace & HTTP Transport (`src/lib/mcp/`)**: In-process LRU `GraphCache` workspace, `initialize` tool-selection instructions, primitive tools (`read_file`, `list_tree`, `list_branches`, `list_commits`, `get_diff`, `handbook`, `list_skills`, `read_skill`), Streamable HTTP transport, `xrst_` scoped bearer tokens, and `audit-log`.
+- **HTTP Server & MCP Gateway (`src/lib/server/`)**: `xray serve` local Web UI, read-only REST API, portal deep links, and optional `McpGateway` (`gateway.upstreams`).
+- **Handbook (`src/lib/handbook/`)**: Deterministic `.xray/handbook/` generator with optional 3-stage BYOK LLM enrichment (`--llm`, `--delta`).
+- **TUI (`src/lib/tui/`)**: Interactive terminal codebase explorer (`xray tui`).
+- **LLM Q&A & Diff Review (`src/lib/llm/`, `src/commands/ask.ts`, `src/commands/review.ts`)**: `xray ask` tool-loop with `/<slug>` skill expansion and `xray review` deterministic diff analyzer + optional LLM synthesis.
+- **Skills (`src/lib/skills/`)**: Workspace skill manifest discovery and inspection (`xray skills list|show`).
+- **Live Watcher (`src/lib/watcher.ts`)**: Incremental `GraphCache` patching on file changes (`xray watch`).
+- **Polyglot Fallback & Cross-Root Resolution (`src/lib/parser/`, `src/lib/graph/`)**: Linguist 100+ language map, Universal Ctags / regex fallback, and `tsconfig.json` / `Cargo.toml` / `pyproject.toml` cross-root resolution.
 
 **Chunked Renderer Features:**
 - Automatic directory-based chunking

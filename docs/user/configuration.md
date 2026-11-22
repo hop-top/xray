@@ -218,17 +218,29 @@ anywhere.
 | `paths` | `string[]` | Default paths to analyze (relative to the config file's directory) |
 | `output` | `string` | Default output file path (relative to the config file's directory) |
 | `limit` | `number` | Token limit for output |
-| `features` | `object` | Features to enable: `vars`, `incs`, `docs`, `cost`, `cf`, `df` |
+| `features` | `object` | Features to enable: `vars`, `incs`, `docs`, `cost`, `cf`, `df`, `churn`, `blame` |
 | `anchor` | `string` | Focus file for Personalized PageRank |
 | `depth` | `number` | Maximum depth of tree to render |
 | `match` | `string[]` | File patterns for `map` and `graph`, the same as `--match` (`!` excludes; `--match` replaces the list) |
 | `catch` | `string[]` | Function/class name patterns |
-| `format` | `'txt' \| 'csv' \| 'xml'` | Output format |
+| `format` | `'txt' \| 'csv' \| 'xml' \| 'json'` | Output format |
 | `queries` | `string[]` | Custom Tree-sitter query paths/URLs |
 | `json` | `boolean` | Output raw JSON graph |
+| `fallbackCtags` | `boolean` | Enable/disable Universal Ctags / regex fallback for unsupported languages |
 | `aliases` | `object` | Command aliases - shortcuts for strategy commands |
 | `scopes` | `object` | Named scoped xray configurations (multiple independent outputs) |
 | `lenses` | `object` | Named lenses — config-file option overlays selected via `--lens <name>` |
+| `contexts` | `object` | Named multi-root glob contexts (`{ include: string[], exclude?: string[] }`) selected via `--context <name>` |
+| `llm` | `object` | BYOK LLM settings (`provider`: `'openai' \| 'anthropic'`, `model`, `apiKey`, `baseUrl`, `maxTokens`, `maxCost`) for `ask`, `review --llm`, `handbook --llm` |
+| `skills` | `object` | Workspace skills settings (`dirs?: string[]`) for `xray skills` and `xray ask` |
+| `gateway` | `object` | Upstream MCP gateway (`upstreams?: Record<string, ...>`); global config only unless `XRAY_ALLOW_PROJECT_GATEWAY=1` |
+
+### Contexts, LLM, Skills, and Gateway
+
+- **`contexts`**: Named multi-root glob definitions (`include` and optional `exclude` arrays) used with `--context <name>` across `map`, `graph`, `explore`, `query`, `impact`, and `diagram`.
+- **`llm`**: BYOK provider settings (`provider`, `model`, `apiKey`, `baseUrl`, `maxTokens`, `maxCost`) used by `xray ask`, `xray review --llm`, and `xray handbook --llm`.
+- **`skills.dirs`**: Additional directories to scan for workspace skill manifests (`xray skills list`, `/<slug>` expansion in `xray ask`).
+- **`gateway.upstreams`**: Upstream MCP servers (`transport: 'http' | 'stdio'`, `url` or `command`/`args`, `headerEnv`, `allowTools`, `blockTools`) mounted by `xray mcp` / `xray serve --mcp`. Repo-local `gateway` blocks are ignored for security unless `XRAY_ALLOW_PROJECT_GATEWAY=1` is set in the environment.
 
 ## Global Configuration Use Cases
 

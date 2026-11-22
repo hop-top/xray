@@ -7,10 +7,18 @@ Complete guide to every xray command and option. Start with the decision tree to
 **What do you want to do?**
 
 - **Understand your codebase structure** → [`xray map`](#xray-map)
+- **Generate an architectural handbook** → [`xray handbook`](#xray-handbook)
+- **Export a Mermaid architecture/call/CFG/DFG diagram** → [`xray diagram`](#xray-diagram)
 - **Find something specific (components, routes, functions)** → [`xray <strategy> <command>`](#xray-strategy-command)
-- **Find files matching a pattern** → [`xray explore`](#xray-explore)
+- **Find files matching a pattern or search code (trigram/regex)** → [`xray explore`](#xray-explore)
+- **Query the call graph** → [`xray query`](query-guide.md)
 - **See control flow or data flow** → [`xray graph`](#xray-graph)
-- **See what breaks if you change a function** → [`xray impact`](#xray-impact)
+- **See what breaks if you change a function (or git diff)** → [`xray impact`](#xray-impact)
+- **Review a git diff deterministically or with LLM** → [`xray review`](#xray-review)
+- **Ask a question about the codebase (BYOK LLM)** → [`xray ask`](#xray-ask)
+- **Keep `GraphCache` warm on file changes** → [`xray watch`](#xray-watch)
+- **Explore interactively in terminal or browser** → [`xray tui`](#xray-tui) / [`xray serve`](#xray-serve)
+- **Discover workspace skills** → [`xray skills`](#xray-skills)
 - **List every file's imports as a stable JSON contract** → [`xray imports`](#xray-imports)
 - **Detect what frameworks are used** → [`xray strategy detect`](#xray-strategy-detect)
 - **See all available strategies** → [`xray strategy list`](#xray-strategy-list)
@@ -70,10 +78,17 @@ a non-empty keyword. Over MCP, `explore`'s `path` must be a directory.
 | Option | Description |
 |--------|-------------|
 | `-p, --path <path>` | Root directory to explore (repeatable; default: current directory) |
+| `--context <name>` | Use named context (multi-root glob) from config file |
 | `-m, --match <pattern>` | Find files matching a pattern, e.g. `"*.ts"` (repeatable) |
 | `-t, --type <ext>` | Filter by file extension (repeatable) |
-| `-s, --search <keyword>` | Search for a keyword in code (repeatable) |
+| `-s, --search <keyword>` | Search for a keyword in code via SQLite FTS5 trigram index (repeatable) |
+| `--regex` | Treat `--search` patterns as regular expressions |
+| `--case-sensitive` | Make `--search` matching case-sensitive |
+| `--offset <n>` | Skip first N `--search` matches |
+| `--limit <n>` | Maximum `--search` matches to return (default: 100, max: 500) |
+| `--filter <expr>` | Filter results using boolean DSL (e.g., `"lang:typescript -file:test"`) |
 | `--stats` | Show codebase statistics |
+| `--list-strategies` | List all available strategies |
 | `--format <fmt>` | `text` (default), `json`, `yaml`, `table`, `csv` |
 
 Patterns are globs matched against the path under the explore root (each
@@ -425,23 +440,26 @@ List the transitive callers of a function or method ("what breaks if I
 change X?"), grouped by area.
 
 ```bash
-xray impact <symbol> [--depth N] [--strict] [--format <fmt>] [--cols <list>] [-o <file>]
-                     [-p <path>... | --lens <name> | --scope <name> | --graph <file>]
+xray impact [symbol] [--since <ref> | --changed] [--depth N] [--strict] [--format <fmt>] [--cols <list>] [-o <file>]
+                     [-p <path>... | --lens <name> | --scope <name> | --context <name> | --graph <file>]
 ```
 
-`<symbol>` is a name or glob, matched like `xray query` (`RunHooks`,
+`<symbol>` is optional when using `--since <ref>` or `--changed`; otherwise it is a name or glob, matched like `xray query` (`RunHooks`,
 `'New*'`, or a full id such as `internal/dispatch/run.go::RunHooks`).
 Every definition that matches is a starting point. xray walks inbound
 `calls` edges breadth-first and reports each caller once, at its shortest
-distance from the symbol.
+distance from the symbol, with definition and 1-based call-site lines (`(called at L...)`) when available.
 
 | Flag | Effect | Default |
 |------|--------|---------|
+| `--since <ref>` | Impact of symbols changed since `<ref>` (e.g. `main`, `HEAD~1`) | none |
+| `--changed` | Impact of staged and unstaged working-tree changes vs `HEAD` | off |
 | `--depth <n>` | Caller levels to follow (positive integer) | `3` |
 | `--strict` | Follow `EXTRACTED` call edges only (drop `INFERRED`) | off |
 | `--graph <file>` | Read a saved graph (`map --format json`) instead of building one; cannot be combined with `-p`, `--lens` or `--scope` | build in memory |
 | `-p, --path <path>` | Root to analyze (repeatable; two or more roots are merged) | config `paths` or cwd |
 | `--lens <name>` / `--scope <name>` | Pick roots and options from the config file | none |
+| `--context <name>` | Use named context (multi-root glob) from config file | none |
 | `--lang <list>` | Languages to parse | all detected |
 | `--format <fmt>` | `text` (default), `brief`, `tree`, `json`, `yaml`, `table`, `csv` | `text` |
 | `--cols <list>` | `table`/`csv` columns: `name`, `kind`, `file`, `line`, `depth`, `group`, `confidence`, `id` | `name,file,line,depth,group,confidence` |
@@ -797,6 +815,126 @@ commands, aliases, flags and flag values (`--format`, `--log-level`,
 `--lang`, paths) always match the installed xray. `--no-descriptions`
 omits descriptions. A missing or unknown shell exits 2.
 
+### `xray handbook`
+
+Generate deterministic architectural handbook pages under `.xray/handbook/` (or `-o <dir>`), with optional 3-stage BYOK LLM enrichment.
+
+```bash
+xray handbook [path] [-p <dir>] [-o <dir>] [--llm] [--delta] [--max-tokens <n>] [--max-cost <usd>] [--format text|json]
+```
+
+| Flag | Description |
+|------|-------------|
+| `-p, --path <dir>` | Project root directory |
+| `-o, --output <dir>` | Output directory (default: `.xray/handbook`) |
+| `--llm` | Enrich handbook pages using optional 3-stage BYOK LLM pipeline |
+| `--delta` | With `--llm`, only re-survey subsystems with git changes since `lastUpdatedCommit` |
+| `--max-tokens <n>` | Maximum total token budget for `--llm` runs |
+| `--max-cost <usd>` | Maximum USD cost budget for `--llm` runs |
+| `--format <fmt>` | `text` (default) or `json` |
+
+### `xray diagram`
+
+Export deterministic Mermaid architecture, call, CFG, or DFG diagrams.
+
+```bash
+xray diagram [paths...] [--view architecture|calls|cfg|dfg] [--anchor <target>] [-c <pattern>] [--depth <n>] [--max-nodes <n>] [-o <file>]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--graph <file>` | Read a saved graph (`map --format json`) instead of building one |
+| `-p, --path <path>` | Root directory to analyze (repeatable) |
+| `--lens <name>` / `--scope <name>` / `--context <name>` | Config overlays / multi-root context |
+| `--lang <list>` | Languages to parse (repeatable) |
+| `--view <view>` | `architecture` (default), `calls`, `cfg`, `dfg` |
+| `--anchor <target>` | Anchor file or symbol to center BFS on |
+| `-c, --catch <pattern>` | Match function/class name (`!` to negate, repeatable) |
+| `--depth <n>` | Maximum BFS depth from `--anchor` |
+| `--max-nodes <n>` | Maximum nodes to render (default: `60`) |
+| `-o, --output <file>` | Write Mermaid output to file instead of stdout |
+
+### `xray ask`
+
+Ask a question about the codebase using read-only xray tools and a BYOK LLM. Supports `/<slug>` workspace skill expansion in the question prompt.
+
+```bash
+xray ask <question> [-p <dir>] [--max-steps <n>] [--out <file>] [--format text|json]
+```
+
+| Flag | Description |
+|------|-------------|
+| `-p, --path <dir>` | Project root directory (default: current working directory) |
+| `--max-steps <n>` | Maximum tool-loop steps (default: `12`) |
+| `--out <file>` | Write shareable markdown transcript to `<file>` |
+| `--format <fmt>` | `text` (default) or `json` |
+
+### `xray review`
+
+Review a git diff deterministically (blast-radius impact, CFG/DFG delta, stale docs) or synthesize findings with `--llm`.
+
+```bash
+xray review [--base <ref>] [--head <ref>] [--llm] [-p <dir>] [--format text|json]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--base <ref>` | Base git ref to diff against |
+| `--head <ref>` | Head git ref to diff up to (default: `HEAD`) |
+| `--llm` | Synthesize review findings with BYOK LLM |
+| `-p, --path <dir>` | Project root directory (default: current working directory) |
+| `--format <fmt>` | `text` (default) or `json` |
+
+### `xray watch`
+
+Watch workspace files and incrementally update `GraphCache`.
+
+```bash
+xray watch [paths...] [--debounce <ms>] [--graph-out <path>] [--once] [-p <path>] [-q]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--debounce <ms>` | Debounce interval in milliseconds (default: `150`) |
+| `--graph-out <path>` | Atomically write serialized JSON graph to `<path>` on startup and after each change |
+| `--once` | Warm `GraphCache` (and write `--graph-out` if set) once and exit |
+| `-p, --path <path>` | Root directory to watch (repeatable) |
+| `-q, --quiet` | Suppress watch status logs |
+
+### `xray tui`
+
+Launch an interactive terminal codebase explorer.
+
+```bash
+xray tui [path]
+```
+
+### `xray serve`
+
+Launch a local Web UI and read-only REST API server (with portal deep links and optional Streamable HTTP MCP endpoint).
+
+```bash
+xray serve [paths...] [--port <port>] [--host <host>] [--token <secret>] [--api-only] [--mcp] [--audit-log <path>]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--port <port>` | HTTP bind port (default: `4173`) |
+| `--host <host>` | HTTP bind host (default: `127.0.0.1`) |
+| `--token <secret>` | Bearer token (required for non-loopback `--host`, or `XRAY_SERVE_TOKEN` env) |
+| `--api-only` | Serve JSON REST API only without static Web UI |
+| `--mcp` | Mount Streamable HTTP MCP endpoint at `/mcp` |
+| `--audit-log <path>` | Append JSONL audit log for auth, gateway, and admin events |
+
+### `xray skills`
+
+Discover and inspect workspace skills manifests.
+
+```bash
+xray skills list [-p <dir>] [--format text|json|yaml|table|csv]
+xray skills show <slug> [-p <dir>] [--format text|json]
+```
+
 ## Flags & Options
 
 ### Core Options
@@ -828,6 +966,8 @@ Enable additional analysis features (repeatable):
 | `cost` | Estimate and display cost (requires `OPENAI_API_KEY`) |
 | `cf` | Control Flow Graph per function (TypeScript, JavaScript, Python, Go; see [`xray graph`](#xray-graph)) |
 | `df` | Data Flow Graph per function (TypeScript, JavaScript, Python, Go; see [`xray graph`](#xray-graph)) |
+| `churn` | Git commit churn metrics per file |
+| `blame` | Git blame author/recency metadata per file |
 
 **Example:**
 ```bash
@@ -864,8 +1004,9 @@ xray map --catch "User*" --catch "!UserTest"
 
 Select the output with `--format <fmt>` (available on `map` and `graph`):
 
-**Formats** (`--format txt|csv|xml|json`, one at a time):
+**Formats** (`--format txt|csv|xml|json|mermaid`, one at a time; aliases `--txt`, `--csv`, `--xml`, `--json`, `--mermaid`):
 - `txt` - Text format (default)
+- `mermaid` - Mermaid `.mmd` diagram
 - `json`, `csv`, `xml` - the *graph formats*: the analysed graph as data.
   All three carry the same nodes and edges, are written once (chunking does
   not apply; identical with or without `--no-chunk`), are sorted

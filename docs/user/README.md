@@ -142,13 +142,15 @@ see [Harness Integration](harness-integration.md).
 | Feature | Why It Matters |
 |---------|---|
 | **Intelligent Ranking** | Most important files float to top (PageRank algorithm) |
-| **Framework-Aware** | Understands React, Express, Go CLI, REST APIs |
+| **Framework-Aware** | Understands React, Express, Go CLI, REST APIs, Markdown docs |
 | **Token-Efficient** | Output fits AI context windows (4K-16K tokens) |
-| **Chunked Output** | Break large maps into chapters for AI assistants |
-| **Smart Caching** | Second runs are fast (SQLite cache) |
-| **Multi-Language** | 19+ languages (JS, TS, Python, Go, Java, Rust, etc.) |
-| **Dependency Tracking** | See who calls who in your codebase |
-| **Automation Ready** | GitHub Actions + pre-commit hooks |
+| **Chunked Output** | Break large maps into chapters for AI assistants (directory or `--group community`) |
+| **Fast Search & Caching** | SQLite `GraphCache` + FTS5 trigram code search (`xray explore --search`) + live `xray watch` |
+| **Multi-Language** | 17 tree-sitter packs plus Linguist 100+ language map & Universal Ctags/regex fallback |
+| **Dependency & Impact** | Call graphs, `xray query`, `xray impact` (`--since`/`--changed`), cross-root resolution |
+| **Handbooks, Diagrams & UI** | `xray handbook`, `xray diagram` (Mermaid), `xray tui`, `xray serve` (Web UI + REST API) |
+| **Diff Review & Q&A** | Deterministic `xray review --base <ref>`, BYOK `xray ask`, and `xray skills` |
+| **Automation Ready** | GitHub Actions, pre-commit hooks, and stdio/HTTP MCP server (`xray mcp`) |
 
 ## Common Questions
 
