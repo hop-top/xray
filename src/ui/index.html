@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>xray — Codebase Explorer</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-logo">xray</span>
+        <select id="context-select" class="context-select" title="Allowed workspace root"></select>
+      </div>
+      <form id="search-form" class="search-bar">
+        <input id="search-input" type="text" placeholder="Search code (press / to focus, ? for filter DSL help)..." autocomplete="off" />
+        <input id="filter-input" type="text" placeholder="Filter DSL (e.g. file:src/ -file:test)" autocomplete="off" />
+        <label class="toggle-chip"><input id="regex-toggle" type="checkbox" /> Regex</label>
+        <label class="toggle-chip"><input id="case-toggle" type="checkbox" /> Case</label>
+        <button type="submit" class="btn-primary">Search</button>
+        <button type="button" id="help-btn" class="btn-ghost" title="Boolean DSL Syntax Help (?)">?</button>
+      </form>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span>Files</span>
+          <span id="tree-count" class="muted">0</span>
+        </div>
+        <div id="tree-viewport" class="tree-viewport">
+          <div id="tree-spacer" class="tree-spacer">
+            <div id="tree-rows" class="tree-rows"></div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-pane">
+        <div class="tabs-bar">
+          <button class="tab-btn active" data-tab="code">Code</button>
+          <button class="tab-btn" data-tab="preview">Preview</button>
+          <button class="tab-btn" data-tab="blame">Blame</button>
+          <button class="tab-btn" data-tab="history">History</button>
+          <button class="tab-btn" data-tab="handbook">Handbook</button>
+          <button class="tab-btn" data-tab="diagram">Diagram</button>
+          <span id="active-file-path" class="active-file-path"></span>
+        </div>
+
+        <section id="search-results-banner" class="search-banner hidden">
+          <div class="search-banner-header">
+            <span id="search-summary"></span>
+            <button id="close-search-btn" class="btn-ghost">Close</button>
+          </div>
+          <div id="search-results-list" class="search-results-list"></div>
+        </section>
+
+        <div id="tab-code" class="tab-panel active">
+          <div id="code-empty" class="empty-state">Select a file from the tree or search to inspect code.</div>
+          <div id="code-container" class="code-container hidden"></div>
+          <div id="code-pagination" class="pagination-bar hidden">
+            <button id="load-more-btn" class="btn-ghost">Load more lines</button>
+          </div>
+        </div>
+
+        <div id="tab-preview" class="tab-panel">
+          <div id="preview-content" class="markdown-body empty-state">Select a Markdown file to preview.</div>
+        </div>
+
+        <div id="tab-blame" class="tab-panel">
+          <div id="blame-content" class="empty-state">Select a file to view git blame.</div>
+        </div>
+
+        <div id="tab-history" class="tab-panel">
+          <div class="panel-toolbar">
+            <button id="refresh-history-btn" class="btn-ghost">Refresh Commits &amp; Diff</button>
+          </div>
+          <div id="history-content" class="history-layout"></div>
+        </div>
+
+        <div id="tab-handbook" class="tab-panel">
+          <div class="panel-toolbar">
+            <select id="handbook-select" class="context-select"></select>
+          </div>
+          <div id="handbook-content" class="markdown-body empty-state">No handbook pages found. Run <code>xray handbook</code> to generate.</div>
+        </div>
+
+        <div id="tab-diagram" class="tab-panel">
+          <div class="panel-toolbar">
+            <select id="diagram-view-select" class="context-select">
+              <option value="architecture">Architecture</option>
+              <option value="calls">Calls</option>
+              <option value="cfg">CFG</option>
+              <option value="dfg">DFG</option>
+            </select>
+            <input id="diagram-anchor-input" type="text" class="small-input" placeholder="Anchor file/symbol (optional)" />
+            <button id="diagram-load-btn" class="btn-primary">Render</button>
+            <label class="toggle-chip"><input id="diagram-mermaid-toggle" type="checkbox" /> Mermaid source</label>
+            <button id="diagram-copy-btn" class="btn-ghost">Copy</button>
+            <button id="diagram-download-btn" class="btn-ghost">Download .mmd</button>
+          </div>
+          <div id="diagram-svg-wrap" class="diagram-svg-wrap"></div>
+          <pre id="diagram-mermaid-src" class="mermaid-source hidden"></pre>
+        </div>
+      </main>
+
+      <aside id="explore-panel" class="explore-panel">
+        <div class="sidebar-header">
+          <span>Explore</span>
+          <label class="toggle-chip" title="Search callers across all allowed contexts">
+            <input id="cross-context-toggle" type="checkbox" /> Cross-context
+          </label>
+        </div>
+        <div id="explore-body" class="explore-body">
+          <div class="empty-state">Click a symbol in Code view to inspect definitions and callers.</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div id="hover-popover" class="hover-popover hidden"></div>
+
+  <div id="dsl-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <strong>Boolean Filter DSL Syntax</strong>
+        <button id="close-modal-btn" class="btn-ghost">Close</button>
+      </div>
+      <div class="modal-body">
+        <p>Combine predicates with spaces (AND), <code>OR</code>, parentheses <code>(...)</code>, and <code>-</code> (NOT):</p>
+        <ul>
+          <li><code>file:src/</code> — match file path substring or glob (<code>file:*.ts</code>)</li>
+          <li><code>-file:test</code> — exclude paths containing <code>test</code></li>
+          <li><code>lang:typescript</code> — filter by language</li>
+          <li><code>kind:function</code> — filter by symbol kind</li>
+          <li><code>sym:/^handle/</code> — regex match on symbol or content</li>
+          <li><code>repo:name</code> — filter by repository/context</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="/graph-svg.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
