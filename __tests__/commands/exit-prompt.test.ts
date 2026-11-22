@@ -151,9 +151,9 @@ describe('map writing a graph format into a fresh directory', () => {
       });
       expect(r.stderr).not.toContain('FileWriteError');
       expect(r.code).toBe(0);
-      // The graph goes to its own default file, and detection leaves nothing.
-      expect(fs.statSync(path.join(cwd, '.xray.json')).isFile()).toBe(true);
-      expect(fs.existsSync(path.join(cwd, '.xray'))).toBe(false);
+      // The graph goes to its own default file under .xray/maps/, and detection leaves nothing.
+      expect(fs.statSync(path.join(cwd, '.xray', 'maps', 'map.json')).isFile()).toBe(true);
+      expect(fs.existsSync(path.join(cwd, '.xray', 'detected-strategies.json'))).toBe(false);
     } finally {
       fs.rmSync(cwd, { recursive: true, force: true });
       fs.rmSync(xdg, { recursive: true, force: true });

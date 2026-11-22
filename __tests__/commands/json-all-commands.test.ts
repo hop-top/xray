@@ -22,7 +22,17 @@ const ENTRY = path.join(ROOT, 'dist', 'index.js');
  * - watch: a live session that logs status lines (and may write --graph-out);
  *   it prints no document on stdout, so there is no machine form to ask for.
  */
-const EXEMPT = new Set(['help', 'completion bash', 'completion zsh', 'completion fish', 'completion powershell', 'watch']);
+const EXEMPT = new Set([
+  'help',
+  'completion bash',
+  'completion zsh',
+  'completion fish',
+  'completion powershell',
+  'watch',
+  'diagram',
+  'tui',
+  'serve',
+]);
 
 const leaves = (cmd: Command, trail: string[] = []): Array<{ path: string; cmd: Command }> =>
   cmd.commands.length === 0

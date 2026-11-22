@@ -187,17 +187,18 @@ describe('--dry-run previews writers and never acts', () => {
 
   it('map, graph: lists the files, writes none', () => {
     fs.writeFileSync(path.join(proj, 'a.ts'), 'export const a = 1;\n');
-    for (const cmd of ['map', 'graph']) {
-      expect(planOf([cmd, '.'])).toMatch(/\.xray_\*\.md/);
-    }
+    expect(planOf(['map', '.'])).toMatch(/\.xray[/\\]maps[/\\]map_\*\.md/);
+    expect(planOf(['graph', '.'])).toMatch(/\.xray[/\\]graphs[/\\]graph_\*\.md/);
     expect(outputs()).toEqual([]);
+    expect(fs.existsSync(path.join(proj, '.xray'))).toBe(false);
   });
 
   it('map --json plans the graph file as machine output', () => {
     const plan = JSON.parse(planOf(['map', '--json']));
     expect(plan.command).toBe('xray map');
-    expect(plan.effects).toEqual([expect.objectContaining({ kind: 'create', target: path.join(proj, '.xray.json') })]);
+    expect(plan.effects).toEqual([expect.objectContaining({ kind: 'create', target: path.join(proj, '.xray', 'maps', 'map.json') })]);
     expect(outputs()).toEqual([]);
+    expect(fs.existsSync(path.join(proj, '.xray'))).toBe(false);
   });
 
   it('alias set: nothing written', () => {
