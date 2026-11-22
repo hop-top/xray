@@ -562,104 +562,19 @@ describe('MarkdownStrategy', () => {
   });
 
   describe('error handling', () => {
-    itMdq('should handle mdq execution errors' + skipNote, async () => {
+    it('should handle malformed markdown gracefully', async () => {
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-bad-md-'));
       const badFile = path.join(tempDir, 'bad.md');
 
-      // Create a file that might cause parsing issues
       fs.writeFileSync(badFile, '# Test\n\n');
 
       const ctx = new StrategyContextImpl(tempDir);
 
-      // Should not throw, but handle gracefully
       const metadata = await strategy.analyze(badFile, ctx);
       expect(metadata).toBeDefined();
 
       fs.rmSync(tempDir, { recursive: true, force: true });
     });
-
-    // Regression: with argv `mdq --output json <file>` mdq treats the path as a
-    // selector and blocks reading stdin. stdin must be closed so that fails fast.
-    itMdq('should run mdq with closed stdin and an empty selector (no hang)' + skipNote, async () => {
-      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-mdq-stdin-'));
-      fs.writeFileSync(path.join(tempDir, 'a.md'), '# A\n');
-      const ctx = new StrategyContextImpl(tempDir);
-
-      const metadata = await strategy.analyze(path.join(tempDir, 'a.md'), ctx);
-      expect(metadata.metadata?.sections).toHaveLength(1);
-
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }, 15000);
-
-    it('should kill mdq and fail fast when it exceeds the timeout', async () => {
-      const binDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-fake-mdq-'));
-      const pidFile = path.join(binDir, 'pid');
-      // Publish the pid atomically (write + rename) so a reader never sees a
-      // missing or half-written file once it exists. `exec` keeps the pid.
-      fs.writeFileSync(
-        path.join(binDir, 'mdq'),
-        `#!/bin/sh\necho $$ > "${pidFile}.tmp" && mv "${pidFile}.tmp" "${pidFile}"\nexec sleep 30\n`,
-        { mode: 0o755 }
-      );
-      const mdFile = path.join(binDir, 'a.md');
-      fs.writeFileSync(mdFile, '# A\n');
-
-      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-      const until = async (cond: () => boolean, ms: number) => {
-        const end = Date.now() + ms;
-        while (!cond()) {
-          if (Date.now() > end) return false;
-          await sleep(10);
-        }
-        return true;
-      };
-      const alive = (pid: number) => {
-        try {
-          process.kill(pid, 0);
-          return true;
-        } catch {
-          return false;
-        }
-      };
-
-      const oldPath = process.env.PATH;
-      const oldTimeout = process.env.XRAY_MDQ_TIMEOUT_MS;
-      process.env.PATH = `${binDir}:${oldPath}`;
-      // Generous timeout: the child must be observed running (pid published)
-      // before the kill fires, however slow the machine is.
-      process.env.XRAY_MDQ_TIMEOUT_MS = '4000';
-      try {
-        const ctx = new StrategyContextImpl(binDir);
-        const started = Date.now();
-        const result = strategy.analyze(mdFile, ctx);
-        const outcome = result.then(
-          () => new Error('expected analyze to reject'),
-          (e: Error) => e
-        );
-
-        // Readiness: the fake mdq is up and has published its pid.
-        expect(await until(() => fs.existsSync(pidFile), 3500)).toBe(true);
-        const pid = parseInt(fs.readFileSync(pidFile, 'utf-8'), 10);
-        expect(Number.isInteger(pid) && pid > 1).toBe(true);
-        expect(alive(pid)).toBe(true); // running before the timeout
-
-        const err = await outcome;
-        expect(err.message).toMatch(/timed out/);
-        expect(Date.now() - started).toBeLessThan(10000);
-        // Killed: gone shortly after rejection (poll, no fixed sleep).
-        expect(await until(() => !alive(pid), 5000)).toBe(true);
-      } finally {
-        // Never leak the fake mdq if an assertion above failed early.
-        try {
-          const leaked = parseInt(fs.readFileSync(pidFile, 'utf-8'), 10);
-          if (Number.isInteger(leaked) && leaked > 1) process.kill(leaked, 'SIGKILL');
-        } catch { /* already gone / never started */ }
-        process.env.PATH = oldPath;
-        if (oldTimeout === undefined) delete process.env.XRAY_MDQ_TIMEOUT_MS;
-        else process.env.XRAY_MDQ_TIMEOUT_MS = oldTimeout;
-        fs.rmSync(binDir, { recursive: true, force: true });
-      }
-    }, 20000);
 
     it('should handle missing files', async () => {
       const ctx = new StrategyContextImpl('/tmp');

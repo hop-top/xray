@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { execFileSync } from 'child_process';
 import { readTextSafe } from './safe-read';
 import * as path from 'path';
 import { RankedNode, isRankedTagNode } from '../types/graph';
@@ -15,6 +16,7 @@ export interface ShareSummaryOptions {
   command?: string;
   detectedStrategies?: string[];
   tokenLimit?: number;
+  commitSha?: string | null;
 }
 
 export interface SharePathOptions {
@@ -49,9 +51,26 @@ export const resolveShareOutputPath = (options: SharePathOptions): string => {
   return path.join(parsed.dir, filename);
 };
 
+const resolveCommitShaSync = (projectPath: string): string | null => {
+  try {
+    const sha = execFileSync('git', ['-C', projectPath, 'rev-parse', 'HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+    return sha.length > 0 ? sha : null;
+  } catch {
+    return null;
+  }
+};
+
 export const buildShareSummary = (options: ShareSummaryOptions): string => {
   const projectName = getProjectName(options.projectPath);
   const generatedAt = new Date().toISOString();
+  const commitSha = options.commitSha !== undefined
+    ? options.commitSha
+    : resolveCommitShaSync(options.projectPath);
+  const shortSha = commitSha ? commitSha.slice(0, 7) : undefined;
+  const shaSuffix = shortSha ? `@${shortSha}` : '';
   const outputDisplay = toDisplayPath(options.outputPath, options.projectPath);
   const rootChunkDisplay = options.rootChunk ? toDisplayPath(options.rootChunk, options.projectPath) : undefined;
 
@@ -60,7 +79,10 @@ export const buildShareSummary = (options: ShareSummaryOptions): string => {
 
   const topFiles = fileNodes
     .slice(0, 5)
-    .map(node => `\`${node.id}\``)
+    .map(node => {
+      const relPath = toDisplayPath(node.id, options.projectPath).split(path.sep).join('/');
+      return `\`@file:${relPath}:1${shaSuffix}\``;
+    })
     .join(', ') || '(none)';
 
   const topTags = tagNodes
@@ -68,7 +90,14 @@ export const buildShareSummary = (options: ShareSummaryOptions): string => {
     .map(node => {
       const label = node.attributes?.label || node.id;
       const file = isRankedTagNode(node) ? node.attributes.file : undefined;
-      return file ? `\`${label}\` (${file})` : `\`${label}\``;
+      const line = isRankedTagNode(node) && typeof node.attributes.line === 'number' && node.attributes.line > 0
+        ? node.attributes.line
+        : 1;
+      if (file) {
+        const relPath = toDisplayPath(file, options.projectPath).split(path.sep).join('/');
+        return `\`${label}\` (\`@file:${relPath}:${line}${shaSuffix}\`)`;
+      }
+      return `\`${label}\``;
     })
     .join(', ') || '(none)';
 
@@ -78,6 +107,11 @@ export const buildShareSummary = (options: ShareSummaryOptions): string => {
   const edgeCount = typeof options.graph?.size === 'number' ? options.graph.size : undefined;
 
   const lines: string[] = [];
+  lines.push('---');
+  lines.push(`generatedAt: ${generatedAt}`);
+  lines.push(`commitSha: ${commitSha ?? 'null'}`);
+  lines.push('---');
+  lines.push('');
   lines.push('# Xray Code Map Snapshot');
   lines.push('');
   lines.push(`Project: ${projectName}`);
