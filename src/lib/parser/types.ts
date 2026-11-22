@@ -12,6 +12,7 @@ export interface Tag {
   references?: string[]; // Function names called by this tag
   cfg?: Cfg; // Control flow graph (functions/methods, `--with cf`)
   dfg?: Dfg; // Data flow graph (functions/methods, `--with df`)
+  source?: 'tree-sitter' | 'ctags' | 'regex';
 }
 
 /**

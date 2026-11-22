@@ -126,17 +126,19 @@ export class FileScanner {
     });
   }
 
-  /** Files under the root with one of `extensions` (default: supportedExtensions()). */
-  scan(extensions: Iterable<string> = FileScanner.supportedExtensions()): string[] {
+  /** Files under the root with one of `extensions` (default: supportedExtensions()), or matching `extraMatcher`. */
+  scan(
+    extensions: Iterable<string> = FileScanner.supportedExtensions(),
+    extraMatcher?: (relPath: string) => boolean
+  ): string[] {
     const supportedExts = new Set(extensions);
+    const matchesFile = (f: string): boolean =>
+      supportedExts.has(path.extname(f)) || Boolean(extraMatcher?.(f));
 
     try {
       const files = gitListFiles(this.root);
 
-      return this.dropEscapingLinks(files.filter(f => {
-        const ext = path.extname(f);
-        return supportedExts.has(ext);
-      }));
+      return this.dropEscapingLinks(files.filter(matchesFile));
     } catch (error) {
       Logger.warn('Not a git repository or git is not available. Falling back to manual file scanning. This might be slower and include files ignored by git.');
 
@@ -155,8 +157,7 @@ export class FileScanner {
       return this.dropEscapingLinks(allFiles
         .filter(f => {
           if (this.ig.ignores(f)) return false;
-          const ext = path.extname(f);
-          return supportedExts.has(ext);
+          return matchesFile(f);
         }))
         .sort();
     }
