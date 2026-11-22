@@ -149,11 +149,22 @@ directory, and `xray mcp` fixes the trusted directory at startup:
   given (a missing or JavaScript file fails startup), else the first `.xrayrc`,
   `.xrayrc.json`, `xray.config.json` or `package.json` with an `xray` key
   found walking up from the server root.
-- Every call's child process runs with the server root as its working
+- Built-in read-only analysis tools (`map`/`graph` graph formats,
+  `explore`, `query`, `impact`, `imports`) run **in-process** over a warm
+  workspace: parsed graphs and search indexes are cached per root (LRU,
+  eight entries) and invalidated by a root fingerprint, so a repeat call
+  reuses the graph and a one-file edit is patched incrementally instead of
+  rebuilding. Every other call — project strategies and the chunked text
+  map writer — runs as a child process.
+- Every child process runs with the server root as its working
   directory, so project strategies (when opted in), aliases and config load from the
   server root only, exactly as for `xray` run there. With a server
   config, children also get `-C <server root> --config <server config>`:
-  every config load in the call reads that file.
+  every config load in the call reads that file. In-process tools load
+  config and project code from the same server root.
+- The `initialize` response carries short tool-selection instructions
+  (explore vs query vs impact, when to map, use `read_file` for contents)
+  so clients can pick a tool without a discovery round trip.
 - `root` selects the project directory a tool analyzes, inside the
   server root (absolute, or relative to the server root); anything
   outside, including through symlinks, is refused. It never becomes the
@@ -191,11 +202,11 @@ directory, and `xray mcp` fixes the trusted directory at startup:
 - So project code only ever loads from the tree you started the server
   in, and only from its root. A client cannot point the server at
   another checkout, or at a subtree's own strategies or config.
-- Each call runs the CLI command in a child process with
+- Each child-process call runs the CLI command with
   `--no-telemetry --offline`: no consent prompt, no consent
   write, no upgrade check. The analysis cache lives in the user cache dir (keyed by
   the server root), not in the root; nothing is written into the server
-  root.
+  root. In-process tools use that same cache read-only and write nothing.
 - No tool writes outside those caches and the per-call temp directory, or
   deletes anything.
 

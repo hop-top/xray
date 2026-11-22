@@ -53,19 +53,33 @@ export { isWithin };
  * Resolve `value` against `base` and require it inside `serverRoot`
  * (symlinks resolved). Returns the absolute path.
  */
-export function containPath(serverRoot: string, base: string, value: string, label: string): string {
+export function containPath(
+  serverRoot: string,
+  base: string,
+  value: string,
+  label: string,
+  allowedRoots?: ReadonlySet<string>
+): string {
   const abs = path.resolve(base, value);
-  if (!isWithin(serverRoot, realpathLoose(abs))) {
+  const real = realpathLoose(abs);
+  const ok = allowedRoots
+    ? Array.from(allowedRoots).some((r) => isWithin(r, real))
+    : isWithin(serverRoot, real);
+  if (!ok) {
     throw new ToolArgumentError(`${label} "${value}" is outside the server root ${serverRoot}`);
   }
   return abs;
 }
 
-/** Resolve the per-call `root` argument to an existing directory inside the server root. */
-export function resolveCallRoot(serverRoot: string, root: unknown): string {
+/** Resolve the per-call `root` argument to an existing directory inside the allowed roots. */
+export function resolveCallRoot(
+  serverRoot: string,
+  root: unknown,
+  allowedRoots?: ReadonlySet<string>
+): string {
   if (root === undefined || root === null || root === '') return serverRoot;
   if (typeof root !== 'string') throw new ToolArgumentError('argument "root" must be a string');
-  const abs = containPath(serverRoot, serverRoot, root, 'root');
+  const abs = containPath(serverRoot, serverRoot, root, 'root', allowedRoots);
   let stat: fs.Stats;
   try {
     stat = fs.statSync(abs);

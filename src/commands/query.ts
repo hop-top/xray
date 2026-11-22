@@ -30,9 +30,25 @@ export async function handleQueryAction(query: string, options: QueryCommandOpti
     throw new UsageError('Query is required');
   }
 
+  return queryFromSerialized(await obtainGraph(options), query, options);
+}
+
+/**
+ * Query an already-built graph document (no I/O): the in-process MCP path
+ * feeds the warm workspace's serialized graph here.
+ */
+export function queryFromSerialized(
+  serialized: SerializedGraph,
+  query: string,
+  options: QueryCommandOptions
+): QueryResult {
+  if (!query || !query.trim()) {
+    throw new UsageError('Query is required');
+  }
+
   const filterAst = options.filter !== undefined ? parseFilterDsl(options.filter) : undefined;
 
-  const graph = new GraphSerializer().deserialize(await obtainGraph(options));
+  const graph = new GraphSerializer().deserialize(serialized);
   const registry = new QueryAdapterRegistry();
   registry.register(new FunctionAdapter());
 
@@ -80,7 +96,7 @@ export async function handleQueryAction(query: string, options: QueryCommandOpti
 
 /** Table/csv columns (and the `--cols` vocabulary) for result nodes. */
 export const QUERY_COLUMNS = columns('name', 'kind', 'file', 'line', 'callSites', 'depth', 'score', 'id');
-const DEFAULT_QUERY_COLUMNS = columns('name', 'kind', 'file', 'line');
+export const DEFAULT_QUERY_COLUMNS = columns('name', 'kind', 'file', 'line');
 
 /** Result nodes with editor (1-based) lines, as tree, impact and map show them. */
 const nodeRows = (r: QueryResult) => r.nodes.map(n => ({
@@ -111,7 +127,7 @@ function buildRegistry() {
     })
   );
 }
-const queryRegistry = buildRegistry();
+export const queryRegistry = buildRegistry();
 
 /** Attach query's output flags (`--format json|yaml|table|csv|tree`, ...). */
 export function addQueryOutputFlags(cmd: Command): Command {
@@ -165,7 +181,7 @@ export function readSerializedGraph(graphPath: string): SerializedGraph {
   }
 }
 
-function listAdapters(): string {
+export function listAdapters(): string {
   const registry = new QueryAdapterRegistry();
   registry.register(new FunctionAdapter());
   const adapters = registry.list();

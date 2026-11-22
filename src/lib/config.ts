@@ -544,7 +544,7 @@ export function loadConfig(
 /**
  * Load and parse a configuration file
  */
-function loadConfigFile(filepath: string): XrayConfig {
+export function loadConfigFile(filepath: string): XrayConfig {
   assertDataConfig(filepath);
 
   try {
