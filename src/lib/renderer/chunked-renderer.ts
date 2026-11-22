@@ -538,25 +538,17 @@ export class ChunkedRenderer {
   }
 
   /**
-   * Render a community chunk. Mirrors `renderDirectory` but labels the
-   * chunk "Community N" and groups tags by their file so the layout is
-   * still legible. Emits a warn log when the community's rendered token
-   * count exceeds `tokenLimit` (spec R4, T-0036). Does not sub-chunk —
-   * truncation falls through to the same break-out-of-loop path as the
-   * directory renderer.
+   * Render a community into one or more chunks within `tokenLimit`.
+   * Files are ordered by descending PageRank and greedily packed into
+   * sequential parts; overflowing communities split into `community-<id>-part-1`,
+   * `community-<id>-part-2`, ... with `prev`/`next` navigation links.
    */
-  private async renderCommunity(
+  private async renderCommunityParts(
     communityId: number,
-    nodes: RankedNode[]
-  ): Promise<{ content: string; tokenCount: number }> {
-    const outputLines: string[] = [];
-    let currentTokens = 0;
-
+    nodes: RankedNode[],
+    outputBasePath: string
+  ): Promise<Array<{ directory: string; filePath: string; content: string; tokenCount: number; fileCount: number }>> {
     const label = communityId === CLUSTER_SENTINEL ? 'Unclustered' : `Community ${communityId}`;
-    const header = `# ${label}`;
-    outputLines.push(header);
-    outputLines.push('');
-    currentTokens += await this.estimateTokens(header);
 
     // Group tags by their file to keep the output layout file-scoped.
     const fileMap = new Map<string, RankedTagNode[]>();
@@ -576,10 +568,19 @@ export class ChunkedRenderer {
       return mb - ma;
     });
 
-    let truncated = false;
+    interface FileBlock {
+      file: string;
+      lines: string[];
+      tokens: number;
+    }
+
+    const fileBlocks: FileBlock[] = [];
     for (const file of sortedFiles) {
       const tags = fileMap.get(file)!;
       tags.sort((a, b) => a.attributes.line - b.attributes.line);
+
+      const lines: string[] = [];
+      let tokens = 0;
 
       let fileStart = 1;
       let fileEnd = 1;
@@ -590,12 +591,9 @@ export class ChunkedRenderer {
       }
       const fileRange = fileEnd > fileStart ? `(L${fileStart}-L${fileEnd})` : `(L${fileStart})`;
       const fileLine = `${file} ${fileRange}:`;
-      outputLines.push(fileLine);
-      currentTokens += await this.estimateTokens(fileLine);
+      lines.push(fileLine);
+      tokens += await this.estimateTokens(fileLine);
 
-      // Mirror directory mode: emit imports under the file header when
-      // `--with incs` / `includeImports` is enabled. Without this branch
-      // the option silently no-ops in community mode.
       if (this.includeImports) {
         const imports = this.safeGetNodeAttribute<any[]>(file, 'imports');
         if (imports && Array.isArray(imports) && imports.length > 0) {
@@ -603,8 +601,8 @@ export class ChunkedRenderer {
             const importText = imp.text || `import ${imp.source}`;
             const formattedImport = importText.replace(/\n/g, ' ').replace(/\s+/g, ' ');
             const importLine = `│ [L1] ${formattedImport}`;
-            outputLines.push(importLine);
-            currentTokens += await this.estimateTokens(importLine);
+            lines.push(importLine);
+            tokens += await this.estimateTokens(importLine);
           }
         }
       }
@@ -621,40 +619,102 @@ export class ChunkedRenderer {
             : tag.attributes.doc;
           line += `  # ${doc}`;
         }
-        outputLines.push(line);
-        currentTokens += await this.estimateTokens(line);
-        // `--with cf|df`: the function's flow graphs, indented under it.
+        lines.push(line);
+        tokens += await this.estimateTokens(line);
         for (const flowLine of flowLines(tag.attributes)) {
           const text = `│ ${flowLine}`;
-          outputLines.push(text);
-          currentTokens += await this.estimateTokens(text);
-        }
-
-        if (currentTokens >= this.tokenLimit) {
-          truncated = true;
-          break;
+          lines.push(text);
+          tokens += await this.estimateTokens(text);
         }
       }
 
-      outputLines.push('');
-      if (currentTokens >= this.tokenLimit) {
-        truncated = true;
-        break;
+      lines.push('');
+      fileBlocks.push({ file, lines, tokens });
+    }
+
+    const baseHeader = `# ${label}`;
+    const baseHeaderTokens = await this.estimateTokens(baseHeader);
+
+    // Greedily pack file blocks into sequential bins within tokenLimit.
+    const bins: FileBlock[][] = [[]];
+    let currentBinTokens = baseHeaderTokens;
+
+    for (const block of fileBlocks) {
+      const currentBin = bins[bins.length - 1];
+      if (currentBin.length > 0 && currentBinTokens + block.tokens > this.tokenLimit) {
+        bins.push([block]);
+        currentBinTokens = baseHeaderTokens + block.tokens;
+      } else {
+        currentBin.push(block);
+        currentBinTokens += block.tokens;
       }
     }
 
-    if (truncated) {
-      // T-0036: warn when a community overflows the token budget. We
-      // fall through to the same silent truncation path the directory
-      // renderer uses — sub-chunking is deferred per spec R4.
-      Logger.warn(
-        `Community ${communityId} exceeded tokenLimit ` +
-          `(${currentTokens}/${this.tokenLimit}) — output truncated. ` +
-          `Sub-chunking is not implemented yet (spec R4).`
-      );
+    if (bins.length === 1) {
+      const outputLines: string[] = [baseHeader, ''];
+      for (const block of bins[0]) {
+        outputLines.push(...block.lines);
+      }
+      const directory = communityId === CLUSTER_SENTINEL ? 'unclustered' : `community_${communityId}`;
+      const filePath = this.getCommunityChunkPath(outputBasePath, communityId);
+      const content = outputLines.map(terminalSafe).join('\n');
+      const tokenCount = await this.estimateTokens(content);
+      return [{
+        directory,
+        filePath,
+        content,
+        tokenCount,
+        fileCount: bins[0].length,
+      }];
     }
 
-    return { content: outputLines.map(terminalSafe).join('\n'), tokenCount: currentTokens };
+    const totalParts = bins.length;
+    const partBase = communityId === CLUSTER_SENTINEL ? 'unclustered' : `community-${communityId}`;
+    const ext = path.extname(outputBasePath) || '.md';
+    const base = outputBasePath.replace(ext, '');
+
+    const partInfo = bins.map((_, idx) => {
+      const partNum = idx + 1;
+      const directory = `${partBase}-part-${partNum}`;
+      const filePath = `${base}_${directory}${ext}`;
+      return { partNum, directory, filePath };
+    });
+
+    const results: Array<{ directory: string; filePath: string; content: string; tokenCount: number; fileCount: number }> = [];
+    for (let i = 0; i < totalParts; i++) {
+      const info = partInfo[i];
+      const outputLines: string[] = [`# ${label} (Part ${info.partNum}/${totalParts})`, ''];
+
+      const navParts: string[] = [];
+      if (i > 0) {
+        const prev = partInfo[i - 1];
+        navParts.push(`⬅️ **Prev:** [${terminalSafe(prev.directory)}](${terminalSafe(path.basename(prev.filePath))})`);
+      }
+      if (i < totalParts - 1) {
+        const next = partInfo[i + 1];
+        navParts.push(`➡️ **Next:** [${terminalSafe(next.directory)}](${terminalSafe(path.basename(next.filePath))})`);
+      }
+      if (navParts.length > 0) {
+        outputLines.push(navParts.join(' | '));
+        outputLines.push('');
+      }
+
+      for (const block of bins[i]) {
+        outputLines.push(...block.lines);
+      }
+
+      const content = outputLines.map(terminalSafe).join('\n');
+      const tokenCount = await this.estimateTokens(content);
+      results.push({
+        directory: info.directory,
+        filePath: info.filePath,
+        content,
+        tokenCount,
+        fileCount: bins[i].length,
+      });
+    }
+
+    return results;
   }
 
   /**
@@ -720,31 +780,19 @@ export class ChunkedRenderer {
 
     for (const cid of communityOrder) {
       const nodes = byCommunity.get(cid)!;
-      const { content, tokenCount } = await this.renderCommunity(cid, nodes);
-      const chunkPath = this.getCommunityChunkPath(outputBasePath, cid);
-      chunks.set(chunkPath, content);
-
-      // True file count: unique `attributes.file` values across the
-      // ranked tag nodes in this community. `nodes.length` would mix
-      // file and tag nodes and be misleading downstream (generate.ts
-      // prints "(X files, Y tokens)" from this field).
-      const communityFiles = new Set<string>();
-      for (const node of nodes) {
-        if (isRankedTagNode(node) && node.attributes.file) {
-          communityFiles.add(node.attributes.file);
-        }
+      const parts = await this.renderCommunityParts(cid, nodes, outputBasePath);
+      for (const part of parts) {
+        chunks.set(part.filePath, part.content);
+        metadata.push({
+          directory: part.directory,
+          filePath: part.filePath,
+          tokenCount: part.tokenCount,
+          fileCount: part.fileCount,
+          parent: undefined,
+          children: [],
+          depth: 0,
+        });
       }
-
-      const label = cid === CLUSTER_SENTINEL ? 'unclustered' : `community_${cid}`;
-      metadata.push({
-        directory: label,
-        filePath: chunkPath,
-        tokenCount,
-        fileCount: communityFiles.size,
-        parent: undefined,
-        children: [],
-        depth: 0,
-      });
     }
 
     // Root index chunk
