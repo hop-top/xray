@@ -1,85 +1,15 @@
 // strategies/markdown.ts
 import { Strategy, StrategyContext, FileMetadata } from '../src/lib/strategy/types';
 import { execFileNoThrow } from '../src/utils/execFileNoThrow';
-import { Logger } from '../src/lib/logger';
-import { mdqInstallHint } from '../src/utils/mdqInstall';
-import { extractMarkdownLinks, resolveLinkTarget } from '../src/lib/markdown/links';
-import { spawn } from 'child_process';
+import { resolveLinkTarget } from '../src/lib/markdown/links';
+import { parseMarkdownDocument } from '../src/lib/markdown/parser';
+import { FileScanner } from '../src/lib/scanner';
+import { isSupportedFallbackFile } from '../src/lib/parser/linguist-map';
+import { ParserManager } from '../src/lib/parser/manager';
+import { extractFallbackTags } from '../src/lib/parser/ctags-fallback';
+import { getDiff, isGitRepo } from '../src/lib/git';
 import * as path from 'path';
 import * as fs from 'fs';
-
-// mdq JSON structure types
-interface MdqDocument {
-  items: Array<{
-    document: Array<MdqElement>;
-  }>;
-}
-
-interface MdqSection {
-  section: {
-    depth: number;
-    title: string;
-    body: Array<MdqElement>;
-  };
-}
-
-interface MdqParagraph {
-  paragraph: string;
-}
-
-interface MdqCodeBlock {
-  code_block: {
-    language?: string;
-    code: string;
-  };
-}
-
-interface MdqList {
-  list: {
-    tight: boolean;
-    items: Array<{ item: string }>;
-  };
-}
-
-type MdqElement = MdqSection | MdqParagraph | MdqCodeBlock | MdqList;
-
-const DEFAULT_MDQ_TIMEOUT_MS = 30_000;
-
-/**
- * Run mdq on `input` (fed on stdin, then closed, so it cannot block waiting
- * for more) with a hard timeout that kills the child.
- */
-function runMdq(args: string[], input: string): Promise<{ status: number; stdout: string; stderr: string }> {
-  const timeoutMs = Number(process.env.XRAY_MDQ_TIMEOUT_MS) || DEFAULT_MDQ_TIMEOUT_MS;
-
-  return new Promise((resolve) => {
-    const child = spawn('mdq', args, { stdio: ['pipe', 'pipe', 'pipe'], env: process.env });
-    // The document goes in on stdin: mdq never opens a project path itself,
-    // so a FIFO, device or link out of the root cannot reach it.
-    child.stdin.on('error', () => { /* mdq exited before reading it all */ });
-    child.stdin.end(input);
-    let stdout = '';
-    let stderr = '';
-    let settled = false;
-
-    const finish = (status: number, extraErr = ''): void => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve({ status, stdout, stderr: stderr + extraErr });
-    };
-
-    const timer = setTimeout(() => {
-      child.kill('SIGKILL');
-      finish(124, `mdq timed out after ${timeoutMs}ms`);
-    }, timeoutMs);
-
-    child.stdout.on('data', (d) => { stdout += d; });
-    child.stderr.on('data', (d) => { stderr += d; });
-    child.on('error', (err) => finish(127, String(err)));
-    child.on('close', (code) => finish(code ?? 1));
-  });
-}
 
 /** An inline-code mention that looks like a file path: no spaces, globs, or URL schemes. */
 function isPathShaped(ref: string): boolean {
@@ -97,11 +27,20 @@ function findRepoRoot(from: string): string {
   }
 }
 
-/** True if a mentioned path exists relative to the doc's dir, the scan root, or the repo root. */
-function resolveCodeRef(ref: string, docFile: string, scanRoot: string, repoRoot: string): boolean {
+/** Return the resolved existing file path for a code ref, or `null` if not found. */
+function resolveCodeRefPath(ref: string, docFile: string, scanRoot: string, repoRoot: string): string | null {
   const bases = [path.dirname(docFile), scanRoot, repoRoot];
   const candidates = path.isAbsolute(ref) ? [ref] : bases.map(b => path.join(b, ref));
-  return candidates.some(c => fs.existsSync(c));
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
+function countFileLines(content: string): number {
+  if (content === '') return 0;
+  const parts = content.split('\n');
+  return content.endsWith('\n') ? parts.length - 1 : parts.length;
 }
 
 export default class MarkdownStrategy implements Strategy {
@@ -110,18 +49,6 @@ export default class MarkdownStrategy implements Strategy {
   version = '0.1.0';
 
   async detect(ctx: StrategyContext): Promise<boolean> {
-    // Check if mdq is available
-    try {
-      const result = await execFileNoThrow('which', ['mdq']);
-      if (result.status !== 0) {
-        Logger.info(`mdq not found; markdown strategy disabled. ${mdqInstallHint()}`);
-        return false;
-      }
-    } catch {
-      Logger.info(`mdq not found; markdown strategy disabled. ${mdqInstallHint()}`);
-      return false;
-    }
-
     // Check if project has markdown files
     return ctx.hasFiles('**/*.md') || ctx.hasFiles('**/*.mdx');
   }
@@ -139,141 +66,33 @@ export default class MarkdownStrategy implements Strategy {
       throw new Error(`File not found: ${absolutePath}`);
     }
 
-    // One guarded read (regular file inside the root, size cap); the same
-    // text feeds mdq and the line mapping below.
     const content = await ctx.readFile(file);
+    const parsed = parseMarkdownDocument(content);
 
-    // Parse markdown with mdq (SAFE - no shell injection)
-    // First positional of mdq is a SELECTOR (empty = whole document); the document is on stdin.
-    const result = await runMdq(['--output', 'json', ''], content);
-
-    if (result.status !== 0) {
-      throw new Error(`mdq failed: ${result.stderr}`);
-    }
-
-    let doc: MdqDocument;
-    try {
-      doc = JSON.parse(result.stdout);
-    } catch (error) {
-      throw new Error(`Failed to parse mdq output: ${error}`);
-    }
-
-    // Extract structure
-    const tags: string[] = [];
+    const tags: string[] = parsed.headings.map(h => `${file}::${h.text}`);
     const metadata: Record<string, any> = {
-      sections: [],
-      codeBlocks: [],
-      links: [],
-      codeReferences: []
+      sections: parsed.headings.map(h => ({
+        title: h.text,
+        depth: h.level,
+        line: h.line,
+        slug: h.slug,
+        file,
+      })),
+      codeBlocks: parsed.codeBlocks.map(b => ({
+        language: b.language,
+        code: b.code,
+        line: b.line,
+        file,
+      })),
+      links: [] as any[],
+      codeReferences: [] as any[],
     };
 
-    // Traverse document structure
-    this.traverseDocument(doc, content, tags, metadata, file);
-
-    return {
-      tags,
-      exports: [],
-      imports: [],
-      metadata
-    };
-  }
-
-  /**
-   * Recursively traverse mdq document structure
-   */
-  private traverseDocument(
-    doc: MdqDocument,
-    content: string,
-    tags: string[],
-    metadata: Record<string, any>,
-    file: string
-  ): void {
-    const lines = content.split('\n');
-
-    // Extract headings and map to line numbers
-    for (const item of doc.items) {
-      if (!item.document) continue;
-
-      for (const element of item.document) {
-        this.processElement(element, lines, tags, metadata, file, 0);
-      }
-    }
-
-    // Extract links and code references from content
-    this.extractLinks(content, metadata, file);
-    this.extractCodeReferences(content, metadata, file);
-  }
-
-  /**
-   * Process a single mdq element
-   */
-  private processElement(
-    element: MdqElement,
-    lines: string[],
-    tags: string[],
-    metadata: Record<string, any>,
-    file: string,
-    depth: number
-  ): void {
-    if ('section' in element) {
-      const section = element.section;
-
-      // Find line number for this heading
-      const headingLine = this.findHeadingLine(lines, section.title, section.depth);
-
-      tags.push(`${file}::${section.title}`);
-
-      metadata.sections.push({
-        title: section.title,
-        depth: section.depth,
-        line: headingLine,
-        file
-      });
-
-      // Process body recursively
-      for (const bodyElement of section.body) {
-        this.processElement(bodyElement, lines, tags, metadata, file, depth + 1);
-      }
-    } else if ('code_block' in element) {
-      const codeBlock = element.code_block;
-
-      metadata.codeBlocks.push({
-        language: codeBlock.language || 'text',
-        code: codeBlock.code,
-        file
-      });
-    }
-  }
-
-  /**
-   * Find line number of a heading in source
-   */
-  private findHeadingLine(lines: string[], title: string, depth: number): number {
-    const headingPrefix = '#'.repeat(depth);
-    const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pattern = new RegExp(`^${headingPrefix}\\s+${escapedTitle}`);
-
-    for (let i = 0; i < lines.length; i++) {
-      if (pattern.test(lines[i])) {
-        return i + 1; // 1-indexed
-      }
-    }
-
-    return 0;
-  }
-
-  /**
-   * Extract markdown links
-   */
-  private extractLinks(content: string, metadata: Record<string, any>, file: string): void {
-    // Prose only: links inside fenced or inline code are examples, not links.
-    for (const { text, target: url } of extractMarkdownLinks(content)) {
-      // Skip external URLs
+    for (const { text, target: url } of parsed.links) {
       if (url.startsWith('http://') || url.startsWith('https://')) {
         continue;
       }
 
-      // Resolve relative links
       if (url.startsWith('./') || url.startsWith('../')) {
         const fileDir = path.dirname(file);
         const resolved = path.normalize(path.join(fileDir, url));
@@ -281,59 +100,46 @@ export default class MarkdownStrategy implements Strategy {
           text,
           url: resolved,
           original: url,
-          file
+          file,
         });
       } else if (!url.startsWith('#')) {
-        // Internal link (absolute path or same dir)
         metadata.links.push({
           text,
           url,
           original: url,
-          file
+          file,
         });
       }
     }
-  }
 
-  /**
-   * Extract inline code references like `src/file.ts:123`
-   */
-  private extractCodeReferences(content: string, metadata: Record<string, any>, file: string): void {
-    // Match `path/to/file.ext` or `path/to/file.ext:123`
-    const codeRefRegex = /`([^`]+\.(ts|js|tsx|jsx|py|go|rs|java|cpp|c|h|sh)(?::\d+)?)`/g;
-    let match;
-
-    while ((match = codeRefRegex.exec(content)) !== null) {
-      const [_, ref] = match;
-      const lineMatch = ref.match(/^(.*?)(?::(\d+))?$/)!;
-      const [, codePath, lineNum] = lineMatch;
-
+    for (const ref of parsed.codeRefs) {
       metadata.codeReferences.push({
-        path: codePath,
-        line: lineNum ? parseInt(lineNum) : undefined,
-        documentedIn: file
+        path: ref.path,
+        ...(ref.line !== undefined ? { line: ref.line } : {}),
+        ...(ref.lineEnd !== undefined ? { lineEnd: ref.lineEnd } : {}),
+        ...(ref.symbol ? { symbol: ref.symbol } : {}),
+        ...(ref.description ? { description: ref.description } : {}),
+        documentedIn: file,
       });
     }
 
-    // Also match link-style code references: [text](./src/file.ts)
-    const linkCodeRegex = /\[([^\]]+)\]\(([^)]+\.(ts|js|tsx|jsx|py|go|rs|java|cpp|c|h|sh))\)/g;
-
-    while ((match = linkCodeRegex.exec(content)) !== null) {
-      const [_, text, codePath] = match;
-
-      // Skip if already captured as a code ref
-      const alreadyCaptured = metadata.codeReferences.some(
-        (r: any) => r.path === codePath
-      );
-
-      if (!alreadyCaptured) {
-        metadata.codeReferences.push({
-          path: codePath,
-          description: text,
-          documentedIn: file
-        });
-      }
+    for (const cite of parsed.citations) {
+      metadata.codeReferences.push({
+        path: cite.path,
+        ...(cite.lineStart !== undefined ? { line: cite.lineStart } : {}),
+        ...(cite.lineEnd !== undefined ? { lineEnd: cite.lineEnd } : {}),
+        ...(cite.sha ? { sha: cite.sha } : {}),
+        raw: cite.raw,
+        documentedIn: file,
+      });
     }
+
+    return {
+      tags,
+      exports: [],
+      imports: [],
+      metadata,
+    };
   }
 
   commands = {
@@ -492,8 +298,14 @@ export default class MarkdownStrategy implements Strategy {
     'coverage': {
       description: 'Show documentation coverage for source files',
       async handler(ctx: StrategyContext): Promise<any> {
-        // Find all source files
-        const sourceFiles = await ctx.findFiles({ extension: '.ts' });
+        const projectRoot = ctx.getProjectRoot();
+        const repoRoot = findRepoRoot(projectRoot);
+        const scanner = new FileScanner(projectRoot);
+        const sourceFiles = scanner.scan(
+          FileScanner.supportedExtensions(),
+          (relPath) => isSupportedFallbackFile(relPath)
+        );
+        const sourceSet = new Set(sourceFiles);
         const docFiles = await ctx.findFiles({ extension: '.md' });
 
         const documented = new Set<string>();
@@ -503,22 +315,30 @@ export default class MarkdownStrategy implements Strategy {
           const metadata = ctx.getMetadata(doc, 'markdown');
           if (!metadata?.codeReferences) continue;
 
-          metadata.codeReferences.forEach((ref: any) => {
-            documented.add(ref.path);
-          });
+          const absDoc = path.resolve(projectRoot, doc);
+          for (const ref of metadata.codeReferences) {
+            if (!isPathShaped(ref.path)) continue;
+            const resolved = resolveCodeRefPath(ref.path, absDoc, projectRoot, repoRoot);
+            if (!resolved) continue;
+            const relToProject = path.relative(projectRoot, resolved).split(path.sep).join('/');
+            if (sourceSet.has(relToProject)) {
+              documented.add(relToProject);
+            }
+          }
         }
 
+        const documentedFiles = sourceFiles.filter(f => documented.has(f));
         const undocumented = sourceFiles.filter(f => !documented.has(f));
 
         return {
           total: sourceFiles.length,
-          documented: documented.size,
+          documented: documentedFiles.length,
           undocumented: undocumented.length,
           coverage: sourceFiles.length > 0
-            ? (documented.size / sourceFiles.length) * 100
+            ? (documentedFiles.length / sourceFiles.length) * 100
             : 0,
           files: {
-            documented: Array.from(documented),
+            documented: documentedFiles,
             undocumented
           }
         };
@@ -532,6 +352,46 @@ export default class MarkdownStrategy implements Strategy {
         const projectRoot = ctx.getProjectRoot();
         const stale: any[] = [];
         const repoRoot = findRepoRoot(projectRoot);
+        const inGitRepo = await isGitRepo(repoRoot);
+        const parserManager = new ParserManager(repoRoot);
+
+        const fileCache = new Map<string, { content: string; lineCount: number }>();
+        const tagCache = new Map<string, Set<string>>();
+        const shaExistsCache = new Map<string, boolean>();
+
+        const readCachedFile = (absPath: string): { content: string; lineCount: number } => {
+          let cached = fileCache.get(absPath);
+          if (!cached) {
+            const content = fs.readFileSync(absPath, 'utf8');
+            cached = { content, lineCount: countFileLines(content) };
+            fileCache.set(absPath, cached);
+          }
+          return cached;
+        };
+
+        const getSymbolNames = async (absPath: string, content: string): Promise<Set<string>> => {
+          let cached = tagCache.get(absPath);
+          if (!cached) {
+            const relToRepo = path.relative(repoRoot, absPath).split(path.sep).join('/');
+            let tags = (await parserManager.parse(relToRepo, content)).tags;
+            if (tags.length === 0) {
+              tags = await extractFallbackTags(repoRoot, relToRepo, content);
+            }
+            cached = new Set(tags.map(t => t.name));
+            tagCache.set(absPath, cached);
+          }
+          return cached;
+        };
+
+        const commitExists = async (sha: string): Promise<boolean> => {
+          let cached = shaExistsCache.get(sha);
+          if (cached === undefined) {
+            const res = await execFileNoThrow('git', ['-C', repoRoot, 'cat-file', '-e', `${sha}^{commit}`]);
+            cached = res.status === 0;
+            shaExistsCache.set(sha, cached);
+          }
+          return cached;
+        };
 
         for (const doc of docFiles) {
           const metadata = ctx.getMetadata(doc, 'markdown');
@@ -539,8 +399,6 @@ export default class MarkdownStrategy implements Strategy {
           // Check markdown links
           if (metadata?.links) {
             for (const link of metadata.links) {
-              // Resolve against the linking doc (bare, ./, ../) or the
-              // scan root (/x); #anchor and ?query never reach the fs.
               const target = resolveLinkTarget(
                 link.original ?? link.url,
                 path.resolve(projectRoot, doc),
@@ -560,21 +418,96 @@ export default class MarkdownStrategy implements Strategy {
             }
           }
 
-          // Check code references
+          // Check code references & structured @file citations
           if (metadata?.codeReferences) {
             for (const ref of metadata.codeReferences) {
               if (!isPathShaped(ref.path)) continue;
 
-              if (!resolveCodeRef(ref.path, path.resolve(projectRoot, doc), projectRoot, repoRoot)) {
+              const resolvedPath = resolveCodeRefPath(
+                ref.path,
+                path.resolve(projectRoot, doc),
+                projectRoot,
+                repoRoot
+              );
+              if (!resolvedPath) {
                 stale.push({
                   doc,
                   reference: ref.path,
                   reason: 'code_path_not_found',
                   type: 'code_path_reference'
                 });
-              } else if (ref.line) {
-                // TODO: Check if line/symbol exists in file
-                // Would require parsing the code file
+                continue;
+              }
+
+              const { content, lineCount } = readCachedFile(resolvedPath);
+
+              if (ref.line !== undefined) {
+                const lineEnd = ref.lineEnd ?? ref.line;
+                if (ref.line < 1 || ref.line > lineCount || lineEnd < ref.line || lineEnd > lineCount) {
+                  stale.push({
+                    doc,
+                    reference: ref.path,
+                    line: ref.line,
+                    ...(ref.lineEnd !== undefined ? { lineEnd: ref.lineEnd } : {}),
+                    reason: 'line_out_of_range',
+                    type: 'code_path_reference'
+                  });
+                }
+              }
+
+              if (ref.symbol) {
+                const symbolNames = await getSymbolNames(resolvedPath, content);
+                const shortSym = ref.symbol.includes('.') ? ref.symbol.split('.').pop()! : ref.symbol;
+                if (!symbolNames.has(ref.symbol) && !symbolNames.has(shortSym)) {
+                  stale.push({
+                    doc,
+                    reference: ref.path,
+                    symbol: ref.symbol,
+                    reason: 'symbol_not_found',
+                    type: 'code_path_reference'
+                  });
+                }
+              }
+
+              if (ref.sha && inGitRepo) {
+                const hasSha = await commitExists(ref.sha);
+                if (!hasSha) {
+                  stale.push({
+                    doc,
+                    reference: ref.path,
+                    sha: ref.sha,
+                    reason: 'pinned_sha_missing',
+                    type: 'code_path_reference'
+                  });
+                } else {
+                  const relToRepo = path.relative(repoRoot, resolvedPath).split(path.sep).join('/');
+                  const diffs = await getDiff(repoRoot, ref.sha, 'HEAD', [relToRepo]);
+                  if (diffs.length > 0) {
+                    let changed = false;
+                    if (ref.line !== undefined) {
+                      const citeStart = ref.line;
+                      const citeEnd = ref.lineEnd ?? ref.line;
+                      changed = diffs.some(d =>
+                        d.status === 'D' ||
+                        d.changedLines.some(r => r.start <= citeEnd && r.end >= citeStart)
+                      );
+                    } else {
+                      changed = true;
+                    }
+
+                    if (changed) {
+                      stale.push({
+                        doc,
+                        reference: ref.path,
+                        sha: ref.sha,
+                        ...(ref.line !== undefined ? { line: ref.line } : {}),
+                        ...(ref.lineEnd !== undefined ? { lineEnd: ref.lineEnd } : {}),
+                        reason: 'code_changed_since_sha',
+                        type: 'code_path_reference'
+                      });
+                    }
+                  }
+                }
               }
             }
           }
