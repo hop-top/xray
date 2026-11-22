@@ -109,6 +109,7 @@ export class GraphSerializer {
       if (node.imports !== undefined) attrs.imports = node.imports;
       if (node.cfg !== undefined) attrs.cfg = node.cfg;
       if (node.dfg !== undefined) attrs.dfg = node.dfg;
+      if (node.references !== undefined) attrs.references = [...node.references];
 
       graph.addNode(node.id, attrs);
     }

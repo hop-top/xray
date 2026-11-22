@@ -98,10 +98,14 @@ describe('preset runs do not leak into the persistent cache', () => {
     expect(b.marks).toEqual(['before:BBB', 'after:BBB']);
   });
 
-  it('preset handlers fire on every run, even after a warm no-preset run', () => {
+  it('preset handlers fire after a warm no-preset run, and warm preset runs reuse preset-scoped cache', () => {
     map();
-    expect(map(ra).marks).toEqual(['before:AAA', 'after:AAA']);
-    expect(map(ra).marks).toEqual(['before:AAA', 'after:AAA']);
+    const first = map(ra);
+    expect(first.marks).toEqual(['before:AAA', 'after:AAA']);
+    expect(first.names).toEqual(['AAA']);
+    const second = map(ra);
+    expect(second.marks).toEqual([]);
+    expect(second.names).toEqual(['AAA']);
   });
 
   it('editing the preset file changes the next run', () => {
