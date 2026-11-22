@@ -1,6 +1,6 @@
 import * as path from 'path';
 import Graph from 'graphology';
-import { Tag, Import } from '../parser/types';
+import { Tag, Import, CallSite } from '../parser/types';
 import { AsyncEventEmitter } from '../events/async-emitter';
 import { GoModules, goDefaultName, goLocalImports, goImportedFiles, goVisibleFrom } from './go-resolver';
 import { resolveTsSpecifier } from './ts-specifier';
@@ -44,9 +44,22 @@ interface GraphBuilderEvents {
   };
 }
 
+/** Merge and sort unique 0-based call-site positions. */
+export function mergeCallSites(a?: CallSite[], b?: CallSite[]): CallSite[] {
+  const byPos = new Map<string, CallSite>();
+  for (const list of [a, b]) {
+    if (!list) continue;
+    for (const s of list) {
+      const key = `${s.line}:${s.col}`;
+      if (!byPos.has(key)) byPos.set(key, { line: s.line, col: s.col });
+    }
+  }
+  return Array.from(byPos.values()).sort((x, y) => x.line - y.line || x.col - y.col);
+}
+
 export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
   private graph: XrayGraph;
-  private pendingReferences: Map<string, { tagId: string, references: string[] }> = new Map();
+  private pendingReferences: Map<string, { tagId: string, references: string[], callSites?: Record<string, CallSite[]> }> = new Map();
   // file (relative path) -> list of raw import specifiers to resolve in a deferred pass
   private pendingImports: Map<string, string[]> = new Map();
 
@@ -122,7 +135,11 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
 
       // Store references for later edge creation
       if (tag.references && tag.references.length > 0) {
-        this.pendingReferences.set(tagId, { tagId, references: tag.references });
+        this.pendingReferences.set(tagId, {
+          tagId,
+          references: tag.references,
+          ...(tag.callSites ? { callSites: tag.callSites } : {}),
+        });
       }
     }
 
@@ -392,8 +409,14 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
       if (list) { if (!list.includes(refName)) list.push(refName); } else unresolved.set(tagId, [refName]);
     };
 
-    for (const { tagId, references } of this.pendingReferences.values()) {
+    const eventCallSites = new Map<typeof resolveEvents[number], CallSite[]>();
+    const recordSites = (ev: typeof resolveEvents[number], sites?: CallSite[]) => {
+      if (sites && sites.length > 0) eventCallSites.set(ev, sites);
+    };
+
+    for (const { tagId, references, callSites } of this.pendingReferences.values()) {
       for (const refName of references) {
+        const sites = callSites?.[refName];
         // `.name`: member call on a value receiver (parser marker); no
         // receiver type info, so only method tags are candidates.
         if (refName.startsWith('.')) {
@@ -432,6 +455,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
             }
             const ev = { sourceTag: tagId, targetName: name, resolved };
             if (!scoped) inferred.add(ev);
+            recordSites(ev, sites);
             resolveEvents.push(ev);
           } else {
             miss(tagId, refName);
@@ -442,7 +466,9 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
           const targets = this.resolveGoQualified(tagId, refName, goFuncs);
           if (targets.length > 0) {
             // Explicit import + module path + exported name: EXTRACTED.
-            resolveEvents.push({ sourceTag: tagId, targetName: refName, resolved: targets });
+            const ev = { sourceTag: tagId, targetName: refName, resolved: targets };
+            recordSites(ev, sites);
+            resolveEvents.push(ev);
           } else {
             miss(tagId, refName);
           }
@@ -454,6 +480,7 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
           // Event: Reference resolution (listeners can modify targets)
           const ev = { sourceTag: tagId, targetName: refName, resolved };
           if (!scoped) inferred.add(ev);
+          recordSites(ev, sites);
           resolveEvents.push(ev);
         } else {
           miss(tagId, refName);
@@ -474,28 +501,37 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     // Now collect all edge events based on resolved references
     const edgeEvents: Array<{ source: string, target: string, type: 'calls', attrs: EdgeAttributes, skip: boolean }> = [];
 
-    const queued = new Set<string>();
+    const queued = new Map<string, { source: string, target: string, type: 'calls', attrs: EdgeAttributes, skip: boolean }>();
     for (const resolveEvent of resolveEvents) {
+      const sites = eventCallSites.get(resolveEvent);
       for (const targetTagId of resolveEvent.resolved) {
         // Avoid self-references
         if (targetTagId !== resolveEvent.sourceTag) {
-          // Only add edge if it doesn't already exist
           const key = `${resolveEvent.sourceTag}\x00${targetTagId}`;
-          if (!queued.has(key) && !this.graph.hasEdge(resolveEvent.sourceTag, targetTagId)) {
-            queued.add(key);
-            edgeEvents.push({
+          const existing = queued.get(key);
+          if (existing) {
+            if (sites && sites.length > 0) {
+              existing.attrs.callSites = mergeCallSites(existing.attrs.callSites, sites);
+            }
+            continue;
+          }
+          if (!this.graph.hasEdge(resolveEvent.sourceTag, targetTagId)) {
+            const ev = {
               source: resolveEvent.sourceTag,
               target: targetTagId,
-              type: 'calls',
+              type: 'calls' as const,
               attrs: {
-                type: 'calls',
+                type: 'calls' as const,
                 // EXTRACTED = resolved through file/dir/import/module
                 // evidence; INFERRED = name match only.
                 confidence: resolveEvent.confidence ??
-                  (inferred.has(resolveEvent) ? Confidence.INFERRED : Confidence.EXTRACTED)
+                  (inferred.has(resolveEvent) ? Confidence.INFERRED : Confidence.EXTRACTED),
+                ...(sites && sites.length > 0 ? { callSites: mergeCallSites(undefined, sites) } : {}),
               },
               skip: false
-            });
+            };
+            queued.set(key, ev);
+            edgeEvents.push(ev);
           }
         }
       }

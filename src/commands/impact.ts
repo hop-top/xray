@@ -6,7 +6,7 @@
  */
 import type { Command } from 'commander';
 import { GraphSerializer } from '../lib/graph/serializer';
-import { computeImpact, DEFAULT_IMPACT_DEPTH, impactToQueryResult, renderImpactBrief, renderImpactText, type ImpactResult, withEditorLine } from '../lib/query/impact';
+import { computeImpact, DEFAULT_IMPACT_DEPTH, formatCallSitesCell, impactToQueryResult, renderImpactBrief, renderImpactText, type ImpactResult, withEditorCallSites, withEditorLine } from '../lib/query/impact';
 import { UsageError } from '../lib/error/types';
 import {
   adaptFormatter, addOutputFlags, assertFormat, colsRequested, columns, emit, formatterOf,
@@ -31,18 +31,22 @@ export interface ImpactCommandOptions {
 }
 
 /** Table/csv columns (and the `--cols` vocabulary) for callers. */
-export const IMPACT_COLUMNS = columns('name', 'kind', 'file', 'line', 'depth', 'group', 'confidence', 'id');
+export const IMPACT_COLUMNS = columns('name', 'kind', 'file', 'line', 'callSites', 'depth', 'group', 'confidence', 'id');
 const DEFAULT_IMPACT_COLUMNS = columns('name', 'file', 'line', 'depth', 'group', 'confidence');
 
 function buildRegistry() {
   const base = outputRegistry();
   /** Result nodes with editor (1-based) lines, as text and tree show them. */
-  const rows = (r: ImpactResult) => r.nodes.map(withEditorLine);
+  const rows = (r: ImpactResult) => r.nodes.map(n => ({
+    ...withEditorLine(n),
+    callSites: formatCallSitesCell(n.callSites),
+  }));
   /** Whole result document with editor lines; the saved graph stays 0-based. */
   const document = (r: ImpactResult): ImpactResult => ({
     ...r,
     symbol: { ...r.symbol, matches: r.symbol.matches.map(withEditorLine) },
-    nodes: rows(r),
+    nodes: r.nodes.map(n => withEditorCallSites(withEditorLine(n))),
+    edges: r.edges.map(withEditorCallSites),
   });
   return outputRegistry(
     adaptFormatter<ImpactResult>(formatterOf(base, 'json'), document, true),
@@ -105,8 +109,8 @@ const HELP_AFTER = `Walks inbound call edges from every definition matching <sym
 name or glob, as in \`query\`) and reports each caller once, at its
 shortest depth, grouped by top-level directory (\`internal\`), or by
 root then directory on a merged multi-root graph (\`api/internal\`).
-Callers are shown with their definition line; the graph stores no
-call-site positions.
+Callers are shown with their definition line and call-site lines when
+available.
 
 EXTRACTED edges were resolved in the caller's file, directory or imports;
 INFERRED edges matched by name only. --strict follows EXTRACTED only.

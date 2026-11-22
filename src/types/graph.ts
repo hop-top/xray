@@ -13,7 +13,7 @@
  */
 
 import Graph from 'graphology';
-import { Import } from '../lib/parser/types';
+import { Import, CallSite } from '../lib/parser/types';
 import type { Cfg, Dfg } from '../lib/flow/types';
 
 /**
@@ -134,6 +134,8 @@ export type Confidence = typeof Confidence[keyof typeof Confidence];
 export interface BaseEdgeAttributes {
   type: 'defines' | 'calls' | 'imports';
   confidence: Confidence;
+  /** 0-based call-site positions on `calls` edges. */
+  callSites?: CallSite[];
 }
 
 /**
