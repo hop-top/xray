@@ -287,7 +287,7 @@ export const addCommonOptions = (cmd: Command) => {
     }, [])
     .option('-o, --output <path>', 'Output file path [default: .xray, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]')
     .option('-l, --limit <number>', 'Token limit per chunk [default: 4096]')
-    .option('-w, --with <feature>', 'Include feature: vars, incs, cost, docs, df, cf (repeatable) [df, cf: TypeScript, JavaScript, Python, Go]', (value: string, previous: string[]) => {
+    .option('-w, --with <feature>', 'Include feature: vars, incs, cost, docs, df, cf, churn, blame (repeatable) [df, cf: TypeScript, JavaScript, Python, Go]', (value: string, previous: string[]) => {
       return previous.concat([value]);
     }, [])
     .option('-a, --anchor <path>', 'Focus on specific file (Personalized PageRank)')

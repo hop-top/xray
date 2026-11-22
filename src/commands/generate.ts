@@ -254,6 +254,8 @@ const featuresOf = (mergedOptions: any) => {
     cost: withFeatures.has('cost'),
     cf: withFeatures.has('cf'),
     df: withFeatures.has('df'),
+    churn: withFeatures.has('churn'),
+    blame: withFeatures.has('blame'),
   };
 };
 
@@ -325,7 +327,9 @@ export const buildGraphForRoots = async (
   const cwd = process.cwd();
   const presetDigest = computePresetDigest(mergedOptions.preset, mergedOptions.query);
   const useCache = Boolean(opts.cache) &&
-    !(Array.isArray(mergedOptions.preset) && mergedOptions.preset.length > 0);
+    !(Array.isArray(mergedOptions.preset) && mergedOptions.preset.length > 0) &&
+    !mergedOptions.since &&
+    !mergedOptions.changed;
   const graphCache = useCache
     ? new GraphCache(openCacheDbPath(cwd), optionsDigest(graphOptionsOf(mergedOptions)))
     : null;
@@ -411,6 +415,8 @@ export const buildGraphForRoots = async (
         path: currentPath,
         limit: parseInt(mergedOptions.limit),
         anchor: resolvePath(mergedOptions.anchor),
+        since: mergedOptions.since,
+        changed: mergedOptions.changed,
         depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
         features: featuresOf(mergedOptions),
         queries: QueryResolver.resolve(mergedOptions.query || []),
@@ -737,6 +743,8 @@ export const runSingleXray = async (
         path: currentPath,
         limit: parseInt(mergedOptions.limit),
         anchor,
+        since: mergedOptions.since,
+        changed: mergedOptions.changed,
         depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
         features,
         queries,
@@ -855,6 +863,8 @@ export const runSingleXray = async (
         path: currentPath,
         limit: parseInt(mergedOptions.limit),
         anchor,
+        since: mergedOptions.since,
+        changed: mergedOptions.changed,
         depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
         features,
         queries,

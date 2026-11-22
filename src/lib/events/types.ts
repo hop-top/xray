@@ -153,6 +153,7 @@ export interface XrayEvents {
   'rank:complete': {
     graph: Graph;
     rankedNodes: RankedNode[];
+    churnMap?: Map<string, number>;
     // Listeners can re-order or modify rankings
   };
 

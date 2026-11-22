@@ -64,7 +64,7 @@ export function registerCompletionCommand(program: Command): Command {
 }
 
 /** Values of `-w, --with <feature>` on analysis commands. */
-const WITH_FEATURES = ['vars', 'incs', 'cost', 'docs', 'df', 'cf'];
+const WITH_FEATURES = ['vars', 'incs', 'cost', 'docs', 'df', 'cf', 'churn', 'blame'];
 
 /** Values of `--group <mode>` on analysis commands. */
 const GROUP_MODES = ['directory', 'community'];

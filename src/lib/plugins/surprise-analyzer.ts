@@ -29,6 +29,7 @@ import { Logger } from '../logger';
 import {
   scoreEdges,
   DEFAULT_HEURISTICS,
+  churnHotspotHeuristic,
   Heuristic,
   ScoredEdge,
   SurpriseOptions,
@@ -77,7 +78,7 @@ export class SurpriseAnalyzerPlugin implements XrayPlugin {
       typeof rawTopN === 'number' && Number.isFinite(rawTopN)
         ? Math.max(0, Math.floor(rawTopN))
         : 5;
-    this.heuristics = opts.heuristics ?? DEFAULT_HEURISTICS;
+    this.heuristics = opts.heuristics ?? [...DEFAULT_HEURISTICS, churnHotspotHeuristic];
     this.surpriseOptions = opts.surpriseOptions ?? {};
   }
 
@@ -86,11 +87,15 @@ export class SurpriseAnalyzerPlugin implements XrayPlugin {
       try {
         const graph = event.graph as XrayGraph;
         const rankings = event.rankedNodes;
+        const opts: SurpriseOptions = {
+          ...this.surpriseOptions,
+          ...(event.churnMap ? { churnMap: event.churnMap } : {}),
+        };
 
         const { scored, heuristicsActive } = scoreEdges(
           graph,
           rankings,
-          this.surpriseOptions,
+          opts,
           this.heuristics
         );
 
