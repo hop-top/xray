@@ -16,12 +16,19 @@
  * schema shaping and argv building are unit-tested against small
  * commander trees.
  */
+import * as fs from 'fs';
 import * as path from 'path';
 import type { Argument, Command, Option } from 'commander';
-import type { FlagSchema, Leaf } from '@hop-top/kit/dist/mcp';
+import ignore, { type Ignore } from 'ignore';
+import type { FlagSchema, InvokeResult, Leaf } from '@hop-top/kit/dist/mcp';
 import { getCommandGroup } from '../../commands/kit-cli';
 import { declaredEffect } from '../../commands/side-effect';
+import { isWithin } from '../confine';
+import { getDiff, isGitRepo, listBranches, listCommits } from '../git';
+import { capOutputBytes, truncateLine, windowSlice } from '../output-guardrails';
 import { DEFAULT_IMPACT_DEPTH } from '../query/impact';
+import { readTextSafe } from '../safe-read';
+import type { WarmWorkspaceManager } from './workspace';
 
 /** Per-call project scope parameter (a directory inside the server root). */
 export const ROOT_PARAM = 'root';
@@ -474,4 +481,383 @@ export function buildArgv(
     argv: [...def.path, ...opts, ...(positionals.length > 0 ? ['--', ...positionals] : [])],
     projectDirs,
   };
+}
+
+/**
+ * A non-CLI tool served directly by the bridge. Registered by the server
+ * after the command-tree leaves so it is listed and invocable like any
+ * analysis tool, but with no commander command behind it.
+ */
+export interface DirectToolDef {
+  name: string;
+  description: string;
+  properties: Record<string, FlagSchema>;
+  required?: readonly string[];
+  invoke(args: Record<string, unknown> | undefined): InvokeResult | Promise<InvokeResult>;
+}
+
+const MAX_READ_LINES = 500;
+const MAX_LINE_CHARS = 500;
+const MAX_TREE_DEPTH = 10;
+const MAX_TREE_LIMIT = 10_000;
+const DEFAULT_TREE_LIMIT = 1000;
+const MAX_OUTPUT_BYTES = 128_000;
+
+function isSensitiveFile(relPath: string): boolean {
+  const base = path.basename(relPath);
+  if (base === '.env' || base.startsWith('.env.')) return true;
+  const lower = base.toLowerCase();
+  return lower.endsWith('.pem') || lower.endsWith('.key');
+}
+
+function hasGitSegment(relPath: string): boolean {
+  return relPath.split(/[/\\]/).some((seg) => seg === '.git');
+}
+
+function resolveScopedBase(
+  workspace: WarmWorkspaceManager,
+  rawRoot: unknown,
+  requireBaseAllowed = true
+): { root: string; callDir: string; explicitRoot: boolean } {
+  if (rawRoot === undefined || rawRoot === null || rawRoot === '') {
+    const allowed = workspace.getAllowedRoots();
+    if (allowed.size === 0) {
+      throw new ToolArgumentError('no allowed roots in scope');
+    }
+    if (requireBaseAllowed) {
+      // If serverRoot itself is allowed, use it; otherwise if a scoped token
+      // narrowed access to a subdirectory within serverRoot, allow git
+      // operations anchored at the first narrowed root inside serverRoot.
+      for (const r of allowed) {
+        if (isWithin(r, workspace.serverRoot)) {
+          return { root: r, callDir: workspace.serverRoot, explicitRoot: false };
+        }
+      }
+      const first = allowed.values().next().value as string;
+      return { root: first, callDir: first, explicitRoot: false };
+    }
+    return { root: workspace.serverRoot, callDir: workspace.serverRoot, explicitRoot: false };
+  }
+  if (typeof rawRoot !== 'string') {
+    throw new ToolArgumentError('argument "root" must be a string');
+  }
+  const contained = workspace.containAcrossAllowedRoots(rawRoot);
+  let realDir: string;
+  try {
+    realDir = fs.realpathSync(contained.absPath);
+  } catch {
+    throw new ToolArgumentError(`root "${rawRoot}" does not exist`);
+  }
+  if (!fs.statSync(realDir).isDirectory()) {
+    throw new ToolArgumentError(`root "${rawRoot}" is not a directory`);
+  }
+  return { root: contained.root, callDir: realDir, explicitRoot: true };
+}
+
+function resolveContainedTarget(
+  workspace: WarmWorkspaceManager,
+  rawRoot: unknown,
+  rawPath: string
+): { matchedRoot: string; callDir: string; realTarget: string; relToRoot: string } {
+  const { callDir, explicitRoot } = resolveScopedBase(workspace, rawRoot, false);
+  if (isUrlLike(rawPath)) {
+    throw new ToolArgumentError(`path "${rawPath}" must be a filesystem path, not a URL`);
+  }
+  const candidate = path.isAbsolute(rawPath) ? rawPath : path.resolve(callDir, rawPath);
+  const contained = workspace.containAcrossAllowedRoots(candidate);
+
+  let realTarget: string;
+  try {
+    realTarget = fs.realpathSync(contained.absPath);
+  } catch (err: any) {
+    throw new ToolArgumentError(`path "${rawPath}" does not exist: ${err?.message ?? err}`);
+  }
+  if (explicitRoot && !isWithin(callDir, realTarget)) {
+    throw new ToolArgumentError(`path "${rawPath}" escapes root "${String(rawRoot)}"`);
+  }
+  const relToRoot = path.relative(contained.root, realTarget);
+  return { matchedRoot: contained.root, callDir, realTarget, relToRoot };
+}
+
+function loadGitignore(rootDir: string): Ignore {
+  const ig = ignore();
+  const gitignorePath = path.join(rootDir, '.gitignore');
+  if (fs.existsSync(gitignorePath)) {
+    try {
+      ig.add(readTextSafe(rootDir, '.gitignore'));
+    } catch {
+      // Ignore unreadable .gitignore
+    }
+  }
+  return ig;
+}
+
+function okJson(payload: unknown): InvokeResult {
+  const raw = JSON.stringify(payload);
+  const capped = capOutputBytes(raw, MAX_OUTPUT_BYTES);
+  return { stdout: capped.text, stderr: '', exitCode: 0 };
+}
+
+function clampInt(raw: unknown, def: number, min: number, max: number, name: string): number {
+  if (raw === undefined || raw === null) return def;
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+    throw new ToolArgumentError(`argument "${name}" must be a number`);
+  }
+  return Math.min(max, Math.max(min, Math.floor(raw)));
+}
+
+/**
+ * Build the five primitive read-only MCP tools (`read_file`, `list_tree`,
+ * `list_branches`, `list_commits`, `get_diff`), all confined through
+ * `WarmWorkspaceManager.containAcrossAllowedRoots`.
+ */
+export function buildPrimitiveDirectTools(
+  workspace: WarmWorkspaceManager
+): Map<string, DirectToolDef> {
+  const tools = new Map<string, DirectToolDef>();
+
+  tools.set('read_file', {
+    name: 'read_file',
+    description:
+      'Read a text file inside the allowed project roots with 1-based line numbers, 500-line window cap, and line-length truncation. Refuses .git/ and sensitive files (.env, *.pem, *.key).',
+    properties: {
+      root: { type: 'string', description: 'Optional project subdirectory inside allowed roots.' },
+      path: { type: 'string', description: 'File path relative to root (or absolute within allowed roots).' },
+      offset: { type: 'number', description: '1-based start line (default 1).' },
+      limit: { type: 'number', description: 'Max lines to return (1..500, default 500).' },
+    },
+    required: ['path'],
+    invoke: (args) => {
+      const a = args ?? {};
+      if (typeof a.path !== 'string' || a.path.trim() === '') {
+        throw new ToolArgumentError('argument "path" must be a non-empty string');
+      }
+      const offset = clampInt(a.offset, 1, 1, Number.MAX_SAFE_INTEGER, 'offset');
+      const limit = clampInt(a.limit, MAX_READ_LINES, 1, MAX_READ_LINES, 'limit');
+
+      const { matchedRoot, realTarget, relToRoot } = resolveContainedTarget(workspace, a.root, a.path);
+      if (hasGitSegment(relToRoot) || hasGitSegment(a.path)) {
+        throw new ToolArgumentError(`refusing to read inside .git: "${a.path}"`);
+      }
+      if (isSensitiveFile(relToRoot)) {
+        throw new ToolArgumentError(`refusing to read sensitive file: "${a.path}"`);
+      }
+
+      let content: string;
+      try {
+        content = readTextSafe(matchedRoot, realTarget);
+      } catch (err: any) {
+        throw new ToolArgumentError(`cannot read "${a.path}": ${err?.message ?? err}`);
+      }
+
+      const rawLines = content.length === 0 ? [] : content.split(/\r?\n/);
+      if (content.endsWith('\n') && rawLines.length > 0 && rawLines[rawLines.length - 1] === '') {
+        rawLines.pop();
+      }
+      const slice = windowSlice(rawLines, { offset: offset - 1, limit, maxLimit: MAX_READ_LINES });
+      const lines = slice.items.map((line, idx) => {
+        const trunc = truncateLine(line, MAX_LINE_CHARS);
+        return {
+          line: offset + idx,
+          text: trunc.text,
+          ...(trunc.truncated ? { truncated: true } : {}),
+        };
+      });
+
+      return okJson({
+        path: relToRoot.split(path.sep).join('/'),
+        offset,
+        limit: slice.limit,
+        totalLines: rawLines.length,
+        hasMore: slice.hasMore,
+        lines,
+      });
+    },
+  });
+
+  tools.set('list_tree', {
+    name: 'list_tree',
+    description:
+      'List files and directories inside the allowed project roots, sorting directories before files and honoring .gitignore.',
+    properties: {
+      root: { type: 'string', description: 'Optional project subdirectory inside allowed roots.' },
+      path: { type: 'string', description: 'Directory path to list (default ".").' },
+      depth: { type: 'number', description: 'Traversal depth (1..10, default 1).' },
+      limit: { type: 'number', description: 'Maximum entries to return (1..10000, default 1000).' },
+      includeFiles: { type: 'boolean', description: 'Include files in output (default true).' },
+      includeDirectories: { type: 'boolean', description: 'Include directories in output (default true).' },
+    },
+    invoke: (args) => {
+      const a = args ?? {};
+      const relInput = typeof a.path === 'string' && a.path.trim() !== '' ? a.path : '.';
+      const depth = clampInt(a.depth, 1, 1, MAX_TREE_DEPTH, 'depth');
+      const limit = clampInt(a.limit, DEFAULT_TREE_LIMIT, 1, MAX_TREE_LIMIT, 'limit');
+      const includeFiles = a.includeFiles === undefined ? true : Boolean(a.includeFiles);
+      const includeDirectories = a.includeDirectories === undefined ? true : Boolean(a.includeDirectories);
+
+      const { matchedRoot, realTarget, relToRoot } = resolveContainedTarget(workspace, a.root, relInput);
+      if (!fs.statSync(realTarget).isDirectory()) {
+        throw new ToolArgumentError(`path "${relInput}" must be a directory`);
+      }
+
+      const ig = loadGitignore(matchedRoot);
+      const entries: Array<{ path: string; name: string; type: 'directory' | 'file' }> = [];
+      let hasMore = false;
+
+      const walk = (dir: string, currentDepth: number) => {
+        if (hasMore) return;
+        let dirents: fs.Dirent[];
+        try {
+          dirents = fs.readdirSync(dir, { withFileTypes: true });
+        } catch {
+          return;
+        }
+
+        const classified: Array<{ name: string; full: string; rel: string; isDir: boolean }> = [];
+        for (const d of dirents) {
+          if (d.name === '.git') continue;
+          const full = path.join(dir, d.name);
+          let isDir = d.isDirectory();
+          let isFile = d.isFile();
+          if (d.isSymbolicLink()) {
+            try {
+              const real = fs.realpathSync(full);
+              if (!isWithin(matchedRoot, real)) continue;
+              const st = fs.statSync(real);
+              isDir = st.isDirectory();
+              isFile = st.isFile();
+            } catch {
+              continue;
+            }
+          }
+          if (!isDir && !isFile) continue;
+
+          const rel = path.relative(matchedRoot, full).split(path.sep).join('/');
+          if (ig.ignores(isDir ? `${rel}/` : rel) || ig.ignores(rel)) continue;
+          classified.push({ name: d.name, full, rel, isDir });
+        }
+
+        classified.sort((x, y) => {
+          if (x.isDir !== y.isDir) return x.isDir ? -1 : 1;
+          return x.name.localeCompare(y.name);
+        });
+
+        for (const item of classified) {
+          const shouldEmit = item.isDir ? includeDirectories : includeFiles;
+          if (shouldEmit) {
+            if (entries.length >= limit) {
+              hasMore = true;
+              return;
+            }
+            entries.push({
+              path: item.rel,
+              name: item.name,
+              type: item.isDir ? 'directory' : 'file',
+            });
+          }
+          if (item.isDir && currentDepth < depth) {
+            walk(item.full, currentDepth + 1);
+            if (hasMore) return;
+          }
+        }
+      };
+
+      walk(realTarget, 1);
+
+      return okJson({
+        path: (relToRoot || '.').split(path.sep).join('/'),
+        depth,
+        limit,
+        total: entries.length,
+        hasMore,
+        entries,
+      });
+    },
+  });
+
+  tools.set('list_branches', {
+    name: 'list_branches',
+    description: 'List local and remote git branches sorted by most recent committer date.',
+    properties: {
+      root: { type: 'string', description: 'Optional repository directory inside allowed roots.' },
+    },
+    invoke: async (args) => {
+      const { callDir } = resolveScopedBase(workspace, args?.root);
+      if (!(await isGitRepo(callDir))) {
+        throw new ToolArgumentError(`directory "${callDir}" is not a git repository`);
+      }
+      const branches = await listBranches(callDir);
+      return okJson({ branches });
+    },
+  });
+
+  tools.set('list_commits', {
+    name: 'list_commits',
+    description: 'List paginated git commits with optional ref, author, date, and message filters.',
+    properties: {
+      root: { type: 'string', description: 'Optional repository directory inside allowed roots.' },
+      ref: { type: 'string', description: 'Git ref to inspect (default HEAD).' },
+      query: { type: 'string', description: 'Filter commit subjects/messages (--grep).' },
+      since: { type: 'string', description: 'Include commits after date (--since).' },
+      until: { type: 'string', description: 'Include commits before date (--until).' },
+      author: { type: 'string', description: 'Filter commits by author (--author).' },
+      page: { type: 'number', description: '1-based page number (default 1).' },
+      perPage: { type: 'number', description: 'Commits per page (1..100, default 50).' },
+      includeTotalCount: { type: 'boolean', description: 'Include total commit count.' },
+      includeRefs: { type: 'boolean', description: 'Include ref decorations.' },
+    },
+    invoke: async (args) => {
+      const a = args ?? {};
+      const { callDir } = resolveScopedBase(workspace, a.root);
+      if (!(await isGitRepo(callDir))) {
+        throw new ToolArgumentError(`directory "${callDir}" is not a git repository`);
+      }
+      const res = await listCommits(callDir, {
+        ...(typeof a.ref === 'string' ? { ref: a.ref } : {}),
+        ...(typeof a.query === 'string' ? { query: a.query } : {}),
+        ...(typeof a.since === 'string' ? { since: a.since } : {}),
+        ...(typeof a.until === 'string' ? { until: a.until } : {}),
+        ...(typeof a.author === 'string' ? { author: a.author } : {}),
+        ...(typeof a.page === 'number' ? { page: a.page } : {}),
+        ...(typeof a.perPage === 'number' ? { perPage: a.perPage } : {}),
+        ...(typeof a.includeTotalCount === 'boolean' ? { includeTotalCount: a.includeTotalCount } : {}),
+        ...(typeof a.includeRefs === 'boolean' ? { includeRefs: a.includeRefs } : {}),
+      });
+      return okJson(res);
+    },
+  });
+
+  tools.set('get_diff', {
+    name: 'get_diff',
+    description: 'Compute per-file git diff between base and head (use base="WORKING" for working tree against HEAD).',
+    properties: {
+      root: { type: 'string', description: 'Optional repository directory inside allowed roots.' },
+      base: { type: 'string', description: 'Base ref or "WORKING" (default "WORKING").' },
+      head: { type: 'string', description: 'Head ref (default "HEAD").' },
+      paths: { type: 'array', items: { type: 'string' }, description: 'Optional relative paths to filter diff.' },
+    },
+    invoke: async (args) => {
+      const a = args ?? {};
+      const { callDir } = resolveScopedBase(workspace, a.root);
+      if (!(await isGitRepo(callDir))) {
+        throw new ToolArgumentError(`directory "${callDir}" is not a git repository`);
+      }
+      const base = typeof a.base === 'string' && a.base.trim() !== '' ? a.base : 'WORKING';
+      const head = typeof a.head === 'string' && a.head.trim() !== '' ? a.head : 'HEAD';
+      let relPaths: string[] | undefined;
+      if (Array.isArray(a.paths)) {
+        relPaths = a.paths.map((p) => {
+          if (typeof p !== 'string' || p.trim() === '') {
+            throw new ToolArgumentError('argument "paths" must contain non-empty strings');
+          }
+          const { realTarget } = resolveContainedTarget(workspace, a.root, p);
+          return path.relative(callDir, realTarget).split(path.sep).join('/');
+        });
+      }
+      const files = await getDiff(callDir, base, head, relPaths);
+      return okJson({ base, head, files });
+    },
+  });
+
+  return tools;
 }

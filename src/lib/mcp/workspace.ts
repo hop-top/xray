@@ -34,6 +34,7 @@ import { openCacheDbPath } from '../storage';
 import { Xray, type ParseCoverage } from '../xray';
 import type { RankedNode, XrayGraph } from '../../types/graph';
 import type { SerializedGraph } from '../query/types';
+import { getScopedRoots } from './scoped-token';
 import { isUrlLike, ToolArgumentError } from './tools';
 
 const DEFAULT_MAX_ENTRIES = 8;
@@ -188,7 +189,7 @@ export class WarmWorkspaceManager {
   }
 
   getAllowedRoots(): ReadonlySet<string> {
-    return this.allowedRoots;
+    return getScopedRoots() ?? this.allowedRoots;
   }
 
   getRejectedContextRoots(): readonly string[] {
@@ -209,7 +210,7 @@ export class WarmWorkspaceManager {
     const real = realpathLoose(absPath);
 
     let matchedRoot: string | undefined;
-    for (const root of this.allowedRoots) {
+    for (const root of this.getAllowedRoots()) {
       if (isWithin(root, real)) {
         if (!matchedRoot || root.length > matchedRoot.length) {
           matchedRoot = root;
