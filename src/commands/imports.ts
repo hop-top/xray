@@ -36,7 +36,7 @@ export const IMPORTS_COLUMNS = columns(
   'file', 'language', 'line', 'column', 'endLine', 'endColumn', 'kind', 'form', 'module',
   'normalized', 'package', 'locality', 'alias', 'typeOnly', 'confidence', 'evidence'
 );
-const DEFAULT_IMPORTS_COLUMNS = columns('file', 'line', 'column', 'kind', 'form', 'module', 'normalized', 'locality');
+export const DEFAULT_IMPORTS_COLUMNS = columns('file', 'line', 'column', 'kind', 'form', 'module', 'normalized', 'locality');
 
 /** Flat rows for table/csv. */
 export function importRows(doc: ImportsDoc): Array<Record<string, unknown>> {
@@ -92,7 +92,7 @@ function buildRegistry() {
     textFormatter<ImportsDoc>('text', (d, put) => renderImportsText(d, put))
   );
 }
-const importsRegistry = buildRegistry();
+export const importsRegistry = buildRegistry();
 
 /** Build the document (no rendering). */
 export function handleImportsAction(paths: readonly string[], options: ImportsCommandOptions): ImportsDoc {
