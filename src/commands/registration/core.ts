@@ -16,6 +16,7 @@ import { registerLangCommand } from '../lang';
 import { registerMcpCommand } from '../mcp';
 import { registerWatchCommand } from '../watch';
 import { registerTuiCommand } from '../tui';
+import { registerServeCommand } from '../serve';
 import { registerUpgradeCommand } from '../upgrade';
 import { registerHandbookCommand } from '../handbook';
 import { registerDiagramCommand } from '../diagram';
@@ -35,6 +36,7 @@ const CORE_GROUPS: Record<string, HelpGroupId> = {
   diagram: 'analyze',
   watch: 'analyze',
   tui: 'analyze',
+  serve: 'analyze',
   strategy: 'strategy',
   alias: 'management',
   lang: 'management',
@@ -111,6 +113,9 @@ Examples:
 
   // Interactive terminal codebase explorer
   registerTuiCommand(program);
+
+  // Local Web UI and read-only REST API server
+  registerServeCommand(program);
 
   // Strategy management command
   program.addCommand(registerStrategyCommand());
