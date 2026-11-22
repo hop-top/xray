@@ -28,6 +28,7 @@ const VARIANTS: Record<string, string[]> = {
   '--csv': ['--csv'],
   '--xml': ['--xml'],
   '--json': ['--json'],
+  '--mermaid': ['--mermaid'],
   '--no-chunk': ['--no-chunk'],
   '--group': ['--group', 'community'],
   '--detect': ['--detect'],

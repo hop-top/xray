@@ -23,7 +23,7 @@ describe('failing commands exit with the code describe advertises', () => {
   const produced = new Set<string>();
 
   const run = (...args: string[]) =>
-    spawnSync(process.execPath, [CLI, ...args], { cwd: root, env, encoding: 'utf8' });
+    spawnSync(process.execPath, [CLI, ...args], { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
   beforeAll(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'exit-contract-'));
@@ -134,9 +134,9 @@ describe('failing commands exit with the code describe advertises', () => {
   it('every leaf with --path: a missing path exits with a code describe advertises', () => {
     const missing = '/nonexistent/xray-dir';
     for (const l of leaves.filter((x) => x.doc.options.some((o) => o.name === '--path'))) {
-      // Only leaves that declare it take the machine-output flag (`watch` has no --format).
+      const confirm = String(l.doc.sideEffect).startsWith('destructive') ? ['--confirm=yes'] : [];
       const format = l.doc.options.some((o) => o.name === '--format') ? ['--format', 'json'] : [];
-      const r = run(...l.argv, ...operands(l), '--path', missing, ...format);
+      const r = run(...confirm, ...l.argv, ...operands(l), '--path', missing, ...format);
       const status = r.status as number;
       expect({ command: l.command, status, advertised: advertised.get(l.command)!.includes(status) })
         .toEqual({ command: l.command, status, advertised: true });
@@ -146,7 +146,8 @@ describe('failing commands exit with the code describe advertises', () => {
 
   it('strategy leaves: a missing --path is not found (3) with the envelope, not an empty result', () => {
     const builtin = new Set(['help', 'map', 'graph', 'query', 'impact', 'imports', 'strategy', 'alias', 'lang',
-      'cache', 'clear-cache', 'paths', 'describe', 'mcp', 'completion', 'explore', 'upgrade', 'watch']);
+      'cache', 'clear-cache', 'paths', 'describe', 'mcp', 'completion', 'explore', 'upgrade', 'watch',
+      'handbook', 'diagram', 'tui', 'serve', 'ask', 'review', 'skills']);
     const strategyLeaves = leaves.filter((l) => !builtin.has(l.argv[0]));
     expect(strategyLeaves.length).toBeGreaterThan(20);
     for (const l of strategyLeaves) {

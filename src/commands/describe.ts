@@ -67,6 +67,8 @@ const EXTRA_EXIT_CODES: Record<string, number[]> = {
   explore: [EXIT_NOT_FOUND],
   // A watched root (positional or --path) that does not exist is not found.
   watch: [EXIT_NOT_FOUND],
+  diagram: [EXIT_NOT_FOUND],
+  'skills.show': [EXIT_NOT_FOUND],
   // --check: the release lookup failed.
   upgrade: [EXIT_TRANSIENT],
 };
