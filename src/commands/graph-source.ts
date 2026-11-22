@@ -74,7 +74,7 @@ export async function obtainGraph(options: GraphSourceOptions): Promise<Serializ
   const note = matchNote(mergedOptions.match);
   if (note) Logger.info(note);
   const built = await buildGraphForRoots(mergedOptions, options.config, { format: 'json', quiet: true, cache: true });
-  if (built.cache) Logger.info(cacheLine(built.cache));
+  if (built.cache && built.cache.length > 1) Logger.info(cacheLine(built.cache));
   Logger.info(coverageLine(built.coverage, built.cache));
   return built.graph;
 }

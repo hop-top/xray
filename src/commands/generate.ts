@@ -1,4 +1,5 @@
 import { Xray } from '../lib/xray';
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { styles, fileProgress } from '../lib/tui';
@@ -10,7 +11,8 @@ import { CodedError, FileWriteError, NotFoundError, UsageError } from '../lib/er
 import { resolveFormatFlags } from '../lib/output-format';
 import { GraphSerializer } from '../lib/graph/serializer';
 import { deriveRootLabels, mergeSerializedGraphs } from '../lib/graph/merge';
-import { GraphCache, optionsDigest, rootFingerprint } from '../lib/cache/graph-cache';
+import { GraphCache, computeRootManifest, diffFileManifest, optionsDigest } from '../lib/cache/graph-cache';
+import { compileMatchers } from '../lib/path-match';
 import { resolveCrossRootReferences } from '../lib/graph/cross-root';
 import { graphToEdgesCsv, graphToNodesCsv, graphToXml } from '../lib/graph/export';
 import type { SerializedGraph } from '../lib/query/types';
@@ -48,14 +50,44 @@ import { terminalSafe } from '../lib/terminal-safe';
  * asked for. Individual plugin failures inside a preset stay isolated
  * (see `applyPreset`).
  */
+/**
+ * Compute a deterministic digest for active `--preset` flags and extension
+ * overrides (`--query`), or `'none'` when no preset is active.
+ * Local preset file paths include mtime/size so editing a preset file
+ * invalidates both per-file and graph caches.
+ */
+export const computePresetDigest = (
+  specs: string[] | undefined,
+  queries?: Record<string, string> | string[]
+): string => {
+  if (!specs || specs.length === 0) return 'none';
+  const presetEntries = [...specs].sort().map(spec => {
+    const resolved = path.isAbsolute(spec) ? spec : path.resolve(process.cwd(), spec);
+    try {
+      if (fs.existsSync(resolved)) {
+        const st = fs.statSync(resolved);
+        return `${spec}:${st.mtimeMs}:${st.size}`;
+      }
+    } catch {
+      /* built-in or package spec */
+    }
+    return spec;
+  });
+  const queryEntries = queries
+    ? (Array.isArray(queries) ? [...queries].sort() : Object.entries(queries).sort(([a], [b]) => a.localeCompare(b)))
+    : null;
+  return createHash('sha256')
+    .update(JSON.stringify({ presets: presetEntries, queries: queryEntries }))
+    .digest('hex')
+    .slice(0, 16);
+};
+
 const applyPresetFlags = async (
   xray: XrayType,
   specs: string[] | undefined,
   currentPath: string
 ): Promise<void> => {
   if (!specs || specs.length === 0) return;
-  // Presets may edit tags; keep those out of the cache every other run shares.
-  xray.disableFileCache();
   for (const spec of specs) {
     const preset = await resolvePreset(spec);
     try {
@@ -266,6 +298,7 @@ const graphOptionsOf = (mergedOptions: any) => ({
   ...(mergedOptions.match?.length > 0 ? { pathMatch: mergedOptions.match } : {}),
   catch: mergedOptions.catch ?? null,
   anchor: resolvePath(mergedOptions.anchor) ?? null,
+  presetDigest: computePresetDigest(mergedOptions.preset, mergedOptions.query),
 });
 
 /** `cache: <label> hit · <label> miss` (stderr line of multi-root builds). */
@@ -287,12 +320,14 @@ export const buildGraphForRoots = async (
 ): Promise<BuiltGraph> => {
   const uniquePaths = Array.from(new Set(runRoots(mergedOptions)));
   const cwd = process.cwd();
-  const useCache = Boolean(opts.cache) && uniquePaths.length > 1 &&
+  const presetDigest = computePresetDigest(mergedOptions.preset, mergedOptions.query);
+  const useCache = Boolean(opts.cache) &&
     !(Array.isArray(mergedOptions.preset) && mergedOptions.preset.length > 0);
   const graphCache = useCache
     ? new GraphCache(openCacheDbPath(cwd), optionsDigest(graphOptionsOf(mergedOptions)))
     : null;
-  const fingerprints = graphCache ? uniquePaths.map(rootFingerprint) : [];
+  const manifests = graphCache ? uniquePaths.map(computeRootManifest) : [];
+  const fingerprints = manifests.map(m => m.fingerprint);
   const hits: boolean[] = [];
   const quiet = Boolean(opts.quiet) && Logger.getLevel() < LogLevel.DEBUG;
   const progressQuiet = quiet || Boolean(mergedOptions.quiet) || Logger.getLevel() < LogLevel.INFO;
@@ -302,6 +337,10 @@ export const buildGraphForRoots = async (
   const prevLevel = Logger.getLevel();
   if (quiet && prevLevel > LogLevel.WARN) Logger.setLevel(LogLevel.WARN);
   try {
+    const serializer = new GraphSerializer();
+    const matchPatterns: string[] = mergedOptions.match || [];
+    const matchesPattern = matchPatterns.length > 0 ? compileMatchers(matchPatterns) : null;
+
     for (let i = 0; i < uniquePaths.length; i++) {
       const currentPath = uniquePaths[i];
       const cached = graphCache?.getRoot(currentPath, fingerprints[i]) ?? null;
@@ -313,6 +352,54 @@ export const buildGraphForRoots = async (
         coverage.skipped.push(...cached.coverage.skipped);
         continue;
       }
+
+      const stale = graphCache?.getStaleRoot(currentPath) ?? null;
+      const manifest = manifests[i];
+      if (graphCache && stale?.fileManifest && stale?.manifestHash && manifest) {
+        const diff = diffFileManifest(stale.fileManifest, manifest.fileManifest, stale.manifestHash, manifest.manifestHash);
+        if (!diff.fallback) {
+          const changedFiles = matchesPattern ? diff.changedFiles.filter(f => matchesPattern(f)) : diff.changedFiles;
+          const removedFiles = matchesPattern ? diff.removedFiles.filter(f => matchesPattern(f)) : diff.removedFiles;
+          const xray = new Xray({
+            path: currentPath,
+            limit: parseInt(mergedOptions.limit),
+            anchor: resolvePath(mergedOptions.anchor),
+            depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
+            features: featuresOf(mergedOptions),
+            queries: QueryResolver.resolve(mergedOptions.query || []),
+            match: matchPatterns,
+            catch: mergedOptions.catch || [],
+            languages: mergedOptions.languages,
+            configPath,
+            presetDigest,
+            format: opts.format ?? 'json',
+            chunked: false,
+          });
+          const existingGraph = serializer.deserialize(stale.graph);
+          const { rankedNodes, graph } = await xray.patchGraph(
+            existingGraph,
+            changedFiles,
+            removedFiles,
+            Object.keys(manifest.fileManifest).length
+          );
+          const rootGraph = serializer.serialize(graph, currentPath, { references: true });
+          parts.push({ root: currentPath, graph: rootGraph });
+          shareInputs.push({ currentPath, rankedNodes, graph });
+          const c = xray.getLastCoverage() ?? { files: 0, parsed: 0, skipped: [] };
+          coverage.files += c.files;
+          coverage.parsed += c.parsed;
+          coverage.skipped.push(...c.skipped);
+          graphCache.putRoot(currentPath, {
+            fingerprint: fingerprints[i],
+            fileManifest: manifest.fileManifest,
+            manifestHash: manifest.manifestHash,
+            graph: rootGraph,
+            coverage: c,
+          });
+          continue;
+        }
+      }
+
       if (uniquePaths.length > 1) {
         Logger.info(`\nProcessing path ${i + 1}/${uniquePaths.length}: ${terminalSafe(currentPath)}`);
       }
@@ -324,28 +411,34 @@ export const buildGraphForRoots = async (
         depth: mergedOptions.depth ? parseInt(mergedOptions.depth) : undefined,
         features: featuresOf(mergedOptions),
         queries: QueryResolver.resolve(mergedOptions.query || []),
-        match: mergedOptions.match || [],
+        match: matchPatterns,
         catch: mergedOptions.catch || [],
         languages: mergedOptions.languages,
         fallbackCtags: mergedOptions.fallbackCtags,
         configPath,
+        presetDigest,
         format: opts.format ?? 'json',
         chunked: false,
         onProgress: (current, total, file) => progress.update(current, total, file)
       });
       await applyPresetFlags(xray, mergedOptions.preset, currentPath);
       const { rankedNodes, graph } = await xray.buildGraph();
-      // Multi-root: keep unresolved references for the cross-root pass.
-      parts.push({
-        root: currentPath,
-        graph: new GraphSerializer().serialize(graph, currentPath, { references: uniquePaths.length > 1 }),
-      });
+      const rootGraph = serializer.serialize(graph, currentPath, { references: uniquePaths.length > 1 || useCache });
+      parts.push({ root: currentPath, graph: rootGraph });
       shareInputs.push({ currentPath, rankedNodes, graph });
       const c = xray.getLastCoverage() ?? { files: 0, parsed: 0, skipped: [] };
       coverage.files += c.files;
       coverage.parsed += c.parsed;
       coverage.skipped.push(...c.skipped);
-      graphCache?.putRoot(currentPath, { fingerprint: fingerprints[i], graph: parts[parts.length - 1].graph, coverage: c });
+      if (graphCache && manifest) {
+        graphCache.putRoot(currentPath, {
+          fingerprint: fingerprints[i],
+          fileManifest: manifest.fileManifest,
+          manifestHash: manifest.manifestHash,
+          graph: rootGraph,
+          coverage: c,
+        });
+      }
     }
   } catch (err) {
     graphCache?.close();
@@ -504,7 +597,7 @@ export const runSingleXray = async (
     // graph (merged across all --path roots) is written with or without
     // --no-chunk.
     if (chunkedEnabled) Logger.debug(`--format ${format}: chunking does not apply; writing the graph once`);
-    const { graph: merged, shareInputs } = await buildGraphForRoots(mergedOptions, configPath, { format });
+    const { graph: merged, shareInputs } = await buildGraphForRoots(mergedOptions, configPath, { format, cache: !shareRequested });
     const written = writeGraphOutput(merged, format, outputPath!);
     for (const f of written) Logger.success(`Graph written to ${f}`);
 
@@ -562,6 +655,7 @@ export const runSingleXray = async (
         languages: mergedOptions.languages,
         fallbackCtags: mergedOptions.fallbackCtags,
         configPath,
+        presetDigest: computePresetDigest(mergedOptions.preset, mergedOptions.query),
         format,
         chunked: true,
         onProgress: (current, total, file) => progress.update(current, total, file)
@@ -679,6 +773,7 @@ export const runSingleXray = async (
         languages: mergedOptions.languages,
         fallbackCtags: mergedOptions.fallbackCtags,
         configPath,
+        presetDigest: computePresetDigest(mergedOptions.preset, mergedOptions.query),
         format,
         chunked: false,
         onProgress: (current, total, file) => progress.update(current, total, file)

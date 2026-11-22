@@ -8,7 +8,21 @@ import { resolveImports, type ResolveInput } from '../imports/resolve';
 import { contractLanguageOf } from '../imports/tree';
 import type { FileImports, ImportRecord } from '../imports/types';
 import { languageOf } from '../parser/language-registry';
-import { XrayGraph, NodeAttributes, EdgeAttributes, Confidence } from '../../types/graph';
+import { XrayGraph, NodeAttributes, EdgeAttributes, Confidence, RankedNode } from '../../types/graph';
+import { Ranker } from './ranker';
+
+export interface ParsedFileInput {
+  file: string;
+  tags: Tag[];
+  imports: Import[];
+  records?: ImportRecord[];
+}
+
+export interface PatchFilesInput {
+  parsedChanged: ParsedFileInput[];
+  removedFiles: string[];
+  anchor?: string;
+}
 
 interface GraphBuilderEvents {
   'node:add': {
@@ -230,6 +244,179 @@ export class GraphBuilder extends AsyncEventEmitter<GraphBuilderEvents> {
     await this.buildImportEdges();
     await this.buildReferenceEdges();
     return this.graph;
+  }
+
+  /**
+   * Incrementally patch an existing (deserialized) graph for changed and
+   * removed files, re-resolving outbound calls for changed files and inbound
+   * calls for affected untouched files, then re-ranking the graph.
+   */
+  async patchFiles(
+    existingGraph: XrayGraph,
+    { parsedChanged, removedFiles, anchor }: PatchFilesInput
+  ): Promise<{ graph: XrayGraph; rankedNodes: RankedNode[] }> {
+    this.graph = existingGraph;
+    this.pendingReferences.clear();
+    this.pendingImports.clear();
+    this.importRecords.clear();
+    this.goImports.clear();
+
+    const changedSet = new Set(parsedChanged.map(p => p.file));
+    const removedSet = new Set(removedFiles);
+    const dirtyFiles = new Set<string>([...changedSet, ...removedSet]);
+
+    // Retain Go imports for untouched Go files so Go reference resolution has full context.
+    this.graph.forEachNode((nodeId: string, attrs: NodeAttributes) => {
+      if (attrs.type === 'file' && !dirtyFiles.has(nodeId) && nodeId.endsWith('.go')) {
+        const imps = (attrs as any).imports;
+        if (Array.isArray(imps) && imps.length > 0) {
+          this.goImports.set(nodeId, imps);
+        }
+      }
+    });
+
+    // Symbols defined in old dirty files or newly parsed changed files.
+    const affectedSymbolNames = new Set<string>();
+    for (const file of dirtyFiles) {
+      if (!this.graph.hasNode(file)) continue;
+      this.graph.forEachOutEdge(file, (_e: string, attrs: EdgeAttributes, _s: string, target: string) => {
+        if (attrs.type === 'defines' && this.graph.hasNode(target)) {
+          const label = (this.graph.getNodeAttributes(target) as NodeAttributes).label;
+          if (label) affectedSymbolNames.add(label);
+        }
+      });
+    }
+    for (const p of parsedChanged) {
+      for (const tag of p.tags) {
+        if (tag.name) affectedSymbolNames.add(tag.name);
+      }
+    }
+
+    // Untouched files that currently import a dirty file.
+    const filesImportingChanged = new Set<string>();
+    for (const file of dirtyFiles) {
+      if (!this.graph.hasNode(file)) continue;
+      this.graph.forEachInEdge(file, (_e: string, attrs: EdgeAttributes, source: string) => {
+        if (attrs.type === 'imports' && !dirtyFiles.has(source)) {
+          filesImportingChanged.add(source);
+        }
+      });
+    }
+
+    // Track untouched files that might newly import a newly added file.
+    const hasNewFiles = parsedChanged.some(p => !this.graph.hasNode(p.file));
+    const untouchedTagsToReresolve = new Map<string, Set<string>>();
+    const addUntouchedTagRefs = (tagId: string, refs: Iterable<string>) => {
+      let set = untouchedTagsToReresolve.get(tagId);
+      if (!set) untouchedTagsToReresolve.set(tagId, (set = new Set()));
+      for (const r of refs) set.add(r);
+    };
+
+    const refMatchesAffected = (ref: string): boolean => {
+      if (affectedSymbolNames.has(ref)) return true;
+      if (ref.startsWith('.') && affectedSymbolNames.has(ref.slice(1))) return true;
+      const dot = ref.indexOf('.');
+      if (dot > 0 && affectedSymbolNames.has(ref.slice(dot + 1))) return true;
+      return false;
+    };
+
+    const refFromCallTarget = (sourceFile: string | undefined, targetId: string): string | null => {
+      if (!this.graph.hasNode(targetId)) return null;
+      const targetAttrs = this.graph.getNodeAttributes(targetId) as NodeAttributes & { file?: string };
+      if (!targetAttrs.label) return null;
+      if (targetAttrs.kind === 'method') return `.${targetAttrs.label}`;
+      if (this.goModule && sourceFile?.endsWith('.go') && targetAttrs.file?.endsWith('.go')) {
+        const srcDir = path.posix.dirname(sourceFile.split(path.sep).join('/'));
+        const tgtDir = path.posix.dirname(targetAttrs.file.split(path.sep).join('/'));
+        if (srcDir !== tgtDir) {
+          for (const { imp, dir } of goLocalImports(this.goModule, this.goImports.get(sourceFile) ?? [])) {
+            if (dir === tgtDir) {
+              if (imp.alias === '.') return targetAttrs.label;
+              return `${imp.alias || goDefaultName(imp.source)}.${targetAttrs.label}`;
+            }
+          }
+        }
+      }
+      return targetAttrs.label;
+    };
+
+    // Identify untouched tags needing inbound call re-resolution.
+    this.graph.forEachNode((nodeId: string, attrs: NodeAttributes & { file?: string; references?: string[] }) => {
+      if (attrs.type !== 'tag' || !attrs.file || dirtyFiles.has(attrs.file)) return;
+      const retainedRefs = Array.isArray(attrs.references) ? attrs.references : [];
+      let affected = filesImportingChanged.has(attrs.file) || retainedRefs.some(refMatchesAffected);
+
+      const outgoingCallRefs: string[] = [];
+      this.graph.forEachOutEdge(nodeId, (_e: string, eAttrs: EdgeAttributes, _s: string, target: string) => {
+        if (eAttrs.type !== 'calls') return;
+        const targetFile = this.graph.hasNode(target)
+          ? (this.graph.getNodeAttributes(target) as NodeAttributes & { file?: string }).file
+          : undefined;
+        if (targetFile && dirtyFiles.has(targetFile)) affected = true;
+        const ref = refFromCallTarget(attrs.file, target);
+        if (ref) outgoingCallRefs.push(ref);
+      });
+
+      if (affected) {
+        addUntouchedTagRefs(nodeId, retainedRefs);
+        addUntouchedTagRefs(nodeId, outgoingCallRefs);
+      }
+    });
+
+    // Queue import specifiers for untouched files that import changed files or when new files appear.
+    if (filesImportingChanged.size > 0 || hasNewFiles) {
+      this.graph.forEachNode((nodeId: string, attrs: NodeAttributes & { imports?: Import[] }) => {
+        if (attrs.type !== 'file' || dirtyFiles.has(nodeId)) return;
+        if (!hasNewFiles && !filesImportingChanged.has(nodeId)) return;
+        if (Array.isArray(attrs.imports) && attrs.imports.length > 0) {
+          const specs = attrs.imports
+            .map(imp => imp?.source)
+            .filter((s): s is string => typeof s === 'string' && s.length > 0);
+          if (specs.length > 0) this.pendingImports.set(nodeId, specs);
+        }
+      });
+    }
+
+    // 1. Remove dirty file nodes, their defines-owned tag nodes, and all incident edges.
+    for (const file of dirtyFiles) {
+      if (!this.graph.hasNode(file)) continue;
+      const ownedTags: string[] = [];
+      this.graph.forEachOutEdge(file, (_e: string, attrs: EdgeAttributes, _s: string, target: string) => {
+        if (attrs.type === 'defines') ownedTags.push(target);
+      });
+      for (const tagId of ownedTags) {
+        if (this.graph.hasNode(tagId)) this.graph.dropNode(tagId);
+      }
+      this.graph.dropNode(file);
+    }
+
+    // Drop outgoing calls edges & stale references for untouched tags queued for re-resolution.
+    for (const [tagId, refs] of untouchedTagsToReresolve.entries()) {
+      if (!this.graph.hasNode(tagId)) continue;
+      const callEdges: string[] = [];
+      this.graph.forEachOutEdge(tagId, (edgeId: string, attrs: EdgeAttributes) => {
+        if (attrs.type === 'calls') callEdges.push(edgeId);
+      });
+      for (const edgeId of callEdges) this.graph.dropEdge(edgeId);
+      this.graph.removeNodeAttribute(tagId, 'references');
+      if (refs.size > 0) {
+        this.pendingReferences.set(tagId, { tagId, references: [...refs] });
+      }
+    }
+
+    // 2. Insert fresh file/tag/imports nodes and edges for changed files.
+    for (const p of parsedChanged) {
+      await this.addFile(p.file, p.tags, p.imports, p.records);
+    }
+
+    // 3. Re-resolve imports and outbound/inbound calls.
+    await this.buildImportEdges();
+    await this.buildReferenceEdges();
+
+    // 4. Re-run Ranker.
+    const ranker = new Ranker(this.graph);
+    const rankedNodes = ranker.rank(anchor);
+    return { graph: this.graph, rankedNodes };
   }
 
   /**
