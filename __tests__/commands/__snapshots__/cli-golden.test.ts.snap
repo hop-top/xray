@@ -15,6 +15,8 @@ ANALYZE:
   impact [symbol] [--flags]  Show transitive callers of a symbol, by area
   imports [paths] [--flags]  List every file's imports as the xray.imports/v1
                              JSON contract
+  handbook [path] [--flags]  Generate deterministic architectural handbook pages
+                             (.xray/handbook/)
   watch [paths] [--flags]    Watch workspace files and incrementally update
                              GraphCache
   explore [--flags]          Quickly find files by patterns, search code for
@@ -2494,6 +2496,8 @@ ANALYZE:
   impact [symbol] [--flags]  Show transitive callers of a symbol, by area
   imports [paths] [--flags]  List every file's imports as the xray.imports/v1
                              JSON contract
+  handbook [path] [--flags]  Generate deterministic architectural handbook pages
+                             (.xray/handbook/)
   watch [paths] [--flags]    Watch workspace files and incrementally update
                              GraphCache
   explore [--flags]          Quickly find files by patterns, search code for
@@ -5063,6 +5067,54 @@ exports[`cli golden: introspection describe 1`] = `
           "yaml"
         ]
       }
+    },
+    {
+      "name": "handbook",
+      "qualifiedName": "handbook",
+      "description": "Generate deterministic architectural handbook pages (.xray/handbook/)",
+      "hidden": false,
+      "arguments": [
+        {
+          "name": "path",
+          "required": false,
+          "variadic": false,
+          "description": "Project root directory (defaults to current working directory)"
+        }
+      ],
+      "options": [
+        {
+          "name": "--path",
+          "short": "-p",
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Project root directory"
+        },
+        {
+          "name": "--output",
+          "short": "-o",
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Output directory (defaults to .xray/handbook)"
+        },
+        {
+          "name": "--format",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Output format: text (default) or json"
+        }
+      ],
+      "subcommands": [],
+      "sideEffect": "write-local",
+      "idempotent": "yes",
+      "exitCodes": [
+        0,
+        1,
+        2
+      ]
     },
     {
       "name": "watch",

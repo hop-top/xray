@@ -191,7 +191,37 @@ export const handleExploreAction = async (
         continue;
       }
       const scanner = new FileScanner(p);
-      for (const f of scanner.scan()) scanned.push({ abs: path.join(p, f), rel: f.split(path.sep).join('/'), root: p });
+      for (const f of scanner.scan()) {
+        const rel = f.split(path.sep).join('/');
+        if (searching && rel.startsWith('.xray/handbook/') && rel.endsWith('.md')) {
+          scanned.push({
+            abs: path.join(p, f),
+            rel: `handbook/${rel.slice('.xray/handbook/'.length)}`,
+            root: p,
+          });
+        } else {
+          scanned.push({ abs: path.join(p, f), rel, root: p });
+        }
+      }
+      if (searching) {
+        const handbookDir = path.join(p, '.xray', 'handbook');
+        if (fs.existsSync(handbookDir)) {
+          try {
+            if (fs.statSync(handbookDir).isDirectory()) {
+              const existing = new Set(scanned.filter((e) => e.root === p).map((e) => e.rel));
+              for (const name of fs.readdirSync(handbookDir).sort()) {
+                if (!name.endsWith('.md')) continue;
+                const rel = `handbook/${name}`;
+                if (!existing.has(rel)) {
+                  scanned.push({ abs: path.join(handbookDir, name), rel, root: p });
+                }
+              }
+            }
+          } catch {
+            // ignore unreadable handbook directory
+          }
+        }
+      }
     }
     let entries = scanned;
 
