@@ -9,6 +9,8 @@ import { TrigramIndex, DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT } from '../lib/sea
 import { windowSlice } from '../lib/output-guardrails';
 import { assertPatternLengths, compileMatchers } from '../lib/path-match';
 import { resolvePath } from './common';
+import { assertContextExclusive, confineFor } from './generate';
+import { loadConfig, resolveContextRoots } from '../lib/config';
 import { UsageError } from '../lib/error/types';
 import type { Command } from 'commander';
 import { ExploreCommandOptions } from '../types/command-options';
@@ -118,6 +120,7 @@ export const handleExploreAction = async (
         `use --match <glob> to find files, --search <keyword> to search code, or --path <dir> to pick a root`
       );
     }
+    assertContextExclusive(options as any, routed ? [routed] : undefined);
     if (routed) options = { ...options, path: [routed, ...(options.path ?? [])] };
 
     // One mode per run; combining --search with --stats would drop one.
@@ -126,9 +129,18 @@ export const handleExploreAction = async (
     const searching = keywords.length > 0;
     if (searching && options.stats) throw new UsageError('--search and --stats are exclusive: pick one');
 
-  const paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()])
-      .map(resolvePath)
-      .filter(Boolean) as string[];
+    let paths: string[];
+    if (options.context) {
+      const config = loadConfig(options.config, undefined, {
+        resolvePaths: true,
+        confine: confineFor({ context: options.context }, false),
+      });
+      paths = resolveContextRoots(config, options.context);
+    } else {
+      paths = (options.path && options.path.length > 0 ? options.path : [process.cwd()])
+        .map(resolvePath)
+        .filter(Boolean) as string[];
+    }
 
     // Validate all paths exist
     for (const p of paths) {
