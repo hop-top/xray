@@ -1,5 +1,10 @@
 import type { Cfg, Dfg } from '../flow/types';
 
+export interface CallSite {
+  line: number;
+  col: number;
+}
+
 export interface Tag {
   file: string;
   name: string;
@@ -10,6 +15,7 @@ export interface Tag {
   signature?: string; // Optional signature for functions/methods
   doc?: string; // Optional docstring
   references?: string[]; // Function names called by this tag
+  callSites?: Record<string, CallSite[]>; // 0-based call-site positions keyed by reference name
   cfg?: Cfg; // Control flow graph (functions/methods, `--with cf`)
   dfg?: Dfg; // Data flow graph (functions/methods, `--with df`)
   source?: 'tree-sitter' | 'ctags' | 'regex';
