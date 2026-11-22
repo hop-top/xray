@@ -25,10 +25,10 @@ graph; each symbol once per session (state file
 The impact text comes from the graph (file paths, symbol names, kinds)
 and goes straight into the model's context, so the hooks only read a
 graph this user's `lib/save-graph.sh` wrote. A cloned repo that ships,
-or plants, a crafted `.xray/graph.json` is ignored. The impact hook is
+or plants, a crafted `.xray/graphs/graph.json` is ignored. The impact hook is
 silent unless:
 
-- the graph and its directory (`.xray/`) are not symlinks, and the graph
+- the graph and its directory (`.xray/`, `.xray/graphs/`) are not symlinks, and the graph
   resolves inside the project's git work tree (also for `$XRAY_GRAPH`);
 - neither the graph nor any other file in its directory is tracked by
   git (keep `.xray/` in `.gitignore`, never commit it);
@@ -47,7 +47,7 @@ silent.
 
 - `xray` on `PATH`, `jq`, `git`, `sha256sum` or `shasum`, `bash`;
   `timeout` (coreutils) optional.
-- A saved graph at `<project>/.xray/graph.json` (or `$XRAY_GRAPH`). The
+- A saved graph at `<project>/.xray/graphs/graph.json` (or `$XRAY_GRAPH`). The
   `xray-save-graph` handler (`xray-save-graph.sh`, `SessionStart`) writes
   it in the background and returns a one-line `[xray]` orientation as
   `context`; or run `hooks/harness/lib/save-graph.sh <project>` yourself

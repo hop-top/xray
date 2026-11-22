@@ -80,13 +80,16 @@ afterAll(() => {
   if (sandbox) fs.rmSync(sandbox, { recursive: true, force: true });
 });
 
-/** map / graph write their graph to .xray.json in the cwd, not to stdout. */
+/** map / graph write their graph under .xray/{maps,graphs}/ in the cwd, not to stdout. */
 function graphFile(): string {
-  try { return fs.readFileSync(path.join(proj, '.xray.json'), 'utf-8'); } catch { return ''; }
+  for (const rel of [path.join('.xray', 'maps', 'map.json'), path.join('.xray', 'graphs', 'graph.json')]) {
+    try { return fs.readFileSync(path.join(proj, rel), 'utf-8'); } catch { /* try next */ }
+  }
+  return '';
 }
 
 function run(args: string[]) {
-  fs.rmSync(path.join(proj, '.xray.json'), { force: true });
+  fs.rmSync(path.join(proj, '.xray'), { recursive: true, force: true });
   const t0 = Date.now();
   const r = spawnSync(process.execPath, [CLI, ...args], {
     cwd: proj, env, encoding: 'utf-8', timeout: TIGHT_MS, killSignal: 'SIGKILL', maxBuffer: 64 * 1024 * 1024,

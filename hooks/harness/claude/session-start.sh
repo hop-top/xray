@@ -6,7 +6,7 @@
 #
 # Event (stdin): {session_id, cwd, hook_event_name: "SessionStart", source}
 # Output: one line starting `[xray] `, or nothing. Returns at once; the
-# map runs detached. Graph: <cwd>/.xray/graph.json or $XRAY_GRAPH; add
+# map runs detached. Graph: <cwd>/.xray/graphs/graph.json or $XRAY_GRAPH; add
 # `.xray/` to your .gitignore. Silent outside a git work tree or without
 # xray on PATH. Exit 0. Config: README.md.
 

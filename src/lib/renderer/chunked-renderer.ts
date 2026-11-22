@@ -501,13 +501,18 @@ export class ChunkedRenderer {
     return renderedDirs.filter(d => this.findParentDirectory(d, renderedDirs, entryDir) === dir);
   }
 
+  /** Strip trailing `ext` only when `p` actually ends with it. */
+  private stripExt(p: string, ext: string): string {
+    return p.endsWith(ext) ? p.slice(0, -ext.length) : p;
+  }
+
   /**
    * Get chunk file path for a directory
    */
   private getChunkPath(outputBasePath: string, dir: string): string {
     const sanitized = dir === '.' ? 'root' : dir.replace(/\//g, '_');
     const ext = path.extname(outputBasePath) || '.md';
-    const base = outputBasePath.replace(ext, '');
+    const base = this.stripExt(outputBasePath, ext);
     return `${base}_${sanitized}${ext}`;
   }
 
@@ -685,7 +690,7 @@ export class ChunkedRenderer {
     const totalParts = bins.length;
     const partBase = communityId === CLUSTER_SENTINEL ? 'unclustered' : `community-${communityId}`;
     const ext = path.extname(outputBasePath) || '.md';
-    const base = outputBasePath.replace(ext, '');
+    const base = this.stripExt(outputBasePath, ext);
 
     const partInfo = bins.map((_, idx) => {
       const partNum = idx + 1;
@@ -766,7 +771,7 @@ export class ChunkedRenderer {
   private getCommunityChunkPath(outputBasePath: string, communityId: number): string {
     const key = communityId === CLUSTER_SENTINEL ? 'unclustered' : `community_${communityId}`;
     const ext = path.extname(outputBasePath) || '.md';
-    const base = outputBasePath.replace(ext, '');
+    const base = this.stripExt(outputBasePath, ext);
     return `${base}_${key}${ext}`;
   }
 
@@ -814,7 +819,7 @@ export class ChunkedRenderer {
     const insightBlock = this.renderInsights();
     const rootContent = insightBlock ? `${insightBlock}\n${rootBody}` : rootBody;
     const ext = path.extname(outputBasePath) || '.md';
-    const base = outputBasePath.replace(ext, '');
+    const base = this.stripExt(outputBasePath, ext);
     const rootChunk = `${base}_root${ext}`;
     chunks.set(rootChunk, rootContent);
 

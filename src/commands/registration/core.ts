@@ -62,8 +62,8 @@ const POSITIONAL_ROOTS = 'Root directories to analyze (same as --path; not combi
  */
 export function registerCoreCommands(program: Command): void {
   // Analysis commands
-  // Both write the analysis output (`.xray_*.md` chunks, or the file
-  // `-o` names) into the project; re-running rewrites the same files.
+  // Both write analysis output under `.xray/{maps,graphs}/` by default (or the
+  // file `-o` names); re-running rewrites the same files.
   declareEffect(addCommonOptions(program.command('map').argument('[paths...]', POSITIONAL_ROOTS))
     .option('--since <ref>', 'Focus ranking on files changed since <ref> (e.g. main, HEAD~1)')
     .option('--changed', 'Focus ranking on staged and unstaged working-tree changes vs HEAD')
@@ -78,6 +78,11 @@ export function registerCoreCommands(program: Command): void {
   if (withOption) {
     withOption.description =
       'Include feature: vars, incs, cost, docs, df, cf, churn, blame (repeatable); cf and df are on unless one is named, then only those [TypeScript, JavaScript, Python, Go]';
+  }
+  const outputOption = graphCmd.options.find(o => o.long === '--output');
+  if (outputOption) {
+    outputOption.description =
+      'Output file path [default: .xray/graphs/graph, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]';
   }
   declareEffect(graphCmd, 'write-local', 'conditional');
 

@@ -103,7 +103,7 @@ describe('commands see every file', () => {
   it('map --format json has a node per file', () => {
     const r = run(['map', '--format', 'json']);
     expect(r.status).toBe(0);
-    const graph = fs.readFileSync(path.join(proj, '.xray.json'), 'utf-8');
+    const graph = fs.readFileSync(path.join(proj, '.xray', 'maps', 'map.json'), 'utf-8');
     for (const [n, fn] of names) expect(graph).toContain(`${JSON.stringify(posixPath(n)).slice(1, -1)}::${fn}`);
   });
 

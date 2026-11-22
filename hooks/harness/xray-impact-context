@@ -29,7 +29,7 @@
 # from the output. See lib/graph-trust.sh.
 #
 # Environment:
-#   XRAY_GRAPH         saved graph (default .xray/graph.json, relative to
+#   XRAY_GRAPH         saved graph (default .xray/graphs/graph.json, relative to
 #                      the current directory), written by
 #                      lib/save-graph.sh (the session-start adapters run
 #                      it in the background). Add `.xray/` to your
@@ -47,7 +47,7 @@ here=$(cd "$(dirname "$0")" && pwd) || exit 0
 sym=${1-}
 [ -n "$sym" ] || exit 0
 
-graph=${XRAY_GRAPH:-.xray/graph.json}
+graph=${XRAY_GRAPH:-.xray/graphs/graph.json}
 [ -f "$graph" ] || exit 0
 command -v xray >/dev/null 2>&1 || exit 0
 command -v git >/dev/null 2>&1 || exit 0

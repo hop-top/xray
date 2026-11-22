@@ -12,7 +12,7 @@
 #
 # Silent for regexes, paths, `xray …` commands, other tools, no match,
 # zero callers, a symbol already reported this session, or no saved
-# graph (<cwd>/.xray/graph.json or $XRAY_GRAPH; see session-start.sh), or
+# graph (<cwd>/.xray/graphs/graph.json or $XRAY_GRAPH; see session-start.sh), or
 # one the core does not trust (committed, symlinked, outside the work
 # tree, or not saved by lib/save-graph.sh; see ../xray-impact-context).
 # Add `.xray/` to your .gitignore. Needs jq. Config: README.md.

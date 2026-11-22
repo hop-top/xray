@@ -252,10 +252,10 @@ d(`xray-impact-context (core)${skipNote}`, () => {
     expect([r.status, r.stdout, r.stderr]).toEqual([0, '', '']);
   });
 
-  test('default graph is .xray/graph.json under the cwd', () => {
-    fs.mkdirSync(path.join(tmp, '.xray'));
-    fs.copyFileSync(graph, path.join(tmp, '.xray', 'graph.json'));
-    trust(path.join(tmp, '.xray', 'graph.json'));
+  test('default graph is .xray/graphs/graph.json under the cwd', () => {
+    fs.mkdirSync(path.join(tmp, '.xray', 'graphs'), { recursive: true });
+    fs.copyFileSync(graph, path.join(tmp, '.xray', 'graphs', 'graph.json'));
+    trust(path.join(tmp, '.xray', 'graphs', 'graph.json'));
     const e = env();
     delete e.XRAY_GRAPH;
     expect(run(CORE, { args: ['RunHooks'], env: e }).stdout).toMatch(MARKER);
@@ -342,9 +342,9 @@ d(`claude/pretooluse-impact.sh${skipNote}`, () => {
   });
 
   test('graph resolved against the event cwd', () => {
-    fs.mkdirSync(path.join(tmp, '.xray'));
-    fs.copyFileSync(graph, path.join(tmp, '.xray', 'graph.json'));
-    trust(path.join(tmp, '.xray', 'graph.json'));
+    fs.mkdirSync(path.join(tmp, '.xray', 'graphs'), { recursive: true });
+    fs.copyFileSync(graph, path.join(tmp, '.xray', 'graphs', 'graph.json'));
+    trust(path.join(tmp, '.xray', 'graphs', 'graph.json'));
     const e = env();
     delete e.XRAY_GRAPH;
     const out = parse(run(CLAUDE_PRE, { input: claudeEvent('Grep', { pattern: 'RunHooks' }), env: e, cwd: state }));
@@ -487,11 +487,11 @@ d(`session start: background graph save${skipNote}`, () => {
     expect(ctx.stdout).toMatch(/^\[xray impact\] Bar \(graph saved 0m ago\)\n/);
   }, 90_000);
 
-  test('claude: default target is <cwd>/.xray/graph.json', async () => {
+  test('claude: default target is <cwd>/.xray/graphs/graph.json', async () => {
     const e = env();
     delete e.XRAY_GRAPH;
     expect(run(CLAUDE_START, { input: startEvent(project), env: e }).status).toBe(0);
-    const saved = path.join(project, '.xray', 'graph.json');
+    const saved = path.join(project, '.xray', 'graphs', 'graph.json');
     expect(await waitFor(saved)).toBe(true);
     expect(await waitFor(sidecarOf(saved))).toBe(true);
     // happy path: save-graph, then the core trusts what it wrote
@@ -501,7 +501,7 @@ d(`session start: background graph save${skipNote}`, () => {
     expect(fs.statSync(sidecarOf(saved)).mode & 0o777).toBe(0o600);
     expect(fs.readFileSync(sidecarOf(saved), 'utf8')).toBe(`${sha256(fs.readFileSync(saved))}\n`);
     // no temp file or lock left behind
-    expect(fs.readdirSync(path.join(project, '.xray')).filter(f => f.startsWith('.graph.saving') || f.endsWith('.lock'))).toEqual([]);
+    expect(fs.readdirSync(path.join(project, '.xray', 'graphs')).filter(f => f.startsWith('.graph.saving') || f.endsWith('.lock'))).toEqual([]);
   }, 90_000);
 
   test('gemini: SessionStart additionalContext JSON; graph lands', async () => {
@@ -556,17 +556,17 @@ d(`trust model: only graphs save-graph.sh wrote reach the model${skipNote}`, () 
   const core = (extra: Record<string, string> = {}, cwd = tmp) => run(CORE, { args: ['RunHooks'], env: env(extra), cwd });
   const noGraphEnv = () => { const e = env(); delete e.XRAY_GRAPH; return e; };
   const defaultGraph = () => {
-    fs.mkdirSync(path.join(tmp, '.xray'), { recursive: true });
-    const g = path.join(tmp, '.xray', 'graph.json');
+    fs.mkdirSync(path.join(tmp, '.xray', 'graphs'), { recursive: true });
+    const g = path.join(tmp, '.xray', 'graphs', 'graph.json');
     fs.copyFileSync(graph, g);
     trust(g);
     return g;
   };
 
-  test('committed .xray/graph.json: silent', () => {
+  test('committed .xray/graphs/graph.json: silent', () => {
     defaultGraph();
     expect(run(CORE, { args: ['RunHooks'], env: noGraphEnv() }).stdout).toMatch(MARKER);
-    git(tmp, 'add', '-f', '.xray/graph.json');
+    git(tmp, 'add', '-f', '.xray/graphs/graph.json');
     git(tmp, 'commit', '-qm', 'graph');
     silent(run(CORE, { args: ['RunHooks'], env: noGraphEnv() }));
   });
@@ -577,11 +577,11 @@ d(`trust model: only graphs save-graph.sh wrote reach the model${skipNote}`, () 
     silent(core());
   });
 
-  test('.xray/ holding any tracked file: silent', () => {
+  test('.xray/graphs/ holding any tracked file: silent', () => {
     defaultGraph();
     expect(run(CORE, { args: ['RunHooks'], env: noGraphEnv() }).stdout).toMatch(MARKER);
-    fs.writeFileSync(path.join(tmp, '.xray', 'notes.txt'), 'x');
-    git(tmp, 'add', '-f', '.xray/notes.txt');
+    fs.writeFileSync(path.join(tmp, '.xray', 'graphs', 'notes.txt'), 'x');
+    git(tmp, 'add', '-f', '.xray/graphs/notes.txt');
     silent(run(CORE, { args: ['RunHooks'], env: noGraphEnv() }));
   });
 
@@ -604,20 +604,20 @@ d(`trust model: only graphs save-graph.sh wrote reach the model${skipNote}`, () 
 
   test('symlinked .xray (even into the work tree): silent', () => {
     const real = path.join(tmp, 'real');
-    fs.mkdirSync(real);
-    fs.copyFileSync(graph, path.join(real, 'graph.json'));
+    fs.mkdirSync(path.join(real, 'graphs'), { recursive: true });
+    fs.copyFileSync(graph, path.join(real, 'graphs', 'graph.json'));
     fs.symlinkSync(real, path.join(tmp, '.xray'));
     // sidecar for the path the hook would compute if it ignored the link
-    trust(path.join(tmp, '.xray', 'graph.json'), path.join(fs.realpathSync(tmp), '.xray', 'graph.json'));
-    trust(path.join(real, 'graph.json'));
+    trust(path.join(tmp, '.xray', 'graphs', 'graph.json'), path.join(fs.realpathSync(tmp), '.xray', 'graphs', 'graph.json'));
+    trust(path.join(real, 'graphs', 'graph.json'));
     silent(run(CORE, { args: ['RunHooks'], env: noGraphEnv() }));
   });
 
   test('graph file that is a symlink (into the work tree): silent', () => {
-    fs.mkdirSync(path.join(tmp, '.xray'));
-    const link = path.join(tmp, '.xray', 'graph.json');
+    fs.mkdirSync(path.join(tmp, '.xray', 'graphs'), { recursive: true });
+    const link = path.join(tmp, '.xray', 'graphs', 'graph.json');
     fs.symlinkSync(graph, link);
-    trust(link, path.join(fs.realpathSync(path.join(tmp, '.xray')), 'graph.json'));
+    trust(link, path.join(fs.realpathSync(path.join(tmp, '.xray', 'graphs')), 'graph.json'));
     silent(run(CORE, { args: ['RunHooks'], env: noGraphEnv() }));
   });
 
@@ -722,24 +722,24 @@ d(`save-graph.sh refuses unsafe targets${skipNote}`, () => {
   }, 30_000);
 
   test('graph path that is a symlink: target untouched', async () => {
-    fs.mkdirSync(path.join(project, '.xray'));
+    fs.mkdirSync(path.join(project, '.xray', 'graphs'), { recursive: true });
     const target = path.join(out, 'victim');
     fs.writeFileSync(target, 'keep');
-    fs.symlinkSync(target, path.join(project, '.xray', 'graph.json'));
+    fs.symlinkSync(target, path.join(project, '.xray', 'graphs', 'graph.json'));
     expect(save()).toMatchObject({ status: 0, stdout: '' });
     await settle();
     expect(fs.readFileSync(target, 'utf8')).toBe('keep');
-    expect(fs.lstatSync(path.join(project, '.xray', 'graph.json')).isSymbolicLink()).toBe(true);
+    expect(fs.lstatSync(path.join(project, '.xray', 'graphs', 'graph.json')).isSymbolicLink()).toBe(true);
     expect(sidecars()).toEqual([]);
   }, 30_000);
 
   test('lock path that is a symlink: writes nothing', async () => {
-    fs.mkdirSync(path.join(project, '.xray'));
-    fs.symlinkSync(out, path.join(project, '.xray', 'graph.json.lock'));
+    fs.mkdirSync(path.join(project, '.xray', 'graphs'), { recursive: true });
+    fs.symlinkSync(out, path.join(project, '.xray', 'graphs', 'graph.json.lock'));
     expect(save()).toMatchObject({ status: 0, stdout: '' });
     await settle();
     expect(fs.readdirSync(out)).toEqual([]);
-    expect(fs.readdirSync(path.join(project, '.xray'))).toEqual(['graph.json.lock']);
+    expect(fs.readdirSync(path.join(project, '.xray', 'graphs'))).toEqual(['graph.json.lock']);
   }, 30_000);
 
   test('XRAY_GRAPH outside the work tree: writes nothing', async () => {

@@ -8,7 +8,7 @@
 #                          "additionalContext":"[xray] …"}}
 # (verified against the hooks reference shipped with Gemini CLI 0.64.0).
 # Event (stdin): {session_id, cwd, hook_event_name: "SessionStart", source}
-# Returns at once; the map runs detached. Graph: <cwd>/.xray/graph.json
+# Returns at once; the map runs detached. Graph: <cwd>/.xray/graphs/graph.json
 # or $XRAY_GRAPH; add `.xray/` to your .gitignore. Silent outside a git
 # work tree or without xray/jq on PATH. stderr kept empty (Gemini parses
 # it when stdout is empty). Exit 0. Config: README.md.

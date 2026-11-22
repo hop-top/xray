@@ -235,16 +235,16 @@ xray clear-cache --confirm=yes && xray map
 
 ```bash
 # Find specific functions
-xray map --no-chunk && grep "function" .xray.txt
+xray map --no-chunk && grep "function" .xray/maps/map.txt
 
 # Find imports of a library
-xray map --with incs --no-chunk && grep axios .xray.txt
+xray map --with incs --no-chunk && grep axios .xray/maps/map.txt
 
 # Count components
 xray react components | wc -l
 
 # Find error handlers
-xray map --catch "*Error" --no-chunk && head -20 .xray.txt
+xray map --catch "*Error" --no-chunk && head -20 .xray/maps/map.txt
 
 # Find who calls a function
 xray impact myFunction --depth 1
@@ -300,12 +300,12 @@ See [Configuration Guide](configuration.md) for more.
 ## File Naming
 
 Default output files:
-- `.xray_root.md` - Root level
-- `.xray_src.md` - src/ directory
-- `.xray_src_lib.md` - src/lib/ directory
+- `.xray/maps/map_root.md` - Root level
+- `.xray/maps/map_src.md` - src/ directory
+- `.xray/maps/map_src_lib.md` - src/lib/ directory
 - etc.
 
-Single file (`--no-chunk`): `.xray.txt`; `--format json|xml` write `.xray.json` / `.xray.xml`.
+Single file (`--no-chunk`): `.xray/maps/map.txt`; `--format json|xml|mermaid` write `.xray/maps/map.json` / `.xray/maps/map.xml` / `.xray/maps/map.mmd`. (`xray graph` writes under `.xray/graphs/graph*`.)
 
 Custom naming:
 ```bash
