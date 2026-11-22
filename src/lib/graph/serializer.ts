@@ -43,6 +43,7 @@ export class GraphSerializer {
       if (attrs.signature !== undefined) node.signature = attrs.signature;
       if (attrs.doc !== undefined) node.doc = attrs.doc;
       if (attrs.rank !== undefined) node.rank = attrs.rank;
+      if (attrs.community !== undefined) node.community = attrs.community;
       if (attrs.imports !== undefined) node.imports = attrs.imports;
       if (attrs.cfg !== undefined) node.cfg = attrs.cfg;
       if (attrs.dfg !== undefined) node.dfg = attrs.dfg;
@@ -106,6 +107,7 @@ export class GraphSerializer {
       if (node.signature !== undefined) attrs.signature = node.signature;
       if (node.doc !== undefined) attrs.doc = node.doc;
       if (node.rank !== undefined) attrs.rank = node.rank;
+      if (node.community !== undefined) attrs.community = node.community;
       if (node.imports !== undefined) attrs.imports = node.imports;
       if (node.cfg !== undefined) attrs.cfg = node.cfg;
       if (node.dfg !== undefined) attrs.dfg = node.dfg;

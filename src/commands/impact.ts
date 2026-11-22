@@ -25,6 +25,7 @@ export interface ImpactCommandOptions {
   path?: string[];
   lens?: string;
   scope?: string;
+  context?: string;
   lang?: string[];
   config?: string;
   format?: string;
