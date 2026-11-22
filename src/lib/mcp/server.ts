@@ -36,6 +36,7 @@ import { canRunInProcess, runInProcess } from './inprocess';
 import { serveStdio } from './stdio';
 import { WarmWorkspaceManager } from './workspace';
 import { listHandbookPages, readHandbookPage } from '../handbook/generator';
+import { loadGatewayUpstreams, McpGateway } from '../server/gateway';
 
 // tsconfig's legacy `node` resolution ignores the kit exports map: types
 // from the dist path, runtime through the exported `./mcp` subpath.
@@ -67,6 +68,10 @@ export interface XrayBridgeOptions {
   allowedRoots?: ReadonlySet<string>;
   /** Non-CLI tools merged into `leaves()`/`invoke()` after the built-ins. */
   directTools?: ReadonlyMap<string, DirectToolDef>;
+  /** Optional MCP gateway proxy for upstream tools. */
+  gateway?: McpGateway;
+  /** Disable remote HTTP gateway upstreams. */
+  offline?: boolean;
 }
 
 /** One tool call as the bridge sees it; `meta` is optional for programmatic calls. */
@@ -170,6 +175,9 @@ export function createXrayBridge(program: Command, o: XrayBridgeOptions): XrayBr
   const directTools = new Map<string, DirectToolDef>(createDefaultDirectTools(o.serverRoot));
   if (o.workspace) {
     for (const [k, v] of buildPrimitiveDirectTools(o.workspace)) directTools.set(k, v);
+  }
+  if (o.gateway) {
+    for (const [k, v] of o.gateway.getDirectTools()) directTools.set(k, v);
   }
   if (o.directTools) {
     for (const [k, v] of o.directTools) directTools.set(k, v);
@@ -362,7 +370,18 @@ export async function startMcpServer(program: Command, o: StartOptions): Promise
 
   const workspace = new WarmWorkspaceManager(o.serverRoot, o.serverConfig);
   try {
-    const handler = createXrayMcpHandler(program, { ...o, workspace });
+    let gateway = o.gateway;
+    if (!gateway) {
+      const upstreams = loadGatewayUpstreams({
+        serverRoot: o.serverRoot,
+        serverConfig: o.serverConfig,
+      });
+      if (Object.keys(upstreams).length > 0) {
+        gateway = new McpGateway({ upstreams, offline: o.offline });
+        await gateway.discoverTools();
+      }
+    }
+    const handler = createXrayMcpHandler(program, { ...o, workspace, gateway });
     await serveStdio(handler, {
       input: process.stdin,
       write: (line) => {
