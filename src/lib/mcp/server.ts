@@ -25,6 +25,7 @@ import {
 import { canRunInProcess, runInProcess } from './inprocess';
 import { serveStdio } from './stdio';
 import { WarmWorkspaceManager } from './workspace';
+import { listHandbookPages, readHandbookPage } from '../handbook/generator';
 
 // tsconfig's legacy `node` resolution ignores the kit exports map: types
 // from the dist path, runtime through the exported `./mcp` subpath.
@@ -96,6 +97,7 @@ export const MCP_INSTRUCTIONS = [
   '- map: the full code map or serialized graph (format json is large; reach for query/impact first).',
   '- graph: control/data-flow graphs for a symbol or directory.',
   '- imports: per-file import records for dependency questions.',
+  '- handbook: list or read generated structural handbook pages ({ action: "list" | "read", slug? }).',
   '- strategy_*: framework-aware extras when one applies.',
   'Use read_file (or your editor) to open file contents; these tools return analysis, not file text.',
   'Paths resolve against the project root; pass root to analyze a subdirectory. Relative paths inside the project only.',
@@ -111,6 +113,51 @@ function directLeaves(direct: ReadonlyMap<string, DirectToolDef> | undefined): L
   }));
 }
 
+function createDefaultDirectTools(serverRoot: string): Map<string, DirectToolDef> {
+  const handbookDir = path.join(serverRoot, '.xray', 'handbook');
+  const map = new Map<string, DirectToolDef>();
+  map.set('handbook', {
+    name: 'handbook',
+    description: 'List or read generated structural handbook pages (.xray/handbook/*.md).',
+    properties: {
+      action: {
+        type: 'string',
+        description: 'Action to perform: "list" available pages or "read" a page by slug.',
+        enum: ['list', 'read'],
+      },
+      slug: {
+        type: 'string',
+        description: 'Subsystem slug (or "README" for the overview) when action is "read".',
+      },
+    },
+    required: ['action'],
+    invoke: (args) => {
+      const action = typeof args?.action === 'string' ? args.action : '';
+      if (action === 'list') {
+        const pages = listHandbookPages(handbookDir);
+        return { stdout: JSON.stringify({ pages }, null, 2), stderr: '', exitCode: 0 };
+      }
+      if (action === 'read') {
+        const slug = typeof args?.slug === 'string' ? args.slug : '';
+        if (!slug.trim()) {
+          return { stdout: '', stderr: 'slug is required when action is "read"', exitCode: 2 };
+        }
+        try {
+          const content = readHandbookPage(handbookDir, slug);
+          if (content === null) {
+            return { stdout: '', stderr: `Handbook page not found: ${slug}`, exitCode: 1 };
+          }
+          return { stdout: content, stderr: '', exitCode: 0 };
+        } catch (err: any) {
+          return { stdout: '', stderr: err?.message ?? 'Invalid handbook slug', exitCode: 2 };
+        }
+      }
+      return { stdout: '', stderr: 'action must be "list" or "read"', exitCode: 2 };
+    },
+  });
+  return map;
+}
+
 /**
  * McpBridge over the xray tree: kit's commanderBridge for enumeration,
  * schema and the policy gate, wrapped to expose only read-only tools
@@ -121,6 +168,10 @@ export function createXrayBridge(program: Command, o: XrayBridgeOptions): XrayBr
   const kit = kitMcp();
   const pending = new WeakMap<Invocation, ToolDef>();
   const allowedRoots = o.workspace?.getAllowedRoots() ?? o.allowedRoots;
+  const directTools = new Map<string, DirectToolDef>(createDefaultDirectTools(o.serverRoot));
+  if (o.directTools) {
+    for (const [k, v] of o.directTools) directTools.set(k, v);
+  }
 
   const inner = kit.commanderBridge(program, {
     enabled: (leaf) => (isExposedPath(program, leaf.path) ? undefined : { mcp: false }),
@@ -151,10 +202,10 @@ export function createXrayBridge(program: Command, o: XrayBridgeOptions): XrayBr
   };
 
   return {
-    leaves: () => [...tools().map((t) => t.leaf), ...directLeaves(o.directTools)],
+    leaves: () => [...tools().map((t) => t.leaf), ...directLeaves(directTools)],
     invoke: async (inv) => {
       const name = inv.path.length === 1 ? inv.path[0] : '';
-      const direct = o.directTools?.get(name);
+      const direct = directTools.get(name);
       if (direct) {
         return direct.invoke(inv.flags as Record<string, unknown> | undefined);
       }

@@ -394,6 +394,25 @@ export class TrigramIndex {
       return { abs: e.abs, rel: normalizeRel(e.rel) };
     });
 
+    const seenRels = new Set(normalized.map((e) => e.rel));
+    const handbookDir = path.join(resolvedRoot, '.xray', 'handbook');
+    if (fs.existsSync(handbookDir)) {
+      try {
+        if (fs.statSync(handbookDir).isDirectory()) {
+          for (const name of fs.readdirSync(handbookDir).sort()) {
+            if (!name.endsWith('.md')) continue;
+            const rel = `handbook/${name}`;
+            if (!seenRels.has(rel)) {
+              normalized.push({ abs: path.join(handbookDir, name), rel });
+              seenRels.add(rel);
+            }
+          }
+        }
+      } catch {
+        // ignore unreadable handbook dir
+      }
+    }
+
     const existingRows = this.db
       .prepare('SELECT rel_path, mtime_ms, size, skipped FROM files_meta')
       .all() as FileMetaRow[];
@@ -533,7 +552,9 @@ export class TrigramIndex {
     const allMatches: TrigramSearchMatch[] = [];
 
     for (const rel of candidates) {
-      const abs = path.resolve(this.root, rel);
+      const abs = rel.startsWith('handbook/')
+        ? path.resolve(this.root, '.xray', rel)
+        : path.resolve(this.root, rel);
       let content: string;
       try {
         content = readTextSafe(this.root, abs);
