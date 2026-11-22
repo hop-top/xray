@@ -17,6 +17,10 @@ const HINT = 'without installed grammars';
 let repo: string;
 let managed: string;
 let out: string;
+let cacheHome: string;
+
+/** The graph cache serves a warm project without re-parsing: notices are parse-time. */
+const cold = () => fs.rmSync(path.join(cacheHome, 'xray'), { recursive: true, force: true });
 
 function run(args: string[]) {
   return spawnSync(process.execPath, [BIN, ...args], {
@@ -27,6 +31,7 @@ function run(args: string[]) {
       XRAY_NO_TELEMETRY: '1',
       XRAY_LANG_BLOCK: BLOCK,
       XRAY_LANG_DIR: managed,
+      XDG_CACHE_HOME: cacheHome,
       FORCE_COLOR: '0',
     },
     timeout: 90_000,
@@ -39,6 +44,7 @@ describe('--format', () => {
   beforeAll(() => {
     repo = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-fmt-'));
     managed = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-fmt-lang-'));
+    cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-fmt-cache-'));
     for (const f of fs.readdirSync(FIXTURE)) fs.copyFileSync(path.join(FIXTURE, f), path.join(repo, f));
     execFileSync('git', ['init', '-q'], { cwd: repo, stdio: 'pipe' });
   });
@@ -47,6 +53,7 @@ describe('--format', () => {
   afterAll(() => {
     fs.rmSync(repo, { recursive: true, force: true });
     fs.rmSync(managed, { recursive: true, force: true });
+    fs.rmSync(cacheHome, { recursive: true, force: true });
   });
 
   const args = (cmd: string, ...extra: string[]) => [cmd, '-p', repo, '--skip-detect', '--no-chunk', '-o', out, ...extra];
@@ -125,6 +132,8 @@ describe('--format', () => {
   });
 
   describe('INFO hint classification keys off the resolved format', () => {
+    // The hint is emitted while parsing: a warm graph cache would hide it.
+    beforeEach(cold);
     test('--format json: hint hidden (machine)', () => {
       const r = run(args('map', '--format', 'json'));
       expect(r.stderr).not.toContain(HINT);

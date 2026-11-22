@@ -268,12 +268,12 @@ describe('buildShareSummary', () => {
     const rankedNodes: RankedNode[] = [
       {
         id: 'src/index.ts',
-        score: 1,
+        rank: 1,
         attributes: { type: 'file', label: 'index.ts' },
       },
       {
         id: 'src/index.ts::main',
-        score: 0.9,
+        rank: 0.9,
         attributes: {
           type: 'tag',
           label: 'main',

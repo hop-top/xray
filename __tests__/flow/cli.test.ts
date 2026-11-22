@@ -198,22 +198,33 @@ describe('map / graph flow flags through the built CLI', () => {
   });
 
   describe('languages without flow support', () => {
+    /** A cold cache: an earlier test in this file may have warmed this project. */
+    const clearCache = () => fs.rmSync(path.join(home, 'cache', 'xray'), { recursive: true, force: true });
+
     it('one stderr notice, run succeeds, no graph emitted for them', () => {
+      clearCache();
       const { r, g } = json(['graph']);
       expect(r.status).toBe(0);
       const notices = r.stderr.split('\n').filter(l => l.includes('no flow graphs'));
       expect(notices).toHaveLength(1);
       expect(notices[0]).toContain('rust (1 file)');
-      expect(notices[0]).toContain('Supported: typescript, javascript, python');
+      expect(notices[0]).toContain('Supported: typescript, javascript, python, go');
       const rs = g.nodes.find((n: any) => n.id === 'b.rs::rs_fn');
       expect(rs).toBeDefined();
       expect('cfg' in rs).toBe(false);
       expect('dfg' in rs).toBe(false);
     });
 
-    it('stays quiet when flow is off, and on a warm cache it still notices', () => {
+    it('stays quiet when flow is off, replays a warm graph silently, and notices a re-parsed rust file', () => {
+      clearCache();
       expect(run(['map', '--format', 'json', '-o', path.join(proj, 'q.json')]).stderr).not.toContain('no flow graphs');
-      json(['graph']);
+      expect(json(['graph']).r.stderr).toContain('no flow graphs');
+      // Unchanged tree: the run is served from the cached graph, so nothing is re-parsed and no notice repeats.
+      expect(json(['graph']).r.stderr).not.toContain('no flow graphs');
+      // Touching the rust file makes the incremental patch re-parse it: the notice is back.
+      const rs = path.join(proj, 'b.rs');
+      const later = new Date(Date.now() + 2000);
+      fs.utimesSync(rs, later, later);
       expect(json(['graph']).r.stderr).toContain('no flow graphs');
     });
   });

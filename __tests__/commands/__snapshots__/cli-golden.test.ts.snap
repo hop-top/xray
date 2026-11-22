@@ -12,9 +12,11 @@ ANALYZE:
   graph [paths] [--flags]    Generate control flow (CFG) and data flow (DFG)
                              graphs
   query [query] [--flags]    Query call graph using function-based syntax
-  impact <symbol> [--flags]  Show transitive callers of a symbol, by area
+  impact [symbol] [--flags]  Show transitive callers of a symbol, by area
   imports [paths] [--flags]  List every file's imports as the xray.imports/v1
                              JSON contract
+  watch [paths] [--flags]    Watch workspace files and incrementally update
+                             GraphCache
   explore [--flags]          Quickly find files by patterns, search code for
                              keywords, or explore codebase [default command]
 
@@ -838,12 +840,20 @@ Quickly find files by patterns, search code for keywords, or explore codebase [d
 FLAGS:
   -p, --path <path>       Root directory to explore (repeatable) [default:
                           current directory] (default: [])
+  --context <name>        Use named context (multi-root glob) from config file
   -m, --match <pattern>   Find files matching pattern (e.g., "*.ts",
                           "**/*test*"); with --search or --stats, restricts them
                           to these files (repeatable) (default: [])
   -s, --search <keyword>  Search for keyword in code (repeatable) (default: [])
+  --regex                 Treat --search patterns as regular expressions
+  --case-sensitive        Make --search matching case-sensitive
+  --offset <n>            Skip first N --search matches
+  --limit <n>             Maximum --search matches to return (default: 100, max:
+                          500)
   -t, --type <ext>        Filter by file extension (e.g., ts, js, py)
                           (repeatable) (default: [])
+  --filter <expr>         Filter results using boolean DSL (e.g.,
+                          "lang:typescript -file:test")
   --stats                 Show codebase statistics
   --list-strategies       List all available strategies
   --format <fmt>          Output format: text, json, yaml, table, csv (default:
@@ -1084,9 +1094,9 @@ FLAGS:
                                       <out>.nodes.csv and <out>.edges.csv]
   -l, --limit <number>                Token limit per chunk [default: 4096]
   -w, --with <feature>                Include feature: vars, incs, cost, docs,
-                                      df, cf (repeatable); cf and df are on
-                                      unless one is named, then only those
-                                      [TypeScript, JavaScript, Python, Go]
+                                      df, cf, churn, blame (repeatable); cf and
+                                      df are on unless one is named, then only
+                                      those [TypeScript, JavaScript, Python, Go]
                                       (default: [])
   -a, --anchor <path>                 Focus on specific file (Personalized
                                       PageRank)
@@ -1114,6 +1124,8 @@ FLAGS:
                                       overlay)
   --scope <name>                      Use specific scope from config file
   --all-scopes                        Run all scopes defined in config file
+  --context <name>                    Use named context (multi-root glob) from
+                                      config file
   --detect                            Enable strategy detection (auto-detects
                                       when no path is provided)
   --lang <list>                       Languages to parse, comma-separated names
@@ -1122,6 +1134,8 @@ FLAGS:
                                       (repeatable) (default: [])
   --skip-detect                       Skip strategy detection and
                                       auto-configuration
+  --no-fallback-ctags                 Disable Universal Ctags / regex fallback
+                                      for unsupported languages
   --share [path]                      Generate a shareable summary markdown
                                       (optional path override)
   --preset <spec>                     Apply a plugin preset (built-in name,
@@ -1519,8 +1533,9 @@ FLAGS:
                                       <out>.nodes.csv and <out>.edges.csv]
   -l, --limit <number>                Token limit per chunk [default: 4096]
   -w, --with <feature>                Include feature: vars, incs, cost, docs,
-                                      df, cf (repeatable) [df, cf: TypeScript,
-                                      JavaScript, Python, Go] (default: [])
+                                      df, cf, churn, blame (repeatable) [df, cf:
+                                      TypeScript, JavaScript, Python, Go]
+                                      (default: [])
   -a, --anchor <path>                 Focus on specific file (Personalized
                                       PageRank)
   -d, --depth <number>                Maximum depth of tree to render
@@ -1547,6 +1562,8 @@ FLAGS:
                                       overlay)
   --scope <name>                      Use specific scope from config file
   --all-scopes                        Run all scopes defined in config file
+  --context <name>                    Use named context (multi-root glob) from
+                                      config file
   --detect                            Enable strategy detection (auto-detects
                                       when no path is provided)
   --lang <list>                       Languages to parse, comma-separated names
@@ -1555,6 +1572,8 @@ FLAGS:
                                       (repeatable) (default: [])
   --skip-detect                       Skip strategy detection and
                                       auto-configuration
+  --no-fallback-ctags                 Disable Universal Ctags / regex fallback
+                                      for unsupported languages
   --share [path]                      Generate a shareable summary markdown
                                       (optional path override)
   --preset <spec>                     Apply a plugin preset (built-in name,
@@ -1573,6 +1592,10 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --since <ref>                       Focus ranking on files changed since <ref>
+                                      (e.g. main, HEAD~1)
+  --changed                           Focus ranking on staged and unstaged
+                                      working-tree changes vs HEAD
   -h, --help                          Display help
 
 
@@ -1944,10 +1967,13 @@ FLAGS:
                      paths or current directory] (default: [])
   --lens <name>      Use named lens (config-file option overlay)
   --scope <name>     Use specific scope from config file
+  --context <name>   Use named context (multi-root glob) from config file
   --lang <list>      Languages to parse, comma-separated names or bundles
                      (repeatable) (default: [])
   --format <fmt>     Output format: table, json, yaml, csv, tree (default:
                      table) (default: "table")
+  --filter <expr>    Filter query results using boolean DSL (e.g.,
+                     "kind:function -file:test")
   --list-adapters    List available query adapters
   -h, --help         Display help
 
@@ -2389,12 +2415,20 @@ Quickly find files by patterns, search code for keywords, or explore codebase [d
 FLAGS:
   -p, --path <path>       Root directory to explore (repeatable) [default:
                           current directory] (default: [])
+  --context <name>        Use named context (multi-root glob) from config file
   -m, --match <pattern>   Find files matching pattern (e.g., "*.ts",
                           "**/*test*"); with --search or --stats, restricts them
                           to these files (repeatable) (default: [])
   -s, --search <keyword>  Search for keyword in code (repeatable) (default: [])
+  --regex                 Treat --search patterns as regular expressions
+  --case-sensitive        Make --search matching case-sensitive
+  --offset <n>            Skip first N --search matches
+  --limit <n>             Maximum --search matches to return (default: 100, max:
+                          500)
   -t, --type <ext>        Filter by file extension (e.g., ts, js, py)
                           (repeatable) (default: [])
+  --filter <expr>         Filter results using boolean DSL (e.g.,
+                          "lang:typescript -file:test")
   --stats                 Show codebase statistics
   --list-strategies       List all available strategies
   --format <fmt>          Output format: text, json, yaml, table, csv (default:
@@ -2456,9 +2490,11 @@ ANALYZE:
   graph [paths] [--flags]    Generate control flow (CFG) and data flow (DFG)
                              graphs
   query [query] [--flags]    Query call graph using function-based syntax
-  impact <symbol> [--flags]  Show transitive callers of a symbol, by area
+  impact [symbol] [--flags]  Show transitive callers of a symbol, by area
   imports [paths] [--flags]  List every file's imports as the xray.imports/v1
                              JSON contract
+  watch [paths] [--flags]    Watch workspace files and incrementally update
+                             GraphCache
   explore [--flags]          Quickly find files by patterns, search code for
                              keywords, or explore codebase [default command]
 
@@ -2566,8 +2602,9 @@ FLAGS:
                                       <out>.nodes.csv and <out>.edges.csv]
   -l, --limit <number>                Token limit per chunk [default: 4096]
   -w, --with <feature>                Include feature: vars, incs, cost, docs,
-                                      df, cf (repeatable) [df, cf: TypeScript,
-                                      JavaScript, Python, Go] (default: [])
+                                      df, cf, churn, blame (repeatable) [df, cf:
+                                      TypeScript, JavaScript, Python, Go]
+                                      (default: [])
   -a, --anchor <path>                 Focus on specific file (Personalized
                                       PageRank)
   -d, --depth <number>                Maximum depth of tree to render
@@ -2594,6 +2631,8 @@ FLAGS:
                                       overlay)
   --scope <name>                      Use specific scope from config file
   --all-scopes                        Run all scopes defined in config file
+  --context <name>                    Use named context (multi-root glob) from
+                                      config file
   --detect                            Enable strategy detection (auto-detects
                                       when no path is provided)
   --lang <list>                       Languages to parse, comma-separated names
@@ -2602,6 +2641,8 @@ FLAGS:
                                       (repeatable) (default: [])
   --skip-detect                       Skip strategy detection and
                                       auto-configuration
+  --no-fallback-ctags                 Disable Universal Ctags / regex fallback
+                                      for unsupported languages
   --share [path]                      Generate a shareable summary markdown
                                       (optional path override)
   --preset <spec>                     Apply a plugin preset (built-in name,
@@ -2620,6 +2661,10 @@ FLAGS:
                                       (repeatable) (default: [])
   --disable-surface <name:surface>    Disable an extension surface at runtime
                                       (repeatable) (default: [])
+  --since <ref>                       Focus ranking on files changed since <ref>
+                                      (e.g. main, HEAD~1)
+  --changed                           Focus ranking on staged and unstaged
+                                      working-tree changes vs HEAD
   -h, --help                          Display help
 
 "
@@ -4058,7 +4103,7 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": [],
-          "description": "Include feature: vars, incs, cost, docs, df, cf (repeatable) [df, cf: TypeScript, JavaScript, Python, Go]"
+          "description": "Include feature: vars, incs, cost, docs, df, cf, churn, blame (repeatable) [df, cf: TypeScript, JavaScript, Python, Go]"
         },
         {
           "name": "--anchor",
@@ -4181,6 +4226,14 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Run all scopes defined in config file"
         },
         {
+          "name": "--context",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use named context (multi-root glob) from config file"
+        },
+        {
           "name": "--detect",
           "short": null,
           "type": "boolean",
@@ -4203,6 +4256,14 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": null,
           "description": "Skip strategy detection and auto-configuration"
+        },
+        {
+          "name": "--no-fallback-ctags",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Disable Universal Ctags / regex fallback for unsupported languages"
         },
         {
           "name": "--share",
@@ -4267,6 +4328,22 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": [],
           "description": "Disable an extension surface at runtime (repeatable)"
+        },
+        {
+          "name": "--since",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Focus ranking on files changed since <ref> (e.g. main, HEAD~1)"
+        },
+        {
+          "name": "--changed",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Focus ranking on staged and unstaged working-tree changes vs HEAD"
         }
       ],
       "subcommands": [],
@@ -4323,7 +4400,7 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": [],
-          "description": "Include feature: vars, incs, cost, docs, df, cf (repeatable); cf and df are on unless one is named, then only those [TypeScript, JavaScript, Python, Go]"
+          "description": "Include feature: vars, incs, cost, docs, df, cf, churn, blame (repeatable); cf and df are on unless one is named, then only those [TypeScript, JavaScript, Python, Go]"
         },
         {
           "name": "--anchor",
@@ -4446,6 +4523,14 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Run all scopes defined in config file"
         },
         {
+          "name": "--context",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use named context (multi-root glob) from config file"
+        },
+        {
           "name": "--detect",
           "short": null,
           "type": "boolean",
@@ -4468,6 +4553,14 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": null,
           "description": "Skip strategy detection and auto-configuration"
+        },
+        {
+          "name": "--no-fallback-ctags",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Disable Universal Ctags / regex fallback for unsupported languages"
         },
         {
           "name": "--share",
@@ -4591,6 +4684,14 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Use specific scope from config file"
         },
         {
+          "name": "--context",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use named context (multi-root glob) from config file"
+        },
+        {
           "name": "--lang",
           "short": null,
           "type": "string",
@@ -4655,6 +4756,14 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Output format: table, json, yaml, csv, tree (default: table)"
         },
         {
+          "name": "--filter",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Filter query results using boolean DSL (e.g., \\"kind:function -file:test\\")"
+        },
+        {
           "name": "--list-adapters",
           "short": null,
           "type": "boolean",
@@ -4681,12 +4790,28 @@ exports[`cli golden: introspection describe 1`] = `
       "arguments": [
         {
           "name": "symbol",
-          "required": true,
+          "required": false,
           "variadic": false,
           "description": "Symbol name or glob (e.g. \\"createSession\\", \\"New*\\")"
         }
       ],
       "options": [
+        {
+          "name": "--since",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Impact of symbols changed since <ref> (e.g. main, HEAD~1)"
+        },
+        {
+          "name": "--changed",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Impact of staged and unstaged working-tree changes vs HEAD"
+        },
         {
           "name": "--depth",
           "short": null,
@@ -4734,6 +4859,14 @@ exports[`cli golden: introspection describe 1`] = `
           "required": false,
           "default": null,
           "description": "Use specific scope from config file"
+        },
+        {
+          "name": "--context",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use named context (multi-root glob) from config file"
         },
         {
           "name": "--lang",
@@ -4930,6 +5063,71 @@ exports[`cli golden: introspection describe 1`] = `
           "yaml"
         ]
       }
+    },
+    {
+      "name": "watch",
+      "qualifiedName": "watch",
+      "description": "Watch workspace files and incrementally update GraphCache",
+      "hidden": false,
+      "arguments": [
+        {
+          "name": "paths",
+          "required": false,
+          "variadic": true,
+          "description": "Root directories to watch (default: current directory)"
+        }
+      ],
+      "options": [
+        {
+          "name": "--debounce",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": "150",
+          "description": "Debounce interval in milliseconds"
+        },
+        {
+          "name": "--graph-out",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Atomically write serialized JSON graph to <path> on startup and after each change"
+        },
+        {
+          "name": "--once",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Warm GraphCache (and write --graph-out if set) once and exit"
+        },
+        {
+          "name": "--path",
+          "short": "-p",
+          "type": "string",
+          "required": false,
+          "default": [],
+          "description": "Root directory to watch (repeatable)"
+        },
+        {
+          "name": "--quiet",
+          "short": "-q",
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Suppress watch status logs"
+        }
+      ],
+      "subcommands": [],
+      "sideEffect": "interactive",
+      "idempotent": "no",
+      "exitCodes": [
+        0,
+        1,
+        2,
+        3
+      ]
     },
     {
       "name": "strategy",
@@ -11128,6 +11326,14 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Root directory to explore (repeatable) [default: current directory]"
         },
         {
+          "name": "--context",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Use named context (multi-root glob) from config file"
+        },
+        {
           "name": "--match",
           "short": "-m",
           "type": "string",
@@ -11144,12 +11350,52 @@ exports[`cli golden: introspection describe 1`] = `
           "description": "Search for keyword in code (repeatable)"
         },
         {
+          "name": "--regex",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Treat --search patterns as regular expressions"
+        },
+        {
+          "name": "--case-sensitive",
+          "short": null,
+          "type": "boolean",
+          "required": false,
+          "default": null,
+          "description": "Make --search matching case-sensitive"
+        },
+        {
+          "name": "--offset",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Skip first N --search matches"
+        },
+        {
+          "name": "--limit",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Maximum --search matches to return (default: 100, max: 500)"
+        },
+        {
           "name": "--type",
           "short": "-t",
           "type": "string",
           "required": false,
           "default": [],
           "description": "Filter by file extension (e.g., ts, js, py) (repeatable)"
+        },
+        {
+          "name": "--filter",
+          "short": null,
+          "type": "string",
+          "required": false,
+          "default": null,
+          "description": "Filter results using boolean DSL (e.g., \\"lang:typescript -file:test\\")"
         },
         {
           "name": "--stats",
@@ -11386,7 +11632,8 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
       "file": "a.ts",
       "line": 0,
       "endLine": 2,
-      "signature": "() : number"
+      "signature": "() : number",
+      "exported": true
     },
     {
       "id": "b.ts",
@@ -11410,7 +11657,8 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
       "file": "b.ts",
       "line": 2,
       "endLine": 4,
-      "signature": "() : number"
+      "signature": "() : number",
+      "exported": true
     },
     {
       "id": "c.ts",
@@ -11434,7 +11682,8 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
       "file": "c.ts",
       "line": 2,
       "endLine": 4,
-      "signature": "() : number"
+      "signature": "() : number",
+      "exported": true
     },
     {
       "id": "imports/a.ts",
@@ -11458,7 +11707,8 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
       "file": "imports/a.ts",
       "line": 2,
       "endLine": 4,
-      "signature": "() : number"
+      "signature": "() : number",
+      "exported": true
     },
     {
       "id": "imports/b.ts",
@@ -11482,7 +11732,8 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
       "file": "imports/b.ts",
       "line": 2,
       "endLine": 4,
-      "signature": "() : number"
+      "signature": "() : number",
+      "exported": true
     },
     {
       "id": "imports/c.ts",
@@ -11497,7 +11748,8 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
       "file": "imports/c.ts",
       "line": 0,
       "endLine": 2,
-      "signature": "() : number"
+      "signature": "() : number",
+      "exported": true
     }
   ],
   "edges": [
@@ -11565,25 +11817,49 @@ exports[`cli golden: map / query / explore on fixture repo map --format json 2`]
       "source": "b.ts::beta",
       "target": "a.ts::alpha",
       "type": "calls",
-      "confidence": "EXTRACTED"
+      "confidence": "EXTRACTED",
+      "callSites": [
+        {
+          "line": 3,
+          "col": 9
+        }
+      ]
     },
     {
       "source": "c.ts::gamma",
       "target": "b.ts::beta",
       "type": "calls",
-      "confidence": "EXTRACTED"
+      "confidence": "EXTRACTED",
+      "callSites": [
+        {
+          "line": 3,
+          "col": 9
+        }
+      ]
     },
     {
       "source": "imports/a.ts::alpha",
       "target": "imports/b.ts::beta",
       "type": "calls",
-      "confidence": "EXTRACTED"
+      "confidence": "EXTRACTED",
+      "callSites": [
+        {
+          "line": 3,
+          "col": 9
+        }
+      ]
     },
     {
       "source": "imports/b.ts::beta",
       "target": "imports/c.ts::gamma",
       "type": "calls",
-      "confidence": "EXTRACTED"
+      "confidence": "EXTRACTED",
+      "callSites": [
+        {
+          "line": 3,
+          "col": 9
+        }
+      ]
     }
   ]
 }
@@ -11712,14 +11988,26 @@ exports[`cli golden: map / query / explore on fixture repo query --format json c
       "file": "b.ts",
       "line": 3,
       "kind": "function",
-      "depth": 1
+      "depth": 1,
+      "callSites": [
+        {
+          "line": 4,
+          "col": 9
+        }
+      ]
     }
   ],
   "edges": [
     {
       "from": "b.ts::beta",
       "to": "a.ts::alpha",
-      "type": "calls"
+      "type": "calls",
+      "callSites": [
+        {
+          "line": 4,
+          "col": 9
+        }
+      ]
     }
   ],
   "metadata": {

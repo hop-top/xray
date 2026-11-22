@@ -89,10 +89,10 @@ describe('side-effect declarations', () => {
       p,
       resolveDryRunPolicy(cmd.name(), (cmd as unknown as { annotations?: Record<string, string> }).annotations ?? {}),
     ]));
-    // `mcp` is a live session: kit refuses it in plain words. Nothing else is refused.
+    // `mcp` and `watch` are live sessions: kit refuses them in plain words. Nothing else is refused.
     const refused = [...policies].filter(([, v]) => v !== 'allow' && v !== 'noop').map(([k, v]) => `${k}: ${v}`);
     console.log(policies.size, policies.get('mcp'));
-    expect(refused).toEqual(['mcp: reject-interactive']);
+    expect(refused).toEqual(['watch: reject-interactive', 'mcp: reject-interactive']);
   });
 
   it('describe reports the declared tiers, never a default', async () => {

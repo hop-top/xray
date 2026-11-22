@@ -19,8 +19,10 @@ const ENTRY = path.join(ROOT, 'dist', 'index.js');
  * Leaves that do not take `--format`, and why. Anything else must.
  * - help: kit's own, prints help text.
  * - completion <shell>: prints a shell script; there is no JSON form of it.
+ * - watch: a live session that logs status lines (and may write --graph-out);
+ *   it prints no document on stdout, so there is no machine form to ask for.
  */
-const EXEMPT = new Set(['help', 'completion bash', 'completion zsh', 'completion fish', 'completion powershell']);
+const EXEMPT = new Set(['help', 'completion bash', 'completion zsh', 'completion fish', 'completion powershell', 'watch']);
 
 const leaves = (cmd: Command, trail: string[] = []): Array<{ path: string; cmd: Command }> =>
   cmd.commands.length === 0

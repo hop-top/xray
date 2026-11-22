@@ -219,6 +219,28 @@ describe('git-reader', () => {
       }
     });
 
+    it('reads c/ w/ mnemonic prefixes (diff.mnemonicPrefix) like a/ b/', async () => {
+      // A user with `diff.mnemonicPrefix=true` gets `c/file w/file` in commit diffs
+      // and `a/file w/file` for staged worktree edits: paths must stay root-relative.
+      gitExec(repoDir, ['config', 'diff.mnemonicPrefix', 'true']);
+      try {
+        const committed = await getDiff(repoDir, commit1Sha, commit2Sha);
+        expect(committed.map((f) => f.path).sort()).toEqual(['alpha.txt', 'beta.txt', 'to-delete.txt']);
+        expect(committed.find((f) => f.path === 'alpha.txt')?.changedLines).toEqual([
+          { start: 2, end: 2 },
+          { start: 4, end: 4 },
+        ]);
+
+        fs.writeFileSync(path.join(repoDir, 'alpha.txt'), 'line1\nline2-edited\nline3\nline4\nworking\n');
+        const working = await getDiff(repoDir, 'WORKING');
+        expect(working.map((f) => f.path)).toEqual(['alpha.txt']);
+        expect(working[0].changedLines).toEqual([{ start: 5, end: 5 }]);
+      } finally {
+        gitExec(repoDir, ['config', '--unset', 'diff.mnemonicPrefix']);
+        gitExec(repoDir, ['checkout', '--', 'alpha.txt']);
+      }
+    });
+
     it('returns empty array for non-git dir and rejects "-" refs', async () => {
       await expect(getDiff(nonGitDir, 'HEAD~1', 'HEAD')).resolves.toEqual([]);
       await expect(getDiff(repoDir, '--exec=evil', 'HEAD')).rejects.toThrow(UsageError);
