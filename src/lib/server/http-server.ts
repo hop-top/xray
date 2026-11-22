@@ -31,6 +31,8 @@ import { evaluateFilter, parseFilterDsl } from '../query/filter-dsl';
 import { computeImpact, DEFAULT_IMPACT_DEPTH } from '../query/impact';
 import { renderMermaid, type MermaidView } from '../renderer/mermaid-renderer';
 import { readTextSafe } from '../safe-read';
+import { actorFromRequest, createAuditLogger } from './audit';
+import { loadGatewayUpstreams, McpGateway } from './gateway';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_READ_LINES = 2000;
@@ -48,6 +50,9 @@ export interface ServeHttpOptions {
   token?: string;
   apiOnly?: boolean;
   mcp?: boolean;
+  auditLog?: string;
+  offline?: boolean;
+  gateway?: McpGateway;
   program?: Command;
   workspace?: WarmWorkspaceManager;
   version?: string;
@@ -252,6 +257,59 @@ function serveStaticFile(
   return true;
 }
 
+interface PortalInitialRoute {
+  mode: 'handbook' | 'browse';
+  context: string;
+  target: string;
+}
+
+function parsePortalDeepLink(pathname: string): PortalInitialRoute | null {
+  const hbMatch = /^\/handbook\/([^/]+)\/(.+)$/.exec(pathname);
+  if (hbMatch) {
+    return {
+      mode: 'handbook',
+      context: decodeURIComponent(hbMatch[1]),
+      target: decodeURIComponent(hbMatch[2]),
+    };
+  }
+  const browseMatch = /^\/browse\/([^/]+)\/(.+)$/.exec(pathname);
+  if (browseMatch) {
+    return {
+      mode: 'browse',
+      context: decodeURIComponent(browseMatch[1]),
+      target: decodeURIComponent(browseMatch[2]),
+    };
+  }
+  return null;
+}
+
+function servePortalSpa(
+  res: http.ServerResponse,
+  uiDir: string,
+  route: PortalInitialRoute
+): boolean {
+  const indexPath = path.resolve(uiDir, 'index.html');
+  if (!isWithin(path.resolve(uiDir), indexPath) || !fs.existsSync(indexPath)) {
+    return false;
+  }
+  let html = fs.readFileSync(indexPath, 'utf8');
+  const serialized = JSON.stringify(route).replace(/</g, '\\u003c');
+  const scriptTag = `<script>window.__XRAY_INITIAL_ROUTE__ = ${serialized};</script>`;
+  if (html.includes('</head>')) {
+    html = html.replace('</head>', `  ${scriptTag}\n</head>`);
+  } else {
+    html = `${scriptTag}\n${html}`;
+  }
+  const buf = Buffer.from(html, 'utf8');
+  res.writeHead(200, {
+    'content-type': 'text/html; charset=utf-8',
+    'content-length': String(buf.length),
+    'cache-control': 'no-cache',
+  });
+  res.end(buf);
+  return true;
+}
+
 /**
  * Create the local Web UI & read-only REST API HTTP server.
  * Throws `UsageError` when binding a non-loopback `host` without `token`.
@@ -272,6 +330,7 @@ export function createServeHttpServer(options: ServeHttpOptions): ServeHttpServe
   const ownsWorkspace = !options.workspace;
   const workspace =
     options.workspace ?? new WarmWorkspaceManager(options.serverRoot, options.serverConfig ?? null);
+  const audit = createAuditLogger(options.auditLog);
 
   let mcpHandler: McpHandler | null = null;
   if (options.mcp) {
@@ -285,6 +344,8 @@ export function createServeHttpServer(options: ServeHttpOptions): ServeHttpServe
       timeoutMs: 300_000,
       version: options.version ?? '0.1.0',
       workspace,
+      gateway: options.gateway,
+      offline: options.offline,
       transport: 'http',
     });
   }
@@ -292,8 +353,10 @@ export function createServeHttpServer(options: ServeHttpOptions): ServeHttpServe
   let boundPort = requestedPort;
 
   const server = http.createServer(async (req, res) => {
+    const actor = actorFromRequest(req);
     try {
       if (!isAllowedOrigin(req.headers.origin)) {
+        audit?.log({ event: 'auth.forbidden_origin', actor, target: req.url ?? '/', status: 'denied' });
         sendJson(res, 403, { error: 'forbidden origin' });
         return;
       }
@@ -312,6 +375,7 @@ export function createServeHttpServer(options: ServeHttpOptions): ServeHttpServe
       if (masterToken && requiresAuth) {
         const bearer = extractBearerToken(req);
         if (!bearer || !timingSafeEqualStrings(bearer, masterToken)) {
+          audit?.log({ event: 'auth.denied', actor, target: pathname, status: 'denied' });
           sendJson(res, 401, { error: 'unauthorized' });
           return;
         }
@@ -734,6 +798,35 @@ export function createServeHttpServer(options: ServeHttpOptions): ServeHttpServe
           return;
         }
 
+        if (pathname === '/api/handbook/index') {
+          const contexts = Array.from(workspace.getAllowedRoots()).map((r) => {
+            const name = path.basename(r) || r;
+            const handbookDir = path.join(r, '.xray', 'handbook');
+            const pages = listHandbookPages(handbookDir);
+            const exists = pages.length > 0;
+            const firstSlug = pages[0]?.slug ?? 'README';
+            let lastUpdatedAt = '';
+            let lastUpdatedCommit = '';
+            for (const p of pages) {
+              if (p.lastUpdatedAt && p.lastUpdatedAt >= lastUpdatedAt) {
+                lastUpdatedAt = p.lastUpdatedAt;
+                lastUpdatedCommit = p.lastUpdatedCommit || lastUpdatedCommit;
+              }
+            }
+            return {
+              name,
+              root: r,
+              exists,
+              url: `/handbook/${encodeURIComponent(name)}/${encodeURIComponent(firstSlug)}`,
+              docCount: pages.length,
+              lastUpdatedAt,
+              lastUpdatedCommit,
+            };
+          });
+          sendJson(res, 200, { serverRoot: workspace.serverRoot, contexts });
+          return;
+        }
+
         if (pathname === '/api/diagram') {
           const rootDir = resolveRootDir(workspace, params.get('root'));
           const rawView = (params.get('view') || 'architecture').toLowerCase();
@@ -799,6 +892,10 @@ export function createServeHttpServer(options: ServeHttpOptions): ServeHttpServe
       }
 
       if (!apiOnly && (method === 'GET' || method === 'HEAD')) {
+        const portalRoute = parsePortalDeepLink(pathname);
+        if (portalRoute && servePortalSpa(res, uiDir, portalRoute)) {
+          return;
+        }
         if (serveStaticFile(res, uiDir, pathname)) {
           return;
         }
@@ -842,12 +939,26 @@ export function createServeHttpServer(options: ServeHttpOptions): ServeHttpServe
           if (addr && typeof addr === 'object') {
             boundPort = addr.port;
           }
+          const formattedHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+          audit?.log({
+            event: 'admin.server_start',
+            actor: 'system',
+            target: `http://${formattedHost}:${boundPort}`,
+            status: 'ok',
+          });
           resolve();
         });
       }),
     stop: () =>
       new Promise<void>((resolve, reject) => {
         server.close((err) => {
+          const formattedHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+          audit?.log({
+            event: 'admin.server_stop',
+            actor: 'system',
+            target: `http://${formattedHost}:${boundPort}`,
+            status: err ? 'error' : 'ok',
+          });
           if (ownsWorkspace) workspace.close();
           if (err) reject(err);
           else resolve();
@@ -858,7 +969,19 @@ export function createServeHttpServer(options: ServeHttpOptions): ServeHttpServe
 
 /** Start the local Web UI & REST API server and wait for SIGINT/SIGTERM. */
 export async function startServeHttpServer(options: ServeHttpOptions): Promise<void> {
-  const instance = createServeHttpServer(options);
+  let gateway = options.gateway;
+  if (options.mcp && !gateway) {
+    const upstreams = loadGatewayUpstreams({
+      serverRoot: options.serverRoot,
+      serverConfig: options.serverConfig,
+    });
+    if (Object.keys(upstreams).length > 0) {
+      const audit = createAuditLogger(options.auditLog);
+      gateway = new McpGateway({ upstreams, offline: options.offline, audit });
+      await gateway.discoverTools();
+    }
+  }
+  const instance = createServeHttpServer({ ...options, gateway });
   await instance.start();
   const modeLabel = options.apiOnly ? 'REST API' : 'Web UI + REST API';
   process.stderr.write(`xray serve (${modeLabel}) listening on ${instance.url}\n`);

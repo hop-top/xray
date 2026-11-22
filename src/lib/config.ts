@@ -402,7 +402,7 @@ export interface ConfineOptions {
 }
 
 /** Whether `file` is the user's own global config (their choice; never confined). */
-function isUserGlobalConfig(file: string): boolean {
+export function isUserGlobalConfig(file: string): boolean {
   const global = findGlobalConfigPath();
   return global !== null && realpathLoose(path.resolve(global)) === realpathLoose(path.resolve(file));
 }

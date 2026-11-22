@@ -19,6 +19,7 @@ export interface ServeCommandOptions {
   token?: string;
   apiOnly?: boolean;
   mcp?: boolean;
+  auditLog?: string;
   config?: string;
 }
 
@@ -33,6 +34,7 @@ export function registerServeCommand(program: Command): Command {
     .option('--token <secret>', 'Bearer token (required for non-loopback --host, or XRAY_SERVE_TOKEN env)')
     .option('--api-only', 'Serve JSON REST API only without static Web UI')
     .option('--mcp', 'Mount Streamable HTTP MCP endpoint at /mcp')
+    .option('--audit-log <path>', 'Append JSONL audit log for auth, gateway, and admin events')
     .action(async (paths: string[], opts: ServeCommandOptions, command: Command) => {
       const port = Number(opts.port);
       if (!Number.isInteger(port) || port < 0 || port > 65535) {
@@ -50,6 +52,7 @@ export function registerServeCommand(program: Command): Command {
       const workspace = new WarmWorkspaceManager(serverRoot, serverConfig);
 
       const token = opts.token ?? process.env.XRAY_SERVE_TOKEN;
+      const offline = Boolean(command.optsWithGlobals?.().offline);
 
       await startServeHttpServer({
         serverRoot,
@@ -59,6 +62,8 @@ export function registerServeCommand(program: Command): Command {
         ...(token ? { token } : {}),
         apiOnly: Boolean(opts.apiOnly),
         mcp: Boolean(opts.mcp),
+        ...(opts.auditLog ? { auditLog: opts.auditLog } : {}),
+        offline,
         program: command.parent ?? command,
         workspace,
         version,

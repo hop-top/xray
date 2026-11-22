@@ -339,10 +339,31 @@
     });
   }
 
+  function parseLocationRoute() {
+    if (window.__XRAY_INITIAL_ROUTE__) return window.__XRAY_INITIAL_ROUTE__;
+    var p = window.location.pathname || '/';
+    var hb = /^\/handbook\/([^/]+)\/(.+)$/.exec(p);
+    if (hb) {
+      return { mode: 'handbook', context: decodeURIComponent(hb[1]), target: decodeURIComponent(hb[2]) };
+    }
+    var br = /^\/browse\/([^/]+)\/(.+)$/.exec(p);
+    if (br) {
+      return { mode: 'browse', context: decodeURIComponent(br[1]), target: decodeURIComponent(br[2]) };
+    }
+    return null;
+  }
+
   function init() {
+    var initialRoute = parseLocationRoute();
     apiGet('/api/contexts').then(function (data) {
       state.contexts = data.roots || [];
       state.root = data.serverRoot;
+      if (initialRoute && initialRoute.context) {
+        var matched = state.contexts.find(function (r) {
+          return r.name === initialRoute.context || r.path === initialRoute.context;
+        });
+        if (matched) state.root = matched.path;
+      }
       var select = $('context-select');
       select.innerHTML = state.contexts.map(function (r) {
         return '<option value="' + escapeHtml(r.path) + '"' + (r.path === state.root ? ' selected' : '') + '>' + escapeHtml(r.name) + '</option>';
@@ -353,6 +374,13 @@
         loadDir('.');
       });
       loadDir('.');
+      if (initialRoute && initialRoute.mode === 'handbook') {
+        var hbBtn = document.querySelector('.tab-btn[data-tab="handbook"]');
+        if (hbBtn) hbBtn.click();
+        loadHandbook(initialRoute.target);
+      } else if (initialRoute && initialRoute.mode === 'browse') {
+        openFile(initialRoute.target, 1);
+      }
     });
 
     $('tree-viewport').addEventListener('scroll', renderVirtualTree);
