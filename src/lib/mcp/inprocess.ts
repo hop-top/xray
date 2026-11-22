@@ -272,7 +272,8 @@ export async function runInProcess(
 }
 
 async function impact(a: Args, scope: InProcessScope, callRoot: string): Promise<InvokeResult> {
-  if (!a.has('symbol')) throw new ToolArgumentError('argument "symbol" is required');
+  // Match the CLI's required-argument phrasing so tool errors read the same in both paths.
+  if (!a.has('symbol')) throw new ToolArgumentError('argument <symbol> is required');
   const format = a.scalar('format') ?? 'text';
   const warm = await scope.workspace.getGraph(callRoot, {
     configPath: scope.serverConfig ?? undefined,
@@ -292,7 +293,7 @@ async function query(a: Args, scope: InProcessScope, callRoot: string): Promise<
     return { stdout: listAdapters().replace(/\n$/, '') + '\n', stderr: '', exitCode: 0 };
   }
   const q = a.scalar('query');
-  if (!q || !q.trim()) throw new ToolArgumentError('argument "query" is required');
+  if (!q || !q.trim()) throw new ToolArgumentError('argument <query> is required');
   const format = a.scalar('format') ?? 'table';
   const warm = await scope.workspace.getGraph(callRoot, {
     configPath: scope.serverConfig ?? undefined,
