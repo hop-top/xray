@@ -17,7 +17,17 @@ import type * as KitMcp from '@hop-top/kit/dist/mcp';
 import type {
   FlagSchema, Invocation, InvocationMeta, InvokeResult, Leaf, McpHandler, McpHttpResponse, McpBridge,
 } from '@hop-top/kit/dist/mcp';
-import { findCommand, isExposedPath, policyFor, shapeLeaf, buildArgv, type PathScope, type ToolDef } from './tools';
+import {
+  buildArgv,
+  buildPrimitiveDirectTools,
+  findCommand,
+  isExposedPath,
+  policyFor,
+  shapeLeaf,
+  type DirectToolDef,
+  type PathScope,
+  type ToolDef,
+} from './tools';
 import {
   assertConfigPinned, collectOutput, containPath, makeOutputDir, pinnedConfigArgs, resolveCallRoot, runChild,
   type ChildResult,
@@ -33,18 +43,7 @@ function kitMcp(): typeof KitMcp {
   return require('@hop-top/kit/mcp') as typeof KitMcp;
 }
 
-/**
- * A non-CLI tool served directly by the bridge. Registered by the server
- * after the command-tree leaves so it is listed and invocable like any
- * analysis tool, but with no commander command behind it.
- */
-export interface DirectToolDef {
-  name: string;
-  description: string;
-  properties: Record<string, FlagSchema>;
-  required?: readonly string[];
-  invoke(args: Record<string, unknown> | undefined): InvokeResult | Promise<InvokeResult>;
-}
+export type { DirectToolDef } from './tools';
 
 export interface XrayBridgeOptions {
   /**
@@ -121,6 +120,12 @@ export function createXrayBridge(program: Command, o: XrayBridgeOptions): XrayBr
   const kit = kitMcp();
   const pending = new WeakMap<Invocation, ToolDef>();
   const allowedRoots = o.workspace?.getAllowedRoots() ?? o.allowedRoots;
+  const directTools = new Map<string, DirectToolDef>(
+    o.workspace ? buildPrimitiveDirectTools(o.workspace) : []
+  );
+  if (o.directTools) {
+    for (const [k, v] of o.directTools) directTools.set(k, v);
+  }
 
   const inner = kit.commanderBridge(program, {
     enabled: (leaf) => (isExposedPath(program, leaf.path) ? undefined : { mcp: false }),
@@ -151,10 +156,10 @@ export function createXrayBridge(program: Command, o: XrayBridgeOptions): XrayBr
   };
 
   return {
-    leaves: () => [...tools().map((t) => t.leaf), ...directLeaves(o.directTools)],
+    leaves: () => [...tools().map((t) => t.leaf), ...directLeaves(directTools)],
     invoke: async (inv) => {
       const name = inv.path.length === 1 ? inv.path[0] : '';
-      const direct = o.directTools?.get(name);
+      const direct = directTools.get(name);
       if (direct) {
         return direct.invoke(inv.flags as Record<string, unknown> | undefined);
       }
@@ -280,16 +285,22 @@ function withInstructions(res: McpHttpResponse): McpHttpResponse {
  */
 export function createXrayMcpHandler(program: Command, o: StartOptions): McpHandler {
   const kit = kitMcp();
+  const specVersions =
+    o.specVersions ??
+    (o.transport === 'http'
+      ? [kit.MCP_SPEC_2024_11_05, kit.MCP_SPEC_2026_07_28]
+      : [kit.MCP_SPEC_2024_11_05]);
   const inner = kit.createMcpHandler(createXrayBridge(program, o), {
     serverInfo: { name: 'xray', version: o.version },
-    // stdio has no HTTP headers; the 2026-07-28 era is header-routed.
-    specVersions: [kit.MCP_SPEC_2024_11_05],
+    specVersions,
   });
   return async (req) => withInstructions(await inner(req));
 }
 
 export interface StartOptions extends XrayBridgeOptions {
   version: string;
+  transport?: 'stdio' | 'http';
+  specVersions?: KitMcp.McpSpecVersion[];
 }
 
 /**
