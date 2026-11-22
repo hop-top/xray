@@ -65,6 +65,8 @@ const EXTRA_EXIT_CODES: Record<string, number[]> = {
   imports: [EXIT_NOT_FOUND],
   'alias.set': [EXIT_CONFLICT],
   explore: [EXIT_NOT_FOUND],
+  // A watched root (positional or --path) that does not exist is not found.
+  watch: [EXIT_NOT_FOUND],
   // --check: the release lookup failed.
   upgrade: [EXIT_TRANSIENT],
 };

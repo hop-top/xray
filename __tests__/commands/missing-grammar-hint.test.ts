@@ -23,6 +23,10 @@ const HINT = 'found 2 .kt, 1 .swift files without installed grammars — install
 
 let repo: string;
 let managed: string;
+let cacheHome: string;
+
+/** The graph cache serves a warm project without re-parsing, and the hint is parse-time. */
+const cold = () => fs.rmSync(path.join(cacheHome, 'xray'), { recursive: true, force: true });
 
 function run(args: string[]) {
   return spawnSync(process.execPath, [BIN, ...args], {
@@ -33,6 +37,7 @@ function run(args: string[]) {
       XRAY_NO_TELEMETRY: '1',
       XRAY_LANG_BLOCK: BLOCK,
       XRAY_LANG_DIR: managed,
+      XDG_CACHE_HOME: cacheHome,
       FORCE_COLOR: '0',
     },
     timeout: 90_000,
@@ -45,17 +50,20 @@ describe('missing-grammar hint (CLI)', () => {
   beforeAll(() => {
     repo = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-hint-'));
     managed = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-hint-lang-'));
+    cacheHome = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-hint-cache-'));
     for (const f of fs.readdirSync(FIXTURE)) fs.copyFileSync(path.join(FIXTURE, f), path.join(repo, f));
     execFileSync('git', ['init', '-q'], { cwd: repo, stdio: 'pipe' });
   });
   afterAll(() => {
     fs.rmSync(repo, { recursive: true, force: true });
     fs.rmSync(managed, { recursive: true, force: true });
+    fs.rmSync(cacheHome, { recursive: true, force: true });
   });
 
   const mapArgs = (out: string, ...extra: string[]) => ['map', '-p', repo, '--skip-detect', '--no-chunk', '-o', path.join(repo, out), ...extra];
 
   it('default (human) output: one aggregated INFO hint on stderr, exit 0, kt/swift not parsed', () => {
+    cold();
     const r = run(mapArgs('out.txt'));
     expect(r.status).toBe(0);
     expect(r.stderr).toContain(`ℹ ${HINT}`);
@@ -73,6 +81,7 @@ describe('missing-grammar hint (CLI)', () => {
   }, 90_000);
 
   it('--json: no hint on either stream, stdout untouched, exit 0', () => {
+    cold();
     const r = run(mapArgs('out.json', '--json'));
     expect(r.status).toBe(0);
     expect(r.stderr).not.toContain('without installed grammar');
@@ -88,6 +97,7 @@ describe('missing-grammar hint (CLI)', () => {
   }, 90_000);
 
   it('--json --verbose: hint plus per-language detail on stderr', () => {
+    cold();
     const r = run(['--log-level', 'debug', ...mapArgs('out-v.json', '--json')]);
     expect(r.status).toBe(0);
     expect(r.stderr).toContain(HINT);
@@ -97,6 +107,7 @@ describe('missing-grammar hint (CLI)', () => {
   }, 90_000);
 
   it('--quiet: no hint, exit 0', () => {
+    cold();
     const r = run(['--quiet', ...mapArgs('out-q.txt')]);
     expect(r.status).toBe(0);
     expect(r.stderr + r.stdout).not.toContain('without installed grammar');

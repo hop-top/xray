@@ -18,7 +18,7 @@ describe('failing commands exit with the code describe advertises', () => {
   let root: string;
   let env: NodeJS.ProcessEnv;
   let advertised: Map<string, number[]>;
-  let leaves: Array<{ command: string; argv: string[]; doc: DescribedCommand & { options: Array<{ name: string }>; arguments: Array<{ name: string; required: boolean }> } }>;
+  let leaves: Array<{ command: string; argv: string[]; doc: DescribedCommand & { sideEffect: string; options: Array<{ name: string }>; arguments: Array<{ name: string; required: boolean }> } }>;
   /** `command:code` pairs a real run produced; the last test checks describe against it. */
   const produced = new Set<string>();
 
@@ -76,6 +76,7 @@ describe('failing commands exit with the code describe advertises', () => {
     { name: 'cache clear --confirm=no', command: 'cache.clear', args: ['--confirm=no', 'cache', 'clear'], code: 5, stderr: /refused/ },
     { name: 'map <missing path>', command: 'map', args: ['map', '/nonexistent/xray-dir'], code: 3, stderr: /does not exist/ },
     { name: 'graph <missing path>', command: 'graph', args: ['graph', '/nonexistent/xray-dir'], code: 3, stderr: /does not exist/ },
+    { name: 'impact <symbol> --path <missing>', command: 'impact', args: ['impact', 'x', '--path', '/nonexistent/xray-dir'], code: 3, stderr: /does not exist/ },
     { name: 'query --graph <missing file>', command: 'query', args: ['query', 'x', '--graph', '/nonexistent/g.json'], code: 3, stderr: /not found/ },
     { name: 'alias remove <no config>', command: 'alias.remove', args: ['alias', 'remove', 'nope'], code: 3, stderr: /No configuration file|not found/ },
     { name: 'clear-cache --confirm=no', command: 'clear-cache', args: ['--confirm=no', 'clear-cache'], code: 5, stderr: /refused/ },
@@ -133,7 +134,9 @@ describe('failing commands exit with the code describe advertises', () => {
   it('every leaf with --path: a missing path exits with a code describe advertises', () => {
     const missing = '/nonexistent/xray-dir';
     for (const l of leaves.filter((x) => x.doc.options.some((o) => o.name === '--path'))) {
-      const r = run(...l.argv, ...operands(l), '--path', missing, '--format', 'json');
+      // Only leaves that declare it take the machine-output flag (`watch` has no --format).
+      const format = l.doc.options.some((o) => o.name === '--format') ? ['--format', 'json'] : [];
+      const r = run(...l.argv, ...operands(l), '--path', missing, ...format);
       const status = r.status as number;
       expect({ command: l.command, status, advertised: advertised.get(l.command)!.includes(status) })
         .toEqual({ command: l.command, status, advertised: true });
@@ -143,7 +146,7 @@ describe('failing commands exit with the code describe advertises', () => {
 
   it('strategy leaves: a missing --path is not found (3) with the envelope, not an empty result', () => {
     const builtin = new Set(['help', 'map', 'graph', 'query', 'impact', 'imports', 'strategy', 'alias', 'lang',
-      'cache', 'clear-cache', 'paths', 'describe', 'mcp', 'completion', 'explore', 'upgrade']);
+      'cache', 'clear-cache', 'paths', 'describe', 'mcp', 'completion', 'explore', 'upgrade', 'watch']);
     const strategyLeaves = leaves.filter((l) => !builtin.has(l.argv[0]));
     expect(strategyLeaves.length).toBeGreaterThan(20);
     for (const l of strategyLeaves) {

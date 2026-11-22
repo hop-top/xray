@@ -33,6 +33,7 @@ const VARIANTS: Record<string, string[]> = {
   '--detect': ['--detect'],
   '--lang': ['--lang', 'python'],
   '--skip-detect': ['--skip-detect'],
+  '--no-fallback-ctags': ['--no-fallback-ctags'],
   '--share': ['--share'],
   '--preset': ['--preset', 'insights'],
   '--enable-extension': ['--enable-extension', 'nope-ext'],
@@ -43,6 +44,14 @@ const VARIANTS: Record<string, string[]> = {
   '--disable-surface': ['--disable-surface', 'nope-ext:map'],
 };
 
+/** Options only one command declares: `map` ranks by diff, `graph` does not. */
+const COMMAND_VARIANTS: Record<string, Record<string, string[]>> = {
+  map: {
+    '--since': ['--since', 'HEAD~1'],
+    '--changed': ['--changed'],
+  },
+};
+
 /** Options that select the run itself or the diagram family, not the run's content. */
 const NOT_RUN_OPTIONS: Record<string, string> = {
   '--lens': 'overlay; exclusive with --scope/--all-scopes (UsageError)',
@@ -50,6 +59,7 @@ const NOT_RUN_OPTIONS: Record<string, string> = {
   '--all-scopes': 'the flag under test',
   '--path': 'each scope has its own paths; with --all-scopes a UsageError',
   '--output': 'each scope writes its own output; with --all-scopes a UsageError',
+  '--context': 'selects one named multi-root context as the run root; exclusive with --all-scopes (UsageError)',
 };
 
 interface Described { name: string; options: Array<{ name: string }>; subcommands?: Described[] }
@@ -126,7 +136,8 @@ describe('map|graph --all-scopes forwards every CLI option', () => {
 
   it.each(['map', 'graph'])('%s: every described option has a variant or a stated reason', (cmd) => {
     const names = described.find((c) => c.name === cmd)!.options.map((o) => o.name);
-    const unknown = names.filter((n) => !(n in VARIANTS) && !(n in NOT_RUN_OPTIONS));
+    const perCommand = COMMAND_VARIANTS[cmd] ?? {};
+    const unknown = names.filter((n) => !(n in VARIANTS) && !(n in perCommand) && !(n in NOT_RUN_OPTIONS));
     expect(unknown).toEqual([]);
   });
 
@@ -138,7 +149,8 @@ describe('map|graph --all-scopes forwards every CLI option', () => {
 
     // graph runs the same code; sampling every option once per command keeps
     // the cost bounded while still covering both entry points.
-    it.each(Object.entries(VARIANTS))('%s', (_opt, args) => {
+    const variants = Object.entries({ ...VARIANTS, ...(COMMAND_VARIANTS[cmd] ?? {}) });
+    it.each(variants)('%s', (_opt, args) => {
       const base = [cmd, ...args];
       const viaScope = written(p, [...base, '--scope', 'only']);
       const viaAll = written(p, [...base, '--all-scopes']);

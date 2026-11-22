@@ -45,6 +45,7 @@ const ARGS: Array<[string, string[]]> = [
   ['--detect', ['--detect']],
   ['--lang', ['--lang', 'python']],
   ['--skip-detect', ['--skip-detect']],
+  ['--no-fallback-ctags', ['--no-fallback-ctags']],
   ['--share', ['--share']],
   ['--preset', ['--preset', 'insights']],
 ];
@@ -58,6 +59,7 @@ describe('resolveAllScopesRuns', () => {
       '--enable-extension', '--disable-extension', '--extension-threshold',
       '--extension-hint', '--enable-surface', '--disable-surface', // folded into `extensions`, below
       '--lens', '--scope', '--all-scopes', // select the run; not forwarded content
+      '--context', // selects the run root (named context); exclusive with --all-scopes
       '--mermaid', '--dot', // diagram family selectors
     ]);
     expect(registered.filter((n) => !covered.has(n))).toEqual([]);
