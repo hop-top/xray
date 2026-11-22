@@ -68,11 +68,19 @@ Unlike humans who view xray output directly, agents:
 | Command | Purpose | Token Cost | When to Use |
 |---------|---------|-----------|-----------|
 | `explore --match` | Find files matching pattern | Low | Narrow search space, verify file existence |
-| `map` | Get code structure/organization | Medium | Understand architecture, find key files |
+| `explore --search` | Trigram/regex code search with `--filter` | Low | Find symbols, strings, or regex matches fast |
+| `map` | Get code structure/organization | Medium | Understand architecture, find key files (`--group community`, `--since`/`--changed`) |
+| `handbook` | Generate architectural handbook pages | Low-Med | Produce structured subsystem summaries (`.xray/handbook/`) |
+| `diagram` | Export Mermaid architecture/call/CFG/DFG | Low-Med | Visualize structure or call paths deterministically |
+| `query` | Query call graph (`calls`, `callers`, `implementations`, `cycles`, `deadcode`) | Low | Answer structural graph questions without full map |
+| `impact` | Transitive callers of a symbol or `--since`/`--changed` | Low-Med | Check blast radius before editing |
+| `review` | Diff-grounded PR review (`--base <ref>`) | Low-Med | Assess impact, CFG/DFG delta, and stale docs |
+| `ask` | BYOK codebase Q&A (`/<slug>` skills) | Med | Synthesize answers over read-only xray tools |
 | `explore` | Find framework-specific patterns | Low | Discover components, routes, hooks |
 | `strategy detect` | Identify frameworks in use | Low | First step in new codebase |
 | `graph` | Generate control/data flow | High | Analyze complex logic flow |
-| `clear-cache` | Reset analysis cache | None | Troubleshooting stale results |
+| `watch` / `skills` | Live `GraphCache` / workspace skill manifests | Low | Keep index warm or inspect `/<slug>` skills |
+| `cache clear` | Reset analysis cache | None | Troubleshooting stale results |
 
 ## Token Economics for Agents
 

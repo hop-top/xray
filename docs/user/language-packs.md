@@ -85,6 +85,16 @@ If you really want it, set `XRAY_ALLOW_PROJECT_GRAMMARS=1` in your environment (
 via repo config); xray then warns with the resolved path. The managed dir can only be
 redirected by environment variables, never by repo-local config.
 
+Missing grammars never fail a scan, and xray still extracts basic symbols for
+unsupported or uninstalled languages using a **Linguist 100+ language map**
+combined with **Universal Ctags / regex fallback**:
+
+- If `ctags` (Universal Ctags) is on your `PATH`, xray uses it to extract symbols
+  for languages without an installed tree-sitter grammar.
+- Otherwise, xray falls back to built-in regex symbol patterns.
+- Pass `--no-fallback-ctags` (or set `"fallbackCtags": false` in `.xrayrc.json`)
+  to disable fallback extraction and parse only with installed tree-sitter packs.
+
 ## Strategies
 
 A strategy that needs a grammar declares it (`requiresLanguages = ['go']`). If the

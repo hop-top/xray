@@ -46,7 +46,7 @@ merge into one graph, with every node id prefixed by a root label
 
 `xray query` prints its result to stdout (`--format table|tree|json|yaml|csv`)
 and exits 2 on a bad query, `--graph` combined with `-p`/`--lens`/`--scope`, or unknown `--format`/column, 3 if
-the graph file or a root is not found.
+the graph file or a root is not found. Pass `--context <name>` to target a named multi-root context from `.xrayrc.json`, and `--filter <expr>` to narrow results with the boolean filter DSL (e.g., `"kind:function -file:test"`).
 
 ### Basic Query Syntax
 
@@ -118,6 +118,27 @@ xray query --graph graph.json "hotspots(metric=fanout, limit=10)"
 **By PageRank (overall importance):**
 ```bash
 xray query --graph graph.json "hotspots(metric=pagerank, limit=10)"
+```
+
+### implementations() - Find implementations of a type/interface
+
+```bash
+xray query "implementations(Storage)"
+```
+
+### cycles() - Detect dependency or call cycles
+
+Find cycles in the `calls` (default) or `imports` subgraph:
+
+```bash
+xray query "cycles()"
+xray query "cycles(imports)"
+```
+
+### deadcode() - Find unreferenced symbols
+
+```bash
+xray query "deadcode()"
 ```
 
 ## Pattern Matching
