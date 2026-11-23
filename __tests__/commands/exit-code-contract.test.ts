@@ -12,6 +12,13 @@ import { EXIT_CONFLICT, EXIT_NOT_FOUND, EXIT_UNAUTHORIZED } from '../../src/lib/
 
 const CLI = path.join(__dirname, '../../bin/cli.js');
 
+// The three leaf-sweep tests spawn ~50 CLI processes each; Jest's default 5s
+// timeout only masked this previously because spawnSync blocked the event loop.
+jest.setTimeout(60_000);
+
+// Avoid oversubscribing CI runners when the outer runner already runs suites in parallel.
+const LEAF_CONCURRENCY = Number(process.env.XRAY_TEST_JOBS) > 1 ? 2 : 4;
+
 interface DescribedCommand { name: string; sideEffect: string; exitCodes: number[]; subcommands: DescribedCommand[] }
 
 describe('failing commands exit with the code describe advertises', () => {
@@ -33,6 +40,8 @@ describe('failing commands exit with the code describe advertises', () => {
       ...({ detached: true } as object),
     });
 
+  const activeChildren = new Set<number>();
+
   const runAsync = (...args: string[]) =>
     new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve, reject) => {
       const child = spawn(process.execPath, [CLI, ...withOffline(args)], {
@@ -41,12 +50,19 @@ describe('failing commands exit with the code describe advertises', () => {
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: true,
       });
+      if (child.pid) activeChildren.add(child.pid);
       let stdout = '';
       let stderr = '';
       child.stdout?.on('data', (chunk) => { stdout += chunk.toString('utf8'); });
       child.stderr?.on('data', (chunk) => { stderr += chunk.toString('utf8'); });
-      child.on('error', reject);
-      child.on('close', (status) => resolve({ status, stdout, stderr }));
+      child.on('error', (err) => {
+        if (child.pid) activeChildren.delete(child.pid);
+        reject(err);
+      });
+      child.on('close', (status) => {
+        if (child.pid) activeChildren.delete(child.pid);
+        resolve({ status, stdout, stderr });
+      });
     });
 
   async function mapConcurrent<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -93,7 +109,13 @@ describe('failing commands exit with the code describe advertises', () => {
     doc.commands.forEach((c) => walk(c, ''));
   });
 
-  afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
+  afterAll(() => {
+    for (const pid of activeChildren) {
+      try { process.kill(-pid, 'SIGKILL'); } catch { /* already gone */ }
+    }
+    activeChildren.clear();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 
   it('uses the kit taxonomy: 4 conflict, 5 unauthorized', () => {
     expect(EXIT_CONFLICT).toBe(4);
@@ -161,7 +183,7 @@ describe('failing commands exit with the code describe advertises', () => {
     l.doc.arguments.filter((a) => a.required).map(() => 'x');
 
   it('every leaf: an unknown flag is a usage error (2), advertised', async () => {
-    const runs = await mapConcurrent(leaves, 4, async (l) => ({
+    const runs = await mapConcurrent(leaves, LEAF_CONCURRENCY, async (l) => ({
       l,
       r: await runAsync(...l.argv, ...operands(l), '--no-such-flag-xyz'),
     }));
@@ -174,7 +196,7 @@ describe('failing commands exit with the code describe advertises', () => {
   it('every leaf with --path: a missing path exits with a code describe advertises', async () => {
     const missing = '/nonexistent/xray-dir';
     const pathLeaves = leaves.filter((x) => x.doc.options.some((o) => o.name === '--path'));
-    const runs = await mapConcurrent(pathLeaves, 4, async (l) => {
+    const runs = await mapConcurrent(pathLeaves, LEAF_CONCURRENCY, async (l) => {
       const confirm = String(l.doc.sideEffect).startsWith('destructive') ? ['--confirm=yes'] : [];
       const format = l.doc.options.some((o) => o.name === '--format') ? ['--format', 'json'] : [];
       const r = await runAsync(...confirm, ...l.argv, ...operands(l), '--path', missing, ...format);
@@ -194,7 +216,7 @@ describe('failing commands exit with the code describe advertises', () => {
       'completion', 'explore', 'upgrade']);
     const strategyLeaves = leaves.filter((l) => !builtin.has(l.argv[0]));
     expect(strategyLeaves.length).toBeGreaterThan(20);
-    const runs = await mapConcurrent(strategyLeaves, 4, async (l) => {
+    const runs = await mapConcurrent(strategyLeaves, LEAF_CONCURRENCY, async (l) => {
       // A destructive command needs confirming and a required positional a value to reach the path check.
       const confirm = String(l.doc.sideEffect).startsWith('destructive') ? ['--confirm=yes'] : [];
       const r = await runAsync(...confirm, ...l.argv, ...operands(l), '--path', '/nonexistent/xray-dir', '--format', 'json');
