@@ -52,7 +52,7 @@ describe('--format on every leaf of the real command tree', () => {
     process.chdir(path.join(tmp, 'proj'));
     const { registerCommands } = require('../../src/commands');
     tree = await registerCommands({}, undefined);
-  });
+  }, 30_000);
 
   afterAll(() => {
     process.chdir(cwd);

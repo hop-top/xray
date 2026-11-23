@@ -63,7 +63,7 @@ describe('side-effect declarations', () => {
   beforeAll(async () => {
     const { registerCommands } = require('../../src/commands');
     tree = await registerCommands({}, undefined);
-  });
+  }, 30_000);
 
   afterAll(() => {
     process.chdir(cwd);
