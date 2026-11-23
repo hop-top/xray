@@ -189,7 +189,7 @@ describe('MCP gateway, portal deep links, handbook index, and JSONL audit log', 
 
       const deniedRes = await gw.callTool('gh', 'blocked_tool', {});
       expect(deniedRes.exitCode).not.toBe(0);
-      expect(deniedRes.stderr.toLowerCase()).toContain('denied');
+      expect((deniedRes.stderr ?? '').toLowerCase()).toContain('denied');
 
       failNextCallWithSecret = true;
       const errRes = await direct.get('gh__allowed_tool')!.invoke({ q: 'boom' });
@@ -214,7 +214,7 @@ describe('MCP gateway, portal deep links, handbook index, and JSONL audit log', 
 
       const res = await gw.callTool('remote', 'allowed_tool', {});
       expect(res.exitCode).not.toBe(0);
-      expect(res.stderr.toLowerCase()).toContain('offline');
+      expect((res.stderr ?? '').toLowerCase()).toContain('offline');
     });
   });
 
