@@ -56,21 +56,12 @@ describe('--format', () => {
     fs.rmSync(cacheHome, { recursive: true, force: true });
   });
 
-  const args = (cmd: string, ...extra: string[]) => [cmd, '-p', repo, '--skip-detect', '--no-chunk', '-o', out, ...extra];
+  const args = (cmd: string, ...extra: string[]) => [cmd, '-p', repo, '--no-detect', '--no-chunk', '-o', out, ...extra];
 
-  test.each(['map', 'graph'])('%s --format json writes a JSON graph', cmd => {
-    const r = run(args(cmd, '--format', 'json'));
+  test('map --format json writes a JSON graph', () => {
+    const r = run(args('map', '--format', 'json'));
     expect(r.status).toBe(0);
     expect(isJson(out)).toBe(true);
-  });
-
-  test('--format json and --json produce equivalent output', () => {
-    expect(run(args('map', '--format', 'json')).status).toBe(0);
-    const a = JSON.parse(fs.readFileSync(out, 'utf-8'));
-    expect(run(args('map', '--json')).status).toBe(0);
-    const b = JSON.parse(fs.readFileSync(out, 'utf-8'));
-    expect(a.nodes).toEqual(b.nodes);
-    expect(a.edges).toEqual(b.edges);
   });
 
   test('--format txt / csv / xml are accepted (non-JSON text)', () => {
@@ -81,44 +72,21 @@ describe('--format', () => {
     }
   });
 
-  test('--format wins over a conflicting legacy flag', () => {
-    expect(run(args('map', '--format', 'txt', '--json')).status).toBe(0);
-    expect(isJson(out)).toBe(false);
-    expect(run(args('map', '--format', 'json', '--csv')).status).toBe(0);
-    expect(isJson(out)).toBe(true);
-  });
-
-  test('conflicting legacy flags -> usage error (exit 2), nothing written', () => {
-    for (const flags of [['--json', '--csv'], ['--xml', '--txt']]) {
-      const r = run(args('map', ...flags));
+  test('legacy boolean format aliases (--json, --txt, --csv, --xml, --mermaid) are unknown options', () => {
+    for (const flag of ['--json', '--txt', '--csv', '--xml', '--mermaid', '--dot']) {
+      const r = run(args('map', flag));
       expect(r.status).toBe(2);
-      expect(r.stderr).toMatch(/conflicting/);
+      expect(r.stderr).toMatch(/unknown option/);
       expect(fs.existsSync(out)).toBe(false);
     }
   });
 
-  test('--format dot -> usage error (exit 2) listing valid formats', () => {
-    const r = run(args('map', '--format', 'dot'));
-    expect(r.status).toBe(2);
-    expect(r.stderr).toContain(`invalid --format 'dot' (expected one of: txt, csv, xml, json, mermaid)`);
-  });
-
-  test('--dot flag is unknown option (exit 2)', () => {
-    const r = run(args('map', '--dot'));
-    expect(r.status).toBe(2);
-    expect(r.stderr).toMatch(/unknown option/);
-  });
-
-  test('--format mermaid / --mermaid are accepted', () => {
-    const r = run(args('map', '--format', 'mermaid'));
-    expect(r.status).toBe(0);
-    expect(fs.readFileSync(out, 'utf-8')).toMatch(/^flowchart LR\n/);
-  });
-
-  test('unknown --format value -> usage error (exit 2)', () => {
-    const r = run(args('map', '--format', 'yaml'));
-    expect(r.status).toBe(2);
-    expect(r.stderr).toContain("invalid --format 'yaml'");
+  test('--format dot and --format mermaid -> usage error (exit 2) listing valid formats', () => {
+    for (const bad of ['dot', 'mermaid', 'yaml']) {
+      const r = run(args('map', '--format', bad));
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain(`invalid --format '${bad}' (expected one of: txt, csv, xml, json)`);
+    }
   });
 
   test('CLI --format beats config-file json', () => {
@@ -152,26 +120,30 @@ describe('--format', () => {
     });
   });
 
-  describe('lang list', () => {
-    test('--format json == --json', () => {
-      const a = run(['lang', 'list', '--format', 'json', '--path', repo]);
-      const b = run(['lang', 'list', '--json', '--path', repo]);
+  describe('language list', () => {
+    test('--format json outputs structured languages and bundles', () => {
+      const a = run(['language', 'list', '--format', 'json', '--path', repo]);
       expect(a.status).toBe(0);
-      expect(JSON.parse(a.stdout).bundles).toEqual(JSON.parse(b.stdout).bundles);
+      const parsed = JSON.parse(a.stdout);
+      expect(Array.isArray(parsed.languages)).toBe(true);
+      expect(parsed.bundles).toBeDefined();
     });
-    test('--format text is human output; --format wins over --json', () => {
-      const r = run(['lang', 'list', '--format', 'text', '--json', '--path', repo]);
+    test('--format text is human output', () => {
+      const r = run(['language', 'list', '--format', 'text', '--path', repo]);
       expect(r.status).toBe(0);
       expect(() => JSON.parse(r.stdout)).toThrow();
     });
+    test('--json is unknown option (exit 2)', () => {
+      expect(run(['language', 'list', '--json', '--path', repo]).status).toBe(2);
+    });
     test('unknown value -> exit 2', () => {
-      expect(run(['lang', 'list', '--format', 'yaml', '--path', repo]).status).toBe(2);
+      expect(run(['language', 'list', '--format', 'yaml', '--path', repo]).status).toBe(2);
     });
   });
 
-  test('help advertises --format and marks legacy flags as aliases', () => {
+  test('help advertises --format and omits removed boolean format aliases', () => {
     const r = run(['map', '--help']);
     expect(r.stdout).toMatch(/--format <fmt>/);
-    expect(r.stdout).toMatch(/--json\s+Alias of --format json/);
+    expect(r.stdout).not.toMatch(/--json\b/);
   });
 });

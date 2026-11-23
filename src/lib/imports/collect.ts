@@ -50,7 +50,7 @@ export function resolveImportLanguages(values: readonly string[]): string[] {
     const key = LANG_ALIASES[v] ?? v;
     if (!Object.prototype.hasOwnProperty.call(IMPORT_LANGUAGES, key)) {
       const valid = [...Object.keys(IMPORT_LANGUAGES), ...Object.keys(LANG_ALIASES)].sort();
-      throw new UsageError(`unknown --lang '${raw}' (valid: ${valid.join(', ')})`);
+      throw new UsageError(`unknown --language '${raw}' (valid: ${valid.join(', ')})`);
     }
     out.add(key);
   }

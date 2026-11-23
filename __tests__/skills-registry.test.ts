@@ -165,10 +165,10 @@ describe('SkillRegistry, CLI, MCP, and ask /<slug> expansion', () => {
     expect(() => registry.list()).toThrow(UsageError);
   });
 
-  it('supports xray skills list and xray skills show via CLI', () => {
+  it('supports xray skill list and xray skill show via CLI', () => {
     const listJson = spawnSync(
       process.execPath,
-      [BIN, '-C', repo, 'skills', 'list', '--format', 'json'],
+      [BIN, '-C', repo, 'skill', 'list', '--format', 'json'],
       { encoding: 'utf-8' }
     );
     expect(listJson.status).toBe(0);
@@ -177,7 +177,7 @@ describe('SkillRegistry, CLI, MCP, and ask /<slug> expansion', () => {
 
     const listTable = spawnSync(
       process.execPath,
-      [BIN, '-C', repo, 'skills', 'list', '--format', 'table'],
+      [BIN, '-C', repo, 'skill', 'list', '--format', 'table'],
       { encoding: 'utf-8' }
     );
     expect(listTable.status).toBe(0);
@@ -186,7 +186,7 @@ describe('SkillRegistry, CLI, MCP, and ask /<slug> expansion', () => {
 
     const showRes = spawnSync(
       process.execPath,
-      [BIN, '-C', repo, 'skills', 'show', 'arch-review'],
+      [BIN, '-C', repo, 'skill', 'show', 'arch-review'],
       { encoding: 'utf-8' }
     );
     expect(showRes.status).toBe(0);
@@ -194,7 +194,7 @@ describe('SkillRegistry, CLI, MCP, and ask /<slug> expansion', () => {
 
     const badShow = spawnSync(
       process.execPath,
-      [BIN, '-C', repo, 'skills', 'show', '../etc'],
+      [BIN, '-C', repo, 'skill', 'show', '../etc'],
       { encoding: 'utf-8' }
     );
     expect(badShow.status).toBe(2);

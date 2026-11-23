@@ -6,7 +6,7 @@ describe('help output is cwd-independent', () => {
   beforeAll(() => { p = createCliProject({ 'package.json': '{"name":"x"}' }); });
   afterAll(() => p.cleanup());
 
-  const cases: string[][] = [['lang', 'list'], ['paths'], ['express', 'routes'], ['build', 'targets']];
+  const cases: string[][] = [['language', 'list'], ['config', 'paths'], ['express', 'routes'], ['build', 'targets']];
   it.each(cases)('xray %s --help', (...argv) => {
     const r = p.run(...argv, '--help');
     expect(r.status).toBe(0);
@@ -14,8 +14,8 @@ describe('help output is cwd-independent', () => {
     expect(r.stdout.replace(/\s+/g, ' ')).toContain('current directory');
   });
 
-  it('lang list still inspects the cwd without -p', () => {
-    const r = p.run('lang', 'list', '--json');
+  it('language list still inspects the cwd without -p', () => {
+    const r = p.run('language', 'list', '--format', 'json');
     expect(r.status).toBe(0);
   });
 });

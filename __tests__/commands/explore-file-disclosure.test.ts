@@ -123,7 +123,7 @@ describe('empty --search', () => {
 describe('xray mcp: no tool discloses ignored or out-of-tree files', () => {
   let c: Client;
   beforeAll(async () => {
-    c = new Client(spawn(process.execPath, [BIN, 'mcp'], { cwd: repo, env, stdio: 'pipe' }));
+    c = new Client(spawn(process.execPath, [BIN, 'serve', '--stdio'], { cwd: repo, env, stdio: 'pipe' }));
     await c.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 't', version: '0' } });
   }, 60_000);
   afterAll(() => c.proc.stdin.end());
@@ -153,7 +153,7 @@ describe('xray mcp: no tool discloses ignored or out-of-tree files', () => {
       ['map', {}],
       ['map', { path: ['.env'] }],
       ['map', { path: ['.git/config'] }],
-      ['graph', {}],
+      ['map', { flow: true }],
       ['imports', {}],
       ['imports', { paths: ['.env', '.git/config', 'ignored.ts', 'src/envlink.ts'] }],
       ['strategy_detect', { path: ['.env'] }],

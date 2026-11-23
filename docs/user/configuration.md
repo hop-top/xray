@@ -48,7 +48,7 @@ You can create a global configuration that applies to all projects. xray follows
    `<config-dir>` is `$XDG_CONFIG_HOME/xray` when `XDG_CONFIG_HOME` is set,
    else the platform default (`~/.config/xray` on Linux,
    `~/Library/Preferences/xray` on macOS, `%APPDATA%\xray` on Windows).
-   `xray paths` prints the resolved `config-dir`.
+   `xray config paths` prints the resolved `config-dir`.
 2. `~/.config/xray/config.json` (legacy location; still read on macOS
    and Windows so existing configs keep working)
 3. `~/.xrayrc.json` (fallback)
@@ -232,15 +232,15 @@ anywhere.
 | `lenses` | `object` | Named lenses — config-file option overlays selected via `--lens <name>` |
 | `contexts` | `object` | Named multi-root glob contexts (`{ include: string[], exclude?: string[] }`) selected via `--context <name>` |
 | `llm` | `object` | BYOK LLM settings (`provider`: `'openai' \| 'anthropic'`, `model`, `apiKey`, `baseUrl`, `maxTokens`, `maxCost`) for `ask`, `review --llm`, `handbook --llm` |
-| `skills` | `object` | Workspace skills settings (`dirs?: string[]`) for `xray skills` and `xray ask` |
+| `skills` | `object` | Workspace skills settings (`dirs?: string[]`) for `xray skill` and `xray ask` |
 | `gateway` | `object` | Upstream MCP gateway (`upstreams?: Record<string, ...>`); global config only unless `XRAY_ALLOW_PROJECT_GATEWAY=1` |
 
 ### Contexts, LLM, Skills, and Gateway
 
 - **`contexts`**: Named multi-root glob definitions (`include` and optional `exclude` arrays) used with `--context <name>` across `map`, `graph`, `explore`, `query`, `impact`, and `diagram`.
 - **`llm`**: BYOK provider settings (`provider`, `model`, `apiKey`, `baseUrl`, `maxTokens`, `maxCost`) used by `xray ask`, `xray review --llm`, and `xray handbook --llm`.
-- **`skills.dirs`**: Additional directories to scan for workspace skill manifests (`xray skills list`, `/<slug>` expansion in `xray ask`).
-- **`gateway.upstreams`**: Upstream MCP servers (`transport: 'http' | 'stdio'`, `url` or `command`/`args`, `headerEnv`, `allowTools`, `blockTools`) mounted by `xray mcp` / `xray serve --mcp`. Repo-local `gateway` blocks are ignored for security unless `XRAY_ALLOW_PROJECT_GATEWAY=1` is set in the environment.
+- **`skills.dirs`**: Additional directories to scan for workspace skill manifests (`xray skill list`, `/<slug>` expansion in `xray ask`).
+- **`gateway.upstreams`**: Upstream MCP servers (`transport: 'http' | 'stdio'`, `url` or `command`/`args`, `headerEnv`, `allowTools`, `blockTools`) mounted by `xray serve --stdio` / `xray serve --mcp`. Repo-local `gateway` blocks are ignored for security unless `XRAY_ALLOW_PROJECT_GATEWAY=1` is set in the environment.
 
 ## Global Configuration Use Cases
 

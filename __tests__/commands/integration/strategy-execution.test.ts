@@ -27,8 +27,8 @@ describe('Strategy Command Execution (Integration)', () => {
   }
 
   describe('Help and Discovery', () => {
-    it('should list strategy commands in main help', async () => {
-      const { stdout, exitCode } = await runXray('--help');
+    it('should list strategy commands in --help-all', async () => {
+      const { stdout, exitCode } = await runXray('--help-all');
 
       expect(exitCode).toBe(0);
       expect(stdout).toContain('express');
@@ -157,12 +157,10 @@ describe('Strategy Command Execution (Integration)', () => {
   });
 
   describe('Verbose Output', () => {
-    it('should show debug info with --log-level debug', async () => {
-      const { stdout, exitCode } = await runXray('--log-level debug express --help');
+    it('should accept -V verbose flag', async () => {
+      const { stdout, exitCode } = await runXray('-V express --help');
 
       expect(exitCode).toBe(0);
-      // Debug output may appear in stdout
-      // Just verify command still works
       expect(stdout).toContain('express');
     });
   });

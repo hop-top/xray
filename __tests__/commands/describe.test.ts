@@ -26,15 +26,15 @@ function makeProgram(): Command {
     .command('explore')
     .description('Explore and discover')
     .argument('[path]', 'Path to explore')
-    .option('--list-strategies', 'List strategies')
+    .option('--all', 'Include hidden files')
     .action(() => {}), 'read', 'yes');
   const cache = root.command('cache').description('Cache management');
   declareEffect(cache.command('clear').description('Clear cache').action(() => {}), 'destructive-local', 'yes');
   declareEffect(root
     .command('alias')
     .description('Alias management')
-    .command('remove')
-    .description('Remove an alias')
+    .command('delete')
+    .description('Delete an alias')
     .argument('<name>', 'Alias name')
     .action(() => {}), 'write-local', 'no');
   declareEffect(root
@@ -44,20 +44,22 @@ function makeProgram(): Command {
     .option('--format <fmt>', 'Output format', 'json')
     .action(() => {}), 'read', 'yes');
   declareEffect(root
-    .command('describe')
-    .description('Capability surface')
+    .command('spec')
+    .description('Capability manifest')
     .option('--format <fmt>', 'Output format', 'json')
+    .option('--schema-version', 'Print capability schema version and exit')
     .action(() => {}), 'read', 'yes');
   return root;
 }
 
-describe('xray describe', () => {
+describe('xray spec', () => {
   const doc = buildDescribeDoc(makeProgram(), 'xray', '0.1.0');
 
   it('emits a top-level document with required fields', () => {
     expect(doc.$schema).toBe('https://hop-top.dev/schemas/cli-capabilities/v1.json');
     expect(doc.tool).toBe('xray');
     expect(doc.version).toBe('0.1.0');
+    expect(doc.schema_version).toBe('1.0');
     expect(doc.spec).toBe('12fc/v1');
     expect(doc.commands).toBeInstanceOf(Array);
     expect(doc.commands.length).toBeGreaterThan(0);
@@ -125,8 +127,8 @@ describe('xray describe', () => {
     expect(limit.default).toBe('4000');
 
     const explore = doc.commands.find((c) => c.name === 'explore')!;
-    const listFlag = explore.options.find((o) => o.name === '--list-strategies')!;
-    expect(listFlag.type).toBe('boolean');
+    const allFlag = explore.options.find((o) => o.name === '--all')!;
+    expect(allFlag.type).toBe('boolean');
   });
 
   it('parses positional arguments with required/variadic', () => {
@@ -169,10 +171,10 @@ describe('xray describe', () => {
     expect(cacheDoc).toMatchObject({ sideEffect: 'read', idempotent: 'yes' });
   });
 
-  it('adds exit code 3 for alias.remove (not-found path)', () => {
+  it('adds exit code 3 for alias.delete (not-found path)', () => {
     const alias = doc.commands.find((c) => c.name === 'alias')!;
-    const remove = alias.subcommands.find((c) => c.name === 'remove')!;
-    expect(remove.exitCodes).toContain(3);
+    const del = alias.subcommands.find((c) => c.name === 'delete')!;
+    expect(del.exitCodes).toContain(3);
   });
 
   it('classifies imports as read / yes, exit 3, with its output schema id and shipped path', () => {
@@ -187,11 +189,13 @@ describe('xray describe', () => {
     expect(doc.commands.find((c) => c.name === 'explore')!.output).toBeUndefined();
   });
 
-  it('exposes the describe command itself', () => {
-    const desc = doc.commands.find((c) => c.name === 'describe')!;
-    expect(desc).toBeDefined();
-    expect(desc.sideEffect).toBe('read');
-    const fmt = desc.options.find((o) => o.name === '--format')!;
+  it('exposes the spec command itself', () => {
+    const spec = doc.commands.find((c) => c.name === 'spec')!;
+    expect(spec).toBeDefined();
+    expect(spec.sideEffect).toBe('read');
+    const fmt = spec.options.find((o) => o.name === '--format')!;
     expect(fmt.default).toBe('json');
+    const sv = spec.options.find((o) => o.name === '--schema-version')!;
+    expect(sv.type).toBe('boolean');
   });
 });

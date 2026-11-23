@@ -212,11 +212,11 @@ Start here, then pick your next path based on what you want to do.
 ### New & Interactive Workflows
 - [Commands: `xray handbook`](commands.md#xray-handbook) - Generate architectural handbook pages (`.xray/handbook/`)
 - [Commands: `xray diagram`](commands.md#xray-diagram) - Export Mermaid architecture, call, CFG, or DFG diagrams
-- [Commands: `xray review`](commands.md#xray-review) - Deterministic diff-grounded PR reviewer (`--base`, `--llm`)
+- [Commands: `xray review`](commands.md#xray-review) - Deterministic diff-grounded PR reviewer (`--since`, `--llm`)
 - [Commands: `xray ask`](commands.md#xray-ask) - BYOK codebase Q&A with read-only xray tools and `/<slug>` skills
 - [Commands: `xray watch`](commands.md#xray-watch) - Live incremental `GraphCache` indexer
 - [Commands: `xray tui` & `xray serve`](commands.md#xray-tui) - Terminal explorer, Web UI, and read-only REST API
-- [Commands: `xray skills`](commands.md#xray-skills) - Workspace skills manifest discovery
+- [Commands: `xray skill`](commands.md#xray-skill) - Workspace skills manifest discovery
 
 ### Integrations
 - [Harness Integration](harness-integration.md) - Skill, MCP and hooks for coding agents
@@ -396,11 +396,11 @@ xray User Manual
 ├── Commands Reference (Complete reference)
 │   ├── xray map
 │   ├── xray explore / strategies
-│   ├── xray graph
+│   ├── xray map --flow
 │   ├── xray impact (what breaks if I change X)
 │   ├── xray strategy detect/list
 │   ├── xray alias (manage shortcuts)
-│   ├── xray clear-cache
+│   ├── xray cache clear
 │   └── xray completion
 │
 ├── Strategies Guide (Framework-specific)

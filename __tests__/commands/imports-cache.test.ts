@@ -154,8 +154,8 @@ describe('xray imports cache', () => {
     expect(after.stderr).toMatch(/imports cache: \d+ hits, 0 misses \(0 invalid\)/);
   }, 120_000);
 
-  it('describe lists --no-cache on imports', async () => {
-    const r = await run(['describe', '--format', 'json'], sandbox, path.join(sandbox, 'd-cache'));
+  it('spec lists --no-cache on imports', async () => {
+    const r = await run(['spec', '--format', 'json'], sandbox, path.join(sandbox, 'd-cache'));
     expect(r.status).toBe(0);
     const doc = JSON.parse(r.stdout);
     const imports = doc.commands.find((c: { name: string }) => c.name === 'imports');

@@ -92,7 +92,7 @@ export function detectedNotInstalled(rows: LangRow[]): DetectedNotInstalled[] {
 }
 
 const installHint = (d: DetectedNotInstalled[]): string | null =>
-  d.length ? `xray lang add ${d.map(x => x.language).join(' ')}` : null;
+  d.length ? `xray language add ${d.map(x => x.language).join(' ')}` : null;
 
 function parseSelection(names: string[]): LanguagePack[] | undefined {
   try {
@@ -108,16 +108,15 @@ function parseSelection(names: string[]): LanguagePack[] | undefined {
 }
 
 export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command {
-  const lang = new Command('lang').description('Manage language packs (tree-sitter grammars)');
+  const lang = new Command('language').description('Manage language packs (tree-sitter grammars)');
 
   const list = declareEffect(lang
     .command('list')
     .description('List language packs, install status, and files of each language in this repo')
     .option('-p, --path <path>', 'Repository to inspect (default: current directory)')
     .option('--format <fmt>', 'Output format: text (default) or json')
-    .option('--json', 'Alias of --format json')
-    .action((opts: { path?: string; json?: boolean; format?: string; config?: string }) => {
-      const fmt = (opts.format ?? (opts.json ? 'json' : 'text')).toLowerCase();
+    .action((opts: { path?: string; format?: string; config?: string }) => {
+      const fmt = (opts.format ?? 'text').toLowerCase();
       if (fmt !== 'text' && fmt !== 'json') {
         throw new UsageError(`invalid --format '${opts.format}' (expected one of: text, json)`);
       }
@@ -160,9 +159,8 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
 
   declareEffect(addResultFormat(lang
     .command('add <names...>')
-    .description('Install language packs (language names or bundles: web, go, systems, jvm, scripting, full)')
-    .option('--dry-run', 'Print what would be installed (the npm command) without running it'))
-    .action((names: string[], opts: { dryRun?: boolean }, cmd: Command) => {
+    .description('Install language packs (language names or bundles: web, go, systems, jvm, scripting, full)'))
+    .action((names: string[], _opts: unknown, cmd: Command) => {
       assertResultFormat(cmd);
       const packs = parseSelection(names);
       if (!packs) return;
@@ -170,7 +168,7 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
       for (const p of packs) {
         if (!todo.includes(p)) Logger.info(`${p.name}: already installed (${getGrammar(p.name).source})`);
       }
-      if (previewing(cmd, opts.dryRun)) {
+      if (previewing(cmd)) {
         emitPlan(cmd, todo.map(p => ({
           kind: 'install',
           target: `npm:${p.module}@${p.range}`,
@@ -202,7 +200,7 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
         else if (s.check && !s.check.ok) {
           const ts = s.check.treeSitter ? ` ${s.check.treeSitter}` : '';
           Logger.error(`${s.language}: installed but not usable with xray's tree-sitter${ts} (${s.check.error})`);
-          Logger.info(`${s.language}: ${s.module}${s.version ? `@${s.version}` : ''} is not compatible with the tree-sitter bundled in xray; install another release in ${out.dir}, or run \`xray lang remove ${s.language}\``);
+          Logger.info(`${s.language}: ${s.module}${s.version ? `@${s.version}` : ''} is not compatible with the tree-sitter bundled in xray; install another release in ${out.dir}, or run \`xray language delete ${s.language}\``);
         }
         else Logger.error(`${s.language}: ${s.reason === 'broken' ? `failed to load (${s.error})` : 'not installed'}`);
       }
@@ -211,9 +209,8 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
     }), 'write-local', 'yes');
 
   declareEffect(addResultFormat(lang
-    .command('remove <names...>')
-    .alias('rm')
-    .description('Remove language packs from the xray-managed dir'))
+    .command('delete <names...>')
+    .description('Delete language packs from the xray-managed dir'))
     .action((names: string[], _opts: unknown, cmd: Command) => {
       assertResultFormat(cmd);
       const packs = parseSelection(names);
@@ -239,20 +236,20 @@ export function registerLangCommand(run: NpmRunner = defaultNpmRunner): Command 
       const skipped = packs.filter(p => !managed.includes(p))
         .map(p => ({ language: p.name, status: getGrammar(p.name).ok ? 'not-managed' : 'not-installed' }));
       if (managed.length === 0) {
-        emitResult(cmd, { action: 'remove', ok: true, dir: managedDir(), languages: skipped }, () => {});
+        emitResult(cmd, { action: 'delete', ok: true, dir: managedDir(), languages: skipped }, () => {});
         return;
       }
       const out = removePacks(managed, run);
       const languages: Array<Record<string, unknown>> = [...skipped];
       for (const p of managed) {
         const s = getGrammar(p.name);
-        if (s.ok) Logger.warn(`${p.name}: removed from managed dir, still provided by ${s.source} install`);
-        else Logger.success(`${p.name}: removed`);
+        if (s.ok) Logger.warn(`${p.name}: deleted from managed dir, still provided by ${s.source} install`);
+        else Logger.success(`${p.name}: deleted`);
         languages.push(out.ok
-          ? { language: p.name, status: s.ok ? 'removed-still-provided' : 'removed', ...(s.ok ? { source: s.source } : {}) }
+          ? { language: p.name, status: s.ok ? 'deleted-still-provided' : 'deleted', ...(s.ok ? { source: s.source } : {}) }
           : { language: p.name, status: 'failed' });
       }
-      emitResult(cmd, { action: 'remove', ok: out.ok, dir: out.dir, languages }, () => {});
+      emitResult(cmd, { action: 'delete', ok: out.ok, dir: out.dir, languages }, () => {});
       if (!out.ok) process.exitCode = 1;
     }), 'write-local', 'yes');
 

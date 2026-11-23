@@ -16,7 +16,7 @@ let outDir: string;
 function map(out: string, ...roots: string[]) {
   const r = spawnSync(
     process.execPath,
-    [BIN, 'map', '--skip-detect', ...roots.flatMap(p => ['-p', p]), '--format', 'json', '-o', out],
+    [BIN, 'map', '--no-detect', ...roots.flatMap(p => ['-p', p]), '--format', 'json', '-o', out],
     {
       cwd: work,
       encoding: 'utf-8',

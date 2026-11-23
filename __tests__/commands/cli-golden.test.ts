@@ -28,20 +28,22 @@ const PKG_VERSION: string = require('../../package.json').version;
 // commands (clear-cache) included on purpose.
 const COMMANDS: string[][] = [
   [],
-  ['map'], ['graph'], ['query'], ['explore'], ['imports'],
+  ['map'], ['query'], ['impact'], ['explore'], ['imports'], ['review'], ['ask'],
+  ['handbook'], ['diagram'], ['tui'], ['serve'], ['watch'],
   ['strategy'],
-  ['strategy', 'list'], ['strategy', 'detect'], ['strategy', 'info'],
-  ['strategy', 'create'], ['strategy', 'install'], ['strategy', 'remove'],
+  ['strategy', 'list'], ['strategy', 'detect'], ['strategy', 'show'],
+  ['strategy', 'create'], ['strategy', 'install'], ['strategy', 'delete'],
   ['strategy', 'validate'], ['strategy', 'path'],
-  ['alias'], ['alias', 'list'], ['alias', 'set'], ['alias', 'remove'],
-  ['lang'], ['lang', 'list'], ['lang', 'add'], ['lang', 'remove'],
-  ['cache'], ['cache', 'clear'], ['clear-cache'],
-  ['paths'], ['describe'], ['upgrade'], ['mcp'], ['completion'], ['help'],
-  ['build'], ['build', 'targets'], ['build', 'graph'], ['build', 'run'], ['build', 'exec'],
+  ['alias'], ['alias', 'list'], ['alias', 'set'], ['alias', 'delete'],
+  ['language'], ['language', 'list'], ['language', 'add'], ['language', 'delete'],
+  ['skill'], ['skill', 'list'], ['skill', 'show'],
+  ['cache'], ['cache', 'clear'],
+  ['config'], ['config', 'path'], ['config', 'paths'],
+  ['spec'], ['upgrade'], ['upgrade', 'check'], ['completion'], ['help'],
+  ['build'], ['build', 'targets'], ['build', 'graph'], ['build', 'show'], ['build', 'exec'],
   ['cicd'], ['cicd', 'workflows'], ['cicd', 'graph'], ['cicd', 'deploy'],
   ['cicd', 'triggers'],
   ['config-files'], ['config-files', 'list'], ['config-files', 'keys'], ['config-files', 'values'],
-  ['config'], ['config', 'list'],
   ['container'], ['container', 'analyze'], ['container', 'services'],
   ['container', 'stages'],
   ['express'], ['express', 'routes'], ['express', 'routers'],
@@ -53,7 +55,7 @@ const COMMANDS: string[][] = [
   ['markdown'], ['markdown', 'toc'], ['markdown', 'refs'],
   ['markdown', 'orphans'], ['markdown', 'code-refs'],
   ['markdown', 'coverage'], ['markdown', 'stale'],
-  ['package-manager'], ['package-manager', 'list-dependencies'],
+  ['package-manager'], ['package-manager', 'deps'],
   ['package-manager', 'summary'],
   ['react'], ['react', 'components'], ['react', 'hooks'], ['react', 'contexts'],
   ['rest-api'], ['rest-api', 'endpoints'], ['rest-api', 'methods'],
@@ -69,9 +71,9 @@ const ERROR_CASES: string[][] = [
   ['query'], // missing optional-but-required query
   ['query', '--format', 'json', '--graph', '/nonexistent/g.json', '--path', '/tmp', 'calls(x)'], // --graph with --path
   ['query', '--graph', '/nonexistent/g.json', 'calls(x)'], // not found
-  ['strategy', 'info'], // missing required arg
-  ['alias', 'remove'],
-  ['lang', 'add'],
+  ['strategy', 'show'], // missing required arg
+  ['alias', 'delete'],
+  ['language', 'add'],
   ['completion'],
   ['completion', 'pwsh'], // unsupported shell
   ['help', 'nosuch'], // help for unknown command
@@ -217,8 +219,8 @@ describe('cli golden: --help', () => {
 // takes no query (only a bare `xray <path>` is routed to it).
 const EXCESS_ARG_REJECTED: string[][] = [
   ['explore', 'q', 'extra'], // no query operand
-  ['strategy', 'info', 'express', 'extra'], // required arg + surplus
-  ['paths', 'extra'], // no-arg command
+  ['strategy', 'show', 'express', 'extra'], // required arg + surplus
+  ['config', 'paths', 'extra'], // no-arg command
 ];
 
 describe('cli golden: excess arguments', () => {
@@ -240,8 +242,8 @@ describe('cli golden: introspection', () => {
     expect(r.stderr).toBe('');
   });
 
-  it('describe', async () => {
-    const r = await run(['describe']);
+  it('spec', async () => {
+    const r = await run(['spec']);
     expect(r.status).toBe(0);
     expect(r.stderr).toBe('');
     const doc = JSON.parse(r.stdout);
@@ -250,8 +252,8 @@ describe('cli golden: introspection', () => {
     expect(normalize(JSON.stringify(doc, null, 2))).toMatchSnapshot();
   });
 
-  it.each([['text'], ['json']])('paths --format %s', async (format) => {
-    const r = await run(['paths', '--format', format]);
+  it.each([['text'], ['json']])('config paths --format %s', async (format) => {
+    const r = await run(['config', 'paths', '--format', format]);
     expect(golden(r)).toMatchSnapshot();
   });
 
@@ -290,16 +292,16 @@ describe('cli golden: map / query / explore on fixture repo', () => {
     graphFile = path.join(outDir, 'graph.json');
   }, 60_000);
 
-  it('map --no-chunk --txt', async () => {
+  it('map --no-chunk --format txt', async () => {
     const out = path.join(outDir, 'single.txt');
-    const r = await run(['map', '--skip-detect', '--no-chunk', '--txt', '-o', out], repo);
+    const r = await run(['map', '--no-detect', '--no-chunk', '--format', 'txt', '-o', out], repo);
     expect(golden(r)).toMatchSnapshot();
     expect(normalize(fs.readFileSync(out, 'utf-8'))).toMatchSnapshot();
   }, 60_000);
 
-  it('map --txt (chunked)', async () => {
+  it('map --format txt (chunked)', async () => {
     const base = path.join(outDir, 'chunks');
-    const r = await run(['map', '--skip-detect', '--txt', '-o', base], repo);
+    const r = await run(['map', '--no-detect', '--format', 'txt', '-o', base], repo);
     expect(golden(r)).toMatchSnapshot();
     const files = fs.readdirSync(outDir).filter((f) => f.startsWith('chunks')).sort();
     const contents = files.map(
@@ -309,7 +311,7 @@ describe('cli golden: map / query / explore on fixture repo', () => {
   }, 60_000);
 
   it('map --format json', async () => {
-    const r = await run(['map', '--skip-detect', '--format', 'json', '-o', graphFile], repo);
+    const r = await run(['map', '--no-detect', '--format', 'json', '-o', graphFile], repo);
     expect(golden(r)).toMatchSnapshot();
     expect(normalize(fs.readFileSync(graphFile, 'utf-8'))).toMatchSnapshot();
   }, 60_000);

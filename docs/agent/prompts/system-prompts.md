@@ -73,7 +73,7 @@ xray express routes             # Express routes
 ```bash
 xray map --anchor src/file.ts --with incs    # Dependencies
 xray impact <symbol>                         # Transitive callers (blast radius)
-xray graph --with cf --with df               # Code flow
+xray map --flow --with cf --with df               # Code flow
 ```
 
 ### Parsing xray Output
@@ -230,7 +230,7 @@ xray impact <symbol> --depth 1 --strict --format json
 
 **Code Flow Analysis (High Token Cost: 500-800)**
 ```bash
-xray graph --with cf --with df
+xray map --flow --with cf --with df
 # Control and data flow analysis
 # Use only for complex logic understanding
 ```
@@ -486,7 +486,7 @@ Use the xray tool with these commands:
 2. **Find structure:** xray map --path ./src --depth 2
 3. **Find patterns:** xray <strategy> <command>
 4. **Find files:** xray explore --match "<pattern>"
-5. **Analyze flow:** xray graph --with cf --with df
+5. **Analyze flow:** xray map --flow --with cf --with df
 6. **Find callers before a change:** xray impact <symbol>
 
 Error recovery:

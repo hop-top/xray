@@ -87,13 +87,13 @@ afterAll(() => {
 });
 
 describe('coded errors', () => {
-  it('strategy command: build run --target nope is NOT_FOUND (3)', () => {
-    const env = expectEnvelope(run(['build', 'run', '--target', 'nope', '--format', 'json']), 3, 'NOT_FOUND', 'permanent');
+  it('strategy command: build show nope is NOT_FOUND (3)', () => {
+    const env = expectEnvelope(run(['build', 'show', 'nope', '--format', 'json']), 3, 'NOT_FOUND', 'permanent');
     expect(env.message).toBe('Target "nope" not found in any build file');
   });
 
   it('--format=json is the same request', () => {
-    expectEnvelope(run(['build', 'run', '--target', 'nope', '--format=json']), 3, 'NOT_FOUND', 'permanent');
+    expectEnvelope(run(['build', 'show', 'nope', '--format=json']), 3, 'NOT_FOUND', 'permanent');
   });
 
   it('command: query --graph missing is NOT_FOUND (3)', () => {
@@ -105,16 +105,8 @@ describe('coded errors', () => {
     expectEnvelope(run(['map', '--path', path.join(tmp, 'nope'), '--format', 'json']), 3, 'NOT_FOUND', 'permanent');
   });
 
-  it('--json alias (map)', () => {
-    expectEnvelope(run(['map', '--path', path.join(tmp, 'nope'), '--json']), 3, 'NOT_FOUND', 'permanent');
-  });
-
-  it('usage error thrown by a command: conflicting output flags (2)', () => {
-    expectEnvelope(run(['map', '--json', '--txt']), 2, 'USAGE', 'permanent');
-  });
-
   it('without --quiet, logs stay on stderr but stdout is still empty', () => {
-    const r = spawnSync(process.execPath, [ENTRY, '--no-telemetry', '--offline', 'build', 'run', '--target', 'nope', '--format', 'json'], {
+    const r = spawnSync(process.execPath, [ENTRY, '--no-telemetry', '--offline', 'build', 'show', 'nope', '--format', 'json'], {
       cwd: proj,
       env: { PATH: process.env.PATH, HOME: home, XDG_CACHE_HOME: path.join(home, '.cache'), XDG_STATE_HOME: path.join(home, '.state'), NO_COLOR: '1' },
       encoding: 'utf-8',
@@ -210,7 +202,7 @@ describe("kit's refusals", () => {
 describe('xray.imports/v1', () => {
   it('failures: envelope on stderr, stdout empty, same exit codes', () => {
     expectEnvelope(run(['imports', '-p', path.join(tmp, 'nope'), '--format', 'json']), 3, 'NOT_FOUND', 'permanent');
-    expectEnvelope(run(['imports', 'src', '--lang', 'bogus', '--format', 'json']), 2, 'USAGE', 'permanent');
+    expectEnvelope(run(['imports', 'src', '--language', 'bogus', '--format', 'json']), 2, 'USAGE', 'permanent');
   });
 
   it('success: the document is untouched', () => {
@@ -223,7 +215,7 @@ describe('xray.imports/v1', () => {
 
 describe('text mode and other formats are unchanged', () => {
   it.each([
-    [['build', 'run', '--target', 'nope'], 3, '✖ Target "nope" not found in any build file'],
+    [['build', 'show', 'nope'], 3, '✖ Target "nope" not found in any build file'],
     [['map', '--format', 'csv', '--path', '/nonexistent-xray-dir'], 3, '✖ Path does not exist or is not a directory: /nonexistent-xray-dir'],
     [['map', '--format', 'xml', '--path', '/nonexistent-xray-dir'], 3, '✖ Path does not exist or is not a directory: /nonexistent-xray-dir'],
     [['map', '--format', 'txt', '--path', '/nonexistent-xray-dir'], 3, '✖ Path does not exist or is not a directory: /nonexistent-xray-dir'],
@@ -255,8 +247,7 @@ describe('jsonRequested', () => {
     .command('map')
     .option('--path <path>')
     .option('--query <q>')
-    .option('--format <fmt>')
-    .option('--json');
+    .option('--format <fmt>');
   const values = valueOptionNames(program);
   const req = (...a: string[]) => jsonRequested(['node', 'xray', ...a], values);
 
@@ -264,7 +255,6 @@ describe('jsonRequested', () => {
     [['map', '--format', 'json'], true],
     [['map', '--format=json'], true],
     [['--quiet', 'map', '--format', 'json', '--path', 'x'], true],
-    [['map', '--json'], true],
     [['map', '--bogus', '--format', 'json'], true],
     [['map'], false],
     [['map', '--format', 'csv'], false],
@@ -272,7 +262,6 @@ describe('jsonRequested', () => {
     [['map', '--format', 'txt'], false],
     [['map', '--format=csv'], false],
     [['map', '--path', 'json'], false],
-    [['map', '--path', '--json'], false],
     [['map', '--query', '--format=json'], false],
     [['-C', 'json', 'map'], false],
     [['map', '--format', 'json', '--format', 'csv'], false],
@@ -299,15 +288,15 @@ describe('jsonRequested', () => {
   });
 });
 
-describe('describe', () => {
+describe('spec', () => {
   it('declares the error shape', () => {
-    const r = run(['describe']);
+    const r = run(['spec']);
     expect(r.status).toBe(0);
     const doc = JSON.parse(r.stdout);
     expect(doc.errors).toEqual({
       format: 'json',
       stream: 'stderr',
-      enabledBy: ['--format json', '--format=json', '--json'],
+      enabledBy: ['--format json', '--format=json'],
       defaultFor: ['imports'],
       required: ['code', 'message', 'exit_code', 'transience'],
       optional: ['cause', 'suggested_fix', 'alternatives'],
@@ -317,14 +306,14 @@ describe('describe', () => {
   });
 });
 
-describe('mcp', () => {
-  it('build_run with a bad target is an isError tool result with a readable message', () => {
+describe('serve --stdio (mcp)', () => {
+  it('build_show with a bad target is an isError tool result with a readable message', () => {
     const msgs = [
       { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '0' } } },
       { jsonrpc: '2.0', method: 'notifications/initialized' },
-      { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'build_run', arguments: { target: 'nope' } } },
+      { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'build_show', arguments: { target: 'nope' } } },
     ];
-    const r = run(['mcp'], msgs.map((m) => JSON.stringify(m)).join('\n') + '\n');
+    const r = run(['serve', '--stdio'], msgs.map((m) => JSON.stringify(m)).join('\n') + '\n');
     const reply = r.stdout
       .split('\n')
       .filter(Boolean)

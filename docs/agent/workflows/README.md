@@ -260,7 +260,7 @@ When: You need to understand specific code deeply
 Steps:
 1. Identify relevant file(s)
 2. xray map --anchor <file> --with incs (see dependencies)
-3. xray graph --with cf --with df (see flow)
+3. xray map --flow --with cf --with df (see flow)
 4. Read specific files
 
 Use in:

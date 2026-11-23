@@ -119,16 +119,16 @@ WHAT DO YOU WANT TO UNDERSTAND?
 │
 ├─ "How does data/control flow through code?" (TypeScript, JavaScript, Python, Go)
 │   ├─ "Control flow (if/else, loops, try/finally, switch)"
-│   │   └─ COMMAND: xray graph --with cf
+│   │   └─ COMMAND: xray map --flow --with cf
 │   │       OUTPUT: one CFG per function under it: nodes + labelled edges
 │   │       COST: about one line per statement; capped at 500 nodes per function
 │   │
 │   ├─ "Data flow (which assignment reaches which use)"
-│   │   └─ COMMAND: xray graph --with df
+│   │   └─ COMMAND: xray map --flow --with df
 │   │       OUTPUT: one line per definition → the nodes reading it
 │   │
 │   └─ "Both control and data flow"
-│       └─ COMMAND: xray graph
+│       └─ COMMAND: xray map --flow
 │           (cf and df are on by default; --with cf / --with df narrows)
 │
 ├─ "I want ALL the details"
@@ -324,7 +324,7 @@ Full protocol: [Impact Analysis workflow](workflows/impact-analysis.md).
    OUTPUT: All files that import/use this
 
 3. Analyze control and data flow (TypeScript files)
-   COMMAND: xray graph --anchor <file-to-refactor>
+   COMMAND: xray map --flow --anchor <file-to-refactor>
    WHY: Understand how data flows through this code
    TOKENS: ~600
    OUTPUT: What changes would affect
@@ -520,7 +520,7 @@ ERROR: "Invalid path"
 RECOVERY: Check path exists with ls, use absolute path, retry
 
 ERROR: "No files matched"
-RECOVERY: Broaden --match pattern, remove --catch filter, retry
+RECOVERY: Broaden --match pattern, remove --symbol filter, retry
 
 ERROR: "Strategy not detected"
 RECOVERY: Run strategy detect first, then specify explicitly

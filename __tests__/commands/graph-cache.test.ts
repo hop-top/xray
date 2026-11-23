@@ -102,8 +102,8 @@ describe('merged-graph cache (impact, multi-root)', () => {
   });
 
   test('different build options do not share entries', () => {
-    expect(impact(...P, '--lang', 'go').cache).toEqual(['cache: alpha miss · beta miss']);
-    expect(impact(...P, '--lang', 'go').cache).toEqual(['cache: alpha hit · beta hit']);
+    expect(impact(...P, '--language', 'go').cache).toEqual(['cache: alpha miss · beta miss']);
+    expect(impact(...P, '--language', 'go').cache).toEqual(['cache: alpha hit · beta hit']);
   });
 
   test('single root: no cache line', () => {

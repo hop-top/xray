@@ -44,7 +44,7 @@ function resolveRoot(cmd: Command, opts: SkillsCommandOptions): { root: string; 
 
 export function registerSkillsCommand(program: Command): Command {
   const skills = program
-    .command('skills')
+    .command('skill')
     .description('Discover and inspect workspace skills');
 
   const listCmd = skills

@@ -71,7 +71,7 @@ function snapshotTree(dir: string, rel = ''): string[] {
 
 /** One `tools/call imports` over a fresh stdio MCP server rooted at `cwd`. */
 async function mcpImports(cwd: string, cacheDir: string): Promise<{ isError: boolean; text: string }> {
-  const proc = spawn(process.execPath, [BIN, 'mcp'], { cwd, env: { ...env, XDG_CACHE_HOME: cacheDir }, stdio: 'pipe' }) as ChildProcessWithoutNullStreams;
+  const proc = spawn(process.execPath, [BIN, 'serve', '--stdio'], { cwd, env: { ...env, XDG_CACHE_HOME: cacheDir }, stdio: 'pipe' }) as ChildProcessWithoutNullStreams;
   let buf = '';
   const waiters = new Map<number, (m: any) => void>();
   proc.stdout.setEncoding('utf-8').on('data', (d: string) => {
@@ -183,8 +183,8 @@ describe.each(PROJECTS)('consumer scan: %s', (project) => {
   });
 });
 
-it('describe lists imports with its output schema id', () => {
-  const r = spawnSync(process.execPath, [BIN, 'describe', '--format', 'json'], { cwd: sandbox, env, encoding: 'utf-8' });
+it('spec lists imports with its output schema id', () => {
+  const r = spawnSync(process.execPath, [BIN, 'spec', '--format', 'json'], { cwd: sandbox, env, encoding: 'utf-8' });
   expect(r.status).toBe(0);
   const imports = (JSON.parse(r.stdout) as { commands: Array<{ name: string; output?: { schema: string; path: string } }> })
     .commands.find(c => c.name === 'imports');

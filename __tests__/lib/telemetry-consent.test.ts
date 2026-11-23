@@ -479,8 +479,8 @@ describe('TelemetryConsent', () => {
       expect(await handleFirstRunConsent(map)).toBe(false);
     });
 
-    it('xray mcp, even on a TTY', async () => {
-      expect(await handleFirstRunConsent(['node', 'xray', '-C', '/tmp', 'mcp'])).toBe(false);
+    it('xray serve --stdio, even on a TTY', async () => {
+      expect(await handleFirstRunConsent(['node', 'xray', '-C', '/tmp', 'serve', '--stdio'])).toBe(false);
     });
 
     it('project config consent is overridden too', async () => {

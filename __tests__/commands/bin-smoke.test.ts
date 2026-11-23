@@ -104,7 +104,7 @@ describe('bin/xray smoke', () => {
 
   it('map parses a small fixture (tree-sitter + sqlite cache load)', () => {
     const out = path.join(tmp, 'out');
-    const r = run(['map', '-p', tmp, '-o', out, '--txt'], tmp);
+    const r = run(['map', '-p', tmp, '-o', out, '--format', 'txt'], tmp);
     expect(r.status).toBe(0);
     const rootChunk = fs.readFileSync(`${out}_root.txt`, 'utf-8');
     expect(rootChunk).toContain('function hello()');
@@ -116,7 +116,7 @@ describe('bin/xray smoke', () => {
     const xdg = fs.mkdtempSync(path.join(os.tmpdir(), 'xray-ro-xdg-'));
     try {
       fs.writeFileSync(path.join(cwd, 'a.ts'), 'export const a = 1;\n');
-      for (const args of [['describe'], ['--help'], ['describe', '--help']]) {
+      for (const args of [['spec'], ['--help'], ['spec', '--help']]) {
         const r = spawnSync(process.execPath, ['-r', netGuardFile, BIN, '--offline', ...args], {
           cwd,
           encoding: 'utf-8',

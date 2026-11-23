@@ -19,6 +19,7 @@ const VALID_VIEWS: readonly MermaidView[] = ['architecture', 'calls', 'cfg', 'df
 export interface DiagramCommandOptions extends GraphSourceOptions {
   view?: string;
   anchor?: string;
+  symbol?: string[];
   catch?: string[];
   depth?: string;
   maxNodes?: string;
@@ -86,7 +87,7 @@ export async function handleDiagramAction(
       lens: options.lens,
       scope: options.scope,
       context: options.context,
-      lang: options.lang ?? [],
+      language: options.language ?? options.lang ?? [],
       config: options.config,
     };
     const config = loadConfig(cli.config, cli.path[0], { resolvePaths: true, confine: confineFor(cli, false) });
@@ -110,6 +111,7 @@ export async function handleDiagramAction(
     serialized = built.graph;
   }
 
+  const symbolFilter = (options.symbol && options.symbol.length > 0) ? options.symbol : options.catch;
   let output: string;
   if (view === 'architecture') {
     const graph = new GraphSerializer().deserialize(serialized);
@@ -120,7 +122,7 @@ export async function handleDiagramAction(
     output = renderMermaid(graph, {
       view,
       anchor: options.anchor,
-      catch: options.catch,
+      catch: symbolFilter,
       depth,
       maxNodes,
       root: serialized.metadata?.projectPath,
@@ -129,7 +131,7 @@ export async function handleDiagramAction(
     output = renderMermaid(serialized, {
       view,
       anchor: options.anchor,
-      catch: options.catch,
+      catch: symbolFilter,
       depth,
       maxNodes,
       root: serialized.metadata?.projectPath,
@@ -156,7 +158,7 @@ export function registerDiagramCommand(program: Command): Command {
   )
     .option('--view <view>', 'Diagram view: architecture (default), calls, cfg, dfg', 'architecture')
     .option('--anchor <target>', 'Anchor file or symbol to center BFS on')
-    .option('-c, --catch <pattern>', 'Match function/class name (prefix ! to negate) (repeatable)', (value: string, prev: string[] = []) => prev.concat([value]), [])
+    .option('--symbol <pattern>', 'Match function/class name (prefix ! to negate) (repeatable)', (value: string, prev: string[] = []) => prev.concat([value]), [])
     .option('--depth <n>', 'Maximum BFS depth from --anchor')
     .option('--max-nodes <n>', 'Maximum nodes to render (default: 60)', '60')
     .option('-o, --output <file>', 'Write Mermaid output to file instead of stdout')

@@ -223,7 +223,7 @@ describe('Build Strategy Commands', () => {
     });
   });
 
-  describe('build:run command', () => {
+  describe('build:show command', () => {
     it('should prepare command to run a target', async () => {
       mockContext.globFiles.mockReturnValue(['Makefile']);
       mockContext.getMetadata.mockReturnValue({
@@ -233,7 +233,7 @@ describe('Build Strategy Commands', () => {
         ]
       });
 
-      const result = await strategy.commands.run.handler(mockContext, { target: 'build' });
+      const result = await strategy.commands.show.handler(mockContext, { target: 'build' });
 
       expect(result).toMatchObject({
         tool: 'make',
@@ -252,7 +252,7 @@ describe('Build Strategy Commands', () => {
         ]
       });
 
-      const result = await strategy.commands.run.handler(mockContext, { target: 'test' });
+      const result = await strategy.commands.show.handler(mockContext, { target: 'test' });
 
       expect(result).toMatchObject({
         tool: 'npm',
@@ -271,7 +271,7 @@ describe('Build Strategy Commands', () => {
         ]
       });
 
-      const result = await strategy.commands.run.handler(mockContext, { target: 'build' });
+      const result = await strategy.commands.show.handler(mockContext, { target: 'build' });
 
       expect(result).toMatchObject({
         tool: 'just',
@@ -290,7 +290,7 @@ describe('Build Strategy Commands', () => {
         ]
       });
 
-      const result = await strategy.commands.run.handler(mockContext, { target: 'build' });
+      const result = await strategy.commands.show.handler(mockContext, { target: 'build' });
 
       expect(result).toMatchObject({
         tool: 'task',
@@ -310,7 +310,7 @@ describe('Build Strategy Commands', () => {
       });
 
       await expect(
-        strategy.commands.run.handler(mockContext, { target: 'nonexistent' })
+        strategy.commands.show.handler(mockContext, { target: 'nonexistent' })
       ).rejects.toMatchObject({
         exitCode: 3,
         message: expect.stringContaining('Target "nonexistent" not found'),
@@ -318,7 +318,7 @@ describe('Build Strategy Commands', () => {
     });
 
     it('should error when no target specified', async () => {
-      await expect(strategy.commands.run.handler(mockContext, {})).rejects.toMatchObject({
+      await expect(strategy.commands.show.handler(mockContext, {})).rejects.toMatchObject({
         exitCode: 2,
         message: expect.stringContaining('No target specified'),
       });

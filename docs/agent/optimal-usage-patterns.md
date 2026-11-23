@@ -442,7 +442,7 @@ PHASE 2: Understanding Context (200-300 tokens)
   xray map --anchor <suspected-file> --with incs
 
 PHASE 3: Deep Analysis (300-400 tokens)
-  xray graph on that area
+  xray map --flow on that area
   Read specific files
 
 PHASE 4: Debugging (0 tokens)

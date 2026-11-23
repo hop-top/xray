@@ -57,10 +57,13 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-describe.each(['map', 'graph'])('%s [paths...]', (cmd) => {
+describe.each<[string, string[]]>([
+  ['map', ['map']],
+  ['map --flow', ['map', '--flow']],
+])('%s [paths...]', (_label, cmdArgs) => {
   const json = (extra: string[], name: string) => {
     const out = path.join(tmp, name);
-    const r = run([cmd, ...extra, '--format', 'json', '-o', out]);
+    const r = run([...cmdArgs, ...extra, '--format', 'json', '-o', out]);
     return { r, out };
   };
 

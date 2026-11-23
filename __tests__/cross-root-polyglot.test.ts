@@ -19,7 +19,7 @@ function mapGraph(...roots: string[]) {
   const out = path.join(work, `g-${Math.random().toString(36).slice(2)}.json`);
   const r = spawnSync(
     process.execPath,
-    [BIN, '--no-telemetry', 'map', '--skip-detect', ...roots.flatMap(p => ['-p', p]), '--format', 'json', '-o', out],
+    [BIN, '--no-telemetry', 'map', '--no-detect', ...roots.flatMap(p => ['-p', p]), '--format', 'json', '-o', out],
     {
       cwd: work,
       encoding: 'utf-8',

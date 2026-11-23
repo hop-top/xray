@@ -181,7 +181,7 @@ edges: EXTRACTED 57 · INFERRED 0
   `main/internal`), so a group under another root label than the
   symbol's own is a cross-repo caller.
 - `cache: <label> hit|miss`: the first run analyzes every root (`miss`);
-  later runs reuse the current directory's cache db (`cache-db` in `xray paths`) for roots
+  later runs reuse the current directory's cache db (`cache-db` in `xray config paths`) for roots
   whose files did not change. Run from the same directory each time.
 - Cross-root calls are `EXTRACTED` only through an import of that root's
   Go module path or npm package name. Anything else across roots is

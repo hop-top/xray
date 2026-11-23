@@ -16,7 +16,7 @@ IF task is "skip/redact/annotate files, tags, nodes during map|graph" THEN
 ELSE IF task is "support another language, query, or command" THEN
   write a strategy (see docs/user/strategies.md)
 ELSE
-  use CLI flags (--match, --catch, --query, --lens); no code
+  use CLI flags (--match, --symbol, --query, --lens); no code
 ```
 
 ## Skeleton
@@ -50,7 +50,7 @@ Listeners may be async; sequential events wait for them.
 
 ## Event reference
 
-Emitted by `xray map` / `xray graph`. Mutable fields apply to ⚡ events.
+Emitted by `xray map` / `xray map --flow`. Mutable fields apply to ⚡ events.
 
 | Event | Mode | Payload | Mutable |
 |-------|------|---------|---------|

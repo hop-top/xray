@@ -8,7 +8,7 @@ import { declareEffect } from './side-effect';
 export interface AskCommandOptions {
   path?: string;
   maxSteps?: string | number;
-  out?: string;
+  output?: string;
   config?: string;
   offline?: boolean;
   format?: string;
@@ -22,7 +22,7 @@ export function registerAskCommand(program: Command): Command {
       .argument('<question>', 'Question to answer about the codebase')
       .option('-p, --path <dir>', 'Project root directory (defaults to current working directory)')
       .option('--max-steps <n>', `Maximum tool-loop steps (default ${DEFAULT_MAX_STEPS})`, String(DEFAULT_MAX_STEPS))
-      .option('--out <file>', 'Write shareable markdown transcript to <file>')
+      .option('-o, --output <file>', 'Write shareable markdown transcript to <file>')
   ).action(async (question: string, opts: AskCommandOptions, command: Command) => {
     assertResultFormat(command);
     const globals = command.optsWithGlobals() as AskCommandOptions;
@@ -33,7 +33,7 @@ export function registerAskCommand(program: Command): Command {
       root,
       question,
       maxSteps,
-      outFile: opts.out,
+      outFile: opts.output,
       offline: Boolean(globals.offline ?? opts.offline),
       configPath: globals.config ?? opts.config,
     });

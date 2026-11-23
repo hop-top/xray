@@ -60,7 +60,7 @@ xray strategy detect
 
 ### 9. Clear Stale Cache
 ```bash
-xray clear-cache --confirm=yes && xray map
+xray cache clear --confirm=yes && xray map
 ```
 
 ### 10. Generate for AI
@@ -367,7 +367,7 @@ xray rest-api endpoints | grep "/v2"
 
 ```bash
 # Step 1: Find the file
-xray map --catch "*validateUser*"
+xray map --symbol "*validateUser*"
 
 # Step 2: Get detailed view with who uses it
 xray map --anchor src/middleware/validation.ts --with incs
@@ -452,7 +452,7 @@ git diff  # Review changes
 mkdir -p refactor-audit/after
 
 # Same snapshots
-xray clear-cache --confirm=yes  # Important: clear cache to see fresh analysis
+xray cache clear --confirm=yes  # Important: clear cache to see fresh analysis
 xray react components > refactor-audit/after/components.txt
 xray express routes > refactor-audit/after/routes.txt
 xray map --no-chunk -o refactor-audit/after/map.txt
@@ -587,7 +587,7 @@ Takes about 15 minutes to understand the basics.
 
 ```bash
 # Run this monthly to keep guides fresh
-xray clear-cache --confirm=yes
+xray cache clear --confirm=yes
 xray strategy detect > docs/onboarding/1-frameworks.txt
 xray map --depth 2 --no-chunk -o docs/onboarding/2-structure.txt
 # etc.
@@ -727,7 +727,7 @@ limits: [Use case: impact analysis](use-cases.md#use-case-impact-analysis).
 
 **"No results"** → Add path: `xray express routes -p ./src`
 
-**"Stale results"** → Clear cache: `xray clear-cache --confirm=yes`
+**"Stale results"** → Clear cache: `xray cache clear --confirm=yes`
 
 **"Lost in output"** → Use `--depth 2` or `--limit 2000` to reduce size
 

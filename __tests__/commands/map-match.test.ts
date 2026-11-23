@@ -35,9 +35,9 @@ const run = (args: string[], cwd = repo) =>
 const out = () => path.join(outDir, `g${n++}.json`);
 
 /** File nodes of the graph a `--format json` run wrote. */
-function graphFiles(args: string[], cmd = 'map'): string[] {
+function graphFiles(args: string[]): string[] {
   const o = out();
-  const r = run([cmd, '--skip-detect', '--format', 'json', '-o', o, ...args]);
+  const r = run(['map', '--no-detect', '--format', 'json', '-o', o, ...args]);
   expect(r.status).toBe(0);
   return JSON.parse(fs.readFileSync(o, 'utf-8')).nodes
     .filter((x: { type: string }) => x.type === 'file')
@@ -86,8 +86,8 @@ describe('map --match (graph formats)', () => {
     expect(graphFiles(['-m', 'api/*'])).toEqual([]);
   });
 
-  it('graph agrees with map', () => {
-    expect(graphFiles(['-m', '*.js'], 'graph')).toEqual(['lib/x.js']);
+  it('--flow agrees with map', () => {
+    expect(graphFiles(['--flow', '-m', '*.js'])).toEqual(['lib/x.js']);
   });
 
   it('agrees with explore on the same patterns', () => {
@@ -107,7 +107,7 @@ describe('map --match (graph formats)', () => {
 describe('map --match (text output)', () => {
   it('chunked (default) lists only matching files', () => {
     const o = path.join(outDir, 'map.md');
-    const r = run(['map', '--skip-detect', '-m', '*.js', '-o', o]);
+    const r = run(['map', '--no-detect', '-m', '*.js', '-o', o]);
     expect(r.status).toBe(0);
     const text = fs.readdirSync(outDir).map(f => fs.readFileSync(path.join(outDir, f), 'utf-8')).join('\n');
     expect(text).toContain('jsOnly');
@@ -117,7 +117,7 @@ describe('map --match (text output)', () => {
 
   it('--no-chunk lists only matching files', () => {
     const o = path.join(outDir, 'map.md');
-    const r = run(['map', '--skip-detect', '--no-chunk', '-m', '*.ts', '-m', '!*.test.ts', '-o', o]);
+    const r = run(['map', '--no-detect', '--no-chunk', '-m', '*.ts', '-m', '!*.test.ts', '-o', o]);
     expect(r.status).toBe(0);
     const text = fs.readFileSync(o, 'utf-8');
     expect(text).toContain('alpha');
@@ -130,7 +130,7 @@ describe('map --match (text output)', () => {
 describe('map --match (no file matches)', () => {
   it('says so on stderr and exits 0, like explore', () => {
     const o = out();
-    const r = run(['map', '--skip-detect', '--format', 'json', '-o', o, '-m', '*.nothing']);
+    const r = run(['map', '--no-detect', '--format', 'json', '-o', o, '-m', '*.nothing']);
     expect(r.status).toBe(0);
     expect(r.stderr).toMatch(/no files? match/i);
     expect(r.stderr).toContain('*.nothing');
@@ -138,7 +138,7 @@ describe('map --match (no file matches)', () => {
   });
 
   it('is silent about it when --match was not given', () => {
-    const r = run(['map', '--skip-detect', '--format', 'json', '-o', out()]);
+    const r = run(['map', '--no-detect', '--format', 'json', '-o', out()]);
     expect(r.stderr).not.toMatch(/no files? match/i);
   });
 });
@@ -167,11 +167,11 @@ describe('config `match`', () => {
     const filesOf = (f: string): string[] => JSON.parse(fs.readFileSync(f, 'utf-8')).nodes
       .filter((x: { type: string }) => x.type === 'file').map((x: { id: string }) => x.id);
 
-    expect(run(['map', '--skip-detect', '--scope', 'js']).status).toBe(0);
+    expect(run(['map', '--no-detect', '--scope', 'js']).status).toBe(0);
     expect(filesOf(jsOut)).toEqual(['lib/x.js']);
     fs.rmSync(jsOut);
 
-    expect(run(['map', '--skip-detect', '--all-scopes']).status).toBe(0);
+    expect(run(['map', '--no-detect', '--all-scopes']).status).toBe(0);
     expect(filesOf(jsOut)).toEqual(['lib/x.js']);
     expect(filesOf(apiOut)).toEqual(['src/api/h.ts']);
     fs.rmSync(jsOut, { force: true });

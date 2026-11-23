@@ -478,7 +478,7 @@ function renderCfg(nodes: NormNode[], opts: MermaidRenderOptions): string {
   const fns = selectFlowFunctions(nodes, 'cfg', opts);
 
   if (fns.length === 0) {
-    return 'flowchart TD\n  %% no CFG data found (run with --with cf or xray graph)\n';
+    return 'flowchart TD\n  %% no CFG data found (run with --flow or --with control-flow)\n';
   }
 
   const lines: string[] = ['flowchart TD'];
@@ -532,7 +532,7 @@ function renderDfg(nodes: NormNode[], opts: MermaidRenderOptions): string {
   const fns = selectFlowFunctions(nodes, 'dfg', opts);
 
   if (fns.length === 0) {
-    return 'flowchart TD\n  %% no DFG data found (run with --with df or xray graph)\n';
+    return 'flowchart TD\n  %% no DFG data found (run with --flow or --with data-flow)\n';
   }
 
   const lines: string[] = ['flowchart TD'];

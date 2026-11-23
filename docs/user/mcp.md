@@ -1,20 +1,20 @@
 # MCP server
 
-`xray mcp` serves xray's analysis commands as
+`xray serve` exposes xray's analysis commands as
 [Model Context Protocol](https://modelcontextprotocol.io) tools over
-stdin/stdout (`--transport stdio`, default) or Streamable HTTP (`--transport http`),
+stdin/stdout (`--stdio`) or Streamable HTTP (`--mcp`),
 so an MCP client (Claude Code, Cursor, any stdio or HTTP MCP host)
 can map, search and query a codebase without shelling out. No tool writes
-into the project: `map` and `graph`, which the CLI runs by writing
-`.xray_*.md` files next to the code, write to a private temp directory
-under MCP and return its content (details under Tools).
+into the project: `map`, which the CLI runs by writing
+`.xray_*.md` files next to the code, writes to a private temp directory
+under MCP and returns its content (details under Tools).
 
 ```bash
-xray mcp                                         # serve the current directory (stdio)
-xray -C /path/to/project mcp                     # serve another directory (stdio)
-xray mcp --timeout 120                           # per-call timeout in seconds (default 300)
-xray mcp --transport http --port 3000            # Streamable HTTP on 127.0.0.1:3000
-xray mcp --transport http --host 0.0.0.0 --token "$XRAY_MCP_TOKEN" --audit-log audit.jsonl
+xray serve --stdio                               # serve the current directory (stdio)
+xray -C /path/to/project serve --stdio           # serve another directory (stdio)
+xray serve --stdio --timeout 2m                  # per-call timeout (default 5m)
+xray serve --mcp --port 4173                     # Streamable HTTP at /mcp on 127.0.0.1:4173
+xray serve --mcp --api-only --host 0.0.0.0 --token "$XRAY_SERVE_TOKEN" --audit-log audit.jsonl
 ```
 
 Stdio mode speaks MCP `2024-11-05` (newline-delimited JSON-RPC on
@@ -23,9 +23,9 @@ protocol messages only; diagnostics go to stderr.
 
 ## Streamable HTTP & Scoped Tokens
 
-When running with `--transport http` (or mounted via `xray serve --mcp` at `/mcp`):
-- `--host` defaults to `127.0.0.1` and `--port` defaults to `3000` (for `xray mcp`).
-- Non-loopback `--host` requires a bearer token via `--token <secret>` or `XRAY_MCP_TOKEN`.
+When running with `xray serve --mcp`:
+- `--host` defaults to `127.0.0.1` and `--port` defaults to `4173`.
+- Non-loopback `--host` requires a bearer token via `--token <secret>` or `XRAY_SERVE_TOKEN` (fallback `XRAY_MCP_TOKEN`).
 - **Scoped tokens (`xrst_`)**: The HTTP transport supports signed `xrst_` bearer tokens alongside the master token, verified in constant time.
 - **`--audit-log <path>`**: Appends JSONL audit events for authentication, scoped-token usage, gateway calls, and admin events.
 - **MCP Gateway (`gateway.upstreams`)**: Optional upstream HTTP or stdio MCP servers configured under `gateway.upstreams` in global config (repo-local `gateway` config is ignored unless `XRAY_ALLOW_PROJECT_GATEWAY=1` is set).
@@ -35,7 +35,7 @@ When running with `--transport http` (or mounted via `xray serve --mcp` at `/mcp
 ### Claude Code
 
 ```bash
-claude mcp add xray -- xray -C /path/to/project mcp
+claude mcp add xray -- xray -C /path/to/project serve --stdio
 ```
 
 or, checked into the project as `.mcp.json`:
@@ -45,7 +45,7 @@ or, checked into the project as `.mcp.json`:
   "mcpServers": {
     "xray": {
       "command": "xray",
-      "args": ["mcp"]
+      "args": ["serve", "--stdio"]
     }
   }
 }
@@ -63,20 +63,19 @@ server in; add `-C <project>` when that is not the project.
   "mcpServers": {
     "xray": {
       "command": "xray",
-      "args": ["-C", "${workspaceFolder}", "mcp"]
+      "args": ["-C", "${workspaceFolder}", "serve", "--stdio"]
     }
   }
 }
 ```
 
-Any other stdio client: run `xray -C <project> mcp`.
+Any other stdio client: run `xray -C <project> serve --stdio`.
 
 ## Tools
 
 | Tool | CLI equivalent | Result |
 |------|----------------|--------|
-| `map` | `xray map` | map text (or the `--format` output) |
-| `graph` | `xray graph` | CFG/DFG output |
+| `map` | `xray map` | map text (or the `--format` output; pass `flow: true` for CFG/DFG) |
 | `explore` | `xray explore` | match / search / stats rows |
 | `query` | `xray query <query>` | call-graph query result |
 | `impact` | `xray impact <symbol>` | transitive callers by area ("what breaks if I change X") |
@@ -87,15 +86,15 @@ Any other stdio client: run `xray -C <project> mcp`.
 | `list_commits` | — | list recent git commits |
 | `get_diff` | — | read git diff between refs or working tree |
 | `handbook` | `xray handbook` | read/generate architectural handbook pages |
-| `list_skills` | `xray skills list` | list available workspace skills |
-| `read_skill` | `xray skills show <slug>` | read a workspace skill manifest by slug |
+| `list_skills` | `xray skill list` | list available workspace skills |
+| `read_skill` | `xray skill show <slug>` | read a workspace skill manifest by slug |
 | `strategy_list` | `xray strategy list` | available strategies |
 | `strategy_detect` | `xray strategy detect` | strategies detected for the project |
 | `<strategy>_<noun>` | `xray <strategy> <noun>` | strategy insight, e.g. `react_hooks`, `express_routes`, `markdown_toc` |
 
 Tool names join the command path with `_`. Input schemas are derived
 from the command tree: each option is a property named after its long
-flag (`no-chunk`, `skip-detect`, `format`), repeatable options are string
+flag (`no-chunk`, `no-detect`, `format`), repeatable options are string
 arrays, positional arguments are properties named after the argument
 (`query`), and every tool with a project scope takes an optional `root`.
 `tools/list` shows the exact schemas, including any project strategies.
@@ -103,17 +102,15 @@ arrays, positional arguments are properties named after the argument
 Options are allowlisted per tool: a tool exposes only the options on its
 list (none writes into the project, loads code or reveals secrets), and a
 call with any other argument is a tool error.
-Built-in strategy nouns get `path`, `format` and the extension-override
-flags, plus the options vetted per noun (`config-files list --pattern`,
-`config-files keys|values --file`, `build run --target`, `markdown toc
---depth`). Options a project strategy declares for its own nouns are not
-exposed.
+Built-in strategy nouns get `path` and `format`, plus the options vetted per noun
+(`config-files list --pattern`, `config-files keys|values --file`, `build show <target>`, `markdown toc --depth`).
+Options a project strategy declares for its own nouns are not exposed.
 
 `impact` takes `symbol`, `depth`, `strict`, `format`, `lens`, `scope`
 and `root`; its graph is always built over the call root, so `--graph`
-(and `--path`, `--lang`) are not exposed.
+(and `--path`, `--language`) are not exposed.
 
-`imports` takes `paths`, `path`, `lang`, `format`, `no-ignore` and `root`. Every entry
+`imports` takes `paths`, `path`, `language`, `format`, `no-ignore` and `root`. Every entry
 of `paths` is a path argument: resolved against `root` and held inside
 the server root like `path`; `--output` is not exposed.
 
@@ -121,7 +118,7 @@ Only strategy commands declared `read` are tools; `build exec` (runs the
 repo's build recipe; `destructive-local`) is not exposed.
 
 Not exposed: commands that change state (`cache clear`, `alias set`,
-`strategy install`, `lang add`, ...) and flags that write files, load
+`strategy install`, `language add`, ...) and flags that write files, load
 code or reveal secrets: `--output`, `--share`, `--template`, `--preset`,
 `--config`, go-cli's `--exec-binary` / `--binary` /
 `--unsafe-no-sandbox` / `--allow-cgo`, and `config-files values
@@ -160,16 +157,16 @@ in the environment of the server (and therefore of its calls); by default
 none runs, and `strategy_list` reports what was skipped. Declarative YAML
 strategies and built-ins always load. Config files are JSON data and never
 run. With the opt-in set, running xray in a directory trusts that
-directory, and `xray mcp` fixes the trusted directory at startup:
+directory, and `xray serve --stdio` fixes the trusted directory at startup:
 
 - **Server root** = the directory the server starts in (working
   directory, or `-C <dir>`). You choose it when you configure the client.
 - **Server config** = the config file `xray` run in the server root
-  would use, resolved once at startup: `xray mcp --config <file>` when
+  would use, resolved once at startup: `xray serve --stdio -c <file>` when
   given (a missing or JavaScript file fails startup), else the first `.xrayrc`,
   `.xrayrc.json`, `xray.config.json` or `package.json` with an `xray` key
   found walking up from the server root.
-- Built-in read-only analysis tools (`map`/`graph` graph formats,
+- Built-in read-only analysis tools (`map` graph formats,
   `explore`, `query`, `impact`, `imports`) run **in-process** over a warm
   workspace: parsed graphs and search indexes are cached per root (LRU,
   eight entries) and invalidated by a root fingerprint, so a repeat call

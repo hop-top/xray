@@ -203,19 +203,13 @@ describe('mermaid-renderer', () => {
   });
 });
 
-describe('mermaid format resolution and CLI integration', () => {
-  test('resolveFormatFlags and resolveOutputPath support mermaid / .mmd', () => {
-    expect(resolveFormatFlags({ format: 'mermaid' })).toEqual({ format: 'mermaid' });
-    expect(resolveFormatFlags({ mermaid: true })).toEqual({ format: 'mermaid' });
-    expect(resolveOutputPath(undefined, 'mermaid')).toMatch(/[/\\]\.xray[/\\]maps[/\\]map\.mmd$/);
-    expect(resolveOutputPath(undefined, 'mermaid', true, 'graph')).toMatch(/[/\\]\.xray[/\\]graphs[/\\]graph\.mmd$/);
-    expect(resolveOutputPath('diagram-out', 'mermaid')).toMatch(/diagram-out\.mmd$/);
-  });
+describe('diagram and handbook Mermaid CLI integration', () => {
+  test('map rejects --format mermaid; diagram emits Mermaid and handbook embeds it', async () => {
+    expect(() => resolveFormatFlags({ format: 'mermaid' })).toThrow();
+    expect(resolveOutputPath(undefined, 'json')).toMatch(/[/\\]\.xray[/\\]maps[/\\]map\.json$/);
 
-  test('xray map --format mermaid, xray diagram, and xray handbook integration', async () => {
     const sandbox = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'xray-mmd-cli-')));
     const repoDir = path.join(sandbox, 'repo');
-    const outBase = path.join(sandbox, 'out');
     fs.mkdirSync(path.join(repoDir, 'src', 'auth'), { recursive: true });
     fs.mkdirSync(path.join(repoDir, 'src', 'crypto'), { recursive: true });
 
@@ -243,16 +237,14 @@ describe('mermaid format resolution and CLI integration', () => {
     execFileSync('git', ['commit', '-m', 'init'], { cwd: repoDir, env });
 
     try {
-      // 1. xray map --format mermaid -o <outBase> -> <outBase>.mmd
-      const mapRes = spawnSync(
+      // 1. xray diagram --view architecture
+      const diagArch = spawnSync(
         process.execPath,
-        [BIN, 'map', '-p', repoDir, '--skip-detect', '--format', 'mermaid', '-o', outBase],
+        [BIN, 'diagram', repoDir, '--view', 'architecture'],
         { cwd: repoDir, env, encoding: 'utf-8' }
       );
-      expect(mapRes.status).toBe(0);
-      expect(fs.existsSync(`${outBase}.mmd`)).toBe(true);
-      const mapMmd = fs.readFileSync(`${outBase}.mmd`, 'utf-8');
-      expect(mapMmd).toMatch(/^flowchart LR\n/);
+      expect(diagArch.status).toBe(0);
+      expect(diagArch.stdout).toMatch(/^flowchart LR\n/);
 
       // 2. xray diagram --view calls
       const diagCalls = spawnSync(
@@ -264,10 +256,10 @@ describe('mermaid format resolution and CLI integration', () => {
       expect(diagCalls.stdout).toMatch(/^flowchart TD\n/);
       expect(diagCalls.stdout).toContain('signToken');
 
-      // 3. xray diagram --view cfg --catch signToken
+      // 3. xray diagram --view cfg --symbol signToken
       const diagCfg = spawnSync(
         process.execPath,
-        [BIN, 'diagram', repoDir, '--view', 'cfg', '--catch', 'signToken'],
+        [BIN, 'diagram', repoDir, '--view', 'cfg', '--symbol', 'signToken'],
         { cwd: repoDir, env, encoding: 'utf-8' }
       );
       expect(diagCfg.status).toBe(0);

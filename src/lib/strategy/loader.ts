@@ -506,7 +506,7 @@ export class StrategyLoader {
         warnedStrategies.add(strategy.name);
         Logger.warn(
           `strategy '${strategy.name}' applies here but needs the ${missing.join(', ')} grammar: ` +
-          `run \`xray lang add ${missing.join(' ')}\``
+          `run \`xray language add ${missing.join(' ')}\``
         );
       }
       return false;

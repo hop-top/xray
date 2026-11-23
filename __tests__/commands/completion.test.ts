@@ -39,25 +39,23 @@ async function ask(program: Command, words: string[]): Promise<{ lines: string[]
 
 function syntheticProgram(): Command {
   const program = new Command('xray')
-    .option('--log-level <level>', 'level')
     .option('-C, --chdir <path>', 'chdir')
-    .option('--config <path>', 'config');
+    .option('-c, --config <path>', 'config');
   program.command('map')
     .option('-p, --path <path>', 'path')
     .option('-o, --output <path>', 'out')
-    .option('--lang <list>', 'langs')
+    .option('--language <list>', 'langs')
     .option('--group <mode>', 'group')
-    .option('--json', 'boolean flag, never bound');
+    .option('--flow', 'boolean flag, never bound');
   program.command('query').option('--graph <file>', 'graph');
-  const lang = program.command('lang');
-  lang.command('add <names...>');
+  const language = program.command('language');
+  language.command('add <names...>');
   return program;
 }
 
 describe('completion: value completers (in-process)', () => {
   const FILTER_FILE_EXT = 8;
   const FILTER_DIRS = 16;
-  const NO_FILE_COMP = 4;
 
   it('isCompletionRequest matches only __complete / __completeNoDesc', () => {
     const { xc } = load();
@@ -67,14 +65,10 @@ describe('completion: value completers (in-process)', () => {
     expect(xc.isCompletionRequest(['node', 'xray'])).toBe(false);
   });
 
-  it('binds root --log-level values and -C/--config file kinds', async () => {
+  it('binds root -C/--config file kinds', async () => {
     const { xc } = load();
     const p = syntheticProgram();
     xc.bindValueCompleters(p);
-
-    const lvl = await ask(p, ['--log-level', '']);
-    expect(lvl.lines).toEqual(['silent', 'error', 'warn', 'info', 'debug']);
-    expect(lvl.directive).toBe(NO_FILE_COMP);
 
     expect((await ask(p, ['-C', ''])).directive).toBe(FILTER_DIRS);
     expect((await ask(p, ['map', '-p', ''])).directive).toBe(FILTER_DIRS);
@@ -96,19 +90,19 @@ describe('completion: value completers (in-process)', () => {
     expect((await ask(p, ['map', '--group', ''])).lines).toEqual(['directory', 'community']);
   });
 
-  it('--lang completes the last comma-separated element', async () => {
+  it('--language completes the last comma-separated element', async () => {
     const { xc } = load();
     const p = syntheticProgram();
     xc.bindValueCompleters(p);
-    const r = await ask(p, ['map', '--lang', 'go,ty']);
+    const r = await ask(p, ['map', '--language', 'go,ty']);
     expect(r.lines.map((l) => l.split('\t')[0])).toEqual(['go,typescript']);
   });
 
-  it('lang add completes language packs and bundles', async () => {
+  it('language add completes language packs and bundles', async () => {
     const { xc } = load();
     const p = syntheticProgram();
     xc.bindValueCompleters(p);
-    const r = await ask(p, ['lang', 'add', 'sys']);
+    const r = await ask(p, ['language', 'add', 'sys']);
     expect(r.lines).toEqual(['systems\tbundle: c, cpp, rust, go']);
   });
 });
@@ -187,7 +181,7 @@ describe('completion: xray __complete', () => {
     const r = xray(['__complete', ''], cwd);
     expect(r.status).toBe(0);
     const v = values(r.stdout);
-    for (const name of ['map', 'query', 'strategy', 'lang', 'cache', 'paths', 'describe', 'react', 'express', 'rc']) {
+    for (const name of ['map', 'query', 'strategy', 'language', 'cache', 'config', 'spec', 'react', 'express', 'rc']) {
       expect(v).toContain(name);
     }
     expect(r.stdout).toMatch(/^rc\tAlias for: react components$/m);
@@ -231,8 +225,8 @@ describe('completion: xray __complete', () => {
     expect(values(xray(['__complete', 'query', '--format', '']).stdout).sort()).toEqual(
       ['csv', 'json', 'table', 'tree', 'yaml']
     );
-    expect(values(xray(['__complete', 'lang', 'list', '--format', '']).stdout)).toEqual(['text', 'json']);
-    expect(values(xray(['__complete', 'describe', '--format', '']).stdout)).toEqual(['json']);
+    expect(values(xray(['__complete', 'language', 'list', '--format', '']).stdout)).toEqual(['text', 'json']);
+    expect(values(xray(['__complete', 'spec', '--format', '']).stdout)).toEqual(['json']);
   });
 
   it('completion <shell> values', () => {
@@ -241,8 +235,8 @@ describe('completion: xray __complete', () => {
     );
   });
 
-  it('strategy info completes strategy names', () => {
-    expect(values(xray(['__complete', 'strategy', 'info', 're']).stdout)).toEqual(['react', 'rest-api']);
+  it('strategy show completes strategy names', () => {
+    expect(values(xray(['__complete', 'strategy', 'show', 're']).stdout)).toEqual(['react', 'rest-api']);
   });
 
   it('runs no consent prompt, telemetry or config write', () => {
@@ -296,7 +290,7 @@ describe('completion: never executes project code', () => {
   it.each([
     [['__complete', '']],
     [['__completeNoDesc', '']],
-    [['__complete', 'strategy', 'info', '']],
+    [['__complete', 'strategy', 'show', '']],
     [['__complete', 'evil', '']],
   ])('%j loads no strategy or config code from cwd', (words: string[]) => {
     const cwd = untrustedProject('.xrayrc.js');
@@ -319,7 +313,7 @@ describe('completion: never executes project code', () => {
     expect(v).not.toContain('evil');
     expect(v).not.toContain('evilpkg');
     expect(v).not.toContain('rc');
-    expect(values(xray(['__complete', 'strategy', 'info', 'ev'], cwd).stdout)).toEqual([]);
+    expect(values(xray(['__complete', 'strategy', 'show', 'ev'], cwd).stdout)).toEqual([]);
   });
 
   it('still completes built-in strategy subcommands, flags and names', () => {
@@ -328,7 +322,7 @@ describe('completion: never executes project code', () => {
     for (const name of ['map', 'react', 'express', 'rest-api']) expect(v).toContain(name);
     expect(values(xray(['__complete', 'react', ''], cwd).stdout)).toEqual(['components', 'contexts', 'hooks']);
     expect(values(xray(['__complete', 'react', 'components', '--fo'], cwd).stdout)).toContain('--format');
-    expect(values(xray(['__complete', 'strategy', 'info', 're'], cwd).stdout)).toEqual(['react', 'rest-api']);
+    expect(values(xray(['__complete', 'strategy', 'show', 're'], cwd).stdout)).toEqual(['react', 'rest-api']);
   });
 
   it('explicit runs do not load project strategies without the opt-in', () => {
@@ -382,7 +376,7 @@ const LINES = [
   'xray react ',
   'xray map --format ',
   'xray completion ',
-  'xray strategy info re',
+  'xray strategy show re',
 ];
 
 (bashEnv ? describe : describe.skip)('completion: bash end to end', () => {
@@ -402,7 +396,7 @@ const LINES = [
       'xray react |components contexts hooks',
       'xray map --format |txt json csv xml mermaid',
       'xray completion |bash fish powershell zsh',
-      'xray strategy info re|react rest-api',
+      'xray strategy show re|react rest-api',
     ]);
   });
 });
@@ -427,7 +421,7 @@ const LINES = [
       'xray react |components contexts hooks',
       'xray map --format |txt json csv xml mermaid',
       'xray completion |bash fish powershell zsh',
-      'xray strategy info re|react rest-api',
+      'xray strategy show re|react rest-api',
       'xray map -p |args: *:dirname:_files -/',
     ]);
   });
@@ -445,7 +439,7 @@ const LINES = [
       'xray react |components contexts hooks',
       'xray map --format |csv json mermaid txt xml',
       'xray completion |bash fish powershell zsh',
-      'xray strategy info re|react rest-api',
+      'xray strategy show re|react rest-api',
     ]);
   });
 });

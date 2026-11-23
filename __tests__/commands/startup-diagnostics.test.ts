@@ -27,7 +27,7 @@ describe('startup diagnostics', () => {
   afterAll(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
   test('default: stdout is pure JSON, no config-file line on either stream', () => {
-    const r = run(['describe', '--format', 'json'], tmp);
+    const r = run(['spec', '--format', 'json'], tmp);
     expect(r.status).toBe(0);
     expect(() => JSON.parse(r.stdout)).not.toThrow();
     expect(r.stdout).not.toContain('Using config file');
@@ -35,19 +35,19 @@ describe('startup diagnostics', () => {
   });
 
   test('default (human output): no config-file line', () => {
-    const r = run(['paths'], tmp);
+    const r = run(['config', 'paths'], tmp);
     expect(r.stdout + r.stderr).not.toContain('Using config file');
   });
 
   test('--verbose: line appears on stderr, stdout stays JSON', () => {
-    const r = run(['--log-level', 'debug', 'describe', '--format', 'json'], tmp);
+    const r = run(['--verbose', 'spec', '--format', 'json'], tmp);
     expect(r.stderr).toContain('Using config file');
     expect(r.stdout).not.toContain('Using config file');
     expect(() => JSON.parse(r.stdout)).not.toThrow();
   });
 
   test('bare -V also enables it', () => {
-    const r = run(['-V', 'describe', '--format', 'json'], tmp);
+    const r = run(['-V', 'spec', '--format', 'json'], tmp);
     expect(r.stderr).toContain('Using config file');
   });
 });

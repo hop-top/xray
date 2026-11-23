@@ -27,7 +27,7 @@ function run(args: string[]) {
 }
 
 const base = (...roots: string[]) =>
-  ['--skip-detect', ...roots.flatMap(r => ['-p', r])];
+  ['--no-detect', ...roots.flatMap(r => ['-p', r])];
 
 function mapTo(cmd: string, fmtArgs: string[], out: string, ...roots: string[]) {
   const r = run([cmd, ...base(...roots), ...fmtArgs, '-o', out]);
@@ -67,21 +67,24 @@ describe('graph outputs (map / graph)', () => {
   afterEach(() => fs.rmSync(outDir, { recursive: true, force: true }));
   afterAll(() => fs.rmSync(work, { recursive: true, force: true }));
 
-  describe.each(['map', 'graph'])('%s --format csv / xml', cmd => {
-    test('csv: nodes + edges tables with the JSON graph\'s counts', () => {
-      if (cmd === 'graph') {
-        // graph carries control/data flow, which csv has no form for.
-        const r = run([cmd, ...base('alpha'), '--format', 'csv', '-o', path.join(outDir, 'g')]);
+  describe.each([
+    ['map', [] as string[]],
+    ['map --flow', ['--flow']],
+  ])('%s --format csv / xml', (_label, extra) => {
+    test('csv: nodes + edges tables with the JSON graph\'s counts (rejected with --flow)', () => {
+      if (extra.includes('--flow')) {
+        // --flow carries control/data flow, which csv has no form for.
+        const r = run(['map', ...base('alpha'), ...extra, '--format', 'csv', '-o', path.join(outDir, 'g')]);
         expect(r.status).toBe(2);
         expect(r.stderr).toContain('no csv form');
         expect(fs.readdirSync(outDir)).toEqual([]);
         return;
       }
       const json = path.join(outDir, 'g.json');
-      mapTo(cmd, ['--format', 'json'], json, 'alpha', 'beta');
+      mapTo('map', ['--format', 'json'], json, 'alpha', 'beta');
       const g = JSON.parse(fs.readFileSync(json, 'utf-8'));
 
-      mapTo(cmd, ['--format', 'csv'], path.join(outDir, 'g'), 'alpha', 'beta');
+      mapTo('map', ['--format', 'csv'], path.join(outDir, 'g'), 'alpha', 'beta');
       expect(fs.readdirSync(outDir).sort()).toEqual(['g.edges.csv', 'g.json', 'g.nodes.csv']);
       const nodes = parseCsv(path.join(outDir, 'g.nodes.csv'));
       const edges = parseCsv(path.join(outDir, 'g.edges.csv'));
@@ -95,11 +98,11 @@ describe('graph outputs (map / graph)', () => {
 
     test('xml: one well-formed <graph> with the JSON graph\'s counts', () => {
       const json = path.join(outDir, 'g.json');
-      mapTo(cmd, ['--format', 'json'], json, 'alpha', 'beta');
+      mapTo('map', [...extra, '--format', 'json'], json, 'alpha', 'beta');
       const g = JSON.parse(fs.readFileSync(json, 'utf-8'));
 
       const xml = path.join(outDir, 'g.xml');
-      mapTo(cmd, ['--format', 'xml'], xml, 'alpha', 'beta');
+      mapTo('map', [...extra, '--format', 'xml'], xml, 'alpha', 'beta');
       const doc = xmlDoc(xml);
       expect(doc.documentElement?.tagName).toBe('graph');
       const nodes = Array.from(doc.getElementsByTagName('node'));
@@ -111,10 +114,10 @@ describe('graph outputs (map / graph)', () => {
     });
   });
 
-  test('legacy --csv / --xml flags use the real renderers', () => {
-    mapTo('map', ['--csv'], path.join(outDir, 'l'), 'alpha');
+  test('--format csv / xml use the real renderers', () => {
+    mapTo('map', ['--format', 'csv'], path.join(outDir, 'l'), 'alpha');
     expect(parseCsv(path.join(outDir, 'l.nodes.csv')).length).toBeGreaterThan(0);
-    mapTo('map', ['--xml'], path.join(outDir, 'l'), 'alpha');
+    mapTo('map', ['--format', 'xml'], path.join(outDir, 'l'), 'alpha');
     expect(xmlDoc(path.join(outDir, 'l.xml')).documentElement?.tagName).toBe('graph');
   });
 
