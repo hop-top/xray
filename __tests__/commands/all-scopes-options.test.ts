@@ -66,7 +66,7 @@ describe('map|graph --all-scopes forwards every CLI option', () => {
     return d;
   };
   const run = (cwd: string, ...args: string[]) =>
-    spawnSync(process.execPath, [CLI, '--no-telemetry', ...args], { cwd, env, encoding: 'utf8', timeout: 120_000 });
+    spawnSync(process.execPath, [CLI, '--no-telemetry', '--offline', ...args], { cwd, env, encoding: 'utf8', timeout: 120_000 });
 
   beforeAll(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'all-scopes-'));

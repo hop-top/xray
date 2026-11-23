@@ -14,8 +14,11 @@ jest.setTimeout(30000);
 describe('Strategy Command Execution (Integration)', () => {
   // Helper to run xray commands
   async function runXray(args: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+    const prefix = args.trimStart().startsWith('__complete') ? '' : '--no-telemetry --offline ';
     try {
-      const { stdout, stderr } = await execAsync(`node ${xrayBin} ${args}`);
+      const { stdout, stderr } = await execAsync(`node ${xrayBin} ${prefix}${args}`, {
+        env: { ...process.env, XRAY_NO_TELEMETRY: '1', NO_COLOR: '1' },
+      });
       return { stdout, stderr, exitCode: 0 };
     } catch (error: any) {
       return {

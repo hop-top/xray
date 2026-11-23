@@ -195,10 +195,4 @@ test('renders app', () => {
       expect(output).toContain('Auto-configured paths from detected strategies');
     });
   });
-
-  afterAll(() => {
-    if (fs.existsSync(path.join(process.cwd(), '.xray'))) {
-      fs.rmSync(path.join(process.cwd(), '.xray'), { recursive: true, force: true });
-    }
-  });
 });
