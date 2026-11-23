@@ -448,25 +448,25 @@ describe('strategy install E2E', () => {
     });
   });
 
-  describe('strategy remove', () => {
+  describe('strategy delete', () => {
     test('package by package name, scoped, no code run and no opt-in needed', async () => {
       const mark = path.join(base, `mark-rm-${n++}`);
       const tgz = await pack(strategyPkg('@acme/xray-strategy-rm', '1.0.0', { 'index.js': strategyJs('rm-strat', '1.0.0') }, 'index.js', 'rm-strat'));
       const proj = project();
       expect((await xray(proj, ['strategy', 'install', tgz])).code).toBe(0);
       expect(installed(proj, '@acme/xray-strategy-rm')).toBe(true);
-      const r = await xray(proj, ['--confirm=yes', 'strategy', 'remove', '@acme/xray-strategy-rm'], { MARK: mark });
+      const r = await xray(proj, ['--confirm=yes', 'strategy', 'delete', '@acme/xray-strategy-rm'], { MARK: mark });
       expect(r.code).toBe(0);
       expect(r.out).toContain('rm-strat');
       expect(installed(proj, '@acme/xray-strategy-rm')).toBe(false);
       expect(fs.existsSync(mark)).toBe(false);
     });
 
-    test('package by strategy name, via the uninstall alias', async () => {
+    test('package by strategy name', async () => {
       const tgz = await pack(strategyPkg('xray-strategy-byname', '1.0.0', { 'index.js': strategyJs('by-name', '1.0.0') }, 'index.js', 'by-name'));
       const proj = project();
       expect((await xray(proj, ['strategy', 'install', tgz])).code).toBe(0);
-      const r = await xray(proj, ['--confirm=yes', 'strategy', 'uninstall', 'by-name']);
+      const r = await xray(proj, ['--confirm=yes', 'strategy', 'delete', 'by-name']);
       expect(r.code).toBe(0);
       expect(installed(proj, 'xray-strategy-byname')).toBe(false);
     });
@@ -477,7 +477,7 @@ describe('strategy install E2E', () => {
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, 'package.json'), '{"name":"lodash","version":"4.0.0"}');
       fs.writeFileSync(path.join(proj, 'package.json'), '{"name":"host","dependencies":{"lodash":"4.0.0"}}');
-      const r = await xray(proj, ['--confirm=yes', 'strategy', 'remove', 'lodash']);
+      const r = await xray(proj, ['--confirm=yes', 'strategy', 'delete', 'lodash']);
       expect(r.code).not.toBe(0);
       expect(r.out).toContain('not a strategy package');
       expect(fs.existsSync(path.join(dir, 'package.json'))).toBe(true);
@@ -486,7 +486,7 @@ describe('strategy install E2E', () => {
 
     test('not found at all: non-zero with a clear message', async () => {
       const proj = project();
-      const r = await xray(proj, ['--confirm=yes', 'strategy', 'remove', 'nothing-here']);
+      const r = await xray(proj, ['--confirm=yes', 'strategy', 'delete', 'nothing-here']);
       expect(r.code).toBe(3);
       expect(r.out).toContain('"nothing-here" not found');
     });
@@ -498,7 +498,7 @@ describe('strategy install E2E', () => {
       const file = path.join(proj, '.xray/strategies/y-strategy.yml');
       fs.mkdirSync(path.dirname(file), { recursive: true });
       fs.writeFileSync(file, 'name: y-strategy\nversion: 1.0.0\n');
-      const r = await xray(proj, ['--confirm=yes', 'strategy', 'remove', 'y-strategy']);
+      const r = await xray(proj, ['--confirm=yes', 'strategy', 'delete', 'y-strategy']);
       expect(r.code).toBe(0);
       expect(fs.existsSync(file)).toBe(false);
       expect(installed(proj, 'xray-strategy-both')).toBe(true);
@@ -514,7 +514,7 @@ describe('strategy install E2E', () => {
     ])('hostile name (%s) leaves no marker', async (_label, build) => {
       const mark = path.join(base, `mark-rmhostile-${n++}`);
       const proj = project();
-      const r = await xray(proj, ['--confirm=yes', 'strategy', 'remove', '--', build(mark)]);
+      const r = await xray(proj, ['--confirm=yes', 'strategy', 'delete', '--', build(mark)]);
       expect(r.code).not.toBe(0);
       expect(fs.existsSync(mark)).toBe(false);
       expect(fs.existsSync(path.join(proj, 'node_modules'))).toBe(false);

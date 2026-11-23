@@ -51,7 +51,7 @@ QUESTION FROM USER
   │   NO → Continue
   │
   ├─ Is it about code flow/control structures?
-  │   YES → Use xray graph
+  │   YES → Use xray map --flow
   │   NO → Continue
   │
   └─ Otherwise: Use xray map as general analysis
@@ -302,7 +302,7 @@ xray caches analysis results. When relevant:
 3. **If troubleshooting stale results:**
    ```
    If xray results seem old or wrong:
-   → Run: xray clear-cache --confirm=yes
+   → Run: xray cache clear --confirm=yes
    → Then: Rerun your xray command
    ```
 
@@ -456,8 +456,8 @@ How to read it:
 Workflow: [Impact Analysis](workflows/impact-analysis.md).
 
 **Telemetry.** Runs from a hook, a subprocess or the MCP server never
-record telemetry (stdout not a TTY, `--format json`, `xray mcp`, CI), even
-when the user consented. Check `telemetry.defaultOff` in `xray describe`;
+record telemetry (stdout not a TTY, `--format json`, `xray serve --stdio`, CI), even
+when the user consented. Check `telemetry.defaultOff` in `xray spec`;
 set `XRAY_NO_TELEMETRY=1` (or `DO_NOT_TRACK=1`) or pass `--no-telemetry`
 to force it off everywhere. Details:
 [Telemetry](../user/telemetry.md#when-telemetry-is-off).

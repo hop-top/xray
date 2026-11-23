@@ -10,10 +10,6 @@
  *
  * Value completion (flag values, positional args) is bound here with
  * kit completers once the whole tree is registered.
- *
- * tsconfig uses legacy `node` module resolution, which ignores the
- * package `exports` map, so types come from the dist path while the
- * runtime require goes through the exported subpath.
  */
 import { declareEffect } from './side-effect';
 import type { Command } from 'commander';
@@ -22,7 +18,6 @@ import type * as KitValues from '@hop-top/kit/dist/completion-values';
 import type { Completer, CompletionItem } from '@hop-top/kit/dist/completion-values';
 import { UsageError } from '../lib/error/types';
 import { setCommandGroup } from './kit-cli';
-import { VERBOSITY_LEVELS } from './root-options';
 import type { CodeLoadingOptions } from '../lib/strategy/loader';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -56,20 +51,19 @@ export function registerCompletionCommand(program: Command): Command {
         : `missing shell (expected one of: ${shells})`
     );
   });
-  // One script per shell, printed to stdout.
   for (const shell of cmd.commands) declareEffect(shell, 'read', 'yes');
   program.addCommand(cmd);
   setCommandGroup(cmd, 'management');
   return cmd;
 }
 
-/** Values of `-w, --with <feature>` on analysis commands. */
-const WITH_FEATURES = ['vars', 'incs', 'cost', 'docs', 'df', 'cf', 'churn', 'blame'];
+/** Values of `-w, --with <feature>` on `map`. */
+const WITH_FEATURES = ['variables', 'imports', 'control-flow', 'data-flow', 'cost', 'docs', 'churn', 'blame'];
 
-/** Values of `--group <mode>` on analysis commands. */
+/** Values of `--group <mode>` on `map`. */
 const GROUP_MODES = ['directory', 'community'];
 
-/** Language pack names + bundles (`lang add`, `--lang`). */
+/** Language pack names + bundles (`language add`, `--language`). */
 function languageItems(): CompletionItem[] {
   // Lazy: only loaded on a completion request.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -91,7 +85,7 @@ function byPrefix(items: CompletionItem[], prefix: string): CompletionItem[] {
 
 const languageCompleter = funcCompleter((prefix) => byPrefix(languageItems(), prefix));
 
-/** `--lang a,b,<tab>`: complete the last comma-separated element. */
+/** `--language a,b,<tab>`: complete the last comma-separated element. */
 const languageListCompleter = funcCompleter((prefix) => {
   const cut = prefix.lastIndexOf(',') + 1;
   const head = prefix.slice(0, cut);
@@ -101,7 +95,7 @@ const languageListCompleter = funcCompleter((prefix) => {
   }));
 });
 
-/** Installed/built-in strategy names (`strategy info|remove|validate`). */
+/** Installed/built-in strategy names (`strategy show|delete|validate`). */
 function strategyCompleter(options: CodeLoadingOptions): Completer {
   return funcCompleter(async (prefix) => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -114,7 +108,6 @@ function strategyCompleter(options: CodeLoadingOptions): Completer {
 
 /** Flag completers bound on every command declaring the flag. */
 const FLAG_COMPLETERS: Record<string, () => Completer> = {
-  'log-level': () => staticValues(...VERBOSITY_LEVELS),
   config: () => fileCompleter(),
   chdir: () => dirCompleter(),
   path: () => dirCompleter(),
@@ -124,16 +117,16 @@ const FLAG_COMPLETERS: Record<string, () => Completer> = {
   graph: () => fileCompleter('json'),
   with: () => staticValues(...WITH_FEATURES),
   group: () => staticValues(...GROUP_MODES),
-  lang: () => languageListCompleter,
+  language: () => languageListCompleter,
 };
 
 /** Positional-argument completers, by command path below the root. */
 const ARG_COMPLETERS: Record<string, (options: CodeLoadingOptions) => Completer> = {
-  'strategy info': strategyCompleter,
-  'strategy remove': strategyCompleter,
+  'strategy show': strategyCompleter,
+  'strategy delete': strategyCompleter,
   'strategy validate': strategyCompleter,
-  'lang add': () => languageCompleter,
-  'lang remove': () => languageCompleter,
+  'language add': () => languageCompleter,
+  'language delete': () => languageCompleter,
 };
 
 function commandPath(cmd: Command): string {
@@ -144,9 +137,7 @@ function commandPath(cmd: Command): string {
 
 /**
  * Bind value completers across the registered tree. Call once after
- * every command (core, strategy, alias) is registered. `--format`
- * values are bound where each command declares its formats.
- * `options` governs which strategy code the name completer may load.
+ * every command (core, strategy, alias) is registered.
  */
 export function bindValueCompleters(program: Command, options: CodeLoadingOptions = {}): void {
   const visit = (cmd: Command) => {

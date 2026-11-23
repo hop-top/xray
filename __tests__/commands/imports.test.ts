@@ -142,8 +142,8 @@ describe('xray imports: document, determinism, narrowing', () => {
     ]);
   });
 
-  it('--lang narrows by contract language (aliases accepted)', async () => {
-    const r = await run(['imports', '-p', FIXTURES, '--lang', 'ts,go'], sandbox);
+  it('--language narrows by contract language (aliases accepted)', async () => {
+    const r = await run(['imports', '-p', FIXTURES, '--language', 'ts,go'], sandbox);
     expect(r.status).toBe(0);
     const langs = new Set((JSON.parse(r.stdout) as ImportsDoc).files.map(f => f.language));
     expect([...langs].sort()).toEqual(['go', 'typescript']);
@@ -170,7 +170,7 @@ describe('xray imports: exit codes', () => {
     [['imports', '-p', 'missing-root'], 3, /does not exist/],
     [['imports', 'missing-path'], 3, /does not exist: missing-path/],
     [['imports', '..'], 2, /outside the root/],
-    [['imports', '--lang', 'cobol'], 2, /unknown --lang 'cobol'/],
+    [['imports', '--language', 'cobol'], 2, /unknown --language 'cobol'/],
     [['imports', '--format', 'xml'], 2, /unknown output format "xml"/],
   ])('xray %j exits %i', async (args, code, msg) => {
     const r = await run(args as string[], path.join(FIXTURES, 'python'));
@@ -284,14 +284,14 @@ describe('collectImportFiles', () => {
     expect([...IMPORT_MANIFESTS].sort()).toEqual(['Cargo.toml', 'go.mod', 'go.work', 'package.json']);
   });
 
-  it('xray imports --lang go over a go.mod + go.work tree: exit 0, manifests are inputs, not files', async () => {
+  it('xray imports --language go over a go.mod + go.work tree: exit 0, manifests are inputs, not files', async () => {
     const dir = fs.mkdtempSync(path.join(sandbox, 'gowork-'));
     fs.writeFileSync(path.join(dir, 'go.work'), 'go 1.22\nuse ./svc\n');
     fs.mkdirSync(path.join(dir, 'svc'));
     fs.writeFileSync(path.join(dir, 'svc', 'go.mod'), 'module example.com/svc\n');
     fs.writeFileSync(path.join(dir, 'svc', 'main.go'), 'package main\n\nimport "example.com/svc/lib"\n');
     fs.writeFileSync(path.join(dir, 'a.py'), 'import os\n');
-    const r = await run(['imports', '-p', dir, '--lang', 'go'], sandbox);
+    const r = await run(['imports', '-p', dir, '--language', 'go'], sandbox);
     expect(r.status).toBe(0);
     const doc = JSON.parse(r.stdout) as ImportsDoc;
     expect(validate(SCHEMA, doc, { noUndeclared: true })).toEqual([]);

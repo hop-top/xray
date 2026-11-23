@@ -30,7 +30,7 @@ xray express routes
 xray strategy detect
 
 # 9. Clear stale cache
-xray clear-cache --confirm=yes
+xray cache clear --confirm=yes
 
 # 10. Help me understand this for AI
 xray map --anchor src/main --with incs --with vars --limit 4000
@@ -48,7 +48,7 @@ xray map --anchor src/main --with incs --with vars --limit 4000
 | `--limit, -l` | Output size (tokens) | `xray map --limit 8000` |
 | `--depth, -d` | Directory levels | `xray map --depth 2` |
 | `--match, -m` | Filter files | `xray map --match "*.ts"` |
-| `--catch, -c` | Filter functions | `xray map --catch "*Handler"` |
+| `--symbol` | Filter functions/classes | `xray map --symbol "*Handler"` |
 | `--output, -o` | Save file | `xray map -o mymap.txt` |
 | `--no-chunk` | Single file output | `xray map --no-chunk` |
 
@@ -87,7 +87,7 @@ Do you want to...
 │  └─> xray handbook    # or: xray diagram --view architecture -o arch.mmd
 │
 ├─ Review a git diff or ask a question about the codebase?
-│  └─> xray review --base main    # or: xray ask "How does auth work?"
+│  └─> xray review --since main    # or: xray ask "How does auth work?"
 │
 ├─ Explore interactively or keep GraphCache warm?
 │  └─> xray tui    # or: xray serve --port 4173   /   xray watch
@@ -103,7 +103,7 @@ Do you want to...
 │  └─> xray map --with incs --with vars
 │
 └─ Fix stale results?
-   └─> xray clear-cache --confirm=yes && xray map
+   └─> xray cache clear --confirm=yes && xray map
 ```
 
 ---
@@ -226,7 +226,7 @@ xray impact createSession --strict      # scope-resolved (EXTRACTED) callers onl
 
 ### "Fix stale results"
 ```bash
-xray clear-cache --confirm=yes && xray map
+xray cache clear --confirm=yes && xray map
 ```
 
 ---
@@ -244,7 +244,7 @@ xray map --with incs --no-chunk && grep axios .xray.txt
 xray react components | wc -l
 
 # Find error handlers
-xray map --catch "*Error" --no-chunk && head -20 .xray.txt
+xray map --symbol "*Error" --no-chunk && head -20 .xray.txt
 
 # Find who calls a function
 xray impact myFunction --depth 1
@@ -278,7 +278,7 @@ See [Configuration Guide](configuration.md) for more.
 
 | Problem | Solution |
 |---------|----------|
-| Stale results | `xray clear-cache --confirm=yes` |
+| Stale results | `xray cache clear --confirm=yes` |
 | Command not found | `npx @hop-top/xray` instead of `xray` |
 | Installation failed | `CXXFLAGS="-std=c++20" npm install` |
 | No output | `xray map -p ./src` (specify path) |

@@ -12,18 +12,18 @@ Complete guide to every xray command and option. Start with the decision tree to
 - **Find something specific (components, routes, functions)** → [`xray <strategy> <command>`](#xray-strategy-command)
 - **Find files matching a pattern or search code (trigram/regex)** → [`xray explore`](#xray-explore)
 - **Query the call graph** → [`xray query`](query-guide.md)
-- **See control flow or data flow** → [`xray graph`](#xray-graph)
+- **See control flow or data flow** → [`xray map --flow`](#xray-map---flow)
 - **See what breaks if you change a function (or git diff)** → [`xray impact`](#xray-impact)
 - **Review a git diff deterministically or with LLM** → [`xray review`](#xray-review)
 - **Ask a question about the codebase (BYOK LLM)** → [`xray ask`](#xray-ask)
 - **Keep `GraphCache` warm on file changes** → [`xray watch`](#xray-watch)
 - **Explore interactively in terminal or browser** → [`xray tui`](#xray-tui) / [`xray serve`](#xray-serve)
-- **Discover workspace skills** → [`xray skills`](#xray-skills)
+- **Discover workspace skills** → [`xray skill`](#xray-skill)
 - **List every file's imports as a stable JSON contract** → [`xray imports`](#xray-imports)
 - **Detect what frameworks are used** → [`xray strategy detect`](#xray-strategy-detect)
 - **See all available strategies** → [`xray strategy list`](#xray-strategy-list)
 - **Create command shortcuts** → [`xray alias`](#xray-alias)
-- **Fix stale results** → [`xray clear-cache --confirm=yes`](#xray-clear-cache)
+- **Fix stale results** → [`xray cache clear --confirm=yes`](#xray-cache-clear)
 - **Enable shell completion** → [`xray completion`](#xray-completion)
 
 ---
@@ -40,8 +40,7 @@ xray map [paths...] [options]
 
 `[paths...]` are root directories, exactly like `--path`: `xray map src` is
 `xray map --path src`. Giving both is a usage error (exit 2); a root that
-does not exist fails as a missing `--path` does. The same applies to
-`xray graph`.
+does not exist fails as a missing `--path` does.
 
 **Examples:**
 ```bash
@@ -88,7 +87,6 @@ a non-empty keyword. Over MCP, `explore`'s `path` must be a directory.
 | `--limit <n>` | Maximum `--search` matches to return (default: 100, max: 500) |
 | `--filter <expr>` | Filter results using boolean DSL (e.g., `"lang:typescript -file:test"`) |
 | `--stats` | Show codebase statistics |
-| `--list-strategies` | List all available strategies |
 | `--format <fmt>` | `text` (default), `json`, `yaml`, `table`, `csv` |
 
 Patterns are globs matched against the path under the explore root (each
@@ -129,14 +127,14 @@ xray explore --match "*.ts" --match "!*.test.ts" --search TODO
 xray explore --match "src/api/**" --stats
 ```
 
-### `xray graph`
+### `xray map --flow`
 
 `map` with control flow (CFG) and data flow (DFG) graphs: one of each per
 function and method, printed under the function in the map (or as `cfg` /
 `dfg` fields on its node with `--format json`).
 
 ```bash
-xray graph [paths...] [options]
+xray map --flow [paths...] [options]
 ```
 
 **Support today:** TypeScript (`.ts`, `.tsx`), JavaScript (`.js`, `.jsx`;
@@ -149,20 +147,19 @@ carry no graphs:
 ⚠ cf/df: no flow graphs for rust (1 file) yet; its functions carry none. Supported: typescript, javascript, python, go
 ```
 
-**Flags:** `graph` turns `cf` and `df` on. Naming either under `--with`
-narrows to those (`--with cf`, `--with df`), whatever `features.cf` / `features.df`
+**Flags:** `--flow` turns `control-flow` (`cf`) and `data-flow` (`df`) on. Naming either under `--with`
+narrows to those (`--with control-flow`, `--with data-flow`, or short aliases `cf` / `df`), whatever `features.cf` / `features.df`
 say in the config (an explicit `--with` wins for cf/df); other `--with` features
-add to the default and to config. `xray map --with cf` / `--with df` produce the same graphs on a
-plain map; plain `map` is unchanged and does no flow work. Flow has no CSV
-form: `--format csv` with `graph`, `--with cf|df` or config cf/df exits 2 and
+add to the default and to config. Plain `map` does no flow work. Flow has no CSV
+form: `--format csv` with `--flow`, `--with control-flow|data-flow` or config cf/df exits 2 and
 says so, never a csv without flow; plain `xray map --format csv` is unchanged
 and writes the csv tables. `--format xml` carries it as
 `<cfg>` / `<dfg>` children of the function's `<node>`.
 
 ```bash
-xray graph --path ./src --no-chunk --output flow.txt
-xray graph --with cf --path ./src
-xray graph --format json --output graph.json
+xray map --flow --path ./src --no-chunk --output flow.txt
+xray map --with control-flow --path ./src
+xray map --flow --format json --output graph.json
 ```
 
 Output of the first command for a small function:
@@ -460,7 +457,7 @@ distance from the symbol, with definition and 1-based call-site lines (`(called 
 | `-p, --path <path>` | Root to analyze (repeatable; two or more roots are merged) | config `paths` or cwd |
 | `--lens <name>` / `--scope <name>` | Pick roots and options from the config file | none |
 | `--context <name>` | Use named context (multi-root glob) from config file | none |
-| `--lang <list>` | Languages to parse | all detected |
+| `--language <list>` | Languages to parse | all detected |
 | `--format <fmt>` | `text` (default), `brief`, `tree`, `json`, `yaml`, `table`, `csv` | `text` |
 | `--cols <list>` | `table`/`csv` columns: `name`, `kind`, `file`, `line`, `depth`, `group`, `confidence`, `id` | `name,file,line,depth,group,confidence` |
 | `-o, --output <path>` | Write the result to a file; the format follows its extension unless `--format` is given | stdout |
@@ -574,7 +571,7 @@ edges: EXTRACTED 4 · INFERRED 0
 ```
 
 Multi-root runs cache per-root and merged graphs in the current
-directory's cache db (user cache dir, `cache-db` in `xray paths`) and print one line per root on stderr:
+directory's cache db (user cache dir, `cache-db` in `xray config paths`) and print one line per root on stderr:
 
 ```
 ℹ cache: main miss · symbol-impact miss     # first run
@@ -613,20 +610,20 @@ follow (`complete: false` on the file). For tools that use imports as
 evidence; parses only (no graph, no strategies).
 
 ```bash
-xray imports [paths...] [-p <root>] [--lang <list>] [--format <fmt>] [--cols <list>] [-o <file>] [--no-ignore] [--no-cache]
+xray imports [paths...] [-p <root>] [--language <list>] [--format <fmt>] [--cols <list>] [-o <file>] [--no-ignore] [--no-cache]
 ```
 
 | Option | Meaning |
 |--------|---------|
 | `[paths...]` | Narrow to these files/directories (relative to the current directory; each must be inside the root) |
 | `-p, --path <root>` | Root; every `path` in the document is relative to it, and `root` echoes it as given. Default: current directory. One root per document |
-| `--lang <list>` | Contract languages to include: `python`, `go`, `rust`, `typescript` (`ts`), `javascript` (`js`), `php`; comma-separated, repeatable |
+| `--language <list>` | Contract languages to include: `python`, `go`, `rust`, `typescript` (`ts`), `javascript` (`js`), `php`; comma-separated, repeatable |
 | `--format` | `json` (default) or `yaml`: the whole document. `table`, `csv`: one row per import (`file`, `line`, `column`, `kind`, `form`, `module`, `normalized`, `locality`; `--cols` adds `language`, `endLine`, `endColumn`, `package`, `alias`, `typeOnly`, `confidence`, `evidence`). `text`: per-file summary |
 | `--no-ignore` | List every source under the root: git-ignored files, nested repos and vendored dirs (`node_modules`, `dist`, `build`) included; only `.git` is skipped, directory symlinks are not followed. Languages outside the contract show as `unsupported-language`. `package.json` files under `node_modules` are not read for resolution |
 | `--no-cache` | Parse every file; neither read nor write the per-file cache. The cache is keyed per file, so runs with and without `--no-ignore` share it safely |
 
 Files are listed as `xray explore` lists them (`git ls-files`, else the
-root's `.gitignore`), plus `.mjs`/`.cjs`/`.mts`/`.cts`. `--lang` and
+root's `.gitignore`), plus `.mjs`/`.cjs`/`.mts`/`.cts`. `--language` and
 `[paths...]` select the files reported; manifests (`go.mod`, `go.work`,
 every `package.json`, `Cargo.toml`) anywhere under the root (not
 gitignored) are always read for module resolution and never listed in
@@ -639,7 +636,7 @@ byte-identical.
 
 **Exit codes.** `0` whenever a document is produced: parse errors and
 unsupported constructs are data, not failures. `2` on usage errors (unknown
-`--lang` or `--format`, a path outside the root). `3` when the root or a
+`--language` or `--format`, a path outside the root). `3` when the root or a
 path does not exist.
 
 **Text output** (`xray imports go/raw-string python/relative --format text`
@@ -665,12 +662,12 @@ python/relative/app/pkg/mod.py (python, ok)
 **Examples:**
 ```bash
 xray imports                                 # current directory, JSON document
-xray imports -p ../svc --lang go,rust        # one root, two languages
+xray imports -p ../svc --language go,rust    # one root, two languages
 xray imports src/api --format table          # one row per import under src/api
 xray imports -o imports.json                 # write the document to a file
 ```
 
-`xray describe` lists the command with its schema id and file
+`xray spec` lists the command with its schema id and file
 (`output.schema`, `output.path`); the MCP server exposes it as the
 [`imports` tool](mcp.md#tools).
 
@@ -693,7 +690,7 @@ xray express routes
 
 See [Strategies Guide](strategies.md) for all available strategy commands.
 
-**`xray build run --target <name>`**: prints the command for the target
+**`xray build show <target>`**: prints the command for the target
 (`make build`, `npm run test`, `just ...`, `task ...`) and runs nothing.
 
 **`xray build exec <target>`**: runs the target. The tool is spawned
@@ -742,8 +739,8 @@ xray alias list
 # Create a new alias
 xray alias set <name> "<strategy> <command>"
 
-# Remove an alias
-xray alias remove <name>
+# Delete an alias
+xray alias delete <name>
 ```
 
 **Examples:**
@@ -759,8 +756,8 @@ xray alias list
 # Use the alias (restart xray after creating)
 xray comp
 
-# Remove an alias
-xray alias remove comp
+# Delete an alias
+xray alias delete comp
 ```
 
 **Notes:**
@@ -771,23 +768,23 @@ xray alias remove comp
 
 See [Command Aliases Guide](aliases.md) for detailed documentation.
 
-### `xray clear-cache`
+### `xray cache clear`
 
-Clear the SQLite cache used for parsed AST data, for the project in the current directory (other projects' caches stay). `xray cache clear --confirm=yes` is the same command (the `cache` group is what `xray --help` lists).
+Clear the SQLite cache used for parsed AST data, for the project in the current directory (other projects' caches stay).
 
 ```bash
-xray clear-cache --confirm=yes
+xray cache clear --confirm=yes
 ```
 
 This is a destructive command: in a terminal it asks first; scripts and agents (no terminal) must pass `--confirm=yes` or it exits 5.
 
-### `xray upgrade --check`
+### `xray upgrade check`
 
-Report whether a newer release exists. `--check` is the only mode; bare `xray upgrade` is a usage error (exit 2) that points at `--check` and at the install command, `npm i -g @hop-top/xray`. Nothing is installed.
+Report whether a newer release exists. Nothing is installed; upgrade via your package manager (`npm i -g @hop-top/xray`).
 
 ```bash
-xray upgrade --check
-xray upgrade --check --format json
+xray upgrade check
+xray upgrade check --format json
 ```
 
 A newer release is a normal answer: exit 0, with `update available: vA → vB` and the release URL (JSON: `updateAvailable: true`, `latest`, `url`). Up to date is exit 0 too (`updateAvailable: false`, `latest: null`). A failed lookup, or `--offline`, exits 6 (transient). The lookup is never served from the startup-notice cache.
@@ -811,8 +808,8 @@ xray completion powershell | Out-String | Invoke-Expression
 ```
 
 Scripts call back into `xray __complete` on each tab, so strategy
-commands, aliases, flags and flag values (`--format`, `--log-level`,
-`--lang`, paths) always match the installed xray. `--no-descriptions`
+commands, aliases, flags and flag values (`--format`,
+`--language`, paths) always match the installed xray. `--no-descriptions`
 omits descriptions. A missing or unknown shell exits 2.
 
 ### `xray handbook`
@@ -838,7 +835,7 @@ xray handbook [path] [-p <dir>] [-o <dir>] [--llm] [--delta] [--max-tokens <n>] 
 Export deterministic Mermaid architecture, call, CFG, or DFG diagrams.
 
 ```bash
-xray diagram [paths...] [--view architecture|calls|cfg|dfg] [--anchor <target>] [-c <pattern>] [--depth <n>] [--max-nodes <n>] [-o <file>]
+xray diagram [paths...] [--view architecture|calls|cfg|dfg] [--anchor <target>] [--symbol <pattern>] [--depth <n>] [--max-nodes <n>] [-o <file>]
 ```
 
 | Flag | Description |
@@ -846,10 +843,10 @@ xray diagram [paths...] [--view architecture|calls|cfg|dfg] [--anchor <target>] 
 | `--graph <file>` | Read a saved graph (`map --format json`) instead of building one |
 | `-p, --path <path>` | Root directory to analyze (repeatable) |
 | `--lens <name>` / `--scope <name>` / `--context <name>` | Config overlays / multi-root context |
-| `--lang <list>` | Languages to parse (repeatable) |
+| `--language <list>` | Languages to parse (repeatable) |
 | `--view <view>` | `architecture` (default), `calls`, `cfg`, `dfg` |
 | `--anchor <target>` | Anchor file or symbol to center BFS on |
-| `-c, --catch <pattern>` | Match function/class name (`!` to negate, repeatable) |
+| `--symbol <pattern>` | Match function/class name (`!` to negate, repeatable) |
 | `--depth <n>` | Maximum BFS depth from `--anchor` |
 | `--max-nodes <n>` | Maximum nodes to render (default: `60`) |
 | `-o, --output <file>` | Write Mermaid output to file instead of stdout |
@@ -859,14 +856,14 @@ xray diagram [paths...] [--view architecture|calls|cfg|dfg] [--anchor <target>] 
 Ask a question about the codebase using read-only xray tools and a BYOK LLM. Supports `/<slug>` workspace skill expansion in the question prompt.
 
 ```bash
-xray ask <question> [-p <dir>] [--max-steps <n>] [--out <file>] [--format text|json]
+xray ask <question> [-p <dir>] [--max-steps <n>] [-o <file>] [--format text|json]
 ```
 
 | Flag | Description |
 |------|-------------|
 | `-p, --path <dir>` | Project root directory (default: current working directory) |
 | `--max-steps <n>` | Maximum tool-loop steps (default: `12`) |
-| `--out <file>` | Write shareable markdown transcript to `<file>` |
+| `-o, --output <file>` | Write shareable markdown transcript to `<file>` |
 | `--format <fmt>` | `text` (default) or `json` |
 
 ### `xray review`
@@ -874,12 +871,13 @@ xray ask <question> [-p <dir>] [--max-steps <n>] [--out <file>] [--format text|j
 Review a git diff deterministically (blast-radius impact, CFG/DFG delta, stale docs) or synthesize findings with `--llm`.
 
 ```bash
-xray review [--base <ref>] [--head <ref>] [--llm] [-p <dir>] [--format text|json]
+xray review [--since <ref> | --changed] [--head <ref>] [--llm] [-p <dir>] [--format text|json]
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--base <ref>` | Base git ref to diff against |
+| `--since <ref>` | Base git ref to diff against (e.g. `main`, `HEAD~1`) |
+| `--changed` | Review working-tree changes against `HEAD` |
 | `--head <ref>` | Head git ref to diff up to (default: `HEAD`) |
 | `--llm` | Synthesize review findings with BYOK LLM |
 | `-p, --path <dir>` | Project root directory (default: current working directory) |
@@ -890,16 +888,15 @@ xray review [--base <ref>] [--head <ref>] [--llm] [-p <dir>] [--format text|json
 Watch workspace files and incrementally update `GraphCache`.
 
 ```bash
-xray watch [paths...] [--debounce <ms>] [--graph-out <path>] [--once] [-p <path>] [-q]
+xray watch [paths...] [--debounce <duration>] [--graph-out <path>] [--once] [-p <path>]
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--debounce <ms>` | Debounce interval in milliseconds (default: `150`) |
+| `--debounce <duration>` | Debounce interval (e.g. `150ms`, `1s`; default: `150ms`) |
 | `--graph-out <path>` | Atomically write serialized JSON graph to `<path>` on startup and after each change |
 | `--once` | Warm `GraphCache` (and write `--graph-out` if set) once and exit |
 | `-p, --path <path>` | Root directory to watch (repeatable) |
-| `-q, --quiet` | Suppress watch status logs |
 
 ### `xray tui`
 
@@ -911,10 +908,10 @@ xray tui [path]
 
 ### `xray serve`
 
-Launch a local Web UI and read-only REST API server (with portal deep links and optional Streamable HTTP MCP endpoint).
+Launch a local Web UI, read-only REST API, or MCP server (Streamable HTTP via `--mcp`, stdio via `--stdio`).
 
 ```bash
-xray serve [paths...] [--port <port>] [--host <host>] [--token <secret>] [--api-only] [--mcp] [--audit-log <path>]
+xray serve [paths...] [--port <port>] [--host <host>] [--token <secret>] [--api-only] [--mcp] [--stdio] [--timeout <duration>] [--audit-log <path>]
 ```
 
 | Flag | Description |
@@ -924,15 +921,17 @@ xray serve [paths...] [--port <port>] [--host <host>] [--token <secret>] [--api-
 | `--token <secret>` | Bearer token (required for non-loopback `--host`, or `XRAY_SERVE_TOKEN` env) |
 | `--api-only` | Serve JSON REST API only without static Web UI |
 | `--mcp` | Mount Streamable HTTP MCP endpoint at `/mcp` |
+| `--stdio` | Serve MCP tools over stdin/stdout (no HTTP listener) |
+| `--timeout <duration>` | Per-call MCP tool timeout (e.g. `30s`, `5m`; default: `5m`) |
 | `--audit-log <path>` | Append JSONL audit log for auth, gateway, and admin events |
 
-### `xray skills`
+### `xray skill`
 
-Discover and inspect workspace skills manifests.
+Discover and inspect workspace skill manifests.
 
 ```bash
-xray skills list [-p <dir>] [--format text|json|yaml|table|csv]
-xray skills show <slug> [-p <dir>] [--format text|json]
+xray skill list [-p <dir>] [--format text|json|yaml|table|csv]
+xray skill show <slug> [-p <dir>] [--format text|json]
 ```
 
 ## Flags & Options
@@ -959,18 +958,18 @@ Enable additional analysis features (repeatable):
 
 | Feature | Description |
 |---------|-------------|
-| `vars` | Include local variables and constants |
-| `incs` | Include imports and dependency table |
+| `variables` (`vars`) | Include local variables and constants |
+| `imports` (`incs`) | Include imports and dependency table |
 | `docs` | Include docstrings |
 | `cost` | Estimate and display cost (requires `OPENAI_API_KEY`) |
-| `cf` | Control Flow Graph per function (TypeScript, JavaScript, Python, Go; see [`xray graph`](#xray-graph)) |
-| `df` | Data Flow Graph per function (TypeScript, JavaScript, Python, Go; see [`xray graph`](#xray-graph)) |
+| `control-flow` (`cf`) | Control Flow Graph per function (TypeScript, JavaScript, Python, Go; see [`xray map --flow`](#xray-map---flow)) |
+| `data-flow` (`df`) | Data Flow Graph per function (TypeScript, JavaScript, Python, Go; see [`xray map --flow`](#xray-map---flow)) |
 | `churn` | Git commit churn metrics per file |
 | `blame` | Git blame author/recency metadata per file |
 
 **Example:**
 ```bash
-xray map --with vars --with incs --with cost
+xray map --with variables --with imports --with cost
 ```
 
 ### Filtering
@@ -980,12 +979,12 @@ xray map --with vars --with incs --with cost
 | `-a, --anchor <path>` | Focus analysis on a specific file (Personalized PageRank) |
 | `-d, --depth <number>` | Maximum depth of the tree to render |
 | `-m, --match <pattern>` | Analyze only files matching a pattern (`!` to exclude; repeatable) |
-| `-c, --catch <patterns...>` | Match function/class names (prefix with `!` to negate) |
+| `--symbol <pattern>` | Match function/class names (prefix with `!` to negate) |
 
 `--match` takes the same patterns, with the same rules, as
 [`explore --match`](#xray-explore) (globs on the path under each root; OR;
 `!` excludes and wins), so both commands agree on the file set. It applies
-to `map` and `graph` in every format. The `match` list in the config file
+to `map` in every format. The `match` list in the config file
 (top level, a lens or a scope) is the same list; `--match` on the command
 line replaces it. When no file matches, a warning on stderr says so and the
 output is empty.
@@ -996,23 +995,20 @@ output is empty.
 xray map --match "*.ts" --match "*.tsx" --match "!*.test.ts"
 
 # Filter by function names
-xray map --catch "User*" --catch "!UserTest"
+xray map --symbol "User*" --symbol "!UserTest"
 ```
 
 ### Output Formats
 
-Select the output with `--format <fmt>` (available on `map` and `graph`):
+Select the output with `--format <fmt>` (available on `map`):
 
-**Formats** (`--format txt|csv|xml|json|mermaid`, one at a time; aliases `--txt`, `--csv`, `--xml`, `--json`, `--mermaid`):
+**Formats** (`--format txt|csv|xml|json`):
 - `txt` - Text format (default)
-- `mermaid` - Mermaid `.mmd` diagram
 - `json`, `csv`, `xml` - the *graph formats*: the analysed graph as data.
   All three carry the same nodes and edges, are written once (chunking does
   not apply; identical with or without `--no-chunk`), are sorted
   deterministically (nodes by `id`; edges by `source`, `target`, `type`),
-  and accept several `--path` roots (merged, see below).
-  `map` and `graph` run the same analysis, so their graph outputs
-  are identical.
+  and accept several `--path` roots (merged, see below). For Mermaid diagrams, use `xray diagram`.
 
 | Format | Files written (`-o <out>`) |
 |--------|----------------------------|
@@ -1088,17 +1084,14 @@ union of every root's nodes and edges.
 - `xray impact` on several roots (several `-p`, or `--lens <name>` with
   `lenses.<name>.paths`) builds the same merged graph in memory and groups
   callers by root then top-level directory (`api/internal`). It caches each root's graph and the merged graph
-  in the current directory's cache db (`cache-db` in `xray paths`) and reports
+  in the current directory's cache db (`cache-db` in `xray config paths`) and reports
   `cache: <label> hit|miss` per root on stderr; see
   [`xray impact`](#xray-impact).
 
-The per-format flags `--txt`, `--csv`, `--xml`, `--json` remain as aliases
-(`--json` = `--format json`). `--format` wins over an alias; two different
-aliases (`--json --csv`) is a usage error (exit 2), as is an unknown
-`--format` value (the error lists the valid ones). `xray lang list`
-takes `--format text|json` too (`--json` alias). Machine formats
+An unknown `--format` value is a usage error (exit 2) listing valid formats.
+`xray language list` takes `--format text|json`. Machine formats
 (`json`, `csv`, `xml`) keep advisory INFO hints on stderr quiet unless
-verbose.
+verbose (`-V`).
 
 ### Query
 
@@ -1115,7 +1108,7 @@ stderr. Exit 2: bad query or missing query / `--graph` with `-p`, `--lens` or
 
 ### Structured output (record commands)
 
-`query`, `impact`, `imports`, `explore`, `paths`, `alias list`, `strategy list` and the strategy
+`query`, `impact`, `imports`, `explore`, `config path`, `config paths`, `alias list`, `strategy list` and the strategy
 commands (`express routes`, `react components`, `rest-api endpoints`, ...)
 render their results through one output layer:
 
@@ -1137,7 +1130,7 @@ Records per command:
 | `explore -m` | `path` |
 | `explore -s` | `file`, `line`, `keyword`, `content` (every match; the text view caps 5 per file) |
 | `explore --stats` | `type`, `files`, `lines` |
-| `paths` | one record: `projectRoot`, `projectConfig`, `globalConfig`, `cacheDb`, `cacheDbExists`, `telemetry`, `configDir`, `dataDir`, `cacheDir`, `stateDir` |
+| `config paths` | one record: `projectRoot`, `projectConfig`, `globalConfig`, `cacheDb`, `cacheDbExists`, `telemetry`, `configDir`, `dataDir`, `cacheDir`, `stateDir` |
 | `alias list` | `alias`, `target` |
 | `strategy list` | `name`, `version`, `commands` |
 | strategy commands | the fields each command returns (union across records); nested values render as JSON in `table`/`csv` |
@@ -1146,14 +1139,14 @@ Use `--cols=a,b` (with `=`) on commands that take a positional argument: the
 space form takes every following word as a column. Graph strategy commands
 (`build graph`, `cicd graph`, `infrastructure graph`) also accept
 `--format dot`. `go-cli commands` keeps its own `--format text|json`.
-`map`/`graph` keep their own `--format`/`-o` (above).
+`map` keeps its own `--format`/`-o` (above).
 
 ### Advanced
 
 | Flag | Description |
 |------|-------------|
-| `-q, --query <items...>` | Override default Tree-sitter queries |
-| `--config <path>` | Custom config file path |
+| `--query <items...>` | Override default Tree-sitter queries |
+| `-c, --config <path>` | Custom config file path |
 | `--lens <name>` | Use named lens (config-file option overlay) |
 | `--scope <name>` | Run specific scope from config |
 | `--all-scopes` | Run all scopes from config; exclusive with `-o/--output`, `--path` and `--lens` (usage error) |
@@ -1177,13 +1170,12 @@ space form takes every following word as a column. Graph strategy commands
 | 6 | Transient failure; a retry may clear it |
 | 7 | Consent refused |
 
-Codes follow `@hop-top/kit`. `xray describe` lists, per command, the codes it can produce.
+Codes follow `@hop-top/kit`. `xray spec` lists, per command, the codes it can produce.
 
 ### Errors as JSON
 
-Every command accepts `--format json` (except `help` and `completion`,
-whose output is text by nature), also written `--format=json`, or `--json`
-where a command has it. A succeeding command then prints one JSON document
+Every command accepts `--format json` (except `help`, `diagram`, `tui`, `watch`, and `completion`,
+whose output is non-JSON by nature), also written `--format=json`. A succeeding command then prints one JSON document
 on stdout (state-changing commands: a small result object such as
 `{"alias":"x","target":"a b","action":"created"}`), and a failing command
 writes one error object to stderr and nothing to
@@ -1212,7 +1204,7 @@ command) use the same object. Other formats (`txt`, `csv`, `xml`) and text
 mode print `✖ <message>`. `xray imports` defaults to JSON output, so its
 errors are JSON without a flag; an explicit `--format text|table|csv|yaml`
 keeps the `✖ <message>` line. Add `--quiet` to keep log lines off stderr.
-`xray describe` lists the shape under `errors`.
+`xray spec` lists the shape under `errors`.
 
 ## Output Format
 

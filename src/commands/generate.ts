@@ -182,35 +182,21 @@ const writeFileEnsuringDir = (file: string, content: string): void => {
  */
 const writeGraphOutput = (
   graph: SerializedGraph,
-  format: 'json' | 'csv' | 'xml' | 'mermaid',
-  outputPath: string,
-  mermaidOpts?: { anchor?: string; catch?: string[]; depth?: number }
+  format: 'json' | 'csv' | 'xml',
+  outputPath: string
 ): string[] => {
   const files: Array<[string, string]> =
     format === 'json'
       ? [[outputPath, JSON.stringify(graph, null, 2) + '\n']]
       : format === 'xml'
         ? [[outputPath, graphToXml(graph)]]
-        : format === 'mermaid'
-          ? [[outputPath, (() => {
-              const g = new GraphSerializer().deserialize(graph);
-              const hasComm = g.someNode((_id: string, a: Record<string, any>) => typeof a.community === 'number' && a.community >= 0);
-              if (!hasComm) cluster(g);
-              return renderMermaid(g, {
-                view: 'architecture',
-                root: graph.metadata?.projectPath,
-                anchor: mermaidOpts?.anchor,
-                catch: mermaidOpts?.catch,
-                depth: mermaidOpts?.depth,
-              });
-            })()]]
-          : (() => {
-              const base = outputPath.replace(/\.csv$/i, '');
-              return [
-                [`${base}.nodes.csv`, graphToNodesCsv(graph)],
-                [`${base}.edges.csv`, graphToEdgesCsv(graph)],
-              ] as Array<[string, string]>;
-            })();
+        : (() => {
+            const base = outputPath.replace(/\.csv$/i, '');
+            return [
+              [`${base}.nodes.csv`, graphToNodesCsv(graph)],
+              [`${base}.edges.csv`, graphToEdgesCsv(graph)],
+            ] as Array<[string, string]>;
+          })();
   for (const [file, content] of files) {
     try {
       writeFileEnsuringDir(file, content);
@@ -291,9 +277,9 @@ const assertFlowFormat = (mergedOptions: any, format: string): void => {
   const f = featuresOf(mergedOptions);
   if (format === 'csv' && (f.cf || f.df)) {
     throw new UsageError(
-      'cf/df flow has no csv form (csv is nodes and edges only), and `graph`, --with cf/df ' +
+      'control-flow/data-flow has no csv form (csv is nodes and edges only), and --flow, --with control-flow/data-flow ' +
       'or features.cf/df in config ask for it: use --format json, xml or txt, ' +
-      'or `xray map --format csv` (without --with cf/df) for the csv tables without flow'
+      'or `xray map --format csv` (without --flow) for the csv tables without flow'
     );
   }
 };
@@ -336,7 +322,7 @@ export const cacheLine = (cache: NonNullable<BuiltGraph['cache']>): string =>
 export const buildGraphForRoots = async (
   mergedOptions: any,
   configPath: string | undefined,
-  opts: { format?: 'json' | 'csv' | 'xml' | 'mermaid'; quiet?: boolean; cache?: boolean } = {}
+  opts: { format?: 'json' | 'csv' | 'xml'; quiet?: boolean; cache?: boolean } = {}
 ): Promise<BuiltGraph> => {
   const uniquePaths = Array.from(new Set(runRoots(mergedOptions)));
   const cwd = process.cwd();
@@ -493,7 +479,7 @@ export const buildGraphForRoots = async (
  */
 const plannedWrites = (
   mergedOptions: any,
-  format: 'txt' | 'csv' | 'xml' | 'json' | 'mermaid',
+  format: 'txt' | 'csv' | 'xml' | 'json',
   outputPath: string,
   paths: string[]
 ): Effect[] => {
@@ -538,12 +524,11 @@ export const runSingleXray = async (
   // Determine format first (needed for output path resolution)
   // `outputFormat` is the resolved --format/legacy-flag/config selection;
   // the boolean chain is the fallback for callers passing raw flags.
-  const format: 'txt' | 'csv' | 'xml' | 'json' | 'mermaid' =
+  const format: 'txt' | 'csv' | 'xml' | 'json' =
     mergedOptions.outputFormat ??
     (mergedOptions.json ? 'json' :
      mergedOptions.csv ? 'csv' :
-     mergedOptions.xml ? 'xml' :
-     mergedOptions.mermaid ? 'mermaid' : 'txt');
+     mergedOptions.xml ? 'xml' : 'txt');
 
   assertFlowFormat(mergedOptions, format);
 
@@ -616,17 +601,12 @@ export const runSingleXray = async (
   // Determine if chunked output is enabled
   const chunkedEnabled = mergedOptions.chunked !== false;
 
-  if (format === 'json' || format === 'csv' || format === 'xml' || format === 'mermaid') {
-    // Graph/diagram formats (json | csv | xml | mermaid) are not chunked text renderings:
+  if (format === 'json' || format === 'csv' || format === 'xml') {
+    // Graph formats (json | csv | xml) are not chunked text renderings:
     // one graph (merged across all --path roots) is written with or without --no-chunk.
     if (chunkedEnabled) Logger.debug(`--format ${format}: chunking does not apply; writing the graph once`);
     const { graph: merged, shareInputs } = await buildGraphForRoots(mergedOptions, configPath, { format, cache: !shareRequested });
-    const parsedDepth = mergedOptions.depth ? parseInt(mergedOptions.depth, 10) : undefined;
-    const written = writeGraphOutput(merged, format, outputPath!, {
-      anchor: mergedOptions.anchor,
-      catch: mergedOptions.catch,
-      depth: Number.isFinite(parsedDepth) ? parsedDepth : undefined,
-    });
+    const written = writeGraphOutput(merged, format, outputPath!);
     for (const f of written) Logger.success(`Graph written to ${f}`);
 
     if (shareRequested) {
@@ -1117,7 +1097,15 @@ export const handleGenerateCommand = async (
     }
     options = { ...options, path: [...paths] };
   }
-  if (cmd?.name() === 'graph') options = withGraphFlow(options);
+  const detectSource = cmd?.getOptionValueSource?.('detect');
+  if (detectSource === 'cli') {
+    options = options.detect === false
+      ? { ...options, detect: false, skipDetect: true }
+      : { ...options, detect: true, skipDetect: false };
+  } else if (detectSource !== undefined) {
+    options = { ...options, detect: false };
+  }
+  if (options.flow) options = withGraphFlow(options);
   return handleGenerateAction(options, cmd && previewing(cmd) ? cmd : undefined);
 };
 

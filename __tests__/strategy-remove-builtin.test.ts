@@ -64,7 +64,7 @@ describe('strategy remove never deletes built-in strategies', () => {
   });
 
   test('remove of a built-in name fails, says so, leaves the file', async () => {
-    const r = await run(project(), ['--confirm=yes', 'strategy', 'remove', 'react']);
+    const r = await run(project(), ['--confirm=yes', 'strategy', 'delete', 'react']);
     expect(r.code).not.toBe(0);
     expect(r.out).toContain('built-in');
     expect(r.out).toContain('cannot be removed');
@@ -76,7 +76,7 @@ describe('strategy remove never deletes built-in strategies', () => {
     const file = path.join(proj, '.xray/strategies/react.yml');
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, 'name: react\nversion: 1.0.0\n');
-    const r = await run(proj, ['--confirm=yes', 'strategy', 'remove', 'react']);
+    const r = await run(proj, ['--confirm=yes', 'strategy', 'delete', 'react']);
     expect(r.code).toBe(0);
     expect(fs.existsSync(file)).toBe(false);
     expect(fs.existsSync(builtin)).toBe(true);
@@ -87,7 +87,7 @@ describe('strategy remove never deletes built-in strategies', () => {
     const file = path.join(proj, 'node_modules/barefile.js');
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, 'module.exports = {};\n');
-    const r = await run(proj, ['--confirm=yes', 'strategy', 'remove', 'barefile']);
+    const r = await run(proj, ['--confirm=yes', 'strategy', 'delete', 'barefile']);
     expect(r.code).not.toBe(0);
     expect(fs.existsSync(file)).toBe(true);
   });
@@ -97,7 +97,7 @@ describe('strategy remove never deletes built-in strategies', () => {
       const proj = project();
       fs.mkdirSync(path.join(proj, '.xray'));
       fs.symlinkSync(path.dirname(builtin), path.join(proj, '.xray/strategies'));
-      const r = await run(proj, ['--confirm=yes', 'strategy', 'remove', 'react']);
+      const r = await run(proj, ['--confirm=yes', 'strategy', 'delete', 'react']);
       expect(r.code).not.toBe(0);
       expect(r.out).toContain('built-in');
       expect(fs.existsSync(builtin)).toBe(true);
@@ -110,7 +110,7 @@ describe('strategy remove never deletes built-in strategies', () => {
       fs.writeFileSync(path.join(outside, 'foo.yml'), 'name: foo\nversion: 1.0.0\n');
       fs.mkdirSync(path.join(proj, '.xray'));
       fs.symlinkSync(outside, path.join(proj, '.xray/strategies'));
-      const r = await run(proj, ['--confirm=yes', 'strategy', 'remove', 'foo']);
+      const r = await run(proj, ['--confirm=yes', 'strategy', 'delete', 'foo']);
       expect(r.code).toBe(3);
       expect(r.out).toContain('not found');
       expect(fs.existsSync(path.join(outside, 'foo.yml'))).toBe(true);
@@ -122,7 +122,7 @@ describe('strategy remove never deletes built-in strategies', () => {
       fs.mkdirSync(path.join(outside, 'strategies'), { recursive: true });
       fs.writeFileSync(path.join(outside, 'strategies/foo.yml'), 'name: foo\nversion: 1.0.0\n');
       fs.symlinkSync(outside, path.join(proj, '.xray'));
-      const r = await run(proj, ['--confirm=yes', 'strategy', 'remove', 'foo']);
+      const r = await run(proj, ['--confirm=yes', 'strategy', 'delete', 'foo']);
       expect(r.code).toBe(3);
       expect(fs.existsSync(path.join(outside, 'strategies/foo.yml'))).toBe(true);
     });
@@ -134,7 +134,7 @@ describe('strategy remove never deletes built-in strategies', () => {
       fs.mkdirSync(path.join(proj, '.xray/strategies'), { recursive: true });
       const link = path.join(proj, '.xray/strategies/foo.yml');
       fs.symlinkSync(target, link);
-      const r = await run(proj, ['--confirm=yes', 'strategy', 'remove', 'foo']);
+      const r = await run(proj, ['--confirm=yes', 'strategy', 'delete', 'foo']);
       expect(r.code).toBe(0);
       expect(() => fs.lstatSync(link)).toThrow();
       expect(fs.existsSync(target)).toBe(true);
@@ -156,7 +156,7 @@ describe('strategy remove never deletes built-in strategies', () => {
       const outside = outsideWithFoo();
       fs.mkdirSync(path.join(proj, '.xray'));
       fs.symlinkSync(outside, path.join(proj, '.xray/strategies'));
-      const r = await run(proj, ['--confirm=yes', 'strategy', 'remove', 'foo'], { XRAY_STRATEGIES_PATH: spelling });
+      const r = await run(proj, ['--confirm=yes', 'strategy', 'delete', 'foo'], { XRAY_STRATEGIES_PATH: spelling });
       expect(r.code).toBe(3);
       expect(fs.existsSync(path.join(outside, 'foo.yml'))).toBe(true);
     });
@@ -166,7 +166,7 @@ describe('strategy remove never deletes built-in strategies', () => {
       const outside = outsideWithFoo();
       fs.mkdirSync(path.join(proj, '.xray'));
       fs.symlinkSync(outside, path.join(proj, '.xray/strategies'));
-      const r = await run(proj, ['--confirm=yes', 'strategy', 'remove', 'foo'], { XRAY_STRATEGIES_PATH: path.join(proj, '.xray/strategies') });
+      const r = await run(proj, ['--confirm=yes', 'strategy', 'delete', 'foo'], { XRAY_STRATEGIES_PATH: path.join(proj, '.xray/strategies') });
       expect(r.code).toBe(3);
       expect(fs.existsSync(path.join(outside, 'foo.yml'))).toBe(true);
     });
@@ -176,7 +176,7 @@ describe('strategy remove never deletes built-in strategies', () => {
       const outside = outsideWithFoo();
       const link = path.join(base, `userlink-${n++}`);
       fs.symlinkSync(outside, link);
-      const r = await run(proj, ['--confirm=yes', 'strategy', 'remove', 'foo'], { XRAY_STRATEGIES_PATH: link });
+      const r = await run(proj, ['--confirm=yes', 'strategy', 'delete', 'foo'], { XRAY_STRATEGIES_PATH: link });
       expect(r.code).toBe(0);
       expect(fs.existsSync(path.join(outside, 'foo.yml'))).toBe(false);
     });
@@ -194,7 +194,7 @@ describe('strategy remove never deletes built-in strategies', () => {
       // a user-set entry outside the project, so only the built-in check can stop it
       const link = path.join(base, `builtinlink-${n++}`);
       fs.symlinkSync(path.dirname(builtin).toUpperCase(), link);
-      const r = await run(project(), ['--confirm=yes', 'strategy', 'remove', 'react'], { XRAY_STRATEGIES_PATH: link });
+      const r = await run(project(), ['--confirm=yes', 'strategy', 'delete', 'react'], { XRAY_STRATEGIES_PATH: link });
       expect(r.code).not.toBe(0);
       expect(r.out).toContain('built-in');
       expect(fs.existsSync(builtin)).toBe(true);
@@ -207,7 +207,7 @@ describe('strategy remove never deletes built-in strategies', () => {
       fs.writeFileSync(path.join(nm, 'foo.yml'), 'name: foo\nversion: 1.0.0\n');
       const link = path.join(base, `nmlink-${n++}`);
       fs.symlinkSync(nm.replace('node_modules', 'NODE_MODULES'), link);
-      const r = await run(proj, ['--confirm=yes', 'strategy', 'remove', 'foo'], { XRAY_STRATEGIES_PATH: link });
+      const r = await run(proj, ['--confirm=yes', 'strategy', 'delete', 'foo'], { XRAY_STRATEGIES_PATH: link });
       expect(r.code).toBe(3);
       expect(fs.existsSync(path.join(nm, 'foo.yml'))).toBe(true);
     });

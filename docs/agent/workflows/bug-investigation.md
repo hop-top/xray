@@ -87,7 +87,7 @@ xray map --anchor <suspected-main-file> --with incs
 #### Step 2.2: Understand Data Flow
 
 ```bash
-xray graph --path ./src/payment --with cf --with df
+xray map --flow --path ./src/payment --with cf --with df
 ```
 
 **Success Criteria:**
@@ -167,7 +167,7 @@ STEP 1: Find feature code
 → xray explore --match "*feature-name*"
 
 STEP 2: Look at conditional logic
-→ xray graph --with cf on that file
+→ xray map --flow --with cf on that file
 
 STEP 3: Identify which branch is broken
 → Understand the conditions

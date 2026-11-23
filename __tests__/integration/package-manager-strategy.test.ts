@@ -17,7 +17,7 @@ describe('PackageManager Strategy Integration', () => {
       expect(strategy.name).toBe('package-manager');
       expect(strategy.version).toBe('0.1.0');
       expect(strategy.commands).toBeDefined();
-      expect(strategy.commands?.['list-dependencies']).toBeDefined();
+      expect(strategy.commands?.['deps']).toBeDefined();
       expect(strategy.commands?.['summary']).toBeDefined();
     });
   });
@@ -137,7 +137,7 @@ describe('PackageManager Strategy Integration', () => {
       context.setFileMetadata(relPath, 'package-manager', metadata.metadata);
 
       // Execute command
-      const result = await strategy.commands!['list-dependencies'].handler(context);
+      const result = await strategy.commands!['deps'].handler(context);
 
       expect(result.packageManagers).toContain('npm');
       expect(result.files.length).toBeGreaterThan(0);

@@ -80,7 +80,7 @@ let repo: string;
 let env: NodeJS.ProcessEnv;
 
 function startServer(cwd: string, extra: string[] = [], serverEnv: NodeJS.ProcessEnv = {}): StdioClient {
-  const proc = spawn(process.execPath, [BIN, ...extra, 'mcp'], { cwd, env: { ...env, ...serverEnv }, stdio: 'pipe' });
+  const proc = spawn(process.execPath, [BIN, ...extra, 'serve', '--stdio'], { cwd, env: { ...env, ...serverEnv }, stdio: 'pipe' });
   return new StdioClient(proc);
 }
 
@@ -152,10 +152,10 @@ describe('xray mcp over stdio', () => {
     const r = await client.request('tools/list');
     const tools = r.result.tools as Array<{ name: string; description?: string; inputSchema: any }>;
     const names = tools.map((t) => t.name);
-    for (const n of ['map', 'graph', 'explore', 'query', 'impact', 'strategy_list', 'strategy_detect', 'react_hooks', 'markdown_toc']) {
+    for (const n of ['map', 'explore', 'query', 'impact', 'strategy_list', 'strategy_detect', 'react_hooks', 'markdown_toc']) {
       expect(names).toContain(n);
     }
-    for (const n of ['scan', 'cache_clear', 'alias_set', 'alias_remove', 'strategy_create', 'strategy_install', 'strategy_remove', 'build_exec', 'lang_add', 'mcp', 'describe', 'completion']) {
+    for (const n of ['scan', 'graph', 'cache_clear', 'alias_set', 'alias_delete', 'strategy_create', 'strategy_install', 'strategy_delete', 'build_exec', 'language_add', 'serve', 'spec', 'completion']) {
       expect(names).not.toContain(n);
     }
     expect(names.every((n) => /^[A-Za-z0-9_-]+$/.test(n))).toBe(true);
@@ -232,17 +232,17 @@ describe('xray mcp over stdio', () => {
     expect(text(r)).toMatch(/symbol> is required/);
   });
 
-  it.each(['map', 'graph'])('%s offers no positional paths: only the contained path option', async name => {
+  it('map offers no positional paths: only the contained path option', async () => {
     const r = await client.request('tools/list');
-    const tool = (r.result.tools as Array<{ name: string; inputSchema: any }>).find(t => t.name === name)!;
+    const tool = (r.result.tools as Array<{ name: string; inputSchema: any }>).find(t => t.name === 'map')!;
     expect(tool.inputSchema.properties.paths).toBeUndefined();
     expect(tool.inputSchema.properties.path).toBeDefined();
   });
 
-  it('lists imports: paths positional, path/lang/format, root', async () => {
+  it('lists imports: paths positional, path/language/format, root', async () => {
     const r = await client.request('tools/list');
     const imports = (r.result.tools as Array<{ name: string; description?: string; inputSchema: any }>).find((t) => t.name === 'imports')!;
-    expect(Object.keys(imports.inputSchema.properties).sort()).toEqual(['format', 'lang', 'no-ignore', 'path', 'paths', 'root']);
+    expect(Object.keys(imports.inputSchema.properties).sort()).toEqual(['format', 'language', 'no-ignore', 'path', 'paths', 'root']);
     expect(imports.inputSchema.properties.paths).toMatchObject({ type: 'array', items: { type: 'string' } });
     expect(imports.description).toMatch(/xray\.imports\/v1/);
   });
@@ -256,7 +256,7 @@ describe('xray mcp over stdio', () => {
     const doc = JSON.parse(text(r));
     expect(doc.schema).toBe('xray.imports/v1');
     expect(doc.files.map((f: any) => f.path)).toEqual(['a.ts', 'b.ts', 'c.ts', 'imports/a.ts', 'imports/b.ts', 'imports/c.ts', 'sub/d.ts']);
-    const sub = await client.call('imports', { paths: ['sub'], lang: ['ts'] });
+    const sub = await client.call('imports', { paths: ['sub'], language: ['ts'] });
     expect(sub.result.isError).toBe(false);
     expect(JSON.parse(text(sub)).files.map((f: any) => f.path)).toEqual(['sub/d.ts']);
   }, 60_000);
@@ -269,7 +269,7 @@ describe('xray mcp over stdio', () => {
   });
 
   it('returns map output as content without writing it into the project', async () => {
-    const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, txt: true });
+    const r = await client.call('map', { 'no-detect': true, 'no-chunk': true, format: 'txt' });
     expect(r.result.isError).toBe(false);
     expect(text(r)).toContain('alpha');
     expect(fs.existsSync(path.join(repo, '.xray.txt'))).toBe(false);
@@ -277,7 +277,7 @@ describe('xray mcp over stdio', () => {
   }, 120_000);
 
   it('map honors match: only matching files are mapped', async () => {
-    const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, txt: true, match: ['sub/**'] });
+    const r = await client.call('map', { 'no-detect': true, 'no-chunk': true, format: 'txt', match: ['sub/**'] });
     expect(r.result.isError).toBe(false);
     expect(text(r)).toContain('delta');
     expect(text(r)).not.toContain('alpha');
@@ -340,7 +340,7 @@ describe('xray mcp startup', () => {
   });
 
   it('rejects a bad --timeout as a usage error', () => {
-    const r = spawnSync(process.execPath, [BIN, 'mcp', '--timeout', '0'], { cwd: repo, env, encoding: 'utf-8', input: '' });
+    const r = spawnSync(process.execPath, [BIN, 'serve', '--stdio', '--timeout', '0'], { cwd: repo, env, encoding: 'utf-8', input: '' });
     expect(r.status).toBe(2);
     expect(r.stdout).toBe('');
     expect(r.stderr).toMatch(/invalid --timeout/);
@@ -475,7 +475,7 @@ describe('xray mcp trust boundary', () => {
   it.each([[{ root: 'vendor' }], [{ path: ['vendor'] }]])(
     'map refuses %j: the subtree has its own config',
     async (args) => {
-      const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, ...args });
+      const r = await client.call('map', { 'no-detect': true, 'no-chunk': true, ...args });
       expect(r.result.isError).toBe(true);
       expect(text(r)).toMatch(/has its own xray config/);
       expect(marks()).toEqual([]);
@@ -486,7 +486,7 @@ describe('xray mcp trust boundary', () => {
   it.each([[{ root: 'jsonly' }], [{ path: ['jsonly'] }]])(
     'map %j: a sub-root whose only config is .xrayrc.js is not refused and never runs it',
     async (args) => {
-      const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, ...args });
+      const r = await client.call('map', { 'no-detect': true, 'no-chunk': true, ...args });
       expect(r.result.isError).toBe(false);
       expect(text(r)).toContain('jsonly');
       expect(marks()).toEqual(['trusted']);
@@ -521,7 +521,7 @@ describe('xray mcp trust boundary', () => {
     ['unlisted writer flag', 'map', () => ({ share: 'x.md' }), /unknown argument "share"/],
     ['root on an unscoped tool', 'strategy_list', () => ({ root: 'vendor' }), /unknown argument "root"/],
   ])('rejects %s', async (_label, name, args, msg) => {
-    const r = await client.call(name, { 'skip-detect': name === 'map' ? true : undefined, ...args() });
+    const r = await client.call(name, { 'no-detect': name === 'map' ? true : undefined, ...args() });
     expect(r.error).toBeUndefined();
     expect(r.result.isError).toBe(true);
     expect(text(r)).toMatch(msg);
@@ -591,17 +591,15 @@ describe('xray mcp with a server root config', () => {
 
   beforeEach(clearMarks);
 
-  it.each(['map', 'graph'])(
-    '%s scopes a sub-root with its own .xrayrc.json; the root config applies, not the sub one',
-    async (tool) => {
-      const r = await client.call(tool, { root: 'pkg', 'skip-detect': true, 'no-chunk': true });
+  it(
+    'map scopes a sub-root with its own .xrayrc.json; the root config applies, not the sub one',
+    async () => {
+      const r = await client.call('map', { root: 'pkg', 'no-detect': true, 'no-chunk': true });
       expect(text(r)).not.toMatch(/cobol/);
       expect(r.result.isError).toBe(false);
-      if (tool === 'map') {
-        expect(() => JSON.parse(text(r))).not.toThrow();
-        expect(text(r)).toContain('epsilon');
-        expect(text(r)).not.toContain('alpha');
-      }
+      expect(() => JSON.parse(text(r))).not.toThrow();
+      expect(text(r)).toContain('epsilon');
+      expect(text(r)).not.toContain('alpha');
     },
     120_000
   );
@@ -609,7 +607,7 @@ describe('xray mcp with a server root config', () => {
   it.each([[{ root: 'pkgjs' }], [{ path: ['pkgjs'] }]])(
     'map %j: a sub .xrayrc.js never runs and its languages are not applied',
     async (args) => {
-      const r = await client.call('map', { 'skip-detect': true, 'no-chunk': true, ...args });
+      const r = await client.call('map', { 'no-detect': true, 'no-chunk': true, ...args });
       expect(r.result.isError).toBe(false);
       expect(text(r)).toContain('zeta');
       expect(marks()).toEqual([]);
@@ -623,17 +621,17 @@ describe('xray mcp with a server root config', () => {
     expect(marks()).not.toContain('subrcjs');
   }, 120_000);
 
-  it('xray mcp --config pins that file: configured sub-roots are scopable', async () => {
+  it('xray --config serve --stdio pins that file: configured sub-roots are scopable', async () => {
     for (const root of ['pkg', 'pkgjs']) {
-      const r = await explicitClient.call('map', { root, 'skip-detect': true, 'no-chunk': true });
+      const r = await explicitClient.call('map', { root, 'no-detect': true, 'no-chunk': true });
       expect(text(r)).not.toMatch(/cobol/);
       expect(r.result.isError).toBe(false);
     }
     expect(marks()).toEqual([]);
   }, 120_000);
 
-  it('xray mcp --config with a missing file is a usage error', () => {
-    const r = spawnSync(process.execPath, [BIN, '--config', 'nope.json', 'mcp'], { cwd: unpinned, env, encoding: 'utf-8', input: '' });
+  it('xray --config serve --stdio with a missing file is a usage error', () => {
+    const r = spawnSync(process.execPath, [BIN, '--config', 'nope.json', 'serve', '--stdio'], { cwd: unpinned, env, encoding: 'utf-8', input: '' });
     expect(r.status).toBe(2);
     expect(r.stdout).toBe('');
     expect(r.stderr).toMatch(/not found/);

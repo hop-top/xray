@@ -44,14 +44,17 @@ describe('default output path (no -o)', () => {
   });
   afterEach(() => fs.rmSync(sandbox, { recursive: true, force: true }));
 
-  const cmds = ['map', 'graph'];
+  const modes: Array<[string, string[]]> = [
+    ['map', ['map']],
+    ['map --flow', ['map', '--flow']],
+  ];
 
-  describe.each(cmds)('%s', (cmd) => {
+  describe.each(modes)('%s', (label, baseCmd) => {
     it.each([
       ['json', '.xray.json'],
       ['xml', '.xray.xml'],
     ])('--format %s writes %s and leaves no .xray file', (format, file) => {
-      const r = run([cmd, '--format', format]);
+      const r = run([...baseCmd, '--format', format]);
       expect(r.stderr).not.toMatch(/FileWriteError/);
       expect(r.status).toBe(0);
       expect(noFileAt('.xray')).toBe(true);
@@ -66,9 +69,9 @@ describe('default output path (no -o)', () => {
       }
     });
 
-    it('--format csv writes .xray.nodes.csv and .xray.edges.csv (graph: usage error, flow has no csv form)', () => {
-      const r = run([cmd, '--format', 'csv']);
-      if (cmd === 'graph') {
+    it('--format csv writes .xray.nodes.csv and .xray.edges.csv (--flow: usage error, flow has no csv form)', () => {
+      const r = run([...baseCmd, '--format', 'csv']);
+      if (label === 'map --flow') {
         expect(r.status).toBe(2);
         expect(names().filter(n => n.startsWith('.xray'))).toEqual([]);
         return;
@@ -78,8 +81,8 @@ describe('default output path (no -o)', () => {
       expect(names()).toEqual(expect.arrayContaining(['.xray.nodes.csv', '.xray.edges.csv']));
     });
 
-    it('--skip-detect --format json writes .xray.json and no .xray file', () => {
-      const r = run([cmd, '--skip-detect', '--format', 'json']);
+    it('--no-detect --format json writes .xray.json and no .xray file', () => {
+      const r = run([...baseCmd, '--no-detect', '--format', 'json']);
       expect(r.status).toBe(0);
       expect(names()).toContain('.xray.json');
       expect(names()).not.toContain('.xray');

@@ -13,7 +13,7 @@ let repo: string;
 let outDir: string;
 
 function run(args: string[]) {
-  return spawnSync(process.execPath, [BIN, 'map', '-p', repo, '--skip-detect', ...args], {
+  return spawnSync(process.execPath, [BIN, 'map', '-p', repo, '--no-detect', ...args], {
     cwd: repo,
     encoding: 'utf-8',
     env: { ...process.env, XRAY_NO_TELEMETRY: '1', FORCE_COLOR: '0' },

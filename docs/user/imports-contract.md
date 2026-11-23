@@ -24,13 +24,13 @@ honest coverage take priority over breadth.
 ## Usage
 
 ```bash
-xray imports [paths...] [-p <root>] [--lang <list>] [--format json|yaml|table|csv|text] [-o <file>] [--no-ignore] [--no-cache]
+xray imports [paths...] [-p <root>] [--language <list>] [--format json|yaml|table|csv|text] [-o <file>] [--no-ignore] [--no-cache]
 ```
 
 `json` (default) and `yaml` print this document; `table`/`csv`/`text`
 are views of it. One root per document (`-p`, default the current
 directory; `root` echoes it as given); `[paths...]` narrow to files or
-directories inside it; `--lang` selects contract languages. Both select
+directories inside it; `--language` selects contract languages. Both select
 the files reported only: manifests under the root (`go.mod`, `go.work`,
 `package.json`, `Cargo.toml`) are always read for resolution. Exit `0`
 whenever a document is produced (parse errors and unsupported constructs
@@ -246,7 +246,7 @@ unsupported-language` (`language` = the scanner's language name, e.g.
 language in xray's grammar catalog, i.e. source the scanner knows; other
 files (text, images, data) are omitted. Resolution-only manifests
 (`go.mod`, `go.work`, `package.json`, `Cargo.toml`) are never listed.
-`--lang` narrows to contract languages, so it drops these entries. A
+`--language` narrows to contract languages, so it drops these entries. A
 claimed extension whose grammar is not installed gives `status:
 grammar-missing`.
 
@@ -415,7 +415,7 @@ than 239 characters before the `…`.
 ## Caching
 
 `xray imports` keeps one entry per file in xray's cache directory
-(`xray paths` → `cache-dir`, i.e. `$XDG_CACHE_HOME/xray` when set), under
+(`xray config paths` → `cache-dir`, i.e. `$XDG_CACHE_HOME/xray` when set), under
 `imports/<root id>.db`: one SQLite store per root, directory mode 700,
 file mode 600. It never writes under the scanned root; a cache directory
 inside the root (or a relative `XDG_CACHE_HOME`) runs uncached.

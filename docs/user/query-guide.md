@@ -18,7 +18,7 @@ The xray query system allows you to interactively explore your codebase's call g
 ### Prerequisites
 
 `xray query` needs no setup: without `--graph` it builds the graph in
-memory for the configured roots (`-p/--path`, `--lens`, `--scope`, `--lang`;
+memory for the configured roots (`-p/--path`, `--lens`, `--scope`, `--language`;
 the same resolution as `xray impact` and `map --format json`) and writes no
 file.
 

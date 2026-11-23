@@ -100,17 +100,20 @@ describe('map / graph flow flags through the built CLI', () => {
       expect(out).toMatch(/return L12 return n \+ 1 → n1/);
     });
 
-    it('graph = map with cf and df on', () => {
-      const { out } = text(['graph']);
+    it('map --flow = map with cf and df on (long --with control-flow,data-flow equivalent)', () => {
+      const { out } = text(['map', '--flow']);
       expect(out).toContain('│   cfg');
       expect(out).toContain('│   dfg');
+      const longForm = text(['map', '--with', 'control-flow,data-flow']).out;
+      expect(longForm).toContain('│   cfg');
+      expect(longForm).toContain('│   dfg');
     });
 
     it('an explicit --with wins over config features: config df never adds flow back', () => {
       const rc = path.join(proj, '.xrayrc.json');
       fs.writeFileSync(rc, JSON.stringify({ features: { df: true } }));
       try {
-        expect(text(['graph', '--with', 'cf']).out).not.toContain('dfg');
+        expect(text(['map', '--flow', '--with', 'cf']).out).not.toContain('dfg');
         expect(text(['map', '--with', 'cf']).out).not.toContain('dfg');
         expect(text(['map', '--with', 'df']).out).not.toContain('│   cfg');
         expect(text(['map']).out).toContain('dfg');
@@ -119,13 +122,13 @@ describe('map / graph flow flags through the built CLI', () => {
       }
     });
 
-    it('graph --with cf narrows to cf; --with df to df; other features add to the default', () => {
-      expect(text(['graph', '--with', 'cf']).out).not.toContain('dfg');
-      expect(text(['graph', '--with', 'df']).out).not.toContain('│   cfg');
-      const both = text(['graph', '--with', 'cf', '--with', 'df']).out;
+    it('map --flow --with cf narrows to cf; --with df to df; other features add to --flow', () => {
+      expect(text(['map', '--flow', '--with', 'cf']).out).not.toContain('dfg');
+      expect(text(['map', '--flow', '--with', 'df']).out).not.toContain('│   cfg');
+      const both = text(['map', '--flow', '--with', 'cf', '--with', 'df']).out;
       expect(both).toContain('│   cfg');
       expect(both).toContain('│   dfg');
-      const docs = text(['graph', '--with', 'docs']).out;
+      const docs = text(['map', '--flow', '--with', 'docs']).out;
       expect(docs).toContain('│   cfg');
       expect(docs).toContain('│   dfg');
     });
@@ -150,8 +153,8 @@ describe('map / graph flow flags through the built CLI', () => {
       expect('cfg' in df).toBe(false);
     });
 
-    it('graph: both fields; classes and non-functions carry none', () => {
-      const { tag } = json(['graph']);
+    it('map --flow: both fields; classes and non-functions carry none', () => {
+      const { tag } = json(['map', '--flow']);
       expect(tag('sum').cfg.edges).toContainEqual({ from: 'n4', to: 'n5', label: 'true' });
       expect(tag('sum').dfg.edges).toContainEqual({ from: 'd2', to: 'n6' });
       expect(tag('Acc').cfg).toBeUndefined();
@@ -162,15 +165,15 @@ describe('map / graph flow flags through the built CLI', () => {
   describe('other formats', () => {
     it('xml carries the flow', () => {
       const out = path.join(proj, 'g.xml');
-      const r = run(['graph', '--format', 'xml', '-o', out]);
+      const r = run(['map', '--flow', '--format', 'xml', '-o', out]);
       expect(r.status).toBe(0);
       const xml = fs.readFileSync(out, 'utf8');
       expect(xml).toContain('<cfg>');
       expect(xml).toContain('<def id="d0" name="xs" kind="param"');
     });
 
-    it('csv has no form for flow: usage error, nothing written, also for graph and for --dry-run', () => {
-      for (const args of [['map', '--with', 'cf'], ['map', '--with', 'df'], ['graph'], ['graph', '--dry-run']]) {
+    it('csv has no form for flow: usage error, nothing written, also for --flow and for --dry-run', () => {
+      for (const args of [['map', '--with', 'cf'], ['map', '--with', 'df'], ['map', '--flow'], ['map', '--flow', '--dry-run']]) {
         const out = path.join(proj, 'g.csv');
         fs.rmSync(out, { force: true });
         fs.rmSync(path.join(proj, 'g.nodes.csv'), { force: true });
@@ -178,7 +181,7 @@ describe('map / graph flow flags through the built CLI', () => {
         expect(r.status).toBe(2);
         expect(r.stderr).toContain('no csv form');
         expect(r.stderr).toContain('xray map --format csv');
-        expect(r.stderr).toContain('without --with cf/df');
+        expect(r.stderr).toContain('without --flow');
         expect(fs.existsSync(path.join(proj, 'g.nodes.csv'))).toBe(false);
       }
     });
@@ -189,9 +192,9 @@ describe('map / graph flow flags through the built CLI', () => {
       expect(fs.existsSync(path.join(proj, 'ok.nodes.csv'))).toBe(true);
     });
 
-    it('graph --dry-run lists the planned writes and writes none', () => {
+    it('map --flow --dry-run lists the planned writes and writes none', () => {
       const out = path.join(proj, 'dry.json');
-      const r = run(['graph', '--dry-run', '--format', 'json', '-o', out]);
+      const r = run(['map', '--flow', '--dry-run', '--format', 'json', '-o', out]);
       expect(r.status).toBe(0);
       expect(fs.existsSync(out)).toBe(false);
     });
@@ -203,7 +206,7 @@ describe('map / graph flow flags through the built CLI', () => {
 
     it('one stderr notice, run succeeds, no graph emitted for them', () => {
       clearCache();
-      const { r, g } = json(['graph']);
+      const { r, g } = json(['map', '--flow']);
       expect(r.status).toBe(0);
       const notices = r.stderr.split('\n').filter(l => l.includes('no flow graphs'));
       expect(notices).toHaveLength(1);
@@ -218,14 +221,14 @@ describe('map / graph flow flags through the built CLI', () => {
     it('stays quiet when flow is off, replays a warm graph silently, and notices a re-parsed rust file', () => {
       clearCache();
       expect(run(['map', '--format', 'json', '-o', path.join(proj, 'q.json')]).stderr).not.toContain('no flow graphs');
-      expect(json(['graph']).r.stderr).toContain('no flow graphs');
+      expect(json(['map', '--flow']).r.stderr).toContain('no flow graphs');
       // Unchanged tree: the run is served from the cached graph, so nothing is re-parsed and no notice repeats.
-      expect(json(['graph']).r.stderr).not.toContain('no flow graphs');
+      expect(json(['map', '--flow']).r.stderr).not.toContain('no flow graphs');
       // Touching the rust file makes the incremental patch re-parse it: the notice is back.
       const rs = path.join(proj, 'b.rs');
       const later = new Date(Date.now() + 2000);
       fs.utimesSync(rs, later, later);
-      expect(json(['graph']).r.stderr).toContain('no flow graphs');
+      expect(json(['map', '--flow']).r.stderr).toContain('no flow graphs');
     });
   });
 
@@ -234,7 +237,7 @@ describe('map / graph flow flags through the built CLI', () => {
       const big = path.join(proj, 'big.ts');
       fs.writeFileSync(big, `export function huge(a: number) {\n${'  a = a + 1;\n'.repeat(30000)}  return a;\n}\nexport function small(b: number) { return b; }\n`);
       try {
-        const { r, g } = json(['graph']);
+        const { r, g } = json(['map', '--flow']);
         expect(r.status).toBe(0);
         expect(r.stderr).toContain('cf/df: skipped 1 function (source too large for flow)');
         const huge = g.nodes.find((n: any) => n.id === 'big.ts::huge');
@@ -248,16 +251,16 @@ describe('map / graph flow flags through the built CLI', () => {
   });
 
   describe('cache across flag sets', () => {
-    it('map -> map --with cf -> map -> graph -> map --with df, cold and warm, each correct', () => {
+    it('map -> map --with cf -> map -> map --flow -> map --with df, cold and warm, each correct', () => {
       const has = (t: any) => [t.cfg !== undefined, t.dfg !== undefined];
       const seq: Array<[string[], boolean[]]> = [
         [['map'], [false, false]],
         [['map', '--with', 'cf'], [true, false]],
         [['map'], [false, false]],
-        [['graph'], [true, true]],
+        [['map', '--flow'], [true, true]],
         [['map', '--with', 'df'], [false, true]],
         [['map', '--with', 'cf'], [true, false]],
-        [['graph'], [true, true]],
+        [['map', '--flow'], [true, true]],
         [['map'], [false, false]],
       ];
       let full: any;
@@ -265,7 +268,7 @@ describe('map / graph flow flags through the built CLI', () => {
         const { r, tag } = json(args);
         expect(r.status).toBe(0);
         expect(has(tag('sum'))).toEqual(want);
-        if (args[0] === 'graph') {
+        if (args.includes('--flow')) {
           if (full) expect(tag('sum')).toEqual(full);
           full = tag('sum');
         }
@@ -277,7 +280,7 @@ describe('map / graph flow flags through the built CLI', () => {
       fs.writeFileSync(path.join(root2, 'c.ts'), 'export function c(a: number) { return a; }\n');
       try {
         const out = path.join(proj, 'm.json');
-        expect(run(['graph', '--path', proj, '--path', root2, '--format', 'json', '-o', out]).status).toBe(0);
+        expect(run(['map', '--flow', '--path', proj, '--path', root2, '--format', 'json', '-o', out]).status).toBe(0);
         const g = JSON.parse(fs.readFileSync(out, 'utf8'));
         const withFlow = g.nodes.filter((n: any) => n.cfg && n.dfg).map((n: any) => n.label).sort();
         expect(withFlow).toEqual(['add', 'c', 'sum']);
@@ -291,7 +294,7 @@ describe('map / graph flow flags through the built CLI', () => {
     it('query --graph and impact-style reads work with and without flow fields', () => {
       const withFlow = path.join(proj, 'flow.json');
       const plain = path.join(proj, 'plain.json');
-      expect(run(['graph', '--format', 'json', '-o', withFlow]).status).toBe(0);
+      expect(run(['map', '--flow', '--format', 'json', '-o', withFlow]).status).toBe(0);
       expect(run(['map', '--format', 'json', '-o', plain]).status).toBe(0);
       for (const f of [withFlow, plain]) {
         const r = run(['query', 'calls(sum)', '--graph', f]);
@@ -301,15 +304,16 @@ describe('map / graph flow flags through the built CLI', () => {
     });
   });
 
-  describe('describe', () => {
-    it('documents graph defaults and the language limit', () => {
-      const r = run(['describe']);
+  describe('spec', () => {
+    it('documents map --flow and the language limit', () => {
+      const r = run(['spec']);
       expect(r.status).toBe(0);
       const doc = JSON.parse(r.stdout);
       const cmds: any[] = doc.commands ?? doc.tools ?? [];
-      const graph = cmds.find((c: any) => c.name === 'graph' || c.path?.join(' ') === 'graph');
-      expect(JSON.stringify(graph)).toContain('cf and df are on unless one is named');
-      expect(JSON.stringify(graph)).toContain('TypeScript, JavaScript, Python, Go');
+      const mapCmd = cmds.find((c: any) => c.name === 'map' || c.path?.join(' ') === 'map');
+      expect(JSON.stringify(mapCmd)).toContain('--flow');
+      expect(JSON.stringify(mapCmd)).toContain('control-flow');
+      expect(JSON.stringify(mapCmd)).toContain('data-flow');
     });
   });
 });

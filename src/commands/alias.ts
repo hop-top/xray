@@ -169,10 +169,10 @@ export function registerAliasCommand(): Command {
       });
     }), 'write-local', 'conditional');
 
-  // Remove alias
+  // Delete alias
   declareEffect(addResultFormat(program
-    .command('remove <name>')
-    .description('Remove an alias'))
+    .command('delete <name>')
+    .description('Delete an alias'))
     .action(async (name: string, _opts: unknown, cmd: Command) => {
       assertResultFormat(cmd);
       const configPath = aliasWriteTarget(cmd);

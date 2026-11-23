@@ -83,24 +83,24 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-describe('write-local removes run without a terminal', () => {
-  it('alias remove', () => {
-    const r = run(['alias', 'remove', 'foo']);
+describe('write-local deletes run without a terminal', () => {
+  it('alias delete', () => {
+    const r = run(['alias', 'delete', 'foo']);
     expect(r.out).toContain('Removed alias "foo"');
     expect(r.status).toBe(0);
     expect(hasAlias()).toBe(false);
   });
 
-  it.each(['remove', 'rm'])('lang %s', (verb) => {
-    const r = run(['lang', verb, 'ruby']);
+  it('language delete', () => {
+    const r = run(['language', 'delete', 'ruby']);
     expect(r.out).toMatch(/ruby: not (installed|managed by xray)/);
     expect(r.status).toBe(0);
   });
 });
 
-describe('strategy remove is destructive and confirmed', () => {
-  it.each(['remove', 'uninstall'])('%s with no way to ask is refused; the file stays', (verb) => {
-    const r = run(['strategy', verb, 'foo']);
+describe('strategy delete is destructive and confirmed', () => {
+  it('delete with no way to ask is refused; the file stays', () => {
+    const r = run(['strategy', 'delete', 'foo']);
     expect(r.status).toBe(5); // kit's refusal code for an unconfirmed destructive command
     expect(r.out).toContain('refused');
     expect(r.out).not.toContain('Strategy removed');
@@ -108,13 +108,13 @@ describe('strategy remove is destructive and confirmed', () => {
   });
 
   it('--confirm=no is refused; the file stays', () => {
-    const r = run(['--confirm=no', 'strategy', 'remove', 'foo']);
+    const r = run(['--confirm=no', 'strategy', 'delete', 'foo']);
     expect(r.status).toBe(5);
     expect(fs.existsSync(strategyFile())).toBe(true);
   });
 
   it('--confirm=yes removes the file', () => {
-    const r = run(['--confirm=yes', 'strategy', 'remove', 'foo']);
+    const r = run(['--confirm=yes', 'strategy', 'delete', 'foo']);
     expect(r.status).toBe(0);
     expect(r.out).toContain('Strategy removed');
     expect(fs.existsSync(strategyFile())).toBe(false);
@@ -132,14 +132,14 @@ describe('strategy remove is destructive and confirmed', () => {
     });
 
     it('is not uninstalled when refused', () => {
-      for (const args of [['strategy', 'remove', 'bar'], ['--confirm=no', 'strategy', 'remove', 'xray-strategy-bar']]) {
+      for (const args of [['strategy', 'delete', 'bar'], ['--confirm=no', 'strategy', 'delete', 'xray-strategy-bar']]) {
         expect(run(args).status).toBe(5);
         expect(fs.existsSync(pkgDir())).toBe(true);
       }
     });
 
     it('--dry-run names the uninstall and changes nothing', () => {
-      const r = run(['--dry-run', 'strategy', 'remove', 'bar']);
+      const r = run(['--dry-run', 'strategy', 'delete', 'bar']);
       expect(r.status).toBe(0);
       expect(r.out).toContain('npm:xray-strategy-bar');
       expect(fs.existsSync(pkgDir())).toBe(true);
@@ -157,15 +157,13 @@ describe('cache clear is destructive and confirmed', () => {
   });
 
   it.each([['no flag', []], ['--confirm=no', ['--confirm=no']]])('%s is refused; the cache stays', (_n, flags) => {
-    for (const cmd of [['cache', 'clear'], ['clear-cache']]) {
-      const r = run([...flags, ...cmd]);
-      expect(r.status).toBe(5);
-      expect(cacheDbs()).toHaveLength(1);
-    }
+    const r = run([...flags, 'cache', 'clear']);
+    expect(r.status).toBe(5);
+    expect(cacheDbs()).toHaveLength(1);
   });
 
-  it.each([['cache', 'clear'], ['clear-cache']])('--confirm=yes clears it (%s)', (...cmd) => {
-    const r = run(['--confirm=yes', ...cmd]);
+  it('--confirm=yes clears it', () => {
+    const r = run(['--confirm=yes', 'cache', 'clear']);
     expect(r.status).toBe(0);
     expect(cacheDbs()).toHaveLength(0);
   });
@@ -185,16 +183,14 @@ describe('--dry-run previews writers and never acts', () => {
     return r.out;
   };
 
-  it('map, graph: lists the files, writes none', () => {
+  it('map: lists the files, writes none', () => {
     fs.writeFileSync(path.join(proj, 'a.ts'), 'export const a = 1;\n');
-    for (const cmd of ['map', 'graph']) {
-      expect(planOf([cmd, '.'])).toMatch(/\.xray_\*\.md/);
-    }
+    expect(planOf(['map', '.'])).toMatch(/\.xray_\*\.md/);
     expect(outputs()).toEqual([]);
   });
 
-  it('map --json plans the graph file as machine output', () => {
-    const plan = JSON.parse(planOf(['map', '--json']));
+  it('map --format json plans the graph file as machine output', () => {
+    const plan = JSON.parse(planOf(['map', '--format', 'json']));
     expect(plan.command).toBe('xray map');
     expect(plan.effects).toEqual([expect.objectContaining({ kind: 'create', target: path.join(proj, '.xray.json') })]);
     expect(outputs()).toEqual([]);
@@ -206,8 +202,8 @@ describe('--dry-run previews writers and never acts', () => {
     expect((JSON.parse(fs.readFileSync(aliasFile(), 'utf-8')).aliases ?? {}).bar).toBeUndefined();
   });
 
-  it('alias remove: nothing removed', () => {
-    expect(planOf(['alias', 'remove', 'foo'])).toContain('alias:foo');
+  it('alias delete: nothing removed', () => {
+    expect(planOf(['alias', 'delete', 'foo'])).toContain('alias:foo');
     expect(hasAlias()).toBe(true);
   });
 
@@ -216,8 +212,8 @@ describe('--dry-run previews writers and never acts', () => {
     expect(fs.existsSync(path.join(proj, '.xray'))).toBe(false);
   });
 
-  it('strategy remove: needs no confirmation, removes nothing', () => {
-    expect(planOf(['strategy', 'remove', 'foo'])).toContain('foo.yml');
+  it('strategy delete: needs no confirmation, removes nothing', () => {
+    expect(planOf(['strategy', 'delete', 'foo'])).toContain('foo.yml');
     expect(fs.existsSync(strategyFile())).toBe(true);
   });
 
@@ -226,16 +222,16 @@ describe('--dry-run previews writers and never acts', () => {
     expect(fs.existsSync(path.join(proj, 'node_modules'))).toBe(false);
   });
 
-  it('lang add / lang remove: plans, installs nothing', () => {
-    expect(planOf(['lang', 'add', 'elixir'])).toContain('COMMAND   xray lang add');
-    expect(planOf(['lang', 'remove', 'elixir'])).toContain('COMMAND   xray lang remove');
+  it('language add / language delete: plans, installs nothing', () => {
+    expect(planOf(['language', 'add', 'elixir'])).toContain('COMMAND   xray language add');
+    expect(planOf(['language', 'delete', 'elixir'])).toContain('COMMAND   xray language delete');
     expect(fs.readdirSync(langDir)).toEqual([]);
   });
 
-  it('lang add --dry-run after the leaf is the same root flag', () => {
-    const r = run(['lang', 'add', 'elixir', '--dry-run']);
+  it('language add --dry-run after the leaf is the same root flag', () => {
+    const r = run(['language', 'add', 'elixir', '--dry-run']);
     expect(r.status).toBe(0);
-    expect(r.out).toContain('COMMAND   xray lang add');
+    expect(r.out).toContain('COMMAND   xray language add');
     expect(fs.readdirSync(langDir)).toEqual([]);
   });
 
@@ -246,14 +242,14 @@ describe('--dry-run previews writers and never acts', () => {
   });
 
   it('never speaks kit internals', () => {
-    for (const args of [['map', '.'], ['alias', 'set', 'bar', 'react components'], ['alias', 'remove', 'foo'],
-      ['strategy', 'remove', 'foo'], ['strategy', 'create', 'zed'], ['cache', 'clear'], ['lang', 'remove', 'ruby'], ['alias', 'list']]) {
+    for (const args of [['map', '.'], ['alias', 'set', 'bar', 'react components'], ['alias', 'delete', 'foo'],
+      ['strategy', 'delete', 'foo'], ['strategy', 'create', 'zed'], ['cache', 'clear'], ['language', 'delete', 'ruby'], ['alias', 'list']]) {
       expect(planOf(args)).not.toMatch(/adopter|OptOutDryRun|kit\/side-effect/);
     }
   });
 
-  it('mcp has no preview and says so plainly', () => {
-    const r = run(['--dry-run', 'mcp']);
+  it('serve has no preview and says so plainly', () => {
+    const r = run(['--dry-run', 'serve']);
     expect(r.status).toBe(2);
     expect(r.out).toContain('does not accept --dry-run');
     expect(r.out).not.toMatch(/adopter|OptOutDryRun/);
@@ -266,7 +262,7 @@ describe('kit refusals keep their exit code and speak once', () => {
   });
 
   it('kit-default refuses a write without a caller; nothing is removed', () => {
-    const r = run(['alias', 'remove', 'foo', '--policy', 'kit-default']);
+    const r = run(['alias', 'delete', 'foo', '--policy', 'kit-default']);
     expect(r.status).not.toBe(0);
     expect(r.status).not.toBe(1);
     expect(hasAlias()).toBe(true);
@@ -274,11 +270,10 @@ describe('kit refusals keep their exit code and speak once', () => {
 });
 
 describe('reserved root flags', () => {
-  // `lang add` documents the root flag on itself; it reaches the same plan.
   const RESERVED = new Set(['--dry-run', '--confirm', '--max-ops', '--policy']);
 
-  it('no xray command declares one but lang add --dry-run', () => {
-    const r = run(['describe', '--format', 'json']);
+  it('no xray command redeclares reserved root flags', () => {
+    const r = run(['spec', '--format', 'json']);
     expect(r.status).toBe(0);
     const doc = JSON.parse(r.out);
     const clashes: string[] = [];
@@ -292,6 +287,6 @@ describe('reserved root flags', () => {
       }
     };
     walk(doc.commands, '');
-    expect(clashes).toEqual(['lang add --dry-run']);
+    expect(clashes).toEqual([]);
   });
 });

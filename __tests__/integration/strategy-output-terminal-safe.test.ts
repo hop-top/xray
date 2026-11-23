@@ -41,20 +41,20 @@ beforeAll(() => {
 });
 afterAll(() => fs.rmSync(base, { recursive: true, force: true }));
 
-describe('strategy and lang text output carries no raw control sequences', () => {
+describe('strategy and language text output carries no raw control sequences', () => {
   it.each([
     ['strategy list', ['strategy', 'list']],
     ['strategy detect', ['strategy', 'detect']],
     ['strategy path', ['strategy', 'path']],
-    ['lang list', ['lang', 'list']],
+    ['language list', ['language', 'list']],
   ])('%s', (_n, args) => {
     const r = run(...args);
     expect(r.status).toBe(0);
     expect((r.stdout + r.stderr).replace(SGR, '')).not.toMatch(BAD);
   });
 
-  it('strategy info and validate (by the odd name)', () => {
-    for (const sub of ['info', 'validate']) {
+  it('strategy show and validate (by the odd name)', () => {
+    for (const sub of ['show', 'validate']) {
       const r = run('strategy', sub, NAME);
       expect((r.stdout + r.stderr).replace(SGR, '')).not.toMatch(BAD);
     }

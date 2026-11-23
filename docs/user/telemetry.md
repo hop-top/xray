@@ -10,11 +10,11 @@ The telemetry system uses OpenTelemetry SDK to collect:
 - **Error Types**: What errors occur and their context
 - **Performance Stats**: Execution time, memory usage, codebase size
 
-All telemetry data is written, in JSONL format, to a per-project file in the xray state directory, never into the project. `xray paths` prints it (`telemetry`).
+All telemetry data is written, in JSONL format, to a per-project file in the xray state directory, never into the project. `xray config paths` prints it (`telemetry`).
 
 ## First Run Consent
 
-The first time you use xray interactively, it prompts you to enable telemetry. The answer is stored once, per user, in your global config (`config.json` in the config dir shown by `xray paths`); it is not asked again in other projects, and nothing is written into the project. No answer within 15 seconds, or end of input (Ctrl-D), counts as "no": telemetry is saved as off and you are not asked again. Delete the global config to be asked again.
+The first time you use xray interactively, it prompts you to enable telemetry. The answer is stored once, per user, in your global config (`config.json` in the config dir shown by `xray config paths`); it is not asked again in other projects, and nothing is written into the project. No answer within 15 seconds, or end of input (Ctrl-D), counts as "no": telemetry is saved as off and you are not asked again. Delete the global config to be asked again.
 
 ```
 Welcome to Xray!
@@ -33,10 +33,10 @@ What is NOT collected:
   • Personal information
   • Network activity (data stays local)
 
-All data is stored locally in the xray state directory (see `xray paths`)
+All data is stored locally in the xray state directory (see `xray config paths`)
 You are asked once; no answer within 15s means no.
 Change it later: set XRAY_TELEMETRY_ENABLED=true, or "telemetry" in your user config
-(xray paths shows where) or per project in .xrayrc.json.
+(xray config paths shows where) or per project in .xrayrc.json.
 
 Enable telemetry? [Y/n]:
 ```
@@ -51,12 +51,12 @@ Telemetry only records when a person runs xray at a terminal. Any of these turns
 | `XRAY_NO_TELEMETRY` set (any value but empty, `0`, `false`) | `XRAY_NO_TELEMETRY=1 xray map` |
 | `DO_NOT_TRACK` set ([consoledonottrack.com](https://consoledonottrack.com)), same values | `DO_NOT_TRACK=1 xray map` |
 | stdout is not a TTY (subprocess, pipe, redirect, hook) | `xray query x \| jq`, a tool running xray |
-| machine-readable format, any command | `--format json\|yaml\|csv\|xml`, `--json`, `--csv`, `--xml` |
-| command whose default output is machine-readable, unless `--format text\|table\|txt` | `xray imports`, `xray describe` |
+| machine-readable format, any command | `--format json\|yaml\|csv\|xml` |
+| command whose default output is machine-readable, unless `--format text\|table\|txt` | `xray imports`, `xray spec` |
 | CI environment | `CI`, `GITHUB_ACTIONS`, `GITLAB_CI`, `BUILDKITE`, ... |
-| `xray mcp` (MCP server) | always off |
+| `xray serve --stdio` (MCP server) | always off |
 
-No prompt is shown and nothing is stored on those runs, so the saved decision still applies to your next interactive run. `xray describe` publishes these rules under `telemetry` so a tool driving xray can check them:
+No prompt is shown and nothing is stored on those runs, so the saved decision still applies to your next interactive run. `xray spec` publishes these rules under `telemetry` so a tool driving xray can check them:
 
 ```json
 "telemetry": {
@@ -83,7 +83,7 @@ xray map
 
 ### Option 3: Configuration File
 
-Add to your global config (`config.json` in the config dir shown by `xray paths`) for all projects, or to a project's `.xrayrc.json` to override it for that project:
+Add to your global config (`config.json` in the config dir shown by `xray config paths`) for all projects, or to a project's `.xrayrc.json` to override it for that project:
 
 ```json
 {
@@ -210,12 +210,12 @@ Telemetry data is stored in the xray state directory, one file per project, keye
 
 `<state-dir>` is `$XDG_STATE_HOME/xray` when set, else the platform default. Print the exact path:
 ```bash
-xray paths --format json | jq -r .telemetry
+xray config paths --format json | jq -r .telemetry
 ```
 
 The commands below assume:
 ```bash
-TELEMETRY_FILE="$(xray paths --format json | jq -r .telemetry)"
+TELEMETRY_FILE="$(xray config paths --format json | jq -r .telemetry)"
 ```
 
 ### Format
@@ -391,7 +391,7 @@ Check if enabled:
 ```bash
 echo $XRAY_TELEMETRY_ENABLED
 cat .xrayrc.json | jq '.telemetry'   # project override
-xray paths   # shows the global config dir
+xray config paths   # shows the global config dir
 ```
 
 Verify file is being created:
@@ -403,7 +403,7 @@ ls -la "$TELEMETRY_FILE"
 
 Ensure the state directory is writable:
 ```bash
-xray paths | grep state-dir
+xray config paths | grep state-dir
 ```
 
 ### Large Telemetry Files

@@ -491,8 +491,8 @@ describe('xray impact (built CLI)', () => {
     expect(run(['impact', 'target', '-p', path.join(dir, 'missing-root')]).status).toBe(3);
   });
 
-  test('describe lists impact as read / idempotent, exit 3 declared', () => {
-    const r = run(['describe']);
+  test('spec lists impact as read / idempotent, exit 3 declared', () => {
+    const r = run(['spec']);
     expect(r.status).toBe(0);
     const cmd = JSON.parse(r.stdout).commands.find((c: any) => c.name === 'impact');
     expect(cmd).toBeDefined();
@@ -530,7 +530,7 @@ describe('xray impact (built CLI)', () => {
       w('beta/go.mod', 'module example.com/beta\n\ngo 1.22\n');
       w('beta/pkg/use/use.go', 'package use\n\nimport "example.com/alpha/greet"\n\nfunc Use() string { return greet.Hello() }\n');
       g2 = path.join(work, 'g.json');
-      const m = run(['map', '--skip-detect', '-p', 'alpha', '-p', 'beta', '--format', 'json', '-o', g2], work);
+      const m = run(['map', '--no-detect', '-p', 'alpha', '-p', 'beta', '--format', 'json', '-o', g2], work);
       expect(m.status).toBe(0);
     });
     afterAll(() => fs.rmSync(work, { recursive: true, force: true }));

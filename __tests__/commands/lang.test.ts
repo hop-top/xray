@@ -1,3 +1,4 @@
+import { Command } from 'commander';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -35,10 +36,10 @@ describe('xray lang', () => {
     process.exitCode = 0;
   });
 
-  it('list --json reports status, file counts and bundles', async () => {
+  it('list --format json reports status, file counts and bundles', async () => {
     const lines = capture();
     const fixture = path.join(__dirname, '../fixtures/lang-packs');
-    await registerLangCommand().parseAsync(['node', 'lang', 'list', '--json', '--path', fixture]);
+    await registerLangCommand().parseAsync(['node', 'language', 'list', '--format', 'json', '--path', fixture]);
     const out = JSON.parse(lines.join('\n'));
     const byLang = Object.fromEntries(out.languages.map((l: any) => [l.language, l]));
     expect(byLang.go.status).toBe('installed');
@@ -48,12 +49,14 @@ describe('xray lang', () => {
     expect(out.managedDir).toBe(managed);
   });
 
-  it('add --dry-run prints the plan (the npm command) and installs nothing', async () => {
+  it('add with root --dry-run prints the plan (the npm command) and installs nothing', async () => {
     const lines = capture();
     const out: string[] = [];
     jest.spyOn(process.stdout, 'write').mockImplementation((c: any) => { out.push(String(c)); return true; });
     const run = jest.fn();
-    await registerLangCommand(run).parseAsync(['node', 'lang', 'add', 'kotlin', '--dry-run']);
+    const root = new Command('xray').option('--dry-run');
+    root.addCommand(registerLangCommand(run));
+    await root.parseAsync(['node', 'xray', '--dry-run', 'language', 'add', 'kotlin']);
     expect(run).not.toHaveBeenCalled();
     const plan = out.join('') + lines.join('\n');
     expect(plan).toContain('install');
@@ -64,7 +67,7 @@ describe('xray lang', () => {
   it('add runs npm in the managed dir only for missing languages and fails if still not loadable', async () => {
     const lines = capture();
     const run = jest.fn().mockReturnValue({ status: 0 });
-    await registerLangCommand(run).parseAsync(['node', 'lang', 'add', 'go', 'kotlin']);
+    await registerLangCommand(run).parseAsync(['node', 'language', 'add', 'go', 'kotlin']);
     expect(run).toHaveBeenCalledTimes(1);
     expect(run.mock.calls[0][0]).toEqual(installCommand([getPack('kotlin')!]));
     expect(run.mock.calls[0][1]).toBe(managed);
@@ -85,27 +88,27 @@ describe('xray lang', () => {
         : { language: 'kotlin', module: 'tree-sitter-kotlin', ok: false, reason: 'missing' };
     });
     const run = jest.fn().mockImplementation(() => { installed = true; return { status: 0 }; });
-    await registerLangCommand(run).parseAsync(['node', 'lang', 'add', 'kotlin', 'go']);
+    await registerLangCommand(run).parseAsync(['node', 'language', 'add', 'kotlin', 'go']);
     const out = lines.join('\n');
     expect(out).toContain("kotlin: installed but not usable with xray's tree-sitter");
     expect(out).toContain('tree-sitter-kotlin@0.3.8');
-    expect(out).toContain('xray lang remove kotlin');
+    expect(out).toContain('xray language delete kotlin');
     expect(out).not.toMatch(/kotlin: installed$/m);
     expect(process.exitCode).toBe(1);
   });
 
   it('rejects unknown languages with a non-zero exit', async () => {
     const lines = capture();
-    await registerLangCommand(jest.fn()).parseAsync(['node', 'lang', 'add', 'cobol']);
+    await registerLangCommand(jest.fn()).parseAsync(['node', 'language', 'add', 'cobol']);
     expect(lines.join('\n')).toContain("Unknown language or bundle 'cobol'");
     expect(process.exitCode).toBe(2);
   });
 
-  it('remove only touches packs in the managed dir', async () => {
+  it('delete only touches packs in the managed dir', async () => {
     const lines = capture();
     fs.writeFileSync(path.join(managed, 'package.json'), JSON.stringify({ dependencies: { 'tree-sitter-kotlin': '^0.3.8' } }));
     const run = jest.fn().mockReturnValue({ status: 0 });
-    await registerLangCommand(run).parseAsync(['node', 'lang', 'remove', 'go', 'kotlin']);
+    await registerLangCommand(run).parseAsync(['node', 'language', 'delete', 'go', 'kotlin']);
     expect(run).toHaveBeenCalledTimes(1);
     expect(run.mock.calls[0][0]).toContain('tree-sitter-kotlin');
     expect(run.mock.calls[0][0]).not.toContain('tree-sitter-go');

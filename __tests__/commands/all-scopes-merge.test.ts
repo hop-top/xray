@@ -29,22 +29,19 @@ const ARGS: Array<[string, string[]]> = [
   ['--path', ['--path', 'cli-dir']],
   ['--output', ['--output', 'cli-out']],
   ['--limit', ['--limit', '7']],
-  ['--with', ['--with', 'vars']],
+  ['--with', ['--with', 'variables']],
+  ['--flow', ['--flow']],
   ['--anchor', ['--anchor', 'x.ts']],
   ['--depth', ['--depth', '9']],
   ['--query', ['--query', '.ts:q']],
   ['--match', ['--match', '*.py']],
-  ['--catch', ['--catch', 'Other']],
+  ['--symbol', ['--symbol', 'Other']],
   ['--format', ['--format', 'xml']],
-  ['--txt', ['--txt']],
-  ['--csv', ['--csv']],
-  ['--xml', ['--xml']],
-  ['--json', ['--json']],
   ['--no-chunk', ['--no-chunk']],
   ['--group', ['--group', 'community']],
   ['--detect', ['--detect']],
-  ['--lang', ['--lang', 'python']],
-  ['--skip-detect', ['--skip-detect']],
+  ['--no-detect', ['--no-detect']],
+  ['--language', ['--language', 'python']],
   ['--no-fallback-ctags', ['--no-fallback-ctags']],
   ['--share', ['--share']],
   ['--preset', ['--preset', 'insights']],
@@ -60,7 +57,6 @@ describe('resolveAllScopesRuns', () => {
       '--extension-hint', '--enable-surface', '--disable-surface', // folded into `extensions`, below
       '--lens', '--scope', '--all-scopes', // select the run; not forwarded content
       '--context', // selects the run root (named context); exclusive with --all-scopes
-      '--mermaid', '--dot', // diagram family selectors
     ]);
     expect(registered.filter((n) => !covered.has(n))).toEqual([]);
   });

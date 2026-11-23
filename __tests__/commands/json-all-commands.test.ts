@@ -22,7 +22,7 @@ const ENTRY = path.join(ROOT, 'dist', 'index.js');
  * - watch: a live session that logs status lines (and may write --graph-out);
  *   it prints no document on stdout, so there is no machine form to ask for.
  */
-const EXEMPT = new Set(['help', 'completion bash', 'completion zsh', 'completion fish', 'completion powershell', 'watch']);
+const EXEMPT = new Set(['help', 'diagram', 'tui', 'completion bash', 'completion zsh', 'completion fish', 'completion powershell', 'watch']);
 
 const leaves = (cmd: Command, trail: string[] = []): Array<{ path: string; cmd: Command }> =>
   cmd.commands.length === 0
@@ -71,8 +71,9 @@ describe('--format on every leaf of the real command tree', () => {
   it('the tree holds what the walk is meant to cover', () => {
     const paths = leaves(tree).map(l => l.path);
     for (const p of [
-      'strategy create', 'strategy remove', 'alias set', 'alias remove', 'lang add', 'lang remove',
-      'cache clear', 'clear-cache', 'mcp', 'explore', 'imports', 'comps', 'react components',
+      'strategy create', 'strategy delete', 'alias set', 'alias delete', 'language add', 'language delete',
+      'cache clear', 'serve', 'explore', 'imports', 'config path', 'config paths', 'spec', 'upgrade check',
+      'comps', 'react components',
     ]) expect(paths).toContain(p);
   });
 
@@ -166,25 +167,24 @@ describe('refusals and conflicts are kit envelopes with --format after the subco
     expect(env.message).toContain('conflicts with an existing command');
   });
 
-  it('--confirm=no strategy remove: UNAUTHORIZED (5), nothing removed', () => {
+  it('--confirm=no strategy delete: UNAUTHORIZED (5), nothing removed', () => {
     const file = path.join(proj, '.xray', 'strategies', 'keep.yml');
     expectJson(run(['strategy', 'create', 'keep', '--format', 'json']));
-    const env = expectEnvelope(run(['--confirm=no', 'strategy', 'remove', 'keep', '--format', 'json']), 5, 'UNAUTHORIZED');
-    expect(env.message).toContain('xray strategy remove refused');
+    const env = expectEnvelope(run(['--confirm=no', 'strategy', 'delete', 'keep', '--format', 'json']), 5, 'UNAUTHORIZED');
+    expect(env.message).toContain('xray strategy delete refused');
     expect(fs.existsSync(file)).toBe(true);
     // Flag order after the subcommand too.
-    expectEnvelope(run(['strategy', 'remove', 'keep', '--confirm=no', '--format', 'json']), 5, 'UNAUTHORIZED');
+    expectEnvelope(run(['strategy', 'delete', 'keep', '--confirm=no', '--format', 'json']), 5, 'UNAUTHORIZED');
     expect(fs.existsSync(file)).toBe(true);
   });
 
-  it('--confirm=no cache clear: UNAUTHORIZED (5), also for clear-cache', () => {
+  it('--confirm=no cache clear: UNAUTHORIZED (5)', () => {
     const env = expectEnvelope(run(['--confirm=no', 'cache', 'clear', '--format', 'json']), 5, 'UNAUTHORIZED');
     expect(env.message).toContain('xray cache clear refused');
-    expectEnvelope(run(['--confirm=no', 'clear-cache', '--format', 'json']), 5, 'UNAUTHORIZED');
   });
 
-  it('--dry-run mcp: kit refuses with its envelope (the flag is no longer a parse error)', () => {
-    const env = expectEnvelope(run(['--dry-run', 'mcp', '--format', 'json']), 2, 'USAGE');
+  it('--dry-run serve: kit refuses with its envelope (the flag is no longer a parse error)', () => {
+    const env = expectEnvelope(run(['--dry-run', 'serve', '--format', 'json']), 2, 'USAGE');
     expect(env.message).toContain('does not accept --dry-run');
   });
 
@@ -198,13 +198,13 @@ describe('refusals and conflicts are kit envelopes with --format after the subco
 
 describe('failures of the commands that lacked --format', () => {
   it.each([
-    [['alias', 'remove', 'nope'], 3, 'NOT_FOUND'],
-    [['strategy', 'info', 'nope'], 3, 'NOT_FOUND'],
+    [['alias', 'delete', 'nope'], 3, 'NOT_FOUND'],
+    [['strategy', 'show', 'nope'], 3, 'NOT_FOUND'],
     [['strategy', 'validate', 'nope'], 3, 'NOT_FOUND'],
     [['strategy', 'install', './nope'], 3, 'NOT_FOUND'],
     [['strategy', 'detect', '-p', '/nonexistent-xray-dir'], 3, 'NOT_FOUND'],
-    [['lang', 'add', 'bogus'], 2, 'USAGE'],
-    [['lang', 'remove', 'bogus'], 2, 'USAGE'],
+    [['language', 'add', 'bogus'], 2, 'USAGE'],
+    [['language', 'delete', 'bogus'], 2, 'USAGE'],
     [['alias', 'set', 'x', 'nonsense'], 2, 'USAGE'],
   ] as Array<[string[], number, string]>)('%j', (args, exit, code) => {
     expectEnvelope(run([...args, '--format', 'json']), exit, code);
@@ -228,29 +228,29 @@ describe('failures of the commands that lacked --format', () => {
 });
 
 describe('success: --format json prints one JSON document on stdout', () => {
-  it('alias set / remove', () => {
+  it('alias set / delete', () => {
     const set = expectJson(run(['alias', 'set', 'comps', 'react components', '--format', 'json']));
     expect(set).toEqual({ alias: 'comps', target: 'react components', action: 'created', config: path.join(proj, '.xrayrc.json') });
     expect(expectJson(run(['alias', 'set', 'comps', 'react hooks', '--format', 'json'])).action).toBe('updated');
-    const rm = expectJson(run(['alias', 'remove', 'comps', '--format', 'json']));
+    const rm = expectJson(run(['alias', 'delete', 'comps', '--format', 'json']));
     expect(rm).toMatchObject({ alias: 'comps', target: 'react hooks', action: 'removed' });
   });
 
-  it('alias set / remove: text mode prints no document on stdout', () => {
+  it('alias set / delete: text mode prints no document on stdout', () => {
     const r = run(['alias', 'set', 'tmpalias', 'react components']);
     expect(r.status).toBe(0);
     expect(r.stdout).toBe('');
-    const rm = run(['alias', 'remove', 'tmpalias']);
+    const rm = run(['alias', 'delete', 'tmpalias']);
     expect(rm.status).toBe(0);
     expect(rm.stdout).toBe('');
   });
 
-  it('strategy create / remove', () => {
+  it('strategy create / delete', () => {
     const created = expectJson(run(['strategy', 'create', 'okay', '--format', 'json']));
     const file = path.join(proj, '.xray', 'strategies', 'okay.yml');
     expect(created).toEqual({ strategy: 'okay', path: file, kind: 'yaml', action: 'created' });
     expect(fs.existsSync(file)).toBe(true);
-    const removed = expectJson(run(['--confirm=yes', 'strategy', 'remove', 'okay', '--format', 'json']));
+    const removed = expectJson(run(['--confirm=yes', 'strategy', 'delete', 'okay', '--format', 'json']));
     expect(removed).toEqual({ strategy: 'okay', kind: 'file', path: file, action: 'removed', notRemoved: [] });
     expect(fs.existsSync(file)).toBe(false);
   });
@@ -268,11 +268,11 @@ describe('success: --format json prints one JSON document on stdout', () => {
     });
   });
 
-  it('strategy detect / info / validate / path', () => {
+  it('strategy detect / show / validate / path', () => {
     const detect = expectJson(run(['strategy', 'detect', '--format', 'json']));
     expect(detect.path).toBe(proj);
     expect(Array.isArray(detect.strategies)).toBe(true);
-    const info = expectJson(run(['strategy', 'info', 'react', '--format', 'json']));
+    const info = expectJson(run(['strategy', 'show', 'react', '--format', 'json']));
     expect(info).toMatchObject({ name: 'react', detected: false });
     expect(info.commands.map((c: { name: string }) => c.name)).toContain('components');
     const validate = expectJson(run(['strategy', 'validate', 'react', '--format', 'json']));
@@ -282,19 +282,17 @@ describe('success: --format json prints one JSON document on stdout', () => {
     expect(typeof paths.paths[0].exists).toBe('boolean');
   });
 
-  it('cache clear and clear-cache', () => {
-    for (const cmd of [['cache', 'clear'], ['clear-cache']]) {
-      const out = expectJson(run(['--confirm=yes', ...cmd, '--format', 'json']));
-      expect(out.action).toBe('none');
-    }
+  it('cache clear', () => {
+    const out = expectJson(run(['--confirm=yes', 'cache', 'clear', '--format', 'json']));
+    expect(out.action).toBe('none');
   });
 
-  it('lang add / remove report per language', () => {
-    expect(expectJson(run(['lang', 'add', 'go', '--format', 'json']))).toMatchObject({
+  it('language add / delete report per language', () => {
+    expect(expectJson(run(['language', 'add', 'go', '--format', 'json']))).toMatchObject({
       action: 'add', ok: true, languages: [{ language: 'go', status: 'already-installed' }],
     });
-    expect(expectJson(run(['lang', 'remove', 'go', '--format', 'json']))).toMatchObject({
-      action: 'remove', ok: true, languages: [{ language: 'go', status: 'not-managed' }],
+    expect(expectJson(run(['language', 'delete', 'go', '--format', 'json']))).toMatchObject({
+      action: 'delete', ok: true, languages: [{ language: 'go', status: 'not-managed' }],
     });
   });
 
@@ -312,12 +310,12 @@ describe('success: --format json prints one JSON document on stdout', () => {
     fs.rmSync(path.join(proj, '.xrayrc.json'));
   });
 
-  it('mcp accepts --format json (JSON-RPC on stdout)', () => {
+  it('serve --stdio accepts --format json (JSON-RPC on stdout)', () => {
     const msg = { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '0' } } };
-    const r = run(['mcp', '--format', 'json'], { input: JSON.stringify(msg) + '\n' });
+    const r = run(['serve', '--stdio', '--format', 'json'], { input: JSON.stringify(msg) + '\n' });
     const reply = JSON.parse(r.stdout.split('\n').filter(Boolean)[0]);
     expect(reply.id).toBe(1);
-    const bad = run(['mcp', '--format', 'text']);
+    const bad = run(['serve', '--stdio', '--format', 'text']);
     expect(bad.status).toBe(2);
     expect(bad.stderr).toContain("invalid --format 'text'");
   });
@@ -327,8 +325,8 @@ describe('--dry-run plans are JSON under --format json', () => {
   it.each([
     [['--dry-run', 'alias', 'set', 'dry', 'react components'], 'xray alias set'],
     [['--dry-run', 'strategy', 'create', 'dryone'], 'xray strategy create'],
-    [['--dry-run', 'clear-cache'], 'xray clear-cache'],
-    [['--dry-run', 'lang', 'add', 'go'], 'xray lang add'],
+    [['--dry-run', 'cache', 'clear'], 'xray cache clear'],
+    [['--dry-run', 'language', 'add', 'go'], 'xray language add'],
   ] as Array<[string[], string]>)('%j', (args, command) => {
     const plan = expectJson(run([...args, '--format', 'json']));
     expect(plan.command).toBe(command);
@@ -340,7 +338,7 @@ describe('xray imports: JSON by default', () => {
   it('failures: envelope without a flag, exit 3, stdout empty', () => {
     const env = expectEnvelope(run(['imports', '-p', path.join(tmp, 'nope')]), 3, 'NOT_FOUND');
     expect(env.message).toContain('Path does not exist');
-    expectEnvelope(run(['imports', 'src', '--lang', 'bogus']), 2, 'USAGE');
+    expectEnvelope(run(['imports', 'src', '--language', 'bogus']), 2, 'USAGE');
   });
 
   it('an explicit text-ish format keeps the text line', () => {

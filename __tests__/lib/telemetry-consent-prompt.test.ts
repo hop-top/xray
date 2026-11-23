@@ -68,6 +68,6 @@ describe('promptForConsent', () => {
     s.input.write('n\n');
     await settled(p);
     expect(text).toContain('XRAY_TELEMETRY_ENABLED');
-    expect(text).toContain('xray paths');
+    expect(text).toContain('xray config paths');
   });
 });

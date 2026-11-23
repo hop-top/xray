@@ -149,8 +149,8 @@ see [Harness Integration](harness-integration.md).
 | **Multi-Language** | 17 tree-sitter packs plus Linguist 100+ language map & Universal Ctags/regex fallback |
 | **Dependency & Impact** | Call graphs, `xray query`, `xray impact` (`--since`/`--changed`), cross-root resolution |
 | **Handbooks, Diagrams & UI** | `xray handbook`, `xray diagram` (Mermaid), `xray tui`, `xray serve` (Web UI + REST API) |
-| **Diff Review & Q&A** | Deterministic `xray review --base <ref>`, BYOK `xray ask`, and `xray skills` |
-| **Automation Ready** | GitHub Actions, pre-commit hooks, and stdio/HTTP MCP server (`xray mcp`) |
+| **Diff Review & Q&A** | Deterministic `xray review --since <ref>`, BYOK `xray ask`, and `xray skill` |
+| **Automation Ready** | GitHub Actions, pre-commit hooks, and stdio/HTTP MCP server (`xray serve --stdio`) |
 
 ## Common Questions
 

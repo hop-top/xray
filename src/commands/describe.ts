@@ -5,7 +5,7 @@
 // dashboards) can discover commands, options, side-effects, and exit
 // codes without parsing `--help` text.
 //
-// `xray describe` walks the constructed commander tree and emits a JSON
+// `xray spec` walks the constructed commander tree and emits a JSON
 // document with the active surface. Side-effect class and idempotency
 // are the annotations each leaf declares to kit (see side-effect.ts).
 
@@ -24,10 +24,12 @@ import {
 } from '../lib/error/types';
 import { JSON_DEFAULT_COMMANDS } from '../lib/error/report';
 import { TELEMETRY_POLICY } from '../lib/telemetry-policy';
-import { declaredEffect, declaredExitCodes, omittedFromDescribe } from './side-effect';
+import { bindFlag, staticValues } from './completion';
+import { declareEffect, declaredEffect, declaredExitCodes, omittedFromDescribe } from './side-effect';
 
 const SCHEMA_URL = 'https://hop-top.dev/schemas/cli-capabilities/v1.json';
 const SPEC = '12fc/v1';
+export const SPEC_SCHEMA_VERSION = '1.0';
 
 type SideEffect = 'read' | 'write' | 'write-local' | 'write-shared' | 'destructive' | 'destructive-local' | 'destructive-shared' | 'interactive';
 type Idempotent = 'yes' | 'conditional' | 'no';
@@ -43,22 +45,20 @@ const IDEMPOTENCY: ReadonlySet<string> = new Set<Idempotent>(['yes', 'conditiona
 // 2 (usage). Specific commands add 3 (not found) / 4 (conflict) where a
 // handler throws them; a real-exit test pins each entry.
 const EXTRA_EXIT_CODES: Record<string, number[]> = {
-  'alias.remove': [EXIT_NOT_FOUND],
+  'alias.delete': [EXIT_NOT_FOUND],
   // Destructive: refused (unauthorized) unless the caller confirms.
-  'strategy.remove': [EXIT_NOT_FOUND, EXIT_UNAUTHORIZED],
+  'strategy.delete': [EXIT_NOT_FOUND, EXIT_UNAUTHORIZED],
   'cache.clear': [EXIT_UNAUTHORIZED],
-  'clear-cache': [EXIT_UNAUTHORIZED],
   'strategy.detect': [EXIT_NOT_FOUND],
-  'strategy.info': [EXIT_NOT_FOUND],
+  'strategy.show': [EXIT_NOT_FOUND],
   'strategy.validate': [EXIT_NOT_FOUND],
   'strategy.install': [EXIT_NOT_FOUND],
   'strategy.create': [EXIT_CONFLICT],
-  'build.run': [EXIT_NOT_FOUND],
+  'build.show': [EXIT_NOT_FOUND],
   // Runs the repo's recipe: refused (unauthorized) unless confirmed; unknown target / missing tool: not found.
   'build.exec': [EXIT_NOT_FOUND, EXIT_UNAUTHORIZED],
   // A root that does not exist (positional or --path) is not found.
   map: [EXIT_NOT_FOUND],
-  graph: [EXIT_NOT_FOUND],
   // --graph names a file that does not exist.
   query: [EXIT_NOT_FOUND],
   impact: [EXIT_NOT_FOUND],
@@ -67,8 +67,10 @@ const EXTRA_EXIT_CODES: Record<string, number[]> = {
   explore: [EXIT_NOT_FOUND],
   // A watched root (positional or --path) that does not exist is not found.
   watch: [EXIT_NOT_FOUND],
-  // --check: the release lookup failed.
-  upgrade: [EXIT_TRANSIENT],
+  diagram: [EXIT_NOT_FOUND],
+  'skill.show': [EXIT_NOT_FOUND],
+  // Release lookup failed.
+  'upgrade.check': [EXIT_TRANSIENT],
 };
 
 // Commands whose machine output is a versioned document: schema id (the
@@ -95,7 +97,7 @@ const EXIT_CODES: Record<string, string> = {
 const ERRORS: ErrorsDoc = {
   format: 'json',
   stream: 'stderr',
-  enabledBy: ['--format json', '--format=json', '--json'],
+  enabledBy: ['--format json', '--format=json'],
   defaultFor: [...JSON_DEFAULT_COMMANDS],
   required: ['code', 'message', 'exit_code', 'transience'],
   optional: ['cause', 'suggested_fix', 'alternatives'],
@@ -112,21 +114,13 @@ const ERRORS: ErrorsDoc = {
 };
 
 interface ErrorsDoc {
-  /** Wire format of the error object. */
   format: 'json';
-  /** Stream it is written to; stdout stays empty. */
   stream: 'stderr';
-  /** Argv forms that select it. */
   enabledBy: string[];
-  /** Commands whose errors are JSON without a flag (their output defaults to JSON); an explicit other `--format` keeps text. */
   defaultFor: string[];
-  /** Fields present in every error object. */
   required: string[];
-  /** Fields present when the failure has them. */
   optional: string[];
-  /** Values of `transience`. */
   transience: string[];
-  /** `code` values and the exit code each comes with. */
   codes: Record<string, number>;
 }
 
@@ -148,11 +142,8 @@ interface OptionDoc {
 }
 
 interface OutputSchemaDoc {
-  /** Schema id carried in the payload. */
   schema: string;
-  /** JSON Schema file, relative to the package root. */
   path: string;
-  /** `--format` values that emit the document. */
   formats: string[];
 }
 
@@ -170,9 +161,6 @@ interface CommandDoc {
   output?: OutputSchemaDoc;
 }
 
-// Telemetry policy, so a consumer can verify a subprocess run records
-// nothing: `defaultOff` lists the run kinds forced off whatever consent
-// was saved; `env` / `flag` force it off on any run.
 interface TelemetryDoc {
   defaultOff: string[];
   env: string[];
@@ -183,6 +171,7 @@ interface DescribeDoc {
   $schema: string;
   tool: string;
   version: string;
+  schema_version: string;
   spec: string;
   exitCodes: Record<string, string>;
   errors: ErrorsDoc;
@@ -192,15 +181,10 @@ interface DescribeDoc {
 
 interface DescribeOptions {
   format?: string;
+  schemaVersion?: boolean;
 }
 
 function parseOption(opt: Option): OptionDoc {
-  // Commander stores `flags` like '-l, --limit <number>' or '--graph <file>'
-  // or '--list-strategies' (boolean). We reflect:
-  //   - short = first '-x' token if present
-  //   - name  = '--long' (always present for non-positional options)
-  //   - type  = inferred from arg placeholder: `<number>` → number,
-  //             `<...>` → string, none → boolean
   const argTok = opt.flags.match(/[<[][^>\]]+[>\]]/)?.[0] ?? '';
   let type: OptionDoc['type'] = 'boolean';
   if (argTok) {
@@ -220,9 +204,6 @@ function parseOption(opt: Option): OptionDoc {
 }
 
 function parseArguments(cmd: Command): ArgumentDoc[] {
-  // Commander stores positionals under `registeredArguments` (newer) or
-  // `_args` (older). Both expose `_name`, `required`, `variadic`,
-  // `description`.
   const raw = (cmd as any).registeredArguments ?? (cmd as any)._args ?? [];
   return raw.map((a: any) => ({
     name: a._name ?? a.name ?? '',
@@ -232,13 +213,6 @@ function parseArguments(cmd: Command): ArgumentDoc[] {
   }));
 }
 
-/**
- * Tier and idempotency come from the annotations every runnable leaf
- * declares (kit's `kit/side-effect` and `kit/idempotent`), the same ones
- * kit's gates act on. A command that only groups subcommands runs nothing
- * and reports read / yes. An undeclared leaf is a defect: describe fails
- * rather than guess a tier.
- */
 function classify(qualifiedName: string, cmd: Command): {
   sideEffect: SideEffect;
   idempotent: Idempotent;
@@ -277,7 +251,7 @@ function walk(cmd: Command, parentPath: string[] = []): CommandDoc {
     description: cmd.description() || '',
     hidden: Boolean((cmd as any)._hidden),
     arguments: parseArguments(cmd),
-    options: (cmd.options || []).map(parseOption),
+    options: (cmd.options || []).filter((o) => !o.hidden).map(parseOption),
     subcommands: (cmd.commands || []).filter((sub) => !omittedFromDescribe(sub)).map((sub) => walk(sub, [...parentPath, name])),
     sideEffect: cls.sideEffect,
     idempotent: cls.idempotent,
@@ -287,7 +261,7 @@ function walk(cmd: Command, parentPath: string[] = []): CommandDoc {
 }
 
 /**
- * Build the describe document from a constructed commander root.
+ * Build the capability spec document from a constructed commander root.
  * Exported so tests can drive it with a synthetic program.
  */
 export function buildDescribeDoc(
@@ -299,6 +273,7 @@ export function buildDescribeDoc(
     $schema: SCHEMA_URL,
     tool,
     version,
+    schema_version: SPEC_SCHEMA_VERSION,
     spec: SPEC,
     exitCodes: EXIT_CODES,
     errors: ERRORS,
@@ -317,10 +292,12 @@ export async function handleDescribeAction(options: DescribeOptions): Promise<vo
     throw new UsageError(`--format: unsupported value '${fmt}' (only 'json')`);
   }
 
-  // Lazy require to avoid a circular import at module load (describe is
-  // registered by registration/core, which is loaded by commands/index,
-  // which is loaded by src/index — we need the *root* program here).
-  // The constructed program lives on commands/index's module exports.
+  if (options.schemaVersion) {
+    Logger.output(JSON.stringify({ schema_version: SPEC_SCHEMA_VERSION }));
+    return;
+  }
+
+  // Lazy require to avoid a circular import at module load.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { program } = require('./index');
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -328,4 +305,17 @@ export async function handleDescribeAction(options: DescribeOptions): Promise<vo
 
   const doc = buildDescribeDoc(program, 'xray', version);
   Logger.output(JSON.stringify(doc, null, 2));
+}
+
+/** Register `xray spec` (machine-readable capability manifest, 12fc Factor 1). */
+export function registerSpecCommand(program: Command): Command {
+  const spec = program
+    .command('spec')
+    .description('Emit machine-readable capability manifest (12fc Factor 1)')
+    .option('--format <fmt>', 'Output format (json)', 'json')
+    .option('--schema-version', 'Print capability schema version and exit')
+    .action(handleDescribeAction);
+  declareEffect(spec, 'read', 'yes');
+  bindFlag(spec, 'format', staticValues('json'));
+  return spec;
 }

@@ -91,10 +91,10 @@ export async function promptForConsent(io: PromptIO = {}): Promise<boolean> {
   console.log('  • Personal information');
   console.log('  • Network activity (data stays local)');
   console.log('');
-  console.log(paint.muted('All data is stored locally in the xray state directory (see `xray paths`)'));
+  console.log(paint.muted('All data is stored locally in the xray state directory (see `xray config paths`)'));
   console.log(paint.muted('You are asked once; no answer within ' + Math.round((io.timeoutMs ?? CONSENT_PROMPT_TIMEOUT_MS) / 1000) + 's means no.'));
   console.log(paint.muted('Change it later: set XRAY_TELEMETRY_ENABLED=true, or "telemetry" in your user config'));
-  console.log(paint.muted('(xray paths shows where) or per project in .xrayrc.json.'));
+  console.log(paint.muted('(xray config paths shows where) or per project in .xrayrc.json.'));
   console.log('');
 
   const answer = await askQuestion(paint.bold('Enable telemetry?') + ' [Y/n]: ', io);

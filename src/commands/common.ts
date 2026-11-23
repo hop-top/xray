@@ -1,4 +1,4 @@
-import { Command, InvalidArgumentError } from 'commander';
+import { Command, InvalidArgumentError, Option } from 'commander';
 import { BUILTIN_PRESET_NAMES } from '../lib/plugins/presets';
 import { StrategyContextImpl } from '../lib/strategy/context';
 import { ExtensionOverrideCommandOptions } from '../types/command-options';
@@ -10,6 +10,38 @@ const appendOptionValue = (
   value: string,
   previous: string[] = []
 ): string[] => previous.concat([value]);
+
+/** Long-form to canonical internal key for `--with <feature>`. */
+export const WITH_FEATURE_ALIASES: Readonly<Record<string, string>> = {
+  variables: 'vars',
+  vars: 'vars',
+  imports: 'incs',
+  incs: 'incs',
+  'control-flow': 'cf',
+  cf: 'cf',
+  'data-flow': 'df',
+  df: 'df',
+  cost: 'cost',
+  docs: 'docs',
+  churn: 'churn',
+  blame: 'blame',
+};
+
+/** Normalize a `--with` value (accepting comma-separated values and long forms). */
+export function normalizeWithFeature(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .map((key) => {
+      const mapped = WITH_FEATURE_ALIASES[key];
+      if (!mapped) {
+        const valid = ['variables', 'imports', 'control-flow', 'data-flow', 'cost', 'docs', 'churn', 'blame'];
+        throw new UsageError(`invalid --with feature '${key}' (expected one of: ${valid.join(', ')})`);
+      }
+      return mapped;
+    });
+}
 
 /**
  * Parser for `--graph <file>`: commander hands a value-taking option the
@@ -30,22 +62,17 @@ export const resolvePath = (p: string | undefined): string | undefined => {
 };
 
 // Helper to determine output path with smart extension handling.
-// Default (no -o): `.xray` is a DIRECTORY (strategy detection state), so no
-// single-file default may use that bare name. Graph formats and single-file
-// text write `.xray.<ext>`; csv takes `.xray` as the base of
-// `.xray.{nodes,edges}.csv`; chunked text takes it as the chunk prefix
-// (`.xray_*.md`).
+// Default (no -o): writes under `$PWD/.xray` (or `$PWD/.xray.<ext>` for
+// single-file formats).
 export const resolveOutputPath = (
   outputOption: string | undefined,
-  format: 'txt' | 'csv' | 'xml' | 'json' | 'mermaid',
+  format: 'txt' | 'csv' | 'xml' | 'json',
   chunked = true
 ): string | undefined => {
   if (!outputOption) {
-    const base = require('path').resolve(process.cwd(), '.xray');
-    if (format === 'json' || format === 'xml') return `${base}.${format}`;
-    if (format === 'mermaid') return `${base}.mmd`;
-    if (format === 'txt' && !chunked) return `${base}.txt`;
-    return base;
+    if (format === 'json' || format === 'xml') return resolvePath(`.xray.${format}`);
+    if (format === 'txt' && !chunked) return resolvePath('.xray.txt');
+    return resolvePath('.xray');
   }
 
   const path = require('path');
@@ -60,13 +87,11 @@ export const resolveOutputPath = (
     return resolvePath(outputOption);
   }
 
-  // No extension - append format-based extension
   const outputExtensions: Record<string, string> = {
     txt: '.txt',
     csv: '.csv',
     xml: '.xml',
     json: '.json',
-    mermaid: '.mmd',
   };
 
   return resolvePath(outputOption + outputExtensions[format]);
@@ -227,10 +252,6 @@ export function createStrategyContext(
   projectPath: string,
   options: ExtensionOverrideCommandOptions = {}
 ): StrategyContextImpl {
-  // Prefer pre-normalized options.extensions (produced by
-  // normalizeExtensionOptions) to avoid re-folding the raw repeatable
-  // flags a second time, which would double-append --extension-hint /
-  // duplicate enable/disable entries.
   const extensions = options.extensions
     ? cloneExtensionConfigs(options.extensions)
     : buildExtensionOverrides(options);
@@ -240,96 +261,64 @@ export function createStrategyContext(
   });
 }
 
+/**
+ * Runtime extension overrides. Hidden from default `-h` so strategy leaves and
+ * `map` stay scannable; fully supported at runtime and via config.
+ */
 export const addExtensionOverrideOptions = (cmd: Command): Command => {
+  const hidden = (flags: string, description: string) =>
+    new Option(flags, description).argParser(appendOptionValue).default([]).hideHelp();
+
   return cmd
-    .option(
-      '--enable-extension <name>',
-      'Enable an extension at runtime (repeatable)',
-      appendOptionValue,
-      []
-    )
-    .option(
-      '--disable-extension <name>',
-      'Disable an extension at runtime (repeatable)',
-      appendOptionValue,
-      []
-    )
-    .option(
-      '--extension-threshold <name=value>',
-      'Override an extension threshold at runtime (repeatable)',
-      appendOptionValue,
-      []
-    )
-    .option(
-      '--extension-hint <name=value>',
-      'Add an extension hint at runtime (repeatable)',
-      appendOptionValue,
-      []
-    )
-    .option(
-      '--enable-surface <name:surface>',
-      'Enable an extension surface at runtime (repeatable)',
-      appendOptionValue,
-      []
-    )
-    .option(
-      '--disable-surface <name:surface>',
-      'Disable an extension surface at runtime (repeatable)',
-      appendOptionValue,
-      []
-    );
+    .addOption(hidden('--enable-extension <name>', 'Enable an extension at runtime (repeatable)'))
+    .addOption(hidden('--disable-extension <name>', 'Disable an extension at runtime (repeatable)'))
+    .addOption(hidden('--extension-threshold <name=value>', 'Override an extension threshold at runtime (repeatable)'))
+    .addOption(hidden('--extension-hint <name=value>', 'Add an extension hint at runtime (repeatable)'))
+    .addOption(hidden('--enable-surface <name:surface>', 'Enable an extension surface at runtime (repeatable)'))
+    .addOption(hidden('--disable-surface <name:surface>', 'Disable an extension surface at runtime (repeatable)'));
 };
 
-// Common options for all commands
+// Common options for `map`
 export const addCommonOptions = (cmd: Command) => {
   const out = addExtensionOverrideOptions(
     cmd
-    .option('-p, --path <path>', 'Root directory to analyze (repeatable; with --format json|csv|xml all roots merge into one graph) [default: current directory]', (value: string, previous: string[]) => {
-      return previous.concat([value]);
-    }, [])
-    .option('-o, --output <path>', 'Output file path [default: .xray, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]')
-    .option('-l, --limit <number>', 'Token limit per chunk [default: 4096]')
-    .option('-w, --with <feature>', 'Include feature: vars, incs, cost, docs, df, cf, churn, blame (repeatable) [df, cf: TypeScript, JavaScript, Python, Go]', (value: string, previous: string[]) => {
-      return previous.concat([value]);
-    }, [])
-    .option('-a, --anchor <path>', 'Focus on specific file (Personalized PageRank)')
-    .option('-d, --depth <number>', 'Maximum depth of tree to render')
-    .option('-q, --query <item>', 'Override query (e.g. .ts:path, path/to/dir, url) (repeatable)', (value: string, previous: string[]) => {
-      return previous.concat([value]);
-    }, [])
-    .option('-m, --match <pattern>', 'Match filename pattern (prefix ! to negate) (repeatable)', (value: string, previous: string[]) => {
-      return previous.concat([value]);
-    }, [])
-    .option('-c, --catch <pattern>', 'Match function/class name (prefix ! to negate) (repeatable)', (value: string, previous: string[]) => {
-      return previous.concat([value]);
-    }, [])
-    .option('--format <fmt>', 'Output format: txt (default), json, csv (nodes+edges tables), xml, mermaid')
-    .option('--txt', 'Alias of --format txt')
-    .option('--csv', 'Alias of --format csv (<out>.nodes.csv + <out>.edges.csv)')
-    .option('--xml', 'Alias of --format xml (one <graph> document)')
-    .option('--json', 'Alias of --format json (raw JSON graph)')
-    .option('--mermaid', 'Alias of --format mermaid (.mmd diagram)')
-    .option('--no-chunk', 'Disable chunked output (single file output)')
-    .option('--group <mode>', 'Chunk grouping mode: directory (default) or community', 'directory')
-    .option('--lens <name>', 'Use named lens (config-file option overlay)')
-    .option('--scope <name>', 'Use specific scope from config file')
-    .option('--all-scopes', 'Run all scopes defined in config file')
-    .option('--context <name>', 'Use named context (multi-root glob) from config file')
-    .option('--detect', 'Enable strategy detection (auto-detects when no path is provided)')
-    .option('--lang <list>', 'Languages to parse, comma-separated names or bundles (e.g. go,ts or web); overrides config `languages`; each must be installed (repeatable)', (value: string, previous: string[]) => {
-      return previous.concat(value.split(',').map(s => s.trim()).filter(Boolean));
-    }, [])
-    .option('--skip-detect', 'Skip strategy detection and auto-configuration')
-    .option('--no-fallback-ctags', 'Disable Universal Ctags / regex fallback for unsupported languages')
-    .option('--share [path]', 'Generate a shareable summary markdown (optional path override)')
-    .option(
-      '--preset <spec>',
-      `Apply a plugin preset (built-in name, ./local/path, or @scope/pkg). Repeatable. Built-ins: ${BUILTIN_PRESET_NAMES.join(', ')}.`,
-      (value: string, previous: string[]) => previous.concat([value]),
-      []
-    )
+      .option('-p, --path <path>', 'Root directory to analyze (repeatable; with --format json|csv|xml all roots merge into one graph) [default: current directory]', appendOptionValue, [])
+      .option('-o, --output <path>', 'Output file path [default: .xray, auto-appends format extension; csv writes <out>.nodes.csv and <out>.edges.csv]')
+      .option('-l, --limit <number>', 'Token limit per chunk [default: 4096]')
+      .option(
+        '-w, --with <feature>',
+        'Include feature: variables, imports, control-flow, data-flow, cost, docs, churn, blame (repeatable; short aliases: vars, incs, cf, df)',
+        (value: string, previous: string[]) => previous.concat(normalizeWithFeature(value)),
+        []
+      )
+      .option('--flow', 'Include control-flow (CFG) and data-flow (DFG) graphs')
+      .option('-a, --anchor <path>', 'Focus on specific file (Personalized PageRank)')
+      .option('-d, --depth <number>', 'Maximum depth of tree to render')
+      .option('--query <item>', 'Override tree-sitter query (e.g. .ts:path, path/to/dir, url) (repeatable)', appendOptionValue, [])
+      .option('-m, --match <pattern>', 'Match filename pattern (prefix ! to negate) (repeatable)', appendOptionValue, [])
+      .option('--symbol <pattern>', 'Match function/class name (prefix ! to negate) (repeatable)', appendOptionValue, [])
+      .option('--format <fmt>', 'Output format: txt (default), json, csv (nodes+edges tables), xml')
+      .option('--no-chunk', 'Disable chunked output (single file output)')
+      .option('--group <mode>', 'Chunk grouping mode: directory (default) or community', 'directory')
+      .option('--lens <name>', 'Use named lens (config-file option overlay)')
+      .option('--scope <name>', 'Use specific scope from config file')
+      .option('--all-scopes', 'Run all scopes defined in config file')
+      .option('--context <name>', 'Use named context (multi-root glob) from config file')
+      .option('--language <list>', 'Languages to parse, comma-separated names or bundles (e.g. go,ts or web); overrides config `languages` (repeatable)', (value: string, previous: string[]) => {
+        return previous.concat(value.split(',').map(s => s.trim()).filter(Boolean));
+      }, [])
+      .option('--detect', 'Enable strategy detection (auto-detects when no path is provided)')
+      .option('--no-detect', 'Skip strategy detection and auto-configuration')
+      .option('--no-fallback-ctags', 'Disable Universal Ctags / regex fallback for unsupported languages')
+      .option('--share [path]', 'Generate a shareable summary markdown (optional path override)')
+      .option(
+        '--preset <spec>',
+        `Apply a plugin preset (built-in name, ./local/path, or @scope/pkg). Repeatable. Built-ins: ${BUILTIN_PRESET_NAMES.join(', ')}.`,
+        appendOptionValue,
+        []
+      )
   );
-  bindFlag(out, 'format', staticValues('txt', 'json', 'csv', 'xml', 'mermaid'));
+  bindFlag(out, 'format', staticValues('txt', 'json', 'csv', 'xml'));
   bindFlag(out, 'preset', staticValues(...BUILTIN_PRESET_NAMES));
   return out;
 };

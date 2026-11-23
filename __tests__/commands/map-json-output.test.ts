@@ -45,11 +45,9 @@ describe('map JSON output is valid JSON', () => {
   afterEach(() => fs.rmSync(outDir, { recursive: true, force: true }));
   afterAll(() => fs.rmSync(repo, { recursive: true, force: true }));
 
-  const base = () => ['map', '-p', repo, '--skip-detect'];
+  const base = () => ['map', '-p', repo, '--no-detect'];
 
   const variants: Array<[string, string[]]> = [
-    ['--json (chunked default)', ['--json']],
-    ['--json --no-chunk', ['--json', '--no-chunk']],
     ['--format json (chunked default)', ['--format', 'json']],
     ['--format json --no-chunk', ['--format', 'json', '--no-chunk']],
   ];
@@ -76,14 +74,14 @@ describe('map JSON output is valid JSON', () => {
   });
 
   test('output without extension gets .json appended', () => {
-    const r = run([...base(), '--json', '-o', path.join(outDir, 'g')]);
+    const r = run([...base(), '--format', 'json', '-o', path.join(outDir, 'g')]);
     expect(r.status).toBe(0);
     expect(() => JSON.parse(fs.readFileSync(path.join(outDir, 'g.json'), 'utf-8'))).not.toThrow();
   });
 
   test('graph file loads through the query command handler', async () => {
     const out = path.join(outDir, 'graph.json');
-    expect(run([...base(), '--json', '-o', out]).status).toBe(0);
+    expect(run([...base(), '--format', 'json', '-o', out]).status).toBe(0);
     const res = await handleQueryAction('hotspots(limit=3)', { graph: out, format: 'json' });
     expect(res).toBeDefined();
   });

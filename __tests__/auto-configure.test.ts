@@ -125,15 +125,15 @@ test('renders app', () => {
       expect(output).toContain('App.tsx');
     });
 
-    test('should not auto-configure with --skip-detect', () => {
-      const output = runCli(`map --no-chunk --skip-detect --depth 1`, reactProject);
+    test('should not auto-configure with --no-detect', () => {
+      const output = runCli(`map --no-chunk --no-detect --depth 1`, reactProject);
 
       expect(output).not.toContain('Detected strategies:');
       expect(output).not.toContain('Auto-configured paths');
     });
 
-    test('should work with graph command', () => {
-      const output = runCli(`graph --no-chunk`, reactProject);
+    test('should work with map --flow', () => {
+      const output = runCli(`map --flow --no-chunk`, reactProject);
 
       expect(output).toMatch(/Detected strategies: .*\breact\b/);
       expect(output).toContain('Auto-configured paths from detected strategies');
@@ -183,9 +183,9 @@ test('renders app', () => {
       expect(output).not.toContain('Auto-configured paths');
     });
 
-    test('should show help with skip-detect option', () => {
+    test('should show help with no-detect option', () => {
       const output = execSync(`node ${CLI_PATH} map --help`).toString();
-      expect(output).toContain('--skip-detect');
+      expect(output).toContain('--no-detect');
     });
 
     test('should work with map command', () => {

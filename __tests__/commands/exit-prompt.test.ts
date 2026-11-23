@@ -103,15 +103,15 @@ describe('prompt exit with an unresponsive network', () => {
   }
 
   it('human command exits within the bound and prints the same as --offline', async () => {
-    const offline = await run(['paths', '--offline']);
-    const online = await run(['paths']);
+    const offline = await run(['config', 'paths', '--offline']);
+    const online = await run(['config', 'paths']);
     expect(online.code).toBe(0);
     expect(online.ms).toBeLessThan(EXIT_BOUND_MS);
     expect(online.stdout).toBe(offline.stdout);
   }, 90_000);
 
   it('large piped output arrives complete', async () => {
-    const r = await run(['describe']);
+    const r = await run(['spec']);
     expect(r.code).toBe(0);
     expect(r.ms).toBeLessThan(EXIT_BOUND_MS);
     // > 64 KiB (pipe buffer): a truncating exit would cut the JSON.
@@ -120,14 +120,14 @@ describe('prompt exit with an unresponsive network', () => {
   }, 90_000);
 
   it('--no-telemetry does not change the bound', async () => {
-    const r = await run(['describe', '--no-telemetry']);
+    const r = await run(['spec', '--no-telemetry']);
     expect(r.code).toBe(0);
     expect(r.ms).toBeLessThan(EXIT_BOUND_MS);
     expect(() => JSON.parse(r.stdout)).not.toThrow();
   }, 90_000);
 
   it('a failing command keeps its exit code', async () => {
-    const r = await run(['strategy', 'info', 'no-such-strategy']);
+    const r = await run(['strategy', 'show', 'no-such-strategy']);
     expect(r.code).not.toBe(0);
     expect(r.ms).toBeLessThan(EXIT_BOUND_MS);
   }, 90_000);

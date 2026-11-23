@@ -22,7 +22,7 @@ function run(args: string[]) {
 }
 
 const base = (...roots: string[]) =>
-  ['--skip-detect', ...roots.flatMap(r => ['-p', r])];
+  ['--no-detect', ...roots.flatMap(r => ['-p', r])];
 
 function mapTo(cmd: string, fmtArgs: string[], out: string, ...roots: string[]) {
   const r = run([cmd, ...base(...roots), ...fmtArgs, '-o', out]);

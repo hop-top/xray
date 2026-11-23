@@ -376,7 +376,7 @@ describe('xray review', () => {
 
     const jsonRes = spawnSync(
       'node',
-      [BIN, 'review', '--base', 'main', '--head', 'HEAD', '-p', repoDir, '--format', 'json'],
+      [BIN, 'review', '--since', 'main', '--head', 'HEAD', '-p', repoDir, '--format', 'json'],
       { encoding: 'utf-8', env }
     );
     expect(jsonRes.status).toBe(0);
@@ -394,7 +394,7 @@ describe('xray review', () => {
 
     const textRes = spawnSync(
       'node',
-      [BIN, 'review', '--base', 'main', '--head', 'HEAD', '-p', repoDir, '--format', 'text'],
+      [BIN, 'review', '--since', 'main', '--head', 'HEAD', '-p', repoDir, '--format', 'text'],
       { encoding: 'utf-8', env }
     );
     expect(textRes.status).toBe(0);
@@ -428,14 +428,14 @@ describe('xray review', () => {
       };
 
       const offlineRes = await runCliAsync(
-        ['review', '--base', 'main', '--llm', '--offline', '-p', repoDir],
+        ['review', '--since', 'main', '--llm', '--offline', '-p', repoDir],
         env
       );
       expect(offlineRes.status).toBe(2);
       expect(server.requests.length).toBe(0);
 
       const llmRes = await runCliAsync(
-        ['review', '--base', 'main', '--llm', '--format', 'json', '-p', repoDir],
+        ['review', '--since', 'main', '--llm', '--format', 'json', '-p', repoDir],
         env
       );
       expect(llmRes.status).toBe(0);

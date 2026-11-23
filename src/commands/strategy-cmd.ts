@@ -108,11 +108,10 @@ export async function runStrategyList(cmd: Command): Promise<void> {
 
 export function registerStrategyCommand(): Command {
   const program = new Command('strategy')
-    .description('Manage strategies (list, create, install, remove, enable, disable, info)');
+    .description('Manage strategies (list, detect, show, create, install, delete, validate, path)');
 
   const listCmd = program
     .command('list')
-    .alias('ls')
     .description('List all available strategies');
   declareEffect(listCmd, 'read', 'yes');
   addOutputFlags(listCmd, strategyListRegistry, {
@@ -158,7 +157,7 @@ export function registerStrategyCommand(): Command {
     }), 'read', 'yes');
 
   declareEffect(addResultFormat(program
-    .command('info <name>')
+    .command('show <name>')
     .description('Show detailed information about a strategy'))
     .action(async (name, _opts: unknown, cmd: Command) => {
       assertResultFormat(cmd);
@@ -219,9 +218,10 @@ export function registerStrategyCommand(): Command {
     .action(async (name, options, cmd: Command) => {
       assertResultFormat(cmd);
       assertStrategyName(name);
-      // A project file named like a built-in would shadow it.
-      if (new StrategyLoader().isBuiltinStrategyFile(name) || isRenamedStrategyName(name)) {
-        throw new UsageError(`"${name}" is a built-in strategy; choose another name.`);
+      // A project file named like a built-in strategy or top-level command would shadow it.
+      const builtinRootNames = new Set(cmd.parent?.parent?.commands.map((c) => c.name()) ?? []);
+      if (new StrategyLoader().isBuiltinStrategyFile(name) || isRenamedStrategyName(name) || builtinRootNames.has(name)) {
+        throw new UsageError(`"${name}" is a built-in command or strategy; choose another name.`);
       }
       const dir = options.dir || path.join(process.cwd(), '.xray/strategies');
       // The default directory must stay in the project even when .xray or
@@ -354,9 +354,8 @@ export const ${identifierOf(name)}Strategy: Strategy = {
   // Deletes a strategy file or uninstalls a package: refused unless the
   // caller confirms (`--confirm=yes`, or an answer at a terminal prompt).
   declareEffect(addResultFormat(program
-    .command('remove <name>')
-    .alias('uninstall')
-    .description('Remove an installed strategy (asks first; scripts pass --confirm=yes)'))
+    .command('delete <name>')
+    .description('Delete an installed strategy (asks first; scripts pass --confirm=yes)'))
     .action(async (name, _opts: unknown, cmd: Command) => {
       assertResultFormat(cmd);
       const loader = new StrategyLoader();
@@ -387,7 +386,7 @@ export const ${identifierOf(name)}Strategy: Strategy = {
         if (found.length > 0) {
           Logger.warn(
             `The installed package ${found.map(f => f.name).join(', ')} was not removed; ` +
-            `run \`xray strategy remove ${found[0].name}\` to remove it.`
+            `run \`xray strategy delete ${found[0].name}\` to delete it.`
           );
         }
         return;

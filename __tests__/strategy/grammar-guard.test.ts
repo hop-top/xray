@@ -26,7 +26,7 @@ describe('strategies declaring requiresLanguages', () => {
     expect(await s.detect({} as any)).toBe(false);
     expect(await s.detect({} as any)).toBe(false);
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toContain('xray lang add kotlin');
+    expect(warn.mock.calls[0][0]).toContain('xray language add kotlin');
   });
 
   it('is detected normally when the grammar is present', async () => {

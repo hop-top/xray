@@ -282,8 +282,8 @@ export class MissingGrammarError extends NotFoundError {
   constructor(language: string, status?: GrammarStatus) {
     super(
       status?.reason === 'broken'
-        ? `Grammar for '${language}' failed to load (${status.error}). Try \`xray lang add ${language}\`.`
-        : `Grammar for '${language}' is not installed. Run \`xray lang add ${language}\`.`
+        ? `Grammar for '${language}' failed to load (${status.error}). Try \`xray language add ${language}\`.`
+        : `Grammar for '${language}' is not installed. Run \`xray language add ${language}\`.`
     );
     this.language = language;
     this.status = status;
@@ -374,7 +374,7 @@ export function missingGrammarHint(missing: Array<Pick<SkippedSummary, 'language
     Object.entries(s.byExtension).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([ext, n]) => `${n} ${ext}`)
   );
   const what = total === 1 ? 'file without an installed grammar' : 'files without installed grammars';
-  return `found ${parts.join(', ')} ${what} — install with: xray lang add ${missing.map(s => s.language).join(' ')}`;
+  return `found ${parts.join(', ')} ${what} — install with: xray language add ${missing.map(s => s.language).join(' ')}`;
 }
 
 export interface ReportOptions {
@@ -403,8 +403,8 @@ export function reportSkippedLanguages(opts: ReportOptions = {}): SkippedSummary
     const exts = extensions.join('/');
     const message =
       reason === 'broken'
-        ? `skipping ${count} ${exts} ${plural(count, 'file', 'files')}: grammar failed to load (${s.error}) — try \`xray lang add ${language}\``
-        : `${count} ${exts} ${plural(count, 'file', 'files')}: grammar not installed — run \`xray lang add ${language}\``;
+        ? `skipping ${count} ${exts} ${plural(count, 'file', 'files')}: grammar failed to load (${s.error}) — try \`xray language add ${language}\``
+        : `${count} ${exts} ${plural(count, 'file', 'files')}: grammar not installed — run \`xray language add ${language}\``;
     out.push({
       language,
       count,

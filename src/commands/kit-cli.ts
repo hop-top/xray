@@ -23,11 +23,18 @@ export const hintsEnabled = kit.hintsEnabled;
 
 export type { Plan, Effect } from '@hop-top/kit/dist/cli';
 
-/** Root help groups (rendered in this order). */
-export const HELP_GROUPS = [
+/**
+ * Root help groups (rendered in this order).
+ * STRATEGY and MANAGEMENT are hidden from default `-h` and revealed
+ * via `--help-all` or `--help-<group>`.
+ */
+export const HELP_GROUPS: ReadonlyArray<{ id: HelpGroupId; title: string; hidden?: boolean }> = [
   { id: 'analyze', title: 'ANALYZE' },
-  { id: 'strategy', title: 'STRATEGY' },
-  { id: 'management', title: 'MANAGEMENT' },
-] as const;
+  { id: 'compose', title: 'COMPOSE' },
+  { id: 'interact', title: 'INTERACT' },
+  { id: 'lifecycle', title: 'LIFECYCLE' },
+  { id: 'strategy', title: 'STRATEGY', hidden: true },
+  { id: 'management', title: 'MANAGEMENT', hidden: true },
+];
 
-export type HelpGroupId = (typeof HELP_GROUPS)[number]['id'];
+export type HelpGroupId = 'analyze' | 'compose' | 'interact' | 'lifecycle' | 'strategy' | 'management';

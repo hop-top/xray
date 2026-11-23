@@ -2,6 +2,6 @@
 Goal: variable mutations.
 
 ```bash
-xray graph --path <dir> --with df
-xray graph --anchor <file> --with df
+xray map --flow --path <dir> --with df
+xray map --flow --anchor <file> --with df
 ```

@@ -51,7 +51,7 @@ afterEach(() => {
 describe('a word that names no command', () => {
   it.each([
     [['version'], 'version'],
-    [['spec'], 'spec'],
+    [['describe'], 'describe'],
     [['zzzqqq'], 'zzzqqq'],
     [['add'], 'add'],
     [['foo', 'bar'], 'foo'],
@@ -75,7 +75,7 @@ describe('a word that names no command', () => {
   });
 
   it('is still caught after a value-taking root option', () => {
-    const r = run(['--log-level', 'warn', '-C', '.', 'zzzqqq']);
+    const r = run(['-C', '.', 'zzzqqq']);
     expect(r.status).toBe(2);
     expect(r.stderr).toContain("unknown command 'zzzqqq'");
   });

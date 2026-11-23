@@ -35,7 +35,7 @@ Use xray to get structure, dependencies, control flow, data flow. Optimize for t
 - Before changing a function: `impact <symbol>` for its callers.
 - Add `--with vars` for state/structure.
 - Add `--with docs` only if unclear intent.
-- Use `graph --with cf/df` only for complex logic.
+- Use `map --flow` (or `--with control-flow`/`--with data-flow`) only for complex logic.
 - Start with `strategy detect` when new repo.
 - Keep scope narrow: `--path`, `--depth`, `--anchor`.
 
@@ -60,7 +60,7 @@ xray express routes
 xray rest-api endpoints
 
 # Infrastructure & tooling
-xray package-manager list-dependencies
+xray package-manager deps
 xray package-manager summary
 xray build targets
 xray build graph
@@ -94,8 +94,8 @@ Goal: branch/loop execution shape.
 
 Commands:
 ```bash
-xray graph --path <dir> --with cf
-xray graph --anchor <file> --with cf
+xray map --path <dir> --with control-flow
+xray map --anchor <file> --with control-flow
 ```
 
 ## Data flow (DFG)
@@ -103,8 +103,8 @@ Goal: variable mutations, data propagation.
 
 Commands:
 ```bash
-xray graph --path <dir> --with df
-xray graph --anchor <file> --with df
+xray map --path <dir> --with data-flow
+xray map --anchor <file> --with data-flow
 ```
 
 ## Bug trace path
@@ -112,9 +112,9 @@ Goal: trace error path up/down stack.
 
 Commands:
 ```bash
-xray map --path <suspect-area> --with incs
-xray map --anchor <suspect-file> --with incs --with vars
-xray graph --anchor <suspect-file> --with df
+xray map --path <suspect-area> --with imports
+xray map --anchor <suspect-file> --with imports --with variables
+xray map --anchor <suspect-file> --with data-flow
 ```
 
 ## Refactor impact / blast radius
@@ -134,7 +134,7 @@ once, then `xray impact <symbol> --graph graph.json`.
 
 Fallback (text search, when `impact` says `no matching symbol in the graph`):
 ```bash
-xray map --catch "*Auth*" --with incs
+xray map --symbol "*Auth*" --with imports
 ```
 
 ## Code review prep
@@ -169,9 +169,9 @@ Goal: find candidates by name or usage.
 
 Commands:
 ```bash
-xray map --catch "*Handler" --with incs
-xray map --catch "*Controller" --with incs
-xray map --with incs --no-chunk -o map.txt
+xray map --symbol "*Handler" --with imports
+xray map --symbol "*Controller" --with imports
+xray map --with imports --no-chunk -o map.txt
 grep -i "auth\|jwt\|oauth" map.txt
 ```
 
@@ -180,7 +180,7 @@ Goal: understand project dependencies and package managers.
 
 Commands:
 ```bash
-xray package-manager list-dependencies
+xray package-manager deps
 xray package-manager summary
 ```
 
@@ -236,25 +236,25 @@ xray infrastructure summary
 ```
 
 ## MCP server
-Goal: expose xray commands as MCP tools (map, graph, query, impact,
+Goal: expose xray commands as MCP tools (map, query, impact,
 explore, strategy list/detect, `<strategy>_<noun>`).
 
 Commands:
 ```bash
-xray -C <project> mcp
-claude mcp add xray -- xray -C <project> mcp
+xray -C <project> serve --stdio
+claude mcp add xray -- xray -C <project> serve --stdio
 ```
 
 ## Decision Cheatsheet
 - Need structure: `map`.
-- Need dependencies: `map --with incs`.
+- Need dependencies: `map --with imports`.
 - Need callers of a symbol / blast radius: `impact <symbol>`.
-- Need xray as agent tools: `mcp`.
-- Need variable context: add `--with vars`.
-- Need logic flow: `graph --with cf/df`.
+- Need xray as agent tools: `serve --stdio` or `serve --mcp`.
+- Need variable context: add `--with variables`.
+- Need logic flow: `map --flow` (or `--with control-flow` / `--with data-flow`).
 - Need framework surface: `strategy detect` + `explore`.
 - Need project setup: `strategy detect` + infrastructure commands.
-- Need package dependencies: `package-manager list-dependencies`.
+- Need package dependencies: `package-manager deps`.
 - Need build process: `build targets`.
 - Need deployment flow: `cicd workflows` + `cicd deploy`.
 - Need infrastructure: `infrastructure resources` + `infrastructure providers`.

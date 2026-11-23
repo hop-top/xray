@@ -180,29 +180,29 @@ describe('Logger', () => {
 
 describe('Logger via the CLI', () => {
   const BIN = path.resolve(__dirname, '../..', 'bin', 'xray');
-  const run = (args: string[]) =>
+  const run = (args: string[], extraEnv: Record<string, string> = {}) =>
     spawnSync(process.execPath, [BIN, ...args], {
       encoding: 'utf-8',
-      env: { ...process.env, XRAY_NO_TELEMETRY: '1', FORCE_COLOR: '0' },
+      env: { ...process.env, XRAY_NO_TELEMETRY: '1', FORCE_COLOR: '0', ...extraEnv },
       timeout: 60_000,
     });
 
   it('-V: diagnostics on stderr, stdout stays data-only', () => {
-    const r = run(['-V', 'describe']);
+    const r = run(['-V', 'spec']);
     expect(r.status).toBe(0);
     expect(r.stderr).toMatch(/^◆ /m);
     expect(() => JSON.parse(r.stdout)).not.toThrow();
     expect(r.stdout).not.toMatch(/[◆ℹ✔⚠✖]/);
   });
 
-  it('--quiet beats -V and --log-level', () => {
-    const r = run(['--quiet', '-V', '--log-level', 'debug', 'describe']);
+  it('--quiet beats -V and XRAY_LOG_LEVEL', () => {
+    const r = run(['--quiet', '-V', 'spec'], { XRAY_LOG_LEVEL: 'debug' });
     expect(r.status).toBe(0);
     expect(r.stderr).not.toMatch(/[◆ℹ✔⚠]/);
   });
 
-  it('--log-level silent beats -V', () => {
-    const r = run(['-V', '--log-level', 'silent', 'describe']);
+  it('XRAY_LOG_LEVEL=silent silences default diagnostics', () => {
+    const r = run(['spec'], { XRAY_LOG_LEVEL: 'silent' });
     expect(r.status).toBe(0);
     expect(r.stderr).toBe('');
   });

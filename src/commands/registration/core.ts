@@ -4,16 +4,15 @@ import { addCommonOptions } from '../common';
 import { addGraphSourceOptions } from '../graph-source';
 import { handleGenerateCommand } from '../generate';
 import { handleClearCacheAction } from '../clear-cache';
-import { bindFlag, registerCompletionCommand, staticValues } from '../completion';
+import { registerCompletionCommand } from '../completion';
 import { addQueryOutputFlags, runQueryCommand } from '../query';
 import { registerImpactCommand } from '../impact';
 import { registerImportsCommand } from '../imports';
-import { handleDescribeAction } from '../describe';
+import { registerSpecCommand } from '../describe';
 import { registerStrategyCommand } from '../strategy-cmd';
 import { registerAliasCommand } from '../alias';
-import { registerPathsCommand } from '../paths';
+import { registerConfigCommand } from '../paths';
 import { registerLangCommand } from '../lang';
-import { registerMcpCommand } from '../mcp';
 import { registerWatchCommand } from '../watch';
 import { registerTuiCommand } from '../tui';
 import { registerServeCommand } from '../serve';
@@ -30,27 +29,30 @@ import { addResultFormat } from '../../lib/result-format';
 // Root help group per top-level command name; unlisted/hidden commands
 // fall into kit's default section.
 const CORE_GROUPS: Record<string, HelpGroupId> = {
+  // ANALYZE
   map: 'analyze',
-  graph: 'analyze',
   query: 'analyze',
   impact: 'analyze',
   imports: 'analyze',
-  handbook: 'analyze',
-  diagram: 'analyze',
-  ask: 'analyze',
   review: 'analyze',
-  watch: 'analyze',
-  tui: 'analyze',
-  serve: 'analyze',
-  strategy: 'strategy',
+  ask: 'analyze',
+  // COMPOSE
+  handbook: 'compose',
+  diagram: 'compose',
+  // INTERACT
+  tui: 'interact',
+  // LIFECYCLE
+  serve: 'lifecycle',
+  watch: 'lifecycle',
+  // MANAGEMENT (hidden from default -h)
+  strategy: 'management',
+  config: 'management',
+  language: 'management',
+  skill: 'management',
   alias: 'management',
-  skills: 'management',
-  lang: 'management',
   cache: 'management',
-  paths: 'management',
-  describe: 'management',
+  spec: 'management',
   upgrade: 'management',
-  mcp: 'management',
   completion: 'management',
 };
 
@@ -61,25 +63,12 @@ const POSITIONAL_ROOTS = 'Root directories to analyze (same as --path; not combi
  * These are built-in commands that don't depend on strategy discovery
  */
 export function registerCoreCommands(program: Command): void {
-  // Analysis commands
-  // Both write the analysis output (`.xray_*.md` chunks, or the file
-  // `-o` names) into the project; re-running rewrites the same files.
+  // Primary map command (includes CFG/DFG flow via --flow or --with control-flow,data-flow)
   declareEffect(addCommonOptions(program.command('map').argument('[paths...]', POSITIONAL_ROOTS))
     .option('--since <ref>', 'Focus ranking on files changed since <ref> (e.g. main, HEAD~1)')
     .option('--changed', 'Focus ranking on staged and unstaged working-tree changes vs HEAD')
-    .description('Generate visual map of codebase')
+    .description('Generate structural codebase map (and optional CFG/DFG via --flow)')
     .action(handleGenerateCommand), 'write-local', 'conditional');
-
-  const graphCmd = addCommonOptions(program.command('graph').argument('[paths...]', POSITIONAL_ROOTS))
-    .description('Generate control flow (CFG) and data flow (DFG) graphs')
-    .action(handleGenerateCommand);
-  // `graph` is `map` with cf and df on; naming either under --with narrows to those.
-  const withOption = graphCmd.options.find(o => o.long === '--with');
-  if (withOption) {
-    withOption.description =
-      'Include feature: vars, incs, cost, docs, df, cf, churn, blame (repeatable); cf and df are on unless one is named, then only those [TypeScript, JavaScript, Python, Go]';
-  }
-  declareEffect(graphCmd, 'write-local', 'conditional');
 
   // Query command - call graph queries
   declareEffect(addQueryOutputFlags(addGraphSourceOptions(
@@ -126,7 +115,7 @@ Examples:
   // Interactive terminal codebase explorer
   registerTuiCommand(program);
 
-  // Local Web UI and read-only REST API server
+  // Local Web UI, read-only REST API, and MCP server (HTTP + stdio)
   registerServeCommand(program);
 
   // Strategy management command
@@ -135,51 +124,30 @@ Examples:
   // Alias management command
   program.addCommand(registerAliasCommand());
 
-  // Skills management command
+  // Workspace skill management command
   registerSkillsCommand(program);
 
   // Language pack management command
   program.addCommand(registerLangCommand());
 
-  // System commands
-  // `cache` noun-verb group (canonical form)
-  const cache = new Command('cache').description('Cache management');
+  // Cache management command
+  const cache = new Command('cache').description('Manage analysis cache');
   declareEffect(addResultFormat(cache
     .command('clear')
     .description('Clear SQLite cache for this project'))
     .action(handleClearCacheAction), 'destructive-local', 'yes');
   program.addCommand(cache);
 
-  // Hidden alias of `cache clear` for backwards compatibility
-  declareEffect(addResultFormat(program
-    .command('clear-cache', { hidden: true })
-    .description('[deprecated alias of `cache clear`] Clear SQLite cache for this project'))
-    .action(handleClearCacheAction), 'destructive-local', 'yes');
+  // Configuration and runtime path inspection (`config path`, `config paths`)
+  registerConfigCommand(program);
 
-  // Introspect xray's own runtime paths (config + cache locations).
-  // Note: distinct from the `config-files` strategy, which analyzes config files
-  // in the user's project. See docs/dev/cli-config-noun-decision.md.
-  registerPathsCommand(program);
+  // Machine-readable capability manifest (12fc Factor 1)
+  registerSpecCommand(program);
 
-  // Machine-readable capability surface (12fc Factor 1).
-  // Walks the constructed commander tree and emits a JSON document
-  // documenting every command's args, options, side-effect class,
-  // idempotency, and exit codes.
-  const describe = program
-    .command('describe')
-    .description('Emit machine-readable capability surface (12fc Factor 1)')
-    .option('--format <fmt>', 'Output format (json)', 'json')
-    .action(handleDescribeAction);
-  declareEffect(describe, 'read', 'yes');
-  bindFlag(describe, 'format', staticValues('json'));
-
-  // Release check (no install action).
+  // Release check (`upgrade check`)
   registerUpgradeCommand(program);
 
-  // Read-only analysis commands as MCP tools over stdio.
-  registerMcpCommand(program);
-
-  // `completion bash|zsh|fish|powershell` (kit, cobra protocol).
+  // `completion bash|zsh|fish|powershell` (kit, cobra protocol)
   registerCompletionCommand(program);
 
   for (const cmd of program.commands) {

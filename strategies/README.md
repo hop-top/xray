@@ -97,7 +97,7 @@ Unified dependency analysis across multiple ecosystems.
 - go mod (go.mod)
 
 **Commands:**
-- `package-manager list-dependencies` - List all dependencies
+- `package-manager deps` - List all dependencies
 - `package-manager summary` - Summary of package managers
 
 ### Infrastructure Strategy (`infrastructure.ts`)

@@ -1,10 +1,9 @@
 /**
- * Built-in strategies that were renamed, by current name. The old name
- * stays as a hidden command group forwarding to the same handlers (absent
- * from help, describe and the MCP tool list) and is reserved: a project
- * strategy cannot take it. Dropped when the CLI goes stable.
+ * Built-in strategies that were renamed, by current name.
+ * Empty now that `config` belongs to xray's own configuration introspection
+ * (`xray config path` / `xray config paths`).
  */
-export const RENAMED_STRATEGIES: Readonly<Record<string, string>> = { 'config-files': 'config' };
+export const RENAMED_STRATEGIES: Readonly<Record<string, string>> = {};
 
 /** Whether `name` is the old name of a renamed built-in strategy. */
 export function isRenamedStrategyName(name: string): boolean {

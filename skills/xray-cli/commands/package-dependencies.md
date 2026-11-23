@@ -16,7 +16,7 @@ Quickly see all dependencies without reading multiple package manager files.
 
 ### List all dependencies
 ```bash
-xray package-manager list-dependencies
+xray package-manager deps
 ```
 Shows all dependencies from package.json, Cargo.toml, requirements.txt, go.mod, pyproject.toml, etc.
 
@@ -38,7 +38,7 @@ Shows counts and stats for each package manager found.
 
 **Start with summary**: Use `summary` to see which package managers are in use.
 
-**Full inventory**: Use `list-dependencies` to see all dependencies across all tools.
+**Full inventory**: Use `deps` to see all dependencies across all tools.
 
 **Polyglot projects**: These commands unify output from multiple package managers in one view.
 
@@ -58,7 +58,7 @@ Cargo (Cargo.toml):
 pip (requirements.txt):
   - Dependencies: 8
 
-$ xray package-manager list-dependencies
+$ xray package-manager deps
 Dependencies (88 total):
 
 npm:

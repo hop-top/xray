@@ -96,7 +96,7 @@ function run(args: string[]) {
 
 const CASES: Array<[string, string[]]> = [
   ['map', ['map', '--format', 'json']],
-  ['graph', ['graph', '--format', 'json']],
+  ['map --flow', ['map', '--flow', '--format', 'json']],
   ['strategy detect', ['strategy', 'detect']],
   ['markdown toc', ['markdown', 'toc', '--format', 'json']],
   ['container analyze', ['container', 'analyze', '--format', 'json']],
@@ -179,7 +179,7 @@ describe('hostile repo through the MCP server', () => {
   function callTool(name: string, args: Record<string, unknown>): Promise<{ text: string; isError: boolean; timedOut: boolean; stderr: string }> {
     return new Promise((resolve) => {
       // Own process group: a hung tool child must die with the server on timeout.
-      const proc = spawn(process.execPath, [BIN, 'mcp'], { cwd: proj, env, stdio: 'pipe', detached: true });
+      const proc = spawn(process.execPath, [BIN, 'serve', '--stdio'], { cwd: proj, env, stdio: 'pipe', detached: true });
       let buf = '';
       let stderr = '';
       let settled = false;

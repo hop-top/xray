@@ -25,8 +25,7 @@ describe('root program global flags', () => {
   it.each([
     ['--version', '-v', 'version'],
     ['--verbose', '-V', 'verbose'],
-    ['--log-level', undefined, 'logLevel'],
-    ['--config', undefined, 'config'],
+    ['--config', '-c', 'config'],
     ['--no-telemetry', undefined, 'telemetry'],
     ['--quiet', undefined, 'quiet'],
     ['--no-color', undefined, 'color'],
@@ -37,10 +36,11 @@ describe('root program global flags', () => {
     expect(collect()).toContainEqual(expect.objectContaining(match));
   });
 
-  it('leaves --format / -o to subcommands', () => {
+  it('leaves --format / -o to subcommands and omits --log-level', () => {
     const longs = collect().map((o) => o.long);
     expect(longs).not.toContain('--format');
     expect(longs).not.toContain('--output');
+    expect(longs).not.toContain('--log-level');
   });
 
   it('exposes a theme', () => {
@@ -53,12 +53,14 @@ describe('root program global flags', () => {
     expect(getTheme()).toBe(theme);
   });
 
-  it('renders the globals and help groups in --help', () => {
+  it('renders the globals and hides per-group --help-<id> in --help', () => {
     const program = buildRoot();
     const help = program.helpInformation();
-    for (const s of ['--log-level', '--config', '--no-telemetry', '--quiet', '--no-color', '--chdir', '--verbose', '--version']) {
+    for (const s of ['-c, --config', '--no-telemetry', '--quiet', '--no-color', '--chdir', '--verbose', '--version', '--help-all']) {
       expect(help).toContain(s);
     }
+    expect(help).not.toContain('--log-level');
+    expect(help).not.toContain('--help-analyze');
   });
 });
 

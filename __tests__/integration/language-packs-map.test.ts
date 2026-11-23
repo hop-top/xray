@@ -36,7 +36,7 @@ describe('map on a Go+TS(+py,java) repo with only go and typescript grammars', (
     expect(out).toContain('Greet');
     expect(out).toContain('Calculator');
     const hints = info.mock.calls.map(c => String(c[0])).filter(m => m.includes('without installed grammar'));
-    expect(hints).toEqual(['found 1 .java, 1 .py files without installed grammars — install with: xray lang add java python']);
+    expect(hints).toEqual(['found 1 .java, 1 .py files without installed grammars — install with: xray language add java python']);
     expect(warn.mock.calls.filter(c => /grammar|skipping/.test(String(c[0])))).toEqual([]);
   });
 

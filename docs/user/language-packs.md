@@ -8,8 +8,8 @@ only pay install / native-build cost for the languages you use.
 
 ```bash
 npm install -g @hop-top/xray
-xray lang list             # what is installed, what your repo needs
-xray lang add go typescript
+xray language list             # what is installed, what your repo needs
+xray language add go typescript
 xray map
 ```
 
@@ -18,14 +18,14 @@ language, parses those whose grammar is installed, and prints one aggregated hin
 (stderr) for the rest, then carries on:
 
 ```
-ℹ found 12 .kt, 3 .swift files without installed grammars — install with: xray lang add kotlin swift
+ℹ found 12 .kt, 3 .swift files without installed grammars — install with: xray language add kotlin swift
 ```
 
-The hint shows for human output (the default). Machine formats (`--format json|csv|xml`,
-or the `--json`, `--csv`, `--xml` aliases) keep it quiet unless verbose (`-V`), where per-language counts and sample
-paths are listed too; `--quiet` always hides it. `xray lang list` shows the same
+The hint shows for human output (the default). Machine formats (`--format json|csv|xml`)
+keep it quiet unless verbose (`-V`), where per-language counts and sample
+paths are listed too; `--quiet` always hides it. `xray language list` shows the same
 languages under "Detected in this repo, not installed" (`detectedNotInstalled` in
-`--json`).
+`--format json`).
 
 xray never installs or builds anything implicitly during a scan. Exit code is
 unchanged by skipped languages.
@@ -34,17 +34,17 @@ unchanged by skipped languages.
 
 | Command | Purpose |
 |---------|---------|
-| `xray lang list [--path p] [--format text|json]` | Packs, status (installed / not installed / broken), source, file counts in the repo, bundles |
-| `xray lang add <names...> [--dry-run]` | Install languages or bundles into the xray-managed dir (npm; native build only if no prebuilt binary) |
-| `xray lang remove <names...>` | Remove packs from the managed dir (never touches grammars from other installs) |
+| `xray language list [--path p] [--format text\|json]` | Packs, status (installed / not installed / broken), source, file counts in the repo, bundles |
+| `xray language add <names...> [--dry-run]` | Install languages or bundles into the xray-managed dir (npm; native build only if no prebuilt binary) |
+| `xray language delete <names...>` | Delete packs from the managed dir (never touches grammars from other installs) |
 
-After installing, `xray lang add` checks each new grammar against xray's own
+After installing, `xray language add` checks each new grammar against xray's own
 tree-sitter (`setLanguage` plus a small parse). A grammar that installs and loads
 but is rejected (for example built for a newer tree-sitter ABI than xray supports)
 is reported per language, e.g. `go: installed but not usable with xray's tree-sitter
 0.25.1 (Incompatible language version. Compatible range: 13 - 15. Got: 16)`, and the
 command exits 1. The package stays in the managed dir; install another release there
-or run `xray lang remove <name>`.
+or run `xray language delete <name>`.
 
 Languages: typescript, javascript, python, java, csharp, cpp, c, go, rust, php, ruby,
 bash, swift, kotlin, scala, elixir, haskell (aliases such as `ts`, `py`, `rb`, `rs`, `c-sharp` work).
@@ -65,7 +65,7 @@ the run fails with a message naming the fix. Bundles are accepted too (`"languag
 One-off override from the command line (replaces config `languages`; comma-separated or repeated):
 
 ```bash
-xray map --lang go,ts
+xray map --language go,ts
 ```
 
 Unknown names exit 2; a required language whose grammar is missing exits 3.
@@ -75,7 +75,7 @@ Unknown names exit 2; a required language whose grammar is missing exits 3.
 In order:
 
 1. xray's own install (also covers a source checkout / dev setup, where grammars are `devDependencies`).
-2. The xray-managed dir populated by `xray lang add`:
+2. The xray-managed dir populated by `xray language add`:
    `$XRAY_LANG_DIR`, else `$XDG_DATA_HOME/xray/lang`, else the platform data dir
    (`~/Library/Application Support/xray/lang` on macOS, `~/.local/share/xray/lang` on Linux).
 

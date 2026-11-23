@@ -31,7 +31,7 @@ function run(args: string[]) {
 
 function mapGraph(...roots: string[]) {
   const out = path.join(work, `g-${Math.random().toString(36).slice(2)}.json`);
-  const r = run(['map', '--skip-detect', ...roots.flatMap(p => ['-p', p]), '--format', 'json', '-o', out]);
+  const r = run(['map', '--no-detect', ...roots.flatMap(p => ['-p', p]), '--format', 'json', '-o', out]);
   expect(r.status).toBe(0);
   return JSON.parse(fs.readFileSync(out, 'utf-8'));
 }

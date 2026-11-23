@@ -9,18 +9,18 @@ function parse(args: string[]) {
   return cmd.opts();
 }
 
-describe('--lang flag', () => {
+describe('--language flag', () => {
   it('parses comma lists and repeats', () => {
-    expect(parse(['--lang', 'go,ts', '--lang', 'python']).lang).toEqual(['go', 'ts', 'python']);
-    expect(parse([]).lang).toEqual([]);
+    expect(parse(['--language', 'go,ts', '--language', 'python']).language).toEqual(['go', 'ts', 'python']);
+    expect(parse([]).language).toEqual([]);
   });
 
   it('overrides config languages; falls back to config when absent', () => {
     const cfg = { languages: ['python'] } as any;
-    expect(mergeConfig(cfg, { lang: ['go', 'ts'] }).languages).toEqual(['go', 'ts']);
-    expect(mergeConfig(cfg, { lang: [] }).languages).toEqual(['python']);
+    expect(mergeConfig(cfg, { language: ['go', 'ts'] }).languages).toEqual(['go', 'ts']);
+    expect(mergeConfig(cfg, { language: [] }).languages).toEqual(['python']);
     expect(mergeConfig(cfg, {}).languages).toEqual(['python']);
-    expect(mergeConfig({} as any, { lang: ['go'] }).languages).toEqual(['go']);
+    expect(mergeConfig({} as any, { language: ['go'] }).languages).toEqual(['go']);
   });
 
   it('accepts aliases and bundles; rejects unknown names with usage exit code', () => {

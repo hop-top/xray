@@ -89,7 +89,7 @@ const EXTENSION_OVERRIDES: Record<string, ParamKind> = {
   'extension-threshold': 'value',
 };
 
-/** map / graph. Not offered: --output (runner-owned), --share, --config. */
+/** map. Not offered: --output (runner-owned), --share, --config. */
 const ANALYSIS: ToolPolicy = {
   options: {
     path: 'path',
@@ -97,22 +97,19 @@ const ANALYSIS: ToolPolicy = {
     query: 'query-source',
     limit: 'value',
     with: 'value',
+    flow: 'value',
     depth: 'value',
     match: 'value',
-    catch: 'value',
+    symbol: 'value',
     format: 'value',
-    xml: 'value',
-    json: 'value',
-    csv: 'value',
-    txt: 'value',
     'no-chunk': 'value',
     group: 'value',
     lens: 'value',
     scope: 'value',
     'all-scopes': 'value',
     detect: 'value',
-    'skip-detect': 'value',
-    lang: 'value',
+    'no-detect': 'value',
+    language: 'value',
     ...EXTENSION_OVERRIDES,
   },
   root: 'path',
@@ -127,11 +124,10 @@ const scoped = (options: Record<string, ParamKind>, root: RootScope = 'path'): T
 /** Core commands exposed as tools, keyed by tool name. */
 const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
   map: ANALYSIS,
-  graph: ANALYSIS,
   explore: {
     ...scoped({
       path: 'dir', match: 'value', search: 'value', type: 'value',
-      stats: 'value', 'list-strategies': 'value', format: 'value',
+      stats: 'value', format: 'value',
     }),
   },
   query: {
@@ -140,12 +136,12 @@ const CORE_TOOLS: Readonly<Record<string, ToolPolicy>> = {
   },
   // Parses only (no config); positional paths held inside the server root.
   imports: {
-    ...scoped({ path: 'path', lang: 'value', format: 'value', 'no-ignore': 'value' }),
+    ...scoped({ path: 'path', language: 'value', format: 'value', 'no-ignore': 'value' }),
     positionals: { paths: 'path' },
     description:
       'Per-file imports as the xray.imports/v1 JSON document (schemas/xray.imports.v1.json): 1-based line/column, ' +
       'normalized module, package, locality, parse errors and unsupported constructs (complete: false). ' +
-      'paths: files/dirs inside root to narrow to; lang: python, go, rust, typescript|ts, javascript|js, php. no-ignore: list git-ignored files, nested repos and node_modules too (.git skipped).',
+      'paths: files/dirs inside root to narrow to; language: python, go, rust, typescript|ts, javascript|js, php. no-ignore: list git-ignored files, nested repos and node_modules too (.git skipped).',
   },
   // Builds its graph in process like map (config walks up from --path);
   // --graph not offered: the graph always comes from the call root.
@@ -177,12 +173,15 @@ const STRATEGY_NOUN_EXTRA: Readonly<Record<string, Record<string, ParamKind>>> =
   'config-files_list': { pattern: 'value' },
   'config-files_keys': { file: 'project-file' },
   'config-files_values': { file: 'project-file' },
-  'build_run': { target: 'value' },
   'markdown_toc': { depth: 'value' },
 };
 
+const STRATEGY_NOUN_POSITIONALS: Readonly<Record<string, Readonly<Record<string, 'value' | 'path'>>>> = {
+  'build_show': { target: 'value' },
+};
+
 /** Commands whose CLI result is files (`-o`), collected by the runner. */
-const FILE_OUTPUT_TOOLS = new Set(['map', 'graph']);
+const FILE_OUTPUT_TOOLS = new Set(['map']);
 
 /** One exposed tool: MCP name, command path, policy and parameter kinds. */
 export interface ToolDef {
@@ -216,7 +215,13 @@ export function policyFor(root: Command, path: string[]): ToolPolicy | undefined
   const leaf = findCommand(root, path);
   if (leaf === undefined || declaredEffect(leaf).tier !== 'read') return undefined;
   const extra = Object.prototype.hasOwnProperty.call(STRATEGY_NOUN_EXTRA, name) ? STRATEGY_NOUN_EXTRA[name] : {};
-  return scoped({ ...STRATEGY_NOUN, ...extra });
+  const positionals = Object.prototype.hasOwnProperty.call(STRATEGY_NOUN_POSITIONALS, name)
+    ? STRATEGY_NOUN_POSITIONALS[name]
+    : undefined;
+  return {
+    ...scoped({ ...STRATEGY_NOUN, ...extra }),
+    ...(positionals ? { positionals } : {}),
+  };
 }
 
 /** Whether a command path is one of the read-only tools. */
@@ -462,8 +467,8 @@ export function buildArgv(
   if (scope.explicit && policy.root === 'path' && projectDirs.length === 0) {
     opts.unshift(`--path=${scope.dir}`);
     projectDirs.push(scope.dir);
-    // map/graph auto-detect only without --path; keep the default.
-    if (policy.detectOnRoot && given.detect === undefined && given['skip-detect'] !== true) opts.push('--detect');
+    // map auto-detects only without --path; keep the default unless opted out.
+    if (policy.detectOnRoot && given.detect === undefined && given['no-detect'] !== true) opts.push('--detect');
   }
 
   const declared = exposedArguments(cmd, policy);

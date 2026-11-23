@@ -8,8 +8,11 @@ describe('--anchor target must exist', () => {
   });
   afterAll(() => p.cleanup());
 
-  it.each(['map', 'graph'])('%s: missing anchor -> exit 3 naming it', (cmd) => {
-    const r = p.run(cmd, '.', '--anchor', 'src/nope.ts', '--no-chunk');
+  it.each<[string, string[]]>([
+    ['map', ['map']],
+    ['map --flow', ['map', '--flow']],
+  ])('%s: missing anchor -> exit 3 naming it', (_label, cmdArgs) => {
+    const r = p.run(...cmdArgs, '.', '--anchor', 'src/nope.ts', '--no-chunk');
     expect(r.status).toBe(3);
     expect(r.stderr).toContain('src/nope.ts');
   });

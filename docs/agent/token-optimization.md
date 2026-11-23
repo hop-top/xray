@@ -127,7 +127,7 @@ CHEAP: xray react components = 100 tokens
 SAVINGS: 200-400 tokens
 
 Question: "How do files depend on each other?"
-EXPENSIVE: xray graph = 500-700 tokens
+EXPENSIVE: xray map --flow = 500-700 tokens
 CHEAP: xray map --with incs = 350-450 tokens
 SAVINGS: 50-250 tokens
 ```
@@ -295,7 +295,7 @@ WASTE: Used 2 commands to learn similar thing
 **What happens:**
 ```
 xray map --match "*.ts" --match "*.tsx" --match "!*.test.ts" \
-  --match "!*.spec.ts" --catch "User*" --catch "!UserTest" \
+  --match "!*.spec.ts" --symbol "User*" --symbol "!UserTest" \
   --depth 3 --with incs --with vars
 ```
 

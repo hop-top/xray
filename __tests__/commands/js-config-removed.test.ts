@@ -68,7 +68,7 @@ describe.each(['.xrayrc.js', 'xray.config.js'])('a project %s', (name) => {
   it.each([
     ['imports', ['imports']],
     ['map', ['map', '-o', 'out']],
-    ['describe', ['describe']],
+    ['spec', ['spec']],
     ['--version', ['--version']],
   ])('%s from inside the repo never runs it', (_label, args) => {
     const r = run(args, repo);
@@ -85,8 +85,8 @@ describe.each(['.xrayrc.js', 'xray.config.js'])('a project %s', (name) => {
     expect(fs.existsSync(marker)).toBe(false);
   });
 
-  it('is not discovered: `paths` reports no project config', () => {
-    const r = run(['paths', '--format', 'json'], repo);
+  it('is not discovered: `config paths` reports no project config', () => {
+    const r = run(['config', 'paths', '--format', 'json'], repo);
     expect(r.status).toBe(0);
     expect(JSON.parse(r.stdout).projectConfig).toBeNull();
     expect(fs.existsSync(marker)).toBe(false);
@@ -94,19 +94,19 @@ describe.each(['.xrayrc.js', 'xray.config.js'])('a project %s', (name) => {
 
   it('a .xrayrc.json beside it is the config that applies', () => {
     write(path.join(repo, '.xrayrc.json'), '{}');
-    const r = run(['paths', '--format', 'json'], repo);
+    const r = run(['config', 'paths', '--format', 'json'], repo);
     expect(JSON.parse(r.stdout).projectConfig).toBe(path.join(repo, '.xrayrc.json'));
     expect(fs.existsSync(marker)).toBe(false);
   });
 
   it('is noted at debug level, naming .xrayrc.json', () => {
-    const r = run(['--log-level', 'debug', 'paths'], repo);
+    const r = run(['-V', 'config', 'paths'], repo);
     expect(r.stderr).toContain(`Ignoring ${path.join(repo, name)}`);
     expect(r.stderr).toContain('.xrayrc.json');
   });
 
   it('is silent at the default level', () => {
-    const r = run(['paths'], repo);
+    const r = run(['config', 'paths'], repo);
     expect(r.stderr).not.toContain('Ignoring');
   });
 });
@@ -114,7 +114,7 @@ describe.each(['.xrayrc.js', 'xray.config.js'])('a project %s', (name) => {
 it('a global config.js is never run', () => {
   write(path.join(home, '.config', 'xray', 'config.js'), code());
   write(path.join(home, 'Library', 'Application Support', 'xray', 'config.js'), code());
-  for (const args of [['--version'], ['paths'], ['map', '-o', 'out', '-p', repo]]) {
+  for (const args of [['--version'], ['config', 'paths'], ['map', '-o', 'out', '-p', repo]]) {
     expect(run(args, repo).status).toBe(0);
   }
   expect(fs.existsSync(marker)).toBe(false);
@@ -125,9 +125,9 @@ describe('--config pointing at JavaScript', () => {
     const file = write(path.join(tmp, name), code());
     for (const args of [
       ['--config', file, 'map', '-p', repo, '-o', 'out'],
-      [`--config=${file}`, 'paths'],
+      [`--config=${file}`, 'config', 'paths'],
       ['map', '--scope', `--config=${file}`],
-      ['--config', `./${name}`, 'describe'],
+      ['--config', `./${name}`, 'spec'],
     ]) {
       const r = run(args, tmp);
       expect(r.status).toBe(2);
@@ -137,14 +137,14 @@ describe('--config pointing at JavaScript', () => {
   });
 
   it('is refused even when the file does not exist', () => {
-    const r = run(['--config', 'missing.js', 'paths'], tmp);
+    const r = run(['--config', 'missing.js', 'config', 'paths'], tmp);
     expect(r.status).toBe(2);
     expect(r.stderr).toContain('.xrayrc.json');
   });
 
   it('a JSON --config still works', () => {
     const file = write(path.join(tmp, 'ok.json'), '{}');
-    const r = run(['--config', file, 'paths', '--format', 'json'], tmp);
+    const r = run(['--config', file, 'config', 'paths', '--format', 'json'], tmp);
     expect(r.status).toBe(0);
     expect(JSON.parse(r.stdout).projectConfig).toBe(file);
   });

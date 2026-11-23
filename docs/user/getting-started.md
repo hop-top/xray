@@ -8,7 +8,7 @@ Welcome! Let's get you up and running.
 
 ```bash
 npm install -g @hop-top/xray
-xray lang add go typescript   # grammars are opt-in; pick your languages
+xray language add go typescript   # grammars are opt-in; pick your languages
 ```
 
 Done! Move to the next section.
@@ -288,7 +288,7 @@ cat my-map.txt
 
 ```bash
 # Clear the cache
-xray clear-cache --confirm=yes
+xray cache clear --confirm=yes
 
 # Regenerate
 xray map
@@ -344,7 +344,7 @@ xray map --path ./src --depth 2       # Shallow, quick overview
 xray strategy detect                  # What frameworks here?
 xray react components                 # List React components
 xray express routes                   # List API routes
-xray clear-cache --confirm=yes                      # Fix stale results
+xray cache clear --confirm=yes                      # Fix stale results
 ```
 
 That's 90% of what you need daily.

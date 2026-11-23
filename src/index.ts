@@ -85,10 +85,9 @@ function rejectUnknownInput(program: any, argv: string[]): void {
 }
 
 /**
- * Pre-scan argv for --quiet, --log-level and -V/--verbose so diagnostics
+ * Pre-scan argv for --quiet and -V/--verbose so diagnostics
  * emitted before commander parses honour them. Same precedence as the
- * root preAction hook. Stops at `--`. Invalid levels are left for the
- * parsed hook to reject.
+ * root preAction hook. Stops at `--`.
  */
 function applyEarlyVerbosity(argv: string[]): void {
   const args = argv.slice(2);
@@ -100,15 +99,9 @@ function applyEarlyVerbosity(argv: string[]): void {
     if (a === '--quiet') opts.quiet = true;
     else if (a === '--verbose') opts.verbose = (opts.verbose as number) + 1;
     else if (/^-V+$/.test(a)) opts.verbose = (opts.verbose as number) + a.length - 1;
-    else if (a.startsWith('--log-level=')) opts.logLevel = a.slice('--log-level='.length);
-    else if (a === '--log-level' && i + 1 < scan.length) opts.logLevel = scan[++i];
   }
-  try {
-    const level = resolveLogLevel(opts);
-    if (level !== undefined) Logger.setLevel(level);
-  } catch {
-    // reported by the root preAction hook after parse
-  }
+  const level = resolveLogLevel(opts);
+  if (level !== undefined) Logger.setLevel(level);
 }
 
 /** In-flight startup upgrade check, if this run started one. */

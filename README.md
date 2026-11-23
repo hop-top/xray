@@ -18,7 +18,7 @@ xray generates **intelligent, ranked, context-aware code maps** that fit within 
 ```bash
 # Install
 npm install -g @hop-top/xray
-xray lang add go typescript   # grammars are opt-in; pick your languages
+xray language add go typescript   # grammars are opt-in; pick your languages
 
 # Generate your first code map
 cd /path/to/your/project
@@ -35,13 +35,13 @@ ls .xray_*.md
 - 🎯 **Intelligent Ranking** - PageRank algorithm surfaces the most important files and functions first
 - 🤖 **AI-Optimized** - Token-efficient output designed for Claude, GPT, and other LLMs
 - 📦 **Chunked Output** - Automatically splits large codebases into navigable chunks (NEW!)
-- 📊 **Multi-Language** - 17 languages via opt-in tree-sitter packs (`xray lang add`) plus Linguist 100+ language detection and Universal Ctags / regex fallback
+- 📊 **Multi-Language** - 17 languages via opt-in tree-sitter packs (`xray language add`) plus Linguist 100+ language detection and Universal Ctags / regex fallback
 - 🔍 **Framework-Aware** - Built-in strategies for React, Express, Go CLI, Markdown (pure-TS parser, coverage, stale links), and more
 - 🔎 **Fast Code Search** - SQLite FTS5 trigram-indexed `xray explore --search` with `--regex`, `--case-sensitive`, pagination, and boolean `--filter` DSL
 - ⚡ **Live & Warm Caching** - SQLite `GraphCache` with incremental patching (`xray watch`) and warm in-process MCP workspace
 - 🔗 **Dependency Tracking** - Cross-root resolution (`tsconfig.json`, `Cargo.toml`, `pyproject.toml`), imports, exports, and `implementations()`/`cycles()`/`deadcode()` queries
-- 💥 **Impact & Diff Review** - `xray impact [symbol]` (or `--since <ref>` / `--changed`) with 1-based call-site lines, plus `xray review --base <ref>`
-- 📘 **Handbooks, Diagrams & Q&A** - `xray handbook`, `xray diagram` (Mermaid), `xray ask` (BYOK LLM), `xray tui`, `xray serve` (Web UI + REST API), and `xray skills`
+- 💥 **Impact & Diff Review** - `xray impact [symbol]` (or `--since <ref>` / `--changed`) with 1-based call-site lines, plus `xray review --since <ref>`
+- 📘 **Handbooks, Diagrams & Q&A** - `xray handbook`, `xray diagram` (Mermaid), `xray ask` (BYOK LLM), `xray tui`, `xray serve` (Web UI, REST API, and MCP), and `xray skill`
 - ⚙️  **Automation Ready** - GitHub Actions and pre-commit hooks included
 - 🔌 **Custom Strategies** - Add framework-specific analysis and commands with `@hop-top/xray/strategy`; see [docs/dev/strategy-development.md](docs/dev/strategy-development.md)
 - 🧭 **Logical Clustering** - Group chunks by graph community with `--group community` (NEW!)
@@ -161,29 +161,30 @@ xray diagram --view architecture -o arch.mmd
 xray diagram --view calls --anchor src/main.ts --depth 2
 
 # Deterministic diff-grounded PR review (optional --llm)
-xray review --base main
+xray review --since main
 
 # BYOK LLM Q&A grounded in read-only xray tools (supports /<slug> skill expansion)
 xray ask "How does auth middleware work?"
 ```
 
-### `xray watch`, `xray tui`, `xray serve`, `xray skills`
+### `xray watch`, `xray tui`, `xray serve`, `xray skill`
 
 ```bash
-xray watch --debounce 150              # Live incremental GraphCache indexer
+xray watch --debounce 150ms            # Live incremental GraphCache indexer
 xray tui                               # Interactive terminal codebase explorer
-xray serve --port 4173 --mcp           # Local Web UI, REST API, and optional /mcp
-xray skills list                       # Discover workspace skills
+xray serve --port 4173 --mcp           # Local Web UI, REST API, and /mcp
+xray serve --stdio                     # Stdio MCP server
+xray skill list                        # Discover workspace skills
 ```
 
-### `xray graph` - Control/Data Flow
+### Control/Data Flow (`xray map --flow`)
 
-`graph` is `map` with control flow (`cf`) and data flow (`df`) on: one CFG and
+Pass `--flow` (or `--with control-flow,data-flow`) to `xray map` to include one CFG and
 one DFG per function and method, under the function. TypeScript, JavaScript,
 Python and Go; other languages get one stderr notice and no graphs.
 
 ```bash
-xray graph --path ./src --no-chunk --output flow.txt
+xray map --flow --path ./src --no-chunk --output flow.txt
 ```
 
 ```text
@@ -206,9 +207,9 @@ a.ts (L1-L8):
 │     d4 total update L5 → n6 n7
 ```
 
-`--with cf` or `--with df` narrows to that one. `map --with cf` gives the same
-graphs on a plain map. See [`docs/user/commands.md`](docs/user/commands.md#xray-graph)
-for the format, a Python and a Go example, and each language's limits.
+`--with control-flow` or `--with data-flow` narrows to that one. See
+[`docs/user/commands.md`](docs/user/commands.md) for the format, a Python and a
+Go example, and each language's limits.
 
 ### `xray impact` - What breaks if I change this?
 
@@ -235,9 +236,8 @@ edges: EXTRACTED 35 · INFERRED 0
 `EXTRACTED` edges are backed by file, package or import evidence; `INFERRED`
 ones are name-only matches — drop them with `--strict`. Point it at several
 repos (`-p a -p b`, or a `--lens` from `.xrayrc.json`) and callers are grouped
-per repo, with a merged-graph cache so repeat runs are instant. `--format
-json|tree|table` for machines; also available as the `impact` tool of
-`xray mcp`.
+per repo, with a merged-graph cache so repeat runs are instant. `--format json|tree|table` for machines; also available as the `impact` tool of
+`xray serve --stdio` / `xray serve --mcp`.
 
 [Agent workflow: impact analysis →](docs/agent/workflows/impact-analysis.md) ·
 [Use case: impact analysis in agent sessions →](docs/user/use-cases.md#use-case-impact-analysis)
@@ -258,7 +258,7 @@ xray map --anchor src/api/routes.ts --with incs --no-chunk --output context.txt
 **After xray:** Share 2k token map showing entire structure ✨
 
 Coding agents can also get xray without you pasting anything: as
-instructions (skill, `AGENTS.md`), pulled over MCP (`xray mcp`), or pushed
+instructions (skill, `AGENTS.md`), pulled over MCP (`xray serve --stdio`), or pushed
 by harness hooks that answer "who calls this?" the moment the agent greps
 for a function (Claude Code, nerv, Gemini CLI).
 
@@ -281,12 +281,12 @@ Once installed, Claude Code can use xray to:
 - Scan framework surfaces (`xray react components`, `xray express routes`)
 - Trace dependencies and data flow (`xray map --anchor <file> --with incs`)
 - Analyze infrastructure (`xray infrastructure resources`, `xray cicd workflows`)
-- Understand build systems (`xray build targets`, `xray package-manager list-dependencies`)
+- Understand build systems (`xray build targets`, `xray package-manager deps`)
 
 The skill includes 17 use-case-driven workflows. See [`skills/xray-cli/SKILL.md`](skills/xray-cli/SKILL.md) for the full command reference.
 
 The skill only helps when Claude decides to use it. For tool access, add
-the MCP server (`claude mcp add xray -- xray -C /path/to/project mcp`,
+the MCP server (`claude mcp add xray -- xray -C /path/to/project serve --stdio`,
 see [MCP server](docs/user/mcp.md)); to have `xray impact` arrive by itself
 when Claude greps for a function, install the hooks in
 [`hooks/harness/claude/`](hooks/harness/claude/README.md)
@@ -413,12 +413,12 @@ declarative YAML strategies always load.
 
 | Feature | Description |
 |---------|-------------|
-| `vars` | Include variables and constants |
-| `incs` | Include imports and dependencies |
+| `variables` (`vars`) | Include variables and constants |
+| `imports` (`incs`) | Include imports and dependencies |
 | `docs` | Include docstrings |
 | `cost` | Estimate AI cost (requires `OPENAI_API_KEY`) |
-| `cf` | Control Flow Graph per function (TypeScript, JavaScript, Python, Go) |
-| `df` | Data Flow Graph per function (TypeScript, JavaScript, Python, Go) |
+| `control-flow` (`cf`) | Control Flow Graph per function (TypeScript, JavaScript, Python, Go) |
+| `data-flow` (`df`) | Data Flow Graph per function (TypeScript, JavaScript, Python, Go) |
 | `churn` | Git commit churn metrics per file |
 | `blame` | Git blame author/recency metadata per file |
 
@@ -429,7 +429,7 @@ declarative YAML strategies always load.
 | `-a, --anchor <path>` | Focus on specific file (Personalized PageRank) |
 | `-d, --depth <number>` | Maximum tree depth |
 | `-m, --match <pattern>` | Analyze only files matching a pattern (`!` to exclude; repeatable; same patterns as `explore --match`) |
-| `-c, --catch <patterns...>` | Function/class patterns |
+| `--symbol <pattern>` | Function/class patterns |
 
 [Complete command reference →](docs/user/commands.md)
 
@@ -459,8 +459,8 @@ Bash, C, C#, C++, Elixir, Go, Haskell, Java, JavaScript, Kotlin, PHP, Python, Ru
 Grammars are optional **language packs**: install only what you use.
 
 ```bash
-xray lang list                  # installed / missing, plus what your repo needs
-xray lang add go typescript     # or a bundle: web, go, systems, jvm, scripting, full
+xray language list                  # installed / missing, plus what your repo needs
+xray language add go typescript     # or a bundle: web, go, systems, jvm, scripting, full
 ```
 
 Missing grammars never fail a scan; xray warns once per language and continues, using Linguist 100+ language detection and Universal Ctags / regex fallback (disable with `--no-fallback-ctags`).
@@ -473,7 +473,7 @@ Pin languages with `"languages": ["go", "typescript"]` in `.xrayrc.json`.
 
 ```bash
 npm install -g @hop-top/xray
-xray lang add go typescript   # choose your language packs
+xray language add go typescript   # choose your language packs
 ```
 
 ### From Source
@@ -557,10 +557,10 @@ Available for: TypeScript (`.ts`, `.tsx`), JavaScript (`.js`, `.jsx`), Python
 graphs and say so on stderr.
 
 ```bash
-xray graph --path ./src            # both
-xray graph --with cf --path ./src  # control flow only
-xray graph --with df --path ./src  # data flow only
-xray graph --format json -o g.json # cfg / dfg fields on each function node
+xray map --flow --path ./src                   # both
+xray map --with control-flow --path ./src      # control flow only
+xray map --with data-flow --path ./src         # data flow only
+xray map --flow --format json -o g.json        # cfg / dfg fields on each function node
 ```
 
 Intra-procedural, per function and method: branches, loops, `switch`,

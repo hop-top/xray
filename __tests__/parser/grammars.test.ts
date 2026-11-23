@@ -105,7 +105,7 @@ describe('lazy loading and missing grammars', () => {
     expect(out.map(o => o.language)).toEqual(['kotlin', 'python']);
     expect(out[0]).toMatchObject({ count: 3, byExtension: { '.kt': 3 } });
     expect(info).toHaveBeenCalledTimes(1);
-    expect(info).toHaveBeenCalledWith('found 3 .kt, 1 .py files without installed grammars — install with: xray lang add kotlin python');
+    expect(info).toHaveBeenCalledWith('found 3 .kt, 1 .py files without installed grammars — install with: xray language add kotlin python');
     expect(warn).not.toHaveBeenCalled();
     // reset after reporting
     expect(reportSkippedLanguages()).toEqual([]);

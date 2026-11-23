@@ -152,7 +152,7 @@ describe('Alias Commands', () => {
       return root;
     };
 
-    it.each(['map', 'cache', 'paths', 'describe', 'mcp', 'completion', 'clear-cache', 'help'])(
+    it.each(['map', 'cache', 'config', 'spec', 'serve', 'completion', 'help'])(
       'rejects alias named after existing command "%s" (ConflictError, exit 4)',
       async (name) => {
         mockLoadConfig.mockReturnValue({ paths: ['./src'] });
@@ -186,8 +186,8 @@ describe('Alias Commands', () => {
     });
   });
 
-  describe('alias remove', () => {
-    it('should remove existing alias', async () => {
+  describe('alias delete', () => {
+    it('should delete existing alias', async () => {
       mockLoadConfig.mockReturnValue({
         paths: ['./src'],
         aliases: {
@@ -198,7 +198,7 @@ describe('Alias Commands', () => {
       const consoleLogSpy = jest.spyOn(console, 'error').mockImplementation();
 
       const program = registerAliasCommand();
-      await program.parseAsync(['node', 'test', 'remove', 'comp']);
+      await program.parseAsync(['node', 'test', 'delete', 'comp']);
 
       expect(mockSaveConfig).toHaveBeenCalledWith({
         paths: ['./src'],
@@ -216,7 +216,7 @@ describe('Alias Commands', () => {
       const program = registerAliasCommand();
       program.exitOverride();
       await expect(
-        program.parseAsync(['node', 'test', 'remove', 'nonexistent'])
+        program.parseAsync(['node', 'test', 'delete', 'nonexistent'])
       ).rejects.toBeInstanceOf(NotFoundError);
 
       expect(mockSaveConfig).not.toHaveBeenCalled();

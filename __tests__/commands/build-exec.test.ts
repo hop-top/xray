@@ -26,9 +26,10 @@ const mk = (name: string, files: Record<string, string>) => {
 const cli = (args: string[], extraEnv: NodeJS.ProcessEnv = {}) =>
   spawnSync(process.execPath, [CLI, ...args], {
     cwd: tmp, env: { ...env, ...extraEnv }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    ...({ detached: true } as object),
   });
-const run = (dir: string, target: string, extraEnv: NodeJS.ProcessEnv = {}) =>
-  cli(['build', 'run', '-p', dir, '--target', target], extraEnv);
+const show = (dir: string, target: string, extraEnv: NodeJS.ProcessEnv = {}) =>
+  cli(['build', 'show', target, '-p', dir], extraEnv);
 const exec = (dir: string, target: string, extraEnv: NodeJS.ProcessEnv = {}, pre: string[] = ['--confirm=yes']) =>
   cli([...pre, 'build', 'exec', target, '-p', dir], extraEnv);
 
@@ -63,15 +64,15 @@ maybe(has('make'))('build exec (make)', () => {
   });
   beforeEach(() => fs.rmSync(path.join(dir, 'ran.marker'), { force: true }));
 
-  test('build run only prints the command, runs nothing', () => {
-    const r = run(dir, 'hello');
+  test('build show only prints the command, runs nothing', () => {
+    const r = show(dir, 'hello');
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('make hello');
     expect(fs.existsSync(path.join(dir, 'ran.marker'))).toBe(false);
   });
 
-  test('build run has no --exec flag', () => {
-    const r = cli(['build', 'run', '-p', dir, '--target', 'hello', '--exec']);
+  test('build show has no --exec flag', () => {
+    const r = cli(['build', 'show', 'hello', '-p', dir, '--exec']);
     expect(r.status).toBe(2);
     expect(fs.existsSync(path.join(dir, 'ran.marker'))).toBe(false);
   });
@@ -169,9 +170,9 @@ test('leading-dash target is refused (usage) and nothing runs', () => {
   expect(fs.existsSync(path.join(dir, 'ran.marker'))).toBe(false);
 });
 
-describe('describe advertises build exec', () => {
-  test('destructive-local, not idempotent, exit codes 3 and 5; build run stays read', () => {
-    const r = cli(['describe', '--format', 'json']);
+describe('spec advertises build exec', () => {
+  test('destructive-local, not idempotent, exit codes 3 and 5; build show stays read', () => {
+    const r = cli(['spec', '--format', 'json']);
     expect(r.status).toBe(0);
     const doc = JSON.parse(r.stdout);
     const build = doc.commands.find((c: any) => c.name === 'build');
@@ -179,6 +180,7 @@ describe('describe advertises build exec', () => {
     expect(sub('exec')).toMatchObject({ sideEffect: 'destructive-local', idempotent: 'no' });
     expect(sub('exec').exitCodes).toEqual(expect.arrayContaining([0, 1, 2, 3, 5]));
     expect(sub('exec').arguments.map((a: any) => a.name)).toEqual(['target']);
-    expect(sub('run')).toMatchObject({ sideEffect: 'read', idempotent: 'yes' });
+    expect(sub('show')).toMatchObject({ sideEffect: 'read', idempotent: 'yes' });
+    expect(sub('show').arguments.map((a: any) => a.name)).toEqual(['target']);
   });
 });

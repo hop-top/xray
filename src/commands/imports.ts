@@ -23,6 +23,7 @@ export const IMPORTS_SCHEMA_PATH = 'schemas/xray.imports.v1.json';
 
 export interface ImportsCommandOptions {
   path?: string;
+  language?: string[];
   lang?: string[];
   format?: string;
   /** false with --no-cache; the per-file cache is on otherwise. */
@@ -97,7 +98,7 @@ export const importsRegistry = buildRegistry();
 /** Build the document (no rendering). */
 export function handleImportsAction(paths: readonly string[], options: ImportsCommandOptions): ImportsDoc {
   const root = options.path ?? '.';
-  const files = collectImportFiles(root, { paths, languages: options.lang ?? [], includeIgnored: options.ignore === false });
+  const files = collectImportFiles(root, { paths, languages: options.language ?? options.lang ?? [], includeIgnored: options.ignore === false });
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { version } = require('../../package.json') as { version: string };
   const cache = options.cache === false ? undefined : openImportsCache(root);
@@ -131,10 +132,10 @@ Languages: python, go, rust, typescript (ts), javascript (js), php.
 Files are listed as \`explore\` lists them (git ls-files, else .gitignore),
 relative to the root (-p, default: current directory). [paths...] narrow
 the scan to files or directories inside the root (relative to the current
-directory). --lang and [paths...] select the files reported; manifests
+directory). --language and [paths...] select the files reported; manifests
 (go.mod, go.work, package.json, Cargo.toml) anywhere under the root are
 always read for resolution. Parses only: no graph. Unchanged files are
-read from a per-file cache in xray's cache directory (\`xray paths\`,
+read from a per-file cache in xray's cache directory (\`xray config paths\`,
 cache-dir/imports), never under the root; output is identical with or
 without it. --no-cache parses every file and writes no cache. Cache
 hits/misses show at --verbose (stderr).
@@ -149,7 +150,7 @@ both modes share it safely.
 
 Exit 0 whenever a document is produced: parse errors and unsupported
 constructs are data (\`complete: false\` on the file), not failures.
-Exit 2 on usage errors (unknown --lang, a path outside the root), 3 when
+Exit 2 on usage errors (unknown --language, a path outside the root), 3 when
 the root or a path does not exist.
 
 --format json/yaml: the whole document. table/csv: one row per import.
@@ -157,7 +158,7 @@ text: per-file summary.
 
 Examples:
   xray imports
-  xray imports -p ../svc --lang go,rust
+  xray imports -p ../svc --language go,rust
   xray imports src/api --format table
   xray imports -o imports.json
 `;
@@ -169,7 +170,7 @@ export function registerImportsCommand(program: Command): Command {
     .description(`List every file's imports as the ${IMPORTS_SCHEMA_ID} JSON contract`)
     .argument('[paths...]', 'Files or directories inside the root to narrow the scan to')
     .option('-p, --path <root>', 'Root directory (file paths are relative to it) [default: current directory]')
-    .option('--lang <list>', 'Languages to include, comma-separated: python, go, rust, typescript|ts, javascript|js, php (repeatable)',
+    .option('--language <list>', 'Languages to include, comma-separated: python, go, rust, typescript|ts, javascript|js, php (repeatable)',
       (value: string, previous: string[]) => previous.concat(value.split(',').map(s => s.trim()).filter(Boolean)), [])
     .option('--no-ignore', 'List every source under the root, git-ignored files, nested repos and node_modules included (.git skipped)')
     .option('--no-cache', 'Parse every file; do not read or write the per-file cache');

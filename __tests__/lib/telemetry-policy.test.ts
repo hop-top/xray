@@ -9,9 +9,9 @@ describe('telemetry policy: commands whose default format is machine-readable', 
   it.each([
     [['imports']],
     [['imports', '-p', 'repo']],
-    [['describe']],
+    [['spec']],
     [['-C', 'repo', 'imports']],
-    [['--log-level', 'debug', 'describe']],
+    [['-V', 'spec']],
     [['imports', '--format', 'yaml']],
   ])('xray %j at a terminal is a machine run', (args) => {
     expect(tty(...args)).toBe('machine-format');
