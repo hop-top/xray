@@ -9,7 +9,7 @@ const xrayBin = path.join(__dirname, '../../../dist/index.js');
 // These tests spawn the CLI and analyze the repository itself (`--path .`),
 // which takes several seconds on a full checkout (dist/, fixtures, tests);
 // the default 5s jest timeout is too tight and load-sensitive.
-jest.setTimeout(30000);
+jest.setTimeout(60000);
 
 describe('Strategy Command Execution (Integration)', () => {
   // Helper to run xray commands

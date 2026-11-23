@@ -196,8 +196,8 @@ fi
 solo_tier() {
   case "$1" in
     *strategy-commands.test.ts|*go-cli/sandbox.test.ts) echo 1 ;;
-    *adversarial-*.test.ts) echo 2 ;;
-    *analyzer.perf.test.ts|*flow/budget.test.ts) echo 3 ;;
+    *strategy-execution.test.ts|*adversarial-*.test.ts|*imports/bounded-inputs.test.ts) echo 2 ;;
+    *analyzer.perf.test.ts|*flow/budget.test.ts|*regex-scaling.test.ts|*path-match.test.ts|*event-pipeline.test.ts|*async-emitter.test.ts) echo 3 ;;
     *) echo 0 ;;
   esac
 }
@@ -215,7 +215,6 @@ is_slow_suite() {
     *json-all-commands.test.ts|\
     *cli-golden.test.ts|\
     *commands/impact.test.ts|\
-    *strategy-execution.test.ts|\
     *kit-delegation.test.ts|\
     *storage-xdg.test.ts|\
     *commands/imports.test.ts|\
