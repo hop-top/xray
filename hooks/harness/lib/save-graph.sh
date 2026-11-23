@@ -77,7 +77,7 @@ if mkdir "$lock" 2>/dev/null; then
     trap 'rm -f "$tmp"; rmdir "$lock" 2>/dev/null' EXIT
     # mktemp: a new private file (O_EXCL) in the checked directory.
     tmp=$(mktemp "${abs%/*}/.graph.saving.XXXXXX") || exit 0
-    xray --quiet map --format json -o "$tmp" || exit 0
+    xray --offline --quiet map --format json -o "$tmp" || exit 0
     [ -L "$abs" ] && exit 0
     sha=$(xray_sha256 <"$tmp") || sha=
     mv -f "$tmp" "$abs" || exit 0
@@ -92,7 +92,7 @@ elif command -v gtimeout >/dev/null 2>&1; then
   limit="gtimeout 3"
 fi
 # shellcheck disable=SC2086  # $limit: empty, or "timeout 3"
-strategies=$($limit xray --quiet strategy detect 2>/dev/null | awk '{print $1}' | paste -sd, - | sed 's/,/, /g')
+strategies=$($limit xray --offline --quiet strategy detect 2>/dev/null | awk '{print $1}' | paste -sd, - | sed 's/,/, /g')
 
 line="[xray] code graph saving in the background to $graph"
 [ -n "$strategies" ] && line="$line; strategies: $strategies"

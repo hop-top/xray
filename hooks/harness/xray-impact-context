@@ -86,7 +86,7 @@ fi
 
 # $limit is intentionally unquoted: empty, or "timeout 5".
 # shellcheck disable=SC2086
-brief=$($limit xray impact "$sym" --graph "$graph" --format brief --quiet 2>/dev/null) || exit 0
+brief=$($limit xray --offline impact "$sym" --graph "$graph" --format brief --quiet 2>/dev/null) || exit 0
 [ -n "$brief" ] || exit 0
 
 # `date -r <file>` (mtime) works on GNU, BSD/macOS and BusyBox date.
