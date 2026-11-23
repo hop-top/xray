@@ -70,18 +70,39 @@ export function registerWatchCommand(program: Command): Command {
         },
       });
 
-      await watcher.start();
-      if (opts.once) return;
+      if (opts.once) {
+        await watcher.start();
+        return;
+      }
 
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
+        let shuttingDown = false;
         const shutdown = async () => {
+          if (shuttingDown) return;
+          shuttingDown = true;
           process.removeListener('SIGINT', shutdown);
           process.removeListener('SIGTERM', shutdown);
-          await watcher.stop();
-          resolve();
+          try {
+            await watcher.stop();
+          } finally {
+            resolve();
+          }
         };
         process.on('SIGINT', shutdown);
         process.on('SIGTERM', shutdown);
+
+        watcher.start().then(
+          () => {
+            if (shuttingDown) {
+              void watcher.stop().finally(resolve);
+            }
+          },
+          (err) => {
+            process.removeListener('SIGINT', shutdown);
+            process.removeListener('SIGTERM', shutdown);
+            reject(err);
+          },
+        );
       });
     });
 
