@@ -11,7 +11,7 @@ const fixturesDir = path.join(__dirname, '../../strategy/fixtures');
 // These tests spawn the CLI and analyze the repository itself (`--path .`),
 // which takes several seconds on a full checkout (dist/, fixtures, tests);
 // the default 5s jest timeout is too tight and load-sensitive.
-jest.setTimeout(30000);
+jest.setTimeout(60000);
 
 describe('Strategy Commands - Real Execution', () => {
   // Helper to run xray commands

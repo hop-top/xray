@@ -45,7 +45,7 @@ harmless by definition.
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `XRAY_TEST_JOBS` | `min(cpus, 4)` | concurrent isolated suite processes (`1` for strict serial; `adversarial-*` always run solo) |
+| `XRAY_TEST_JOBS` | `min(cpus, 4)` | concurrent isolated suite processes (`1` for strict serial; high-RSS `adversarial-*` and timing/CPU-sensitive suites always run solo) |
 | `XRAY_TEST_SHARD` | unset | 1-based shard selector `<index>/<total>` (e.g. `1/2`, `2/2`) balanced across heavy/slow/fast suites |
 | `XRAY_TEST_MAX_OLD_SPACE_MB` | `2048` | V8 old-space cap per suite process |
 | `XRAY_TEST_SUITE_TIMEOUT_S` | `300` | wall-clock limit per suite |

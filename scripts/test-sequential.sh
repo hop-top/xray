@@ -20,8 +20,8 @@
 #     group and any marker-tagged survivors are TERM/KILLed
 #   - survivors are a FAILURE naming the suite, so leaks get fixed, not hidden
 #   - per-suite wall-clock timeout and V8 heap cap
-#   - high-RSS adversarial suites run solo (1 at a time) so 2GB+ spikes never
-#     overlap in RAM
+#   - high-RSS adversarial suites and wall-clock-sensitive / multi-core suites
+#     run solo (1 at a time) so 2GB+ spikes and CPU contention never overlap
 #   - per-suite peak RSS reported
 #
 # Usage: scripts/test-sequential.sh [test-file ...]   (default: all suites)
@@ -187,13 +187,18 @@ else
 fi
 
 # Classify suites:
-# - heavy_all: >1GB peak-RSS adversarial parser stress suites (run solo to cap RAM)
+# - solo_all:  high-RSS adversarial parser stress suites (>1GB) plus wall-clock
+#              timing / multi-core-build suites (run solo in phase 2 so RAM
+#              spikes and CPU contention never skew budgets). Ordered by cost
+#              tier so round-robin sharding balances each tier evenly.
 # - slow_all:  known long E2E suites scheduled first (LPT) so no straggler trails
 # - fast_all:  all remaining suites
-is_heavy_suite() {
+solo_tier() {
   case "$1" in
-    *adversarial-*.test.ts) return 0 ;;
-    *) return 1 ;;
+    *strategy-commands.test.ts|*go-cli/sandbox.test.ts) echo 1 ;;
+    *adversarial-*.test.ts) echo 2 ;;
+    *analyzer.perf.test.ts|*flow/budget.test.ts) echo 3 ;;
+    *) echo 0 ;;
   esac
 }
 
@@ -201,11 +206,9 @@ is_slow_suite() {
   case "$1" in
     *exit-code-contract.test.ts|\
     *harness-hooks.test.ts|\
-    *strategy-commands.test.ts|\
     *all-scopes-options.test.ts|\
     *strategy-install.test.ts|\
     *project-strategies-opt-in.test.ts|\
-    *go-cli/sandbox.test.ts|\
     *config-confine.test.ts|\
     *extra-args.test.ts|\
     *flow/cli.test.ts|\
@@ -218,25 +221,32 @@ is_slow_suite() {
     *commands/imports.test.ts|\
     *strategy-command.test.ts|\
     *unknown-input.test.ts|\
-    *completion.test.ts|\
-    *flow/budget.test.ts) return 0 ;;
+    *completion.test.ts) return 0 ;;
     *) return 1 ;;
   esac
 }
 
-heavy_all=()
+solo_t1=()
+solo_t2=()
+solo_t3=()
 slow_all=()
 fast_all=()
 for f in "${raw_files[@]}"; do
-  if is_heavy_suite "$f"; then
-    heavy_all+=("$f")
-  elif is_slow_suite "$f"; then
-    slow_all+=("$f")
-  else
-    fast_all+=("$f")
-  fi
+  case "$(solo_tier "$f")" in
+    1) solo_t1+=("$f") ;;
+    2) solo_t2+=("$f") ;;
+    3) solo_t3+=("$f") ;;
+    *)
+      if is_slow_suite "$f"; then
+        slow_all+=("$f")
+      else
+        fast_all+=("$f")
+      fi
+      ;;
+  esac
 done
 
+heavy_all=("${solo_t1[@]}" "${solo_t2[@]}" "${solo_t3[@]}")
 normal_all=("${slow_all[@]}" "${fast_all[@]}")
 
 # Apply round-robin sharding independently across heavy and normal lists
@@ -267,7 +277,7 @@ shard_note=""
 if [ "$SHARD_TOTAL" -gt 1 ]; then
   shard_note=", shard ${SHARD_INDEX}/${SHARD_TOTAL}"
 fi
-echo "Running $(( ${#normal_files[@]} + ${#heavy_files[@]} )) test suite(s) in isolated processes (jobs=${JOBS}, heavy solo=${#heavy_files[@]}, heap cap ${MAX_OLD_SPACE_MB}MB, timeout ${SUITE_TIMEOUT_S}s${shard_note})..."
+echo "Running $(( ${#normal_files[@]} + ${#heavy_files[@]} )) test suite(s) in isolated processes (jobs=${JOBS}, solo=${#heavy_files[@]}, heap cap ${MAX_OLD_SPACE_MB}MB, timeout ${SUITE_TIMEOUT_S}s${shard_note})..."
 echo ""
 
 # Pull "<n> <kind>" out of the jest "Tests:" line
@@ -304,10 +314,10 @@ run_one_suite() {
 
   # New session => own process group (pgid == leader pid). exec keeps the pid.
   if [ -n "$TIME_BIN" ]; then
-    env "$tag" NODE_OPTIONS="$node_opts" perl -MPOSIX -e 'setsid(); exec @ARGV' \
+    env "$tag" XRAY_TEST_JOBS="$JOBS" NODE_OPTIONS="$node_opts" perl -MPOSIX -e 'setsid(); exec @ARGV' \
       "$TIME_BIN" "${time_flags[@]}" -o "$timef" "${JEST_CMD[@]}" "$test_file" --coverage=false >"$out" 2>&1 &
   else
-    env "$tag" NODE_OPTIONS="$node_opts" perl -MPOSIX -e 'setsid(); exec @ARGV' \
+    env "$tag" XRAY_TEST_JOBS="$JOBS" NODE_OPTIONS="$node_opts" perl -MPOSIX -e 'setsid(); exec @ARGV' \
       "${JEST_CMD[@]}" "$test_file" --coverage=false >"$out" 2>&1 &
   fi
   pid=$!
