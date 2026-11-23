@@ -18,7 +18,9 @@ describe('Strategy Commands - Real Execution', () => {
   async function runXray(args: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     try {
       // Human messages go to stderr (logger stream split); merge for assertions.
-      const { stdout, stderr } = await execAsync(`node ${xrayBin} ${args} 2>&1`);
+      const { stdout, stderr } = await execAsync(`node ${xrayBin} --no-telemetry --offline ${args} 2>&1`, {
+        env: { ...process.env, XRAY_NO_TELEMETRY: '1', NO_COLOR: '1' },
+      });
       return { stdout: stdout + stderr, stderr, exitCode: 0 };
     } catch (error: any) {
       return {

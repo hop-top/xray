@@ -4,7 +4,7 @@
  * Drives the built CLI (bin/cli.js) in a throwaway project with its own
  * config/cache/state dirs.
  */
-import { spawnSync } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -22,14 +22,45 @@ describe('failing commands exit with the code describe advertises', () => {
   /** `command:code` pairs a real run produced; the last test checks describe against it. */
   const produced = new Set<string>();
 
+  const withOffline = (args: string[]) => (args.includes('--offline') ? args : ['--offline', ...args]);
+
   const run = (...args: string[]) =>
-    spawnSync(process.execPath, [CLI, ...args], {
+    spawnSync(process.execPath, [CLI, ...withOffline(args)], {
       cwd: root,
       env,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       ...({ detached: true } as object),
     });
+
+  const runAsync = (...args: string[]) =>
+    new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve, reject) => {
+      const child = spawn(process.execPath, [CLI, ...withOffline(args)], {
+        cwd: root,
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout?.on('data', (chunk) => { stdout += chunk.toString('utf8'); });
+      child.stderr?.on('data', (chunk) => { stderr += chunk.toString('utf8'); });
+      child.on('error', reject);
+      child.on('close', (status) => resolve({ status, stdout, stderr }));
+    });
+
+  async function mapConcurrent<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+    const results = new Array<R>(items.length);
+    let next = 0;
+    const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const idx = next++;
+        results[idx] = await fn(items[idx]);
+      }
+    });
+    await Promise.all(workers);
+    return results;
+  }
 
   beforeAll(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'exit-contract-'));
@@ -129,20 +160,27 @@ describe('failing commands exit with the code describe advertises', () => {
   const operands = (l: { doc: { arguments: Array<{ name: string; required: boolean }> } }) =>
     l.doc.arguments.filter((a) => a.required).map(() => 'x');
 
-  it('every leaf: an unknown flag is a usage error (2), advertised', () => {
-    for (const l of leaves) {
-      const r = run(...l.argv, ...operands(l), '--no-such-flag-xyz');
+  it('every leaf: an unknown flag is a usage error (2), advertised', async () => {
+    const runs = await mapConcurrent(leaves, 4, async (l) => ({
+      l,
+      r: await runAsync(...l.argv, ...operands(l), '--no-such-flag-xyz'),
+    }));
+    for (const { l, r } of runs) {
       expect({ command: l.command, status: r.status }).toEqual({ command: l.command, status: 2 });
       expect(advertised.get(l.command)).toContain(2);
     }
   });
 
-  it('every leaf with --path: a missing path exits with a code describe advertises', () => {
+  it('every leaf with --path: a missing path exits with a code describe advertises', async () => {
     const missing = '/nonexistent/xray-dir';
-    for (const l of leaves.filter((x) => x.doc.options.some((o) => o.name === '--path'))) {
+    const pathLeaves = leaves.filter((x) => x.doc.options.some((o) => o.name === '--path'));
+    const runs = await mapConcurrent(pathLeaves, 4, async (l) => {
       const confirm = String(l.doc.sideEffect).startsWith('destructive') ? ['--confirm=yes'] : [];
       const format = l.doc.options.some((o) => o.name === '--format') ? ['--format', 'json'] : [];
-      const r = run(...confirm, ...l.argv, ...operands(l), '--path', missing, ...format);
+      const r = await runAsync(...confirm, ...l.argv, ...operands(l), '--path', missing, ...format);
+      return { l, r };
+    });
+    for (const { l, r } of runs) {
       const status = r.status as number;
       expect({ command: l.command, status, advertised: advertised.get(l.command)!.includes(status) })
         .toEqual({ command: l.command, status, advertised: true });
@@ -150,16 +188,19 @@ describe('failing commands exit with the code describe advertises', () => {
     }
   });
 
-  it('strategy leaves: a missing --path is not found (3) with the envelope, not an empty result', () => {
+  it('strategy leaves: a missing --path is not found (3) with the envelope, not an empty result', async () => {
     const builtin = new Set(['help', 'map', 'query', 'impact', 'imports', 'handbook', 'diagram', 'ask', 'review',
       'tui', 'serve', 'watch', 'strategy', 'alias', 'language', 'skill', 'cache', 'config', 'spec',
       'completion', 'explore', 'upgrade']);
     const strategyLeaves = leaves.filter((l) => !builtin.has(l.argv[0]));
     expect(strategyLeaves.length).toBeGreaterThan(20);
-    for (const l of strategyLeaves) {
+    const runs = await mapConcurrent(strategyLeaves, 4, async (l) => {
       // A destructive command needs confirming and a required positional a value to reach the path check.
       const confirm = String(l.doc.sideEffect).startsWith('destructive') ? ['--confirm=yes'] : [];
-      const r = run(...confirm, ...l.argv, ...operands(l), '--path', '/nonexistent/xray-dir', '--format', 'json');
+      const r = await runAsync(...confirm, ...l.argv, ...operands(l), '--path', '/nonexistent/xray-dir', '--format', 'json');
+      return { l, r };
+    });
+    for (const { l, r } of runs) {
       expect({ command: l.command, status: r.status, stdout: r.stdout }).toEqual({ command: l.command, status: 3, stdout: '' });
       expect(JSON.parse(r.stderr)).toMatchObject({ code: 'NOT_FOUND', exit_code: 3 });
       expect(advertised.get(l.command)).toContain(3);

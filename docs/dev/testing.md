@@ -45,6 +45,8 @@ harmless by definition.
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
+| `XRAY_TEST_JOBS` | `min(cpus, 4)` | concurrent isolated suite processes (`1` for strict serial; `adversarial-*` always run solo) |
+| `XRAY_TEST_SHARD` | unset | 1-based shard selector `<index>/<total>` (e.g. `1/2`, `2/2`) balanced across heavy/slow/fast suites |
 | `XRAY_TEST_MAX_OLD_SPACE_MB` | `2048` | V8 old-space cap per suite process |
 | `XRAY_TEST_SUITE_TIMEOUT_S` | `300` | wall-clock limit per suite |
 | `XRAY_TEST_KILL_GRACE_S` | `2` | TERM to KILL grace |
@@ -58,12 +60,13 @@ harmless by definition.
 
 The runner is portable: peak RSS comes from GNU `time -v` (BSD `-l` on macOS),
 `ps -axeww` and `setsid` work as-is, and the memory-pressure wait is macOS-only.
-CI (`.github/workflows/ci.yml`, job `test`) runs `npm test` on ubuntu-latest (x64) for
-Node 26 and 22 (about 6 minutes of suites each, ~8 minutes per job) plus one
-ubuntu-24.04-arm (arm64) leg on Node 22, with `XRAY_TEST_NO_LOCK=1`, and uploads
-the log on failure. Each job installs Go, bubblewrap (plus an AppArmor `userns` grant
-for `bwrap`; see `docs/dev/strategies/go-cli.md`) and a pinned `mdq`, so the
-go-cli sandbox suites and the markdown strategy suites run instead of skipping.
+CI (`.github/workflows/ci.yml`, job `test`) runs `npm test` across 2 balanced
+shards (`XRAY_TEST_SHARD=1/2`, `2/2`, `XRAY_TEST_JOBS=4`, `XRAY_TEST_NO_LOCK=1`)
+on ubuntu-latest (x64) for Node 26 and 22 plus ubuntu-24.04-arm (arm64) on
+Node 22, and uploads the log on failure. Each job installs Go, bubblewrap (plus
+an AppArmor `userns` grant for `bwrap`; see `docs/dev/strategies/go-cli.md`) and
+a pinned `mdq`, so the go-cli sandbox suites and the markdown strategy suites
+run instead of skipping.
 
 `mdq` version is pinned in one place: `MDQ_VERSION` in `src/utils/mdqInstall.ts`
 (CI reads it from there). Upstream ships prebuilt assets for linux-x64, macos-arm64
