@@ -22,7 +22,7 @@ export type TelemetryOffReason =
   | 'machine-format'
   | 'non-tty';
 
-/** Machine-readable policy, published by `xray describe`. */
+/** Machine-readable policy, published by `xray spec`. */
 export const TELEMETRY_POLICY = {
   flag: '--no-telemetry',
   env: ['XRAY_NO_TELEMETRY', 'DO_NOT_TRACK'],
@@ -73,7 +73,7 @@ export function selectsMachineFormat(argv: readonly string[]): boolean {
  * Kept as a list (the policy loads before, and without, the command
  * modules); a test checks it against the registered commands' defaults.
  */
-export const MACHINE_DEFAULT_COMMANDS: readonly string[] = ['describe', 'imports'];
+export const MACHINE_DEFAULT_COMMANDS: readonly string[] = ['spec', 'imports'];
 
 /** Explicit `--format` values that make a machine-default command a human run. */
 const HUMAN_FORMATS = new Set(['text', 'table', 'txt']);

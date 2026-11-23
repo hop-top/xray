@@ -170,14 +170,12 @@ export default class BuildStrategy implements Strategy {
         return { nodes, edges };
       }
     },
-    run: {
+    show: {
       description: 'Print the command for a build target (does not run it; see `build exec`)',
-      options: {
-        'target': 'Target name to print the command for'
-      },
+      positional: { name: 'target', description: 'Target name to show' },
       handler: async (ctx: StrategyContext, opts?: any) => {
         if (!opts || !opts.target) {
-          throw new UsageError('No target specified. Use --target=<name>');
+          throw new UsageError('No target specified. Use: build show <target>');
         }
         const r = resolveTarget(this.buildTools, ctx, opts.target);
         return { tool: r.tool, command: r.argv.join(' '), target: opts.target, file: r.file };

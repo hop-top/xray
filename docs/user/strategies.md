@@ -677,7 +677,7 @@ xray go-cli commands >> CLI.md
 2. For React: Check `package.json` has `react` or `react-dom` dependency
 3. For Express: Check `express` is in dependencies (not just devDependencies)
 4. For Go CLI: Check `go.mod` includes Cobra or urfave/cli
-5. Clear cache and retry: `xray clear-cache --confirm=yes && xray strategy detect`
+5. Clear cache and retry: `xray cache clear --confirm=yes && xray strategy detect`
 
 ### No results from command
 
@@ -696,9 +696,9 @@ xray go-cli commands >> CLI.md
 
 **Solutions**:
 1. First run is slower (AST parsing + detection). Subsequent runs use cache.
-2. Clear stale cache if you've made many changes: `xray clear-cache --confirm=yes`
+2. Clear stale cache if you've made many changes: `xray cache clear --confirm=yes`
 3. Reduce project size by excluding `node_modules`, `dist`, etc. (automatically excluded)
-4. Check the cache file size (`cache-db` in `xray paths`) - delete if too large (it will regenerate)
+4. Check the cache file size (`cache-db` in `xray config paths`) - delete if too large (it will regenerate)
 
 ### Outdated results
 
@@ -706,7 +706,7 @@ xray go-cli commands >> CLI.md
 
 **Solutions**:
 1. Cache invalidates based on file modification time (should be automatic)
-2. Force cache clear: `xray clear-cache --confirm=yes`
+2. Force cache clear: `xray cache clear --confirm=yes`
 3. Verify files were actually saved (check file timestamps)
 
 ### Command not found

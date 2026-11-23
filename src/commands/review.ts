@@ -17,6 +17,8 @@ import { execFileNoThrow } from '../utils/execFileNoThrow';
 import { declareEffect } from './side-effect';
 
 export interface ReviewCommandOptions {
+  since?: string;
+  changed?: boolean;
   base?: string;
   head?: string;
   llm?: boolean;
@@ -227,17 +229,24 @@ function parseLlmFindings(rawText: string): ReviewFinding[] {
 
 export async function runReview(options: {
   root: string;
-  base: string;
+  since?: string;
+  changed?: boolean;
+  base?: string;
   head?: string;
   llm?: boolean;
   offline?: boolean;
   configPath?: string;
 }): Promise<ReviewResult> {
-  const base = options.base?.trim();
-  if (!base) {
-    throw new UsageError('--base <ref> is required');
+  const hasSince = Boolean((options.since ?? options.base)?.trim());
+  const hasChanged = Boolean(options.changed);
+  if (hasSince && hasChanged) {
+    throw new UsageError('--since and --changed cannot be combined');
   }
-  const head = options.head?.trim() || 'HEAD';
+  const base = hasChanged ? 'WORKING' : (options.since ?? options.base)?.trim() ?? '';
+  if (!base) {
+    throw new UsageError('--since <ref> or --changed is required');
+  }
+  const head = hasChanged ? 'WORKING' : (options.head?.trim() || 'HEAD');
   const root = fs.realpathSync(path.resolve(options.root));
 
   let client: LlmClient | null = null;
@@ -423,8 +432,9 @@ export function registerReviewCommand(program: Command): Command {
     program
       .command('review')
       .description('Review a git diff deterministically (impact, CFG/DFG delta, stale docs) or with --llm')
-      .requiredOption('--base <ref>', 'Base git ref to diff against')
-      .option('--head <ref>', 'Head git ref to diff up to', 'HEAD')
+      .option('--since <ref>', 'Base git ref to diff against (e.g. main, HEAD~1)')
+      .option('--changed', 'Review staged and unstaged working-tree changes vs HEAD')
+      .option('--head <ref>', 'Head git ref to diff up to (used with --since)', 'HEAD')
       .option('--llm', 'Synthesize review findings with BYOK LLM')
       .option('-p, --path <dir>', 'Project root directory (defaults to current working directory)')
   ).action(async (opts: ReviewCommandOptions, command: Command) => {
@@ -434,7 +444,8 @@ export function registerReviewCommand(program: Command): Command {
 
     const result = await runReview({
       root,
-      base: opts.base ?? '',
+      since: opts.since,
+      changed: Boolean(opts.changed),
       head: opts.head ?? 'HEAD',
       llm: Boolean(opts.llm),
       offline: Boolean(globals.offline ?? opts.offline),

@@ -14,23 +14,28 @@ Built-in commands available in all installations:
 
 | Command | Description |
 |---------|-------------|
-| `map` | Generate visual map of codebase |
-| `graph` | Generate CFG and DFG graphs |
+| `map` | Generate structural codebase map (and optional CFG/DFG via `--flow`) |
 | `query` | Query call graph |
-| `strategy` | Manage strategies |
-| `alias` | Manage command aliases |
+| `impact` | Show transitive callers of a symbol |
+| `imports` | List every file's imports (`xray.imports/v1`) |
+| `ask` | Ask codebase questions (BYOK LLM) |
+| `review` | Review a git diff deterministically or with `--llm` |
 | `explore` | Find files and search code (default) |
-| `clear-cache` | Clear SQLite cache |
-| `completion` | Generate shell completion |
+| `handbook` | Generate architectural handbook pages |
+| `diagram` | Export Mermaid architecture, call, CFG, or DFG diagrams |
+| `watch` | Live incremental `GraphCache` watcher |
+| `serve` | Local Web UI, REST API, or MCP server (`--mcp` / `--stdio`) |
+| `tui` | Interactive terminal codebase explorer |
+
+Hidden management and strategy groups (`--help-all`): `strategy`, `alias`, `skill`, `language`, `cache`, `config`, `spec`, `upgrade`, `completion`, plus dynamically registered strategy commands.
 
 `explore` is the default: bare `xray` (alone or with explore's own options,
 such as `xray --stats`) runs it. Anything else must start with a command,
-an alias or an existing path. A word that is none of these (`xray upgrade`,
-`xray zzzqqq`) is a usage error (exit 2, with a did-you-mean suggestion when
-one is close), not a file listing. Options other than the root's
-(`--log-level`, `--config`, `--no-telemetry`, `-C`, `--quiet`, ...) go
-after the command: `xray alias list --format json`, not
-`xray --format json alias list` (exit 2).
+an alias or an existing path. A word that is none of these (`xray zzzqqq`)
+is a usage error (exit 2, with a did-you-mean suggestion when one is close),
+not a file listing. Options other than the root's (`--config`, `--no-telemetry`,
+`-C`, `--quiet`, `-V`, ...) go after the command: `xray alias list --format json`,
+not `xray --format json alias list` (exit 2).
 
 ### Strategy Commands
 
@@ -69,21 +74,21 @@ Available for all commands:
 | Option | Description | Example |
 |--------|-------------|---------|
 | `-V, --verbose` | Increase verbosity (stackable; any count = debug) | `-V` |
-| `--log-level <level>` | Set log level: silent, error, warn, info (default), debug; overrides `-V` | `--log-level warn` |
-| `--quiet` | Errors only; beats `-V` and `--log-level` | `--quiet` |
+| `--quiet` | Errors only; beats `-V` and `XRAY_LOG_LEVEL` | `--quiet` |
 | `--no-color` | Disable ANSI colour | `--no-color` |
 | `--no-hints` | Suppress next-step hints | `--no-hints` |
 | `--offline` | Disable network access | `--offline` |
-| `--config <path>` | Path to config file | `--config .xrayrc.json` |
+| `-c, --config <path>` | Path to config file | `-c .xrayrc.json` |
 | `--no-telemetry` | Disable telemetry for this session | `--no-telemetry` |
 | `-C, --chdir <path>` | Change to `<path>` before running | `-C ../repo` |
 | `-h, --help` | Display help | `--help` |
-| `--help-<group>` | Show one command group (`analyze`, `strategy`, `management`) | `--help-strategy` |
-| `--help-all` | Print every command with its flags (text) | `--help-all` |
+| `--help-all` | Show all commands including hidden groups (`STRATEGY`, `MANAGEMENT`) | `--help-all` |
 | `-v, --version` | Print version (`xray vX.Y.Z`) and exit | `-v` |
 
-Flags work before or after the subcommand. Root `--help` lists commands
-under ANALYZE, STRATEGY and MANAGEMENT.
+Flags work before or after the subcommand. Root `--help` lists the primary
+groups (`ANALYZE`, `COMPOSE`, `LIFECYCLE`, `INTERACT`); `--help-all` also
+shows `MANAGEMENT` and `STRATEGY`. Set `XRAY_LOG_LEVEL=silent|error|warn|info|debug`
+for explicit log-level control.
 
 ## Strategy Command Options
 
@@ -102,8 +107,7 @@ xray --help
 ```
 
 Output includes:
-- Commands grouped as ANALYZE, STRATEGY (incl. registered strategy
-  commands) and MANAGEMENT
+- Primary commands grouped as `ANALYZE`, `COMPOSE`, `LIFECYCLE`, and `INTERACT` (use `--help-all` for `MANAGEMENT` and `STRATEGY`)
 - Global flags
 
 ### Strategy-Specific Commands
@@ -152,9 +156,9 @@ it. xray warns with the path of each project file it then loads. Built-in
 strategies and the user-level locations (1 and 3) need no opt-in.
 
 When the project has code strategies that did not load, `xray strategy
-list`, `detect`, `info`, `validate`, `path`, and a command word that
+list`, `detect`, `show`, `validate`, `path`, and a command word that
 matches no command say so and name the variable; other commands mention it
-only with `--log-level debug`.
+only with `-V` / `XRAY_LOG_LEVEL=debug`.
 
 ### Adding New Strategies
 
@@ -263,12 +267,11 @@ read only with `XRAY_ALLOW_PROJECT_STRATEGIES=1`.
 
 ### Removing a Strategy
 
-`xray strategy remove <name>` (alias `uninstall`) takes a package name or
-a strategy name:
+`xray strategy delete <name>` takes a package name or a strategy name:
 
 ```bash
-xray strategy remove @acme/xray-strategy-custom --confirm=yes   # package name
-xray strategy remove custom --confirm=yes                       # xray-strategy.name
+xray strategy delete @acme/xray-strategy-custom --confirm=yes   # package name
+xray strategy delete custom --confirm=yes                       # xray-strategy.name
 ```
 
 - An installed strategy package is removed with `npm uninstall` in the
@@ -276,7 +279,7 @@ xray strategy remove custom --confirm=yes                       # xray-strategy.
   `package.json` alone, so a code strategy is removed without
   `XRAY_ALLOW_PROJECT_STRATEGIES=1` and nothing is run.
 - A package that does not declare `xray-strategy` is refused and left
-  untouched, so `xray strategy remove lodash --confirm=yes` removes nothing.
+  untouched, so `xray strategy delete lodash --confirm=yes` removes nothing.
 - A file named `<name>.yml`, `<name>.yaml`, `<name>.js` or `<name>.ts` in
   a strategy directory is deleted. If a package has the same name, only
   the file goes; the command says the package remains.
@@ -289,15 +292,15 @@ removes nothing. `--dry-run` shows what would go and asks nothing.
 
 ## Side Effects, Confirmation and `--dry-run`
 
-Every command declares what it does, and `xray describe` reports it per
+Every command declares what it does, and `xray spec` reports it per
 command (`sideEffect`, `idempotent`):
 
 | Tier | Commands |
 |------|----------|
-| `read` | `query`, `impact`, `imports`, `explore`, `paths`, `describe`, `upgrade --check`, `completion`, `help`, `lang list`, `alias list`, `strategy list/detect/info/validate/path`, every strategy command (`react components`, ...), aliases |
-| `write-local` | `map`, `graph` (write the analysis into the project), `alias set/remove`, `lang add/remove`, `strategy create/install` |
-| `destructive-local` | `strategy remove`, `cache clear` (`clear-cache`) |
-| `interactive` | `mcp` |
+| `read` | `query`, `impact`, `imports`, `ask`, `review`, `explore`, `diagram`, `config path/paths`, `spec`, `upgrade check`, `completion`, `help`, `language list`, `skill list/show`, `alias list`, `strategy list/detect/show/validate/path`, every strategy command (`react components`, ...), aliases |
+| `write-local` | `map`, `handbook` (write outputs into the project), `alias set/delete`, `language add/delete`, `strategy create/install` |
+| `destructive-local` | `strategy delete`, `cache clear` |
+| `interactive` | `watch`, `tui`, `serve` |
 
 Caches xray rebuilds on its own in its cache dir (the parse cache, the
 imports cache) do not change a command's tier.
@@ -306,9 +309,9 @@ A destructive command needs confirmation: a terminal prompt, or
 `--confirm=yes` (`--confirm=no` refuses). The root `--dry-run` flag, given
 before or after the command, prints the plan for a write or destructive
 command (files, packages, config entries it would touch) and changes
-nothing; `--format json` (or `--json`) on `map` and `graph` prints
-it as JSON. A read command ignores `--dry-run` and runs; `mcp` is a live
-session and refuses it.
+nothing; `--format json` on `map` prints it as JSON. A read command ignores
+`--dry-run` and runs; `watch`, `tui`, and `serve` are live sessions and
+refuse it.
 
 ## Shell Completion
 

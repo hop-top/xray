@@ -168,7 +168,7 @@ The data flow graph shows which variables are modified where, helping you spot t
 
 ```bash
 # Search for specific patterns (e.g., functions named "handle*")
-xray map --catch "handle*" --with incs
+xray map --symbol "handle*" --with incs
 
 # Find all files using a specific library
 xray map --with incs --no-chunk -o map.txt
@@ -266,7 +266,7 @@ graph` (language without call extraction, symbol built dynamically), fall back
 to name matching and grep. These find definitions and text, not callers:
 
 ```bash
-xray map --catch "*Auth*" --with incs
+xray map --symbol "*Auth*" --with incs
 xray map --with incs --no-chunk -o map.txt
 grep -i "auth" map.txt
 ```
@@ -644,7 +644,7 @@ grep -v "→ used by" map.txt
 xray express error-handlers
 
 # Search map for error-related functions
-xray map --catch "*Error*" --catch "*Handler*" --with incs
+xray map --symbol "*Error*" --symbol "*Handler*" --with incs
 ```
 
 ### Pattern: Find All Data Fetching Code
@@ -674,7 +674,7 @@ grep -i "config" map.txt
 
 ```bash
 # All auth-related code
-xray map --catch "*Auth*" --catch "*Login*" --catch "*Token*" --with incs
+xray map --symbol "*Auth*" --symbol "*Login*" --symbol "*Token*" --with incs
 
 # All places importing auth libraries
 xray map --with incs --no-chunk -o map.txt

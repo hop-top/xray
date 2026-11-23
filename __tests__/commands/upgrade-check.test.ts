@@ -41,25 +41,17 @@ beforeAll(() => {
 beforeEach(() => { tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'xray-upgrade-check-'))); });
 afterEach(() => { fs.rmSync(tmp, { recursive: true, force: true }); });
 
-describe('upgrade without --check', () => {
-  it('is a usage error naming --check and the npm install command', () => {
-    const r = run(['upgrade']);
-    expect(r.status).toBe(2);
-    expect(r.stderr).toContain('--check');
-    expect(r.stderr).toContain('npm i -g @hop-top/xray');
-  });
-
-  it('json: usage envelope on stderr, stdout empty', () => {
-    const r = run(['upgrade', '--format', 'json']);
-    expect(r.status).toBe(2);
-    expect(r.stdout).toBe('');
-    expect(JSON.parse(r.stderr).code).toBe('USAGE');
+describe('upgrade group', () => {
+  it('bare upgrade shows help listing check subcommand', () => {
+    const r = run(['upgrade', '--help']);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain('check');
   });
 });
 
-describe('upgrade --check', () => {
+describe('upgrade check', () => {
   it('newer release: exit 0, says an update is available, once', () => {
-    const r = run(['upgrade', '--check'], { STUB_TAG: 'xray/v99.0.0-rc.1' });
+    const r = run(['upgrade', 'check'], { STUB_TAG: 'xray/v99.0.0-rc.1' });
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('update available');
     expect(r.stdout).toContain(`v${CURRENT}`);
@@ -69,14 +61,14 @@ describe('upgrade --check', () => {
   });
 
   it('up to date: exit 0, says so', () => {
-    const r = run(['upgrade', '--check'], { STUB_TAG: 'xray/v0.0.1' });
+    const r = run(['upgrade', 'check'], { STUB_TAG: 'xray/v0.0.1' });
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('up to date');
     expect(r.stdout).not.toContain('update available');
   });
 
   it('json, newer release', () => {
-    const r = run(['upgrade', '--check', '--format', 'json'], { STUB_TAG: 'xray/v99.0.0-rc.1' });
+    const r = run(['upgrade', 'check', '--format', 'json'], { STUB_TAG: 'xray/v99.0.0-rc.1' });
     expect(r.status).toBe(0);
     const doc = JSON.parse(r.stdout);
     expect(doc).toMatchObject({
@@ -88,20 +80,20 @@ describe('upgrade --check', () => {
   });
 
   it('json, up to date', () => {
-    const r = run(['upgrade', '--check', '--format', 'json'], { STUB_TAG: 'xray/v0.0.1' });
+    const r = run(['upgrade', 'check', '--format', 'json'], { STUB_TAG: 'xray/v0.0.1' });
     expect(r.status).toBe(0);
     expect(JSON.parse(r.stdout)).toMatchObject({ current: CURRENT, latest: null, updateAvailable: false });
   });
 
   it.each([['reject'], ['http']])('network failure (%s): exit 6', (mode) => {
-    const r = run(['upgrade', '--check'], { STUB_FAIL: mode });
+    const r = run(['upgrade', 'check'], { STUB_FAIL: mode });
     expect(r.status).toBe(6);
     expect(r.stdout).toBe('');
     expect(r.stderr).toContain('could not check');
   });
 
   it('network failure, json: transient envelope on stderr, stdout empty', () => {
-    const r = run(['upgrade', '--check', '--format', 'json'], { STUB_FAIL: 'reject' });
+    const r = run(['upgrade', 'check', '--format', 'json'], { STUB_FAIL: 'reject' });
     expect(r.status).toBe(6);
     expect(r.stdout).toBe('');
     const env = JSON.parse(r.stderr);
@@ -109,13 +101,13 @@ describe('upgrade --check', () => {
   });
 
   it('--offline: exit 6 without touching the network', () => {
-    const r = run(['--offline', 'upgrade', '--check'], { STUB_FAIL: 'reject' });
+    const r = run(['--offline', 'upgrade', 'check'], { STUB_FAIL: 'reject' });
     expect(r.status).toBe(6);
     expect(r.stderr).toContain('offline');
   });
 
   it('a fresh answer every time: a cached older result is not reused', () => {
-    expect(run(['upgrade', '--check'], { STUB_TAG: 'xray/v0.0.1' }).stdout).toContain('up to date');
-    expect(run(['upgrade', '--check'], { STUB_TAG: 'xray/v99.0.0' }).stdout).toContain('update available');
+    expect(run(['upgrade', 'check'], { STUB_TAG: 'xray/v0.0.1' }).stdout).toContain('up to date');
+    expect(run(['upgrade', 'check'], { STUB_TAG: 'xray/v99.0.0' }).stdout).toContain('update available');
   });
 });

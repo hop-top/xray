@@ -55,15 +55,14 @@ describe('surplus positionals are a usage error', () => {
   it.each([
     // commands that take no operands
     ['cache clear'],
-    ['clear-cache'],
-    ['paths'],
-    ['describe'],
-    ['mcp'],
+    ['config path'],
+    ['config paths'],
+    ['spec'],
     ['strategy list'],
     ['strategy detect'],
     ['strategy path'],
     ['alias list'],
-    ['lang list'],
+    ['language list'],
     ['completion bash'],
     ['completion zsh'],
     ['completion fish'],
@@ -83,13 +82,13 @@ describe('surplus positionals are a usage error', () => {
     // commands with a fixed arity: one word too many
     ['query', ['query', 'a', 'b']],
     ['impact', ['impact', 'a', 'b']],
-    ['strategy info', ['strategy', 'info', 'a', 'b']],
+    ['strategy show', ['strategy', 'show', 'a', 'b']],
     ['strategy create', ['strategy', 'create', 'a', 'b']],
-    ['strategy remove', ['strategy', 'remove', 'a', 'b']],
+    ['strategy delete', ['strategy', 'delete', 'a', 'b']],
     ['strategy validate', ['strategy', 'validate', 'a', 'b']],
     ['strategy install', ['strategy', 'install', 'a', 'b']],
     ['alias set', ['alias', 'set', 'a', 'b', 'c']],
-    ['alias remove', ['alias', 'remove', 'a', 'b']],
+    ['alias delete', ['alias', 'delete', 'a', 'b']],
   ])('%s with one operand too many: exit 2', (_n, args) => {
     const r = run(args);
     expect(r.status).toBe(2);
@@ -174,7 +173,7 @@ describe('what keeps working', () => {
 
   it.each([
     ['map', ['map', 'd1', 'd2', '-o', 'out']],
-    ['graph', ['graph', 'd1', 'd2', '-o', 'out']],
+    ['map --flow', ['map', '--flow', 'd1', 'd2', '-o', 'out']],
     ['imports', ['imports', 'd1', 'd2']],
     ['map after --', ['map', '-o', 'out', '--', 'd1', 'd2']],
   ])('variadic paths: %s takes several', (_n, args) => {
@@ -200,7 +199,7 @@ describe('what keeps working', () => {
   });
 
   it('unknown options fail as before', () => {
-    for (const args of [['paths', '--bogus'], ['--bogus'], ['cache', 'clear', '--bogus']]) {
+    for (const args of [['config', 'paths', '--bogus'], ['--bogus'], ['cache', 'clear', '--bogus']]) {
       const r = run(args);
       expect(r.status).toBe(2);
       expect(r.stderr).toMatch(/unknown option '--bogus'/);

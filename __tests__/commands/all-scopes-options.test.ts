@@ -17,35 +17,25 @@ const CLI = path.join(__dirname, '../../bin/cli.js');
 /** One variant per option: args that make the option visible in the output. */
 const VARIANTS: Record<string, string[]> = {
   '--limit': ['--limit', '40'],
-  '--with': ['--with', 'vars'],
+  '--with': ['--with', 'variables'],
+  '--flow': ['--flow'],
   '--anchor': ['--anchor', 'src/b.ts'],
   '--depth': ['--depth', '1'],
   '--query': ['--query', '.ts:lib'],
   '--match': ['--match', '*.py'],
-  '--catch': ['--catch', 'beta'],
+  '--symbol': ['--symbol', 'beta'],
   '--format': ['--format', 'json'],
-  '--txt': ['--txt'],
-  '--csv': ['--csv'],
-  '--xml': ['--xml'],
-  '--json': ['--json'],
-  '--mermaid': ['--mermaid'],
   '--no-chunk': ['--no-chunk'],
   '--group': ['--group', 'community'],
   '--detect': ['--detect'],
-  '--lang': ['--lang', 'python'],
-  '--skip-detect': ['--skip-detect'],
+  '--no-detect': ['--no-detect'],
+  '--language': ['--language', 'python'],
   '--no-fallback-ctags': ['--no-fallback-ctags'],
   '--share': ['--share'],
   '--preset': ['--preset', 'insights'],
-  '--enable-extension': ['--enable-extension', 'nope-ext'],
-  '--disable-extension': ['--disable-extension', 'nope-ext'],
-  '--extension-threshold': ['--extension-threshold', 'nope-ext=3'],
-  '--extension-hint': ['--extension-hint', 'nope-ext=hint'],
-  '--enable-surface': ['--enable-surface', 'nope-ext:map'],
-  '--disable-surface': ['--disable-surface', 'nope-ext:map'],
 };
 
-/** Options only one command declares: `map` ranks by diff, `graph` does not. */
+/** Options only map declares. */
 const COMMAND_VARIANTS: Record<string, Record<string, string[]>> = {
   map: {
     '--since': ['--since', 'HEAD~1'],
@@ -90,7 +80,7 @@ describe('map|graph --all-scopes forwards every CLI option', () => {
       NO_COLOR: '1',
       XRAY_NO_TELEMETRY: '1',
     };
-    described = (JSON.parse(run(root, 'describe').stdout) as { commands: Described[] }).commands;
+    described = (JSON.parse(run(root, 'spec').stdout) as { commands: Described[] }).commands;
   });
   afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
@@ -135,21 +125,19 @@ describe('map|graph --all-scopes forwards every CLI option', () => {
     return { status: r.status, files };
   };
 
-  it.each(['map', 'graph'])('%s: every described option has a variant or a stated reason', (cmd) => {
+  it.each(['map'])('%s: every described option has a variant or a stated reason', (cmd) => {
     const names = described.find((c) => c.name === cmd)!.options.map((o) => o.name);
     const perCommand = COMMAND_VARIANTS[cmd] ?? {};
     const unknown = names.filter((n) => !(n in VARIANTS) && !(n in perCommand) && !(n in NOT_RUN_OPTIONS));
     expect(unknown).toEqual([]);
   });
 
-  describe.each(['map', 'graph'])('%s: --all-scopes (one scope) == --scope', (cmd) => {
+  describe.each(['map'])('%s: --all-scopes (one scope) == --scope', (cmd) => {
     let p: string;
     beforeAll(() => {
       p = project(cmd, { only: { paths: ['./src'] } });
     });
 
-    // graph runs the same code; sampling every option once per command keeps
-    // the cost bounded while still covering both entry points.
     const variants = Object.entries({ ...VARIANTS, ...(COMMAND_VARIANTS[cmd] ?? {}) });
     it.each(variants)('%s', (_opt, args) => {
       const base = [cmd, ...args];
@@ -166,7 +154,7 @@ describe('map|graph --all-scopes forwards every CLI option', () => {
       ts: { paths: ['./src'], output: 'ts.json', format: 'json' },
       go: { paths: ['./pkg'], output: 'go.json', format: 'json' },
     });
-    const r = run(p, 'map', '--skip-detect', '--all-scopes', '--match', '*.py');
+    const r = run(p, 'map', '--no-detect', '--all-scopes', '--match', '*.py');
     const filesOf = (f: string): string[] =>
       JSON.parse(fs.readFileSync(path.join(p, f), 'utf8')).nodes
         .filter((n: { type: string }) => n.type === 'file')
@@ -181,7 +169,7 @@ describe('map|graph --all-scopes forwards every CLI option', () => {
       one: { paths: ['./src'], output: 'one.json', format: 'json', match: ['*.ts'] },
       two: { paths: ['./src'], output: 'two.json', format: 'json', match: ['*.ts'] },
     });
-    expect(run(p, 'map', '--skip-detect', '--all-scopes', '--match', '*.py').status).toBe(0);
+    expect(run(p, 'map', '--no-detect', '--all-scopes', '--match', '*.py').status).toBe(0);
     for (const f of ['one.json', 'two.json']) {
       const ids = JSON.parse(fs.readFileSync(path.join(p, f), 'utf8')).nodes
         .filter((n: { type: string }) => n.type === 'file').map((n: { id: string }) => n.id);

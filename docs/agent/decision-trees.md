@@ -126,17 +126,17 @@ WHAT DOES USER WANT TO UNDERSTAND?
     │
     ├─ "How does data/control flow?"
     │   ├─ Control flow only
-    │   │   └─ COMMAND: xray graph --with cf
+    │   │   └─ COMMAND: xray map --flow --with cf
     │   │       TOKENS: 500-700
     │   │       NEXT: Understand logic flow
     │   │
     │   ├─ Data flow only
-    │   │   └─ COMMAND: xray graph --with df
+    │   │   └─ COMMAND: xray map --flow --with df
     │   │       TOKENS: 500-700
     │   │       NEXT: Understand data movement
     │   │
     │   └─ Both flows
-    │       └─ COMMAND: xray graph --with cf --with df
+    │       └─ COMMAND: xray map --flow --with cf --with df
     │           TOKENS: 800-1000
     │           NEXT: Complete flow understanding
     │
@@ -156,7 +156,7 @@ WHAT DOES USER WANT TO UNDERSTAND?
     │       NEXT: Narrow with --filter if needed
     │
     ├─ "Review a git diff or generate a handbook / Mermaid diagram?"
-    │   ├─ Diff review → xray review --base <ref>
+    │   ├─ Diff review → xray review --since <ref>
     │   ├─ Handbook → xray handbook
     │   └─ Diagram → xray diagram --view architecture|calls|cfg|dfg
     │

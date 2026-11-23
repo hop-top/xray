@@ -237,7 +237,7 @@ Tokens: 200
 Command: xray map --anchor src/auth.ts --with incs
 Tokens: 400
 
-Command: xray graph --path src/auth --with cf
+Command: xray map --flow --path src/auth --with cf
 Tokens: 250
 
 Total: 1200 tokens

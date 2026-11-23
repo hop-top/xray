@@ -45,22 +45,22 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-describe.each(['list', 'keys', 'values'])('config %s --format json', (sub) => {
+describe.each(['list', 'keys', 'values'])('config-files %s --format json', (sub) => {
   it('stdout parses as JSON', () => {
-    const r = run(['config', sub, '--format', 'json']);
+    const r = run(['config-files', sub, '--format', 'json']);
     expect(r.status).toBe(0);
     expect(() => JSON.parse(r.stdout)).not.toThrow();
     expect(r.stdout).not.toMatch(/Configuration (Files|Keys|Values):/);
   });
 });
 
-it('config list --format json carries the files', () => {
-  const doc = JSON.parse(run(['config', 'list', '--format', 'json']).stdout);
+it('config-files list --format json carries the files', () => {
+  const doc = JSON.parse(run(['config-files', 'list', '--format', 'json']).stdout);
   expect(doc.files.sort()).toEqual(['.env', 'config.json']);
   expect(doc.count).toBe(2);
 });
 
-it('config list in text mode keeps its heading', () => {
-  const r = run(['config', 'list']);
+it('config-files list in text mode keeps its heading', () => {
+  const r = run(['config-files', 'list']);
   expect(r.stdout).toContain('Configuration Files:');
 });

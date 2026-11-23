@@ -837,9 +837,17 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
   };
 
   // CLI --with flags override config features
-  const withFeatures = cliOptions.with || [];
+  const rawWith: string[] = cliOptions.with || [];
+  const withFeatures = rawWith.map((f: string) => {
+    const k = f.toLowerCase();
+    if (k === 'variables') return 'vars';
+    if (k === 'imports') return 'incs';
+    if (k === 'control-flow') return 'cf';
+    if (k === 'data-flow') return 'df';
+    return k;
+  });
   // cf/df are one selection: naming either on the command line replaces the
-  // config's, so `graph --with cf` is cf only whatever the config says.
+  // config's, so `map --with control-flow` is cf only whatever the config says.
   if (withFeatures.includes('cf') || withFeatures.includes('df')) {
     features.cf = false;
     features.df = false;
@@ -865,6 +873,13 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     assertPatternLengths(baseConfig.match, `"match" in ${files.length > 0 ? files.join(', ') : 'config'}`);
   }
 
+  const cliSymbols = (cliOptions.symbol && cliOptions.symbol.length > 0)
+    ? cliOptions.symbol
+    : cliOptions.catch;
+  const cliLanguages = (cliOptions.language && cliOptions.language.length > 0)
+    ? cliOptions.language
+    : cliOptions.lang;
+
   // Build final options with CLI taking precedence
   return {
     path: cliOptions.path && cliOptions.path.length > 0 ? cliOptions.path : (baseConfig.paths || []),
@@ -874,7 +889,7 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     anchor: cliOptions.anchor || baseConfig.anchor,
     depth: cliOptions.depth || baseConfig.depth?.toString(),
     match: cliOptions.match && cliOptions.match.length > 0 ? cliOptions.match : (baseConfig.match || []),
-    catch: cliOptions.catch && cliOptions.catch.length > 0 ? cliOptions.catch : (baseConfig.catch || []),
+    catch: cliSymbols && cliSymbols.length > 0 ? cliSymbols : (baseConfig.catch || []),
     query: cliOptions.query && cliOptions.query.length > 0 ? cliOptions.query : (baseConfig.queries || []),
     json: cliOptions.json ?? baseConfig.json ?? false,
     csv: cliOptions.csv || baseConfig.format === 'csv',
@@ -887,7 +902,7 @@ export function mergeConfig(config: XrayConfig | null, cliOptions: any, lens?: s
     // commander's `--no-chunk` defaults `chunk` to true: only an explicit false is a CLI choice.
     chunked: cliOptions.chunk === false ? false : baseConfig.chunked !== false,
     detect: cliOptions.detect ?? false,
-    languages: cliOptions.lang && cliOptions.lang.length > 0 ? cliOptions.lang : baseConfig.languages,
+    languages: cliLanguages && cliLanguages.length > 0 ? cliLanguages : baseConfig.languages,
     skipDetect: cliOptions.skipDetect ?? baseConfig.skipDetect ?? false,
     group: cliOptions.group,
     share: cliOptions.share ?? baseConfig.share ?? false,

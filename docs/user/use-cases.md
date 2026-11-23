@@ -44,7 +44,7 @@ xray impact <symbol> --graph .xray/graph.json --format brief --quiet
 
 against the graph the session-start hook saved. The agent can also ask
 directly: `xray impact <symbol> [--depth n] [--strict]`, or the `impact`
-tool of [`xray mcp`](mcp.md).
+tool of [`xray serve --stdio`](mcp.md).
 
 **Hook.** [`hooks/harness/xray-impact-context`](../../hooks/harness/xray-impact-context)
 (core), adapters for [Claude Code](../../hooks/harness/claude/README.md),

@@ -73,7 +73,7 @@ npx @hop-top/xray map
 **Solution:**
 ```bash
 # Clear cache
-xray clear-cache --confirm=yes
+xray cache clear --confirm=yes
 
 # Run analysis again
 xray map
@@ -131,7 +131,7 @@ xray map --anchor src/main.ts
 3. **For Go CLI**: Check `go.mod` includes Cobra or urfave/cli
 4. Clear cache and retry:
 ```bash
-xray clear-cache --confirm=yes && xray strategy detect
+xray cache clear --confirm=yes && xray strategy detect
 ```
 
 ### No Results from Strategy Command
@@ -158,9 +158,9 @@ xray react components -p /full/path/to/project
 1. First run is slower (AST parsing + detection). Subsequent runs use cache.
 2. Clear stale cache if you've made many changes:
 ```bash
-xray clear-cache --confirm=yes
+xray cache clear --confirm=yes
 ```
-3. Check the cache file size (`cache-db` in `xray paths`) - delete if too large (it will regenerate)
+3. Check the cache file size (`cache-db` in `xray config paths`) - delete if too large (it will regenerate)
 
 ### Outdated Strategy Results
 
@@ -171,7 +171,7 @@ xray clear-cache --confirm=yes
 1. Cache invalidates based on file modification time (should be automatic)
 2. Force cache clear:
 ```bash
-xray clear-cache --confirm=yes
+xray cache clear --confirm=yes
 ```
 3. Verify files were actually saved (check file timestamps)
 
@@ -309,7 +309,7 @@ xray map --limit 16000
 
 This usually indicates cache issues. Clear cache and regenerate:
 ```bash
-xray clear-cache --confirm=yes
+xray cache clear --confirm=yes
 xray map
 ```
 

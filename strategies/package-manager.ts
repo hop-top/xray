@@ -356,7 +356,7 @@ export default class PackageManagerStrategy implements Strategy {
   }
 
   commands = {
-    'list-dependencies': {
+    deps: {
       description: 'List all dependencies from all package managers in the project',
       async handler(ctx: StrategyContext) {
         // Collect files from different patterns

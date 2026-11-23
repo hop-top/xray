@@ -31,12 +31,6 @@ describe('Strategy Command E2E', () => {
       expect(output).toContain('react');
     });
 
-    test('should list strategies with ls alias', () => {
-      const output = execSync(`node ${CLI_PATH} strategy ls 2>&1`).toString();
-      expect(output).toContain('Available Strategies');
-      expect(output).toContain('react');
-    });
-
     test('should show version information for each strategy', () => {
       const output = execSync(`node ${CLI_PATH} strategy list 2>&1`).toString();
       expect(output).toMatch(/react v\d+\.\d+\.\d+/);
@@ -103,9 +97,9 @@ describe('Strategy Command E2E', () => {
     });
   });
 
-  describe('strategy info', () => {
+  describe('strategy show', () => {
     test('should show info for existing strategy', () => {
-      const output = execSync(`node ${CLI_PATH} strategy info react 2>&1`).toString();
+      const output = execSync(`node ${CLI_PATH} strategy show react 2>&1`).toString();
       expect(output).toContain('Strategy: react');
       expect(output).toContain('Version:');
       expect(output).toContain('Commands:');
@@ -113,21 +107,21 @@ describe('Strategy Command E2E', () => {
     });
 
     test('should show file types for strategy', () => {
-      const output = execSync(`node ${CLI_PATH} strategy info react 2>&1`).toString();
+      const output = execSync(`node ${CLI_PATH} strategy show react 2>&1`).toString();
       expect(output).toContain('File Types:');
       expect(output).toContain('.tsx');
       expect(output).toContain('.jsx');
     });
 
     test('should show detection status for current project', () => {
-      const output = execSync(`node ${CLI_PATH} strategy info react 2>&1`).toString();
+      const output = execSync(`node ${CLI_PATH} strategy show react 2>&1`).toString();
       expect(output).toContain('Detected in current project:');
       expect(output).toMatch(/Yes|No/);
     });
 
     test('should fail for non-existent strategy', () => {
       expect(() => {
-        execSync(`node ${CLI_PATH} strategy info non-existent-strategy 2>&1`, { encoding: 'utf-8' });
+        execSync(`node ${CLI_PATH} strategy show non-existent-strategy 2>&1`, { encoding: 'utf-8' });
       }).toThrow();
     });
   });
@@ -190,8 +184,8 @@ describe('Strategy Command E2E', () => {
     });
   });
 
-  describe('strategy remove', () => {
-    test('should remove an installed strategy', () => {
+  describe('strategy delete', () => {
+    test('should delete an installed strategy', () => {
       const strategyName = 'remove-test-strategy';
       const strategyFile = path.join(testRoot, '.xray/strategies', `${strategyName}.yml`);
       fs.mkdirSync(path.dirname(strategyFile), { recursive: true });
@@ -199,25 +193,15 @@ describe('Strategy Command E2E', () => {
 
       expect(fs.existsSync(strategyFile)).toBe(true);
 
-      const output = execSync(`node ${CLI_PATH} --confirm=yes strategy remove ${strategyName} 2>&1`, { cwd: testRoot }).toString();
+      const output = execSync(`node ${CLI_PATH} --confirm=yes strategy delete ${strategyName} 2>&1`, { cwd: testRoot }).toString();
       expect(output).toContain('Strategy removed');
 
       expect(fs.existsSync(strategyFile)).toBe(false);
     });
 
-    test('should remove strategy with uninstall alias', () => {
-      const strategyName = 'uninstall-test-strategy';
-      const strategyFile = path.join(testRoot, '.xray/strategies', `${strategyName}.yml`);
-      fs.mkdirSync(path.dirname(strategyFile), { recursive: true });
-      fs.writeFileSync(strategyFile, `name: ${strategyName}\nversion: 1.0.0`);
-
-      const output = execSync(`node ${CLI_PATH} --confirm=yes strategy uninstall ${strategyName} 2>&1`, { cwd: testRoot }).toString();
-      expect(output).toContain('Strategy removed');
-    });
-
     test('should fail for non-existent strategy', () => {
       expect(() => {
-        execSync(`node ${CLI_PATH} strategy remove non-existent 2>&1`, { encoding: 'utf-8' });
+        execSync(`node ${CLI_PATH} --confirm=yes strategy delete non-existent 2>&1`, { encoding: 'utf-8' });
       }).toThrow();
     });
   });
@@ -300,9 +284,9 @@ describe('Strategy Command E2E', () => {
       expect(output).toContain('detect');
       expect(output).toContain('create');
       expect(output).toContain('install');
-      expect(output).toContain('remove');
+      expect(output).toContain('delete');
       expect(output).toContain('validate');
-      expect(output).toContain('info');
+      expect(output).toContain('show');
       expect(output).toContain('path');
     });
 
@@ -315,24 +299,11 @@ describe('Strategy Command E2E', () => {
     });
   });
 
-  describe('backwards compatibility', () => {
-    // The colon meta-command form (`strategy:list`) was replaced by the
-    // space-separated subcommand form in af1af00; `strategy list` supersedes it.
-    test('strategy list (replaces strategy:list) should list strategies', () => {
+  describe('subcommand form', () => {
+    test('strategy list should list strategies', () => {
       const output = execSync(`node ${CLI_PATH} strategy list 2>&1`).toString();
       expect(output).toContain('Available Strategies');
       expect(output).toContain('react');
-    });
-
-    test('explore --list-strategies should still work', () => {
-      const output = execSync(`node ${CLI_PATH} explore --list-strategies 2>&1`).toString();
-      expect(output).toContain('Available Strategies');
-      expect(output).toContain('react');
-    });
-
-    test('strategy ls alias should list strategies', () => {
-      const output = execSync(`node ${CLI_PATH} strategy ls 2>&1`).toString();
-      expect(output).toContain('Available Strategies');
     });
   });
 });

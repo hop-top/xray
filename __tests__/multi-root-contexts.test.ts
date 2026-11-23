@@ -167,7 +167,7 @@ describe('multi-root contexts, merged chunked maps, and global PageRank', () => 
         ['map', '--context', 'ws', '--path', repoA],
         ['map', '--context', 'ws', '--scope', 's1'],
         ['map', '--context', 'ws', '--all-scopes'],
-        ['graph', '--context', 'ws', '--path', repoA],
+        ['map', '--flow', '--context', 'ws', '--path', repoA],
         ['impact', 'sharedHub', '--context', 'ws', '--graph', 'g.json'],
         ['impact', 'sharedHub', '--context', 'ws', '--path', repoA],
         ['query', 'calls(sharedHub)', '--context', 'ws', '--graph', 'g.json'],
@@ -184,7 +184,7 @@ describe('multi-root contexts, merged chunked maps, and global PageRank', () => 
   describe('2-repo merged chunked map, global PageRank, and CLI commands', () => {
     it('writes non-colliding root-prefixed .xray_*.md chunks and ranks cross-repo hub above isolated leaf', () => {
       const outBase = path.join(outDir, '.xray.md');
-      const res = run(base, 'map', '--context', 'ws', '-o', outBase, '--skip-detect');
+      const res = run(base, 'map', '--context', 'ws', '-o', outBase, '--no-detect');
       expect(res.status).toBe(0);
 
       const files = fs.readdirSync(outDir).filter((f) => f.startsWith('.xray_') && f.endsWith('.md'));
@@ -213,7 +213,7 @@ describe('multi-root contexts, merged chunked maps, and global PageRank', () => 
         'community',
         '-o',
         path.join(commDir, '.xray.md'),
-        '--skip-detect'
+        '--no-detect'
       );
       expect(res.status).toBe(0);
       const files = fs.readdirSync(commDir).filter((f) => f.startsWith('.xray_') && f.endsWith('.md'));

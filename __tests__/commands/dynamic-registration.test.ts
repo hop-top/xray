@@ -22,7 +22,7 @@ describe('Dynamic Command Registration', () => {
     });
 
     it('should register core static commands', () => {
-      const coreCommands = ['map', 'graph', 'query', 'cache', 'completion'];
+      const coreCommands = ['map', 'query', 'impact', 'imports', 'config', 'spec', 'serve', 'cache', 'completion'];
 
       for (const cmdName of coreCommands) {
         const cmd = program.commands.find(c => c.name() === cmdName);
@@ -30,22 +30,16 @@ describe('Dynamic Command Registration', () => {
       }
     });
 
-    it('should expose `cache clear` subcommand', () => {
+    it('should expose `cache clear` subcommand and remove `clear-cache`', () => {
       const cacheCmd = program.commands.find(c => c.name() === 'cache');
       expect(cacheCmd).toBeDefined();
       const clearSub = cacheCmd?.commands.find(c => c.name() === 'clear');
       expect(clearSub).toBeDefined();
+      expect(program.commands.find(c => c.name() === 'clear-cache')).toBeUndefined();
     });
 
-    it('should keep `clear-cache` as a hidden alias', () => {
-      const aliasCmd = program.commands.find(c => c.name() === 'clear-cache');
-      expect(aliasCmd).toBeDefined();
-      // Commander stores hidden flag on _hidden
-      expect((aliasCmd as unknown as { _hidden?: boolean })._hidden).toBe(true);
-    });
-
-    it('should register strategy and alias management commands', () => {
-      const managementCommands = ['strategy', 'alias'];
+    it('should register strategy, alias, language, and skill management commands', () => {
+      const managementCommands = ['strategy', 'alias', 'language', 'skill'];
 
       for (const cmdName of managementCommands) {
         const cmd = program.commands.find(c => c.name() === cmdName);
@@ -53,22 +47,21 @@ describe('Dynamic Command Registration', () => {
       }
     });
 
-    it('registers upgrade as a check only: no install action', () => {
-      // The package manager is the canonical upgrade path; `upgrade` only reports.
+    it('registers upgrade with a check subcommand: no install action', () => {
+      // The package manager is the canonical upgrade path; `upgrade check` only reports.
       const upgrade = program.commands.find(c => c.name() === 'upgrade');
       expect(upgrade).toBeDefined();
-      expect(upgrade!.commands).toHaveLength(0);
-      expect(upgrade!.options.map(o => o.long)).toEqual(['--check', '--format']);
+      expect(upgrade!.commands.map(c => c.name())).toEqual(['check']);
+      expect(upgrade!.commands[0].options.map(o => o.long)).toEqual(['--format']);
     });
 
-    it('should have analysis commands with descriptions', () => {
+    it('should have analysis commands with descriptions and omit removed commands', () => {
       const mapCmd = program.commands.find(c => c.name() === 'map');
-      expect(mapCmd?.description()).toBe('Generate visual map of codebase');
+      expect(mapCmd?.description()).toBe('Generate structural codebase map (and optional CFG/DFG via --flow)');
 
       expect(program.commands.find(c => c.name() === 'scan')).toBeUndefined();
-
-      const graphCmd = program.commands.find(c => c.name() === 'graph');
-      expect(graphCmd?.description()).toBe('Generate control flow (CFG) and data flow (DFG) graphs');
+      expect(program.commands.find(c => c.name() === 'graph')).toBeUndefined();
+      expect(program.commands.find(c => c.name() === 'mcp')).toBeUndefined();
     });
   });
 

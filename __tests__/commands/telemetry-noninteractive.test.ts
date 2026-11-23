@@ -49,7 +49,7 @@ describe('telemetry: piped subprocess with saved consent', () => {
   });
 
   it.each([
-    [['paths']],
+    [['config', 'paths']],
     [['map', '-p', '.', '--offline']],
   ])('xray %j writes no telemetry', (args) => {
     const r = spawnSync(process.execPath, [BIN, ...args], {

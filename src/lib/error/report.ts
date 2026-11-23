@@ -67,7 +67,6 @@ export function jsonRequested(argv: readonly string[], valueOptions: ReadonlySet
   const end = args.indexOf('--');
   const scan = end === -1 ? args : args.slice(0, end);
   let format: string | undefined;
-  let alias = false;
   let command: string | undefined;
   for (let i = 0; i < scan.length; i++) {
     const a = scan[i];
@@ -77,14 +76,12 @@ export function jsonRequested(argv: readonly string[], valueOptions: ReadonlySet
       if (i + 1 < scan.length) format = scan[++i];
     } else if (a.startsWith('--format=')) {
       format = a.slice('--format='.length);
-    } else if (a === '--json') {
-      alias = true;
     } else if (valueOptions.has(a)) {
       i++;
     }
   }
   if (format === undefined && command !== undefined && JSON_DEFAULT_COMMANDS.includes(command)) return true;
-  return format === 'json' || (alias && format === undefined);
+  return format === 'json';
 }
 
 /**

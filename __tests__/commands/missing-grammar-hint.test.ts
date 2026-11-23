@@ -19,7 +19,7 @@ const FIXTURE = path.join(__dirname, '../fixtures/lang-hint');
 
 // Only go + typescript grammars "installed".
 const BLOCK = LANGUAGE_PACKS.map(p => p.name).filter(n => n !== 'go' && n !== 'typescript').join(',');
-const HINT = 'found 2 .kt, 1 .swift files without installed grammars — install with: xray lang add kotlin swift';
+const HINT = 'found 2 .kt, 1 .swift files without installed grammars — install with: xray language add kotlin swift';
 
 let repo: string;
 let managed: string;
@@ -60,7 +60,7 @@ describe('missing-grammar hint (CLI)', () => {
     fs.rmSync(cacheHome, { recursive: true, force: true });
   });
 
-  const mapArgs = (out: string, ...extra: string[]) => ['map', '-p', repo, '--skip-detect', '--no-chunk', '-o', path.join(repo, out), ...extra];
+  const mapArgs = (out: string, ...extra: string[]) => ['map', '-p', repo, '--no-detect', '--no-chunk', '-o', path.join(repo, out), ...extra];
 
   it('default (human) output: one aggregated INFO hint on stderr, exit 0, kt/swift not parsed', () => {
     cold();
@@ -80,25 +80,25 @@ describe('missing-grammar hint (CLI)', () => {
     expect(fs.readdirSync(managed)).toEqual([]);
   }, 90_000);
 
-  it('--json: no hint on either stream, stdout untouched, exit 0', () => {
+  it('--format json: no hint on either stream, stdout untouched, exit 0', () => {
     cold();
-    const r = run(mapArgs('out.json', '--json'));
+    const r = run(mapArgs('out.json', '--format', 'json'));
     expect(r.status).toBe(0);
     expect(r.stderr).not.toContain('without installed grammar');
     expect(r.stdout).toBe('');
   }, 90_000);
 
-  it('lang list --json: stdout is pure JSON carrying the same info as data', () => {
-    const r = run(['lang', 'list', '--json', '--path', repo]);
+  it('language list --format json: stdout is pure JSON carrying the same info as data', () => {
+    const r = run(['language', 'list', '--format', 'json', '--path', repo]);
     expect(r.status).toBe(0);
     const out = JSON.parse(r.stdout);
     expect(out.detectedNotInstalled.map((d: any) => d.language)).toEqual(['kotlin', 'swift']);
     expect(r.stderr).not.toContain('without installed grammar');
   }, 90_000);
 
-  it('--json --verbose: hint plus per-language detail on stderr', () => {
+  it('--format json -V: hint plus per-language detail on stderr', () => {
     cold();
-    const r = run(['--log-level', 'debug', ...mapArgs('out-v.json', '--json')]);
+    const r = run(['-V', ...mapArgs('out-v.json', '--format', 'json')]);
     expect(r.status).toBe(0);
     expect(r.stderr).toContain(HINT);
     expect(r.stderr).toMatch(/kotlin: 2 files \(\.kt\).*Util\.kt/);
@@ -114,8 +114,8 @@ describe('missing-grammar hint (CLI)', () => {
   }, 90_000);
 
   // Exit 3 (not found) is today's documented code for a required, missing grammar.
-  it('--lang requiring a missing language still fails the run (exit 3)', () => {
-    const r = run(mapArgs('out-r.txt', '--lang', 'go,kotlin'));
+  it('--language requiring a missing language still fails the run (exit 3)', () => {
+    const r = run(mapArgs('out-r.txt', '--language', 'go,kotlin'));
     expect(r.status).toBe(3);
     expect(r.stderr).toContain("Grammar for 'kotlin' is not installed");
   }, 90_000);

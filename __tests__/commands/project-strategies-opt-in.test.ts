@@ -95,11 +95,11 @@ describe('off by default', () => {
     ['--help', ['--help']],
     ['map', ['map', '-o', 'out']],
     ['imports', ['imports']],
-    ['describe', ['describe']],
+    ['spec', ['spec']],
     ['strategy list', ['strategy', 'list']],
     ['strategy detect', ['strategy', 'detect']],
     ['strategy path', ['strategy', 'path']],
-    ['mcp (stdin closed)', ['mcp']],
+    ['serve --stdio (stdin closed)', ['serve', '--stdio']],
   ])('%s from inside the repo runs no project code', (_label, args) => {
     run(args, repo);
     expect(ran()).toEqual([]);
@@ -119,7 +119,7 @@ describe('off by default', () => {
 
   it('shell completion runs no project code', () => {
     run(['__complete', 'map', ''], repo, {}, true);
-    run(['__complete', 'strategy', 'info', ''], repo, {}, true);
+    run(['__complete', 'strategy', 'show', ''], repo, {}, true);
     expect(ran()).toEqual([]);
   });
 
@@ -186,7 +186,7 @@ describe('what the user is told', () => {
   it.each([
     ['strategy list', ['strategy', 'list']],
     ['strategy detect', ['strategy', 'detect']],
-    ['strategy info <name>', ['strategy', 'info', 'vecxrayjs']],
+    ['strategy show <name>', ['strategy', 'show', 'vecxrayjs']],
     ['strategy validate <name>', ['strategy', 'validate', 'vecxrayjs']],
     ['strategy path', ['strategy', 'path']],
     ['a named strategy command', ['vecxrayjs', 'go']],
@@ -221,8 +221,8 @@ describe('what the user is told', () => {
     });
   });
 
-  it('a skipped strategy named in strategy info fails, with the hint', () => {
-    const r = run(['strategy', 'info', 'vecxrayjs'], repo);
+  it('a skipped strategy named in strategy show fails, with the hint', () => {
+    const r = run(['strategy', 'show', 'vecxrayjs'], repo);
     expect(r.status).not.toBe(0);
     expect(r.stderr).toContain(`${VAR}=1`);
   });
@@ -230,7 +230,7 @@ describe('what the user is told', () => {
   it.each([
     ['map', ['map', '-o', 'out']],
     ['imports', ['imports']],
-    ['describe', ['describe']],
+    ['spec', ['spec']],
     ['--version', ['--version']],
     ['-p from elsewhere', ['map', '-p', '__REPO__', '-o', 'out']],
   ])('%s stays quiet at the default level', (_label, args) => {
@@ -241,7 +241,7 @@ describe('what the user is told', () => {
   });
 
   it('map notes it at debug level', () => {
-    const r = run(['--log-level', 'debug', 'map', '-o', 'out'], repo);
+    const r = run(['-V', 'map', '-o', 'out'], repo);
     expect(r.stderr).toContain(`${VAR}=1`);
     expect(r.stderr).toContain('.xray/strategies/vecxrayjs.js');
   });
@@ -256,7 +256,7 @@ describe('what the user is told', () => {
 
   it('listing the skipped names does not execute them', () => {
     run(['strategy', 'list'], repo);
-    run(['--log-level', 'debug', 'map', '-o', 'out'], repo);
+    run(['-V', 'map', '-o', 'out'], repo);
     expect(ran()).toEqual([]);
   });
 });
@@ -284,7 +284,7 @@ describe(`with ${VAR}=1`, () => {
   });
 
   it('shell completion still loads nothing from the project', () => {
-    run(['__complete', 'strategy', 'info', ''], repo, env, true);
+    run(['__complete', 'strategy', 'show', ''], repo, env, true);
     expect(ran()).toEqual([]);
   });
 

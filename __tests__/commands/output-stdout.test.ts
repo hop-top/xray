@@ -42,9 +42,12 @@ describe('-o - writes to stdout', () => {
   });
   afterEach(() => fs.rmSync(sandbox, { recursive: true, force: true }));
 
-  describe.each(['map', 'graph'])('%s', (cmd) => {
+  describe.each<[string, string[]]>([
+    ['map', ['map']],
+    ['map --flow', ['map', '--flow']],
+  ])('%s', (_label, baseCmd) => {
     it('text: one unchunked document on stdout, no file', () => {
-      const r = run([cmd, '-o', '-']);
+      const r = run([...baseCmd, '-o', '-']);
       expect(r.status).toBe(0);
       expect(r.stdout).toContain('a.ts');
       expect(r.stdout).not.toMatch(/written to/);
@@ -52,7 +55,7 @@ describe('-o - writes to stdout', () => {
     });
 
     it('json: stdout is the whole graph document, no file', () => {
-      const r = run([cmd, '--format', 'json', '--output=-']);
+      const r = run([...baseCmd, '--format', 'json', '--output=-']);
       expect(r.status).toBe(0);
       const graph = JSON.parse(r.stdout);
       expect(Array.isArray(graph.nodes)).toBe(true);
@@ -60,14 +63,14 @@ describe('-o - writes to stdout', () => {
     });
 
     it('xml: stdout is the graph document, no file', () => {
-      const r = run([cmd, '--format', 'xml', '-o', '-']);
+      const r = run([...baseCmd, '--format', 'xml', '-o', '-']);
       expect(r.status).toBe(0);
       expect(r.stdout).toMatch(/<graph[\s>]/);
       expect(names()).toEqual(['a.ts']);
     });
 
     it('csv: usage error, nothing written', () => {
-      const r = run([cmd, '--format', 'csv', '-o', '-']);
+      const r = run([...baseCmd, '--format', 'csv', '-o', '-']);
       expect(r.status).toBe(2);
       expect(r.stdout).toBe('');
       expect(r.stderr).toMatch(/csv/);
@@ -75,14 +78,14 @@ describe('-o - writes to stdout', () => {
     });
 
     it('--share without a path: usage error, nothing written', () => {
-      const r = run([cmd, '--share', '-o', '-']);
+      const r = run([...baseCmd, '--share', '-o', '-']);
       expect(r.status).toBe(2);
       expect(r.stdout).toBe('');
       expect(names()).toEqual(['a.ts']);
     });
 
     it('--share <path>: summary to the file, result on stdout', () => {
-      const r = run([cmd, '--share', 'sum.md', '-o', '-']);
+      const r = run([...baseCmd, '--share', 'sum.md', '-o', '-']);
       expect(r.status).toBe(0);
       expect(r.stdout).toContain('a.ts');
       expect(names()).toEqual(['a.ts', 'sum.md']);

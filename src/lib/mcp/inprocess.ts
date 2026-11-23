@@ -45,10 +45,9 @@ const GRAPH_FORMATS = new Set(['json', 'xml', 'csv']);
 const SUPPORTED: Readonly<Record<string, ReadonlySet<string>>> = {
   impact: new Set(['symbol', 'depth', 'strict', 'format', 'lens', 'scope']),
   query: new Set(['query', 'format', 'list-adapters']),
-  imports: new Set(['path', 'lang', 'format', 'no-cache', 'no-ignore', 'paths']),
+  imports: new Set(['path', 'language', 'format', 'no-cache', 'no-ignore', 'paths']),
   explore: new Set(['path', 'match', 'search', 'type', 'stats', 'format']),
-  map: new Set(['path', 'anchor', 'query', 'limit', 'with', 'depth', 'match', 'catch', 'lang', 'lens', 'scope', 'format', 'json', 'csv', 'xml', 'txt']),
-  graph: new Set(['path', 'anchor', 'query', 'limit', 'with', 'depth', 'match', 'catch', 'lang', 'lens', 'scope', 'format', 'json', 'csv', 'xml', 'txt']),
+  map: new Set(['path', 'anchor', 'query', 'limit', 'with', 'flow', 'depth', 'match', 'symbol', 'language', 'lens', 'scope', 'format']),
 };
 
 /**
@@ -75,7 +74,7 @@ export function canRunInProcess(
     if (!supported.has(key)) return false;
   }
   if (def.name === 'explore' && serverRoot && hasProjectStrategyCode(serverRoot)) return false;
-  if (def.name === 'map' || def.name === 'graph') {
+  if (def.name === 'map') {
     // Only single-root graph documents: multi-root merging and the chunked
     // text map (strategy auto-detection, chunk files) stay on the CLI path.
     const paths = args?.path;
@@ -88,10 +87,6 @@ export function canRunInProcess(
 function graphFormat(args: Record<string, unknown> | undefined): string {
   const a = args ?? {};
   if (typeof a.format === 'string' && a.format !== '') return a.format;
-  if (a.json === true) return 'json';
-  if (a.csv === true) return 'csv';
-  if (a.xml === true) return 'xml';
-  if (a.txt === true) return 'txt';
   return 'txt';
 }
 
@@ -264,8 +259,7 @@ export async function runInProcess(
     case 'explore':
       return explore(a, scope, callRoot);
     case 'map':
-    case 'graph':
-      return mapGraph(a, def, scope, callRoot);
+      return mapGraph(a, scope, callRoot);
     default:
       throw new ToolArgumentError(`tool ${def.name} is not available in-process`);
   }
@@ -308,7 +302,7 @@ async function imports(a: Args, scope: InProcessScope, callRoot: string): Promis
   const root = a.has('path') ? a.scalar('path')! : callRoot;
   const doc = handleImportsAction(a.list('paths'), {
     path: root,
-    lang: a.list('lang'),
+    language: a.list('language'),
     ignore: a.bool('no-ignore') === true ? false : true,
     cache: a.bool('no-cache') === true ? false : true,
   });
@@ -341,12 +335,19 @@ async function explore(a: Args, scope: InProcessScope, callRoot: string): Promis
   return { stdout, stderr: '', exitCode: 0 };
 }
 
-async function mapGraph(a: Args, def: ToolDef, scope: InProcessScope, callRoot: string): Promise<InvokeResult> {
+async function mapGraph(a: Args, scope: InProcessScope, callRoot: string): Promise<InvokeResult> {
   const format = graphFormat(a.all());
   const paths = a.list('path');
   const root = paths.length > 0 ? paths[0] : callRoot;
-  let withFeatures = a.list('with');
-  if (def.name === 'graph' && !withFeatures.includes('cf') && !withFeatures.includes('df')) {
+  let withFeatures = a.list('with').map((f) => {
+    const k = f.toLowerCase();
+    if (k === 'variables') return 'vars';
+    if (k === 'imports') return 'incs';
+    if (k === 'control-flow') return 'cf';
+    if (k === 'data-flow') return 'df';
+    return k;
+  });
+  if (a.bool('flow') && !withFeatures.includes('cf') && !withFeatures.includes('df')) {
     withFeatures = [...withFeatures, 'cf', 'df'];
   }
   const features: Record<string, boolean> = {};
@@ -356,9 +357,9 @@ async function mapGraph(a: Args, def: ToolDef, scope: InProcessScope, callRoot: 
     configPath: scope.serverConfig ?? undefined,
     lens: a.scalar('lens'),
     scope: a.scalar('scope'),
-    lang: a.list('lang'),
+    lang: a.list('language'),
     match: a.list('match'),
-    catch: a.list('catch'),
+    catch: a.list('symbol'),
     queries: a.list('query'),
     limit: a.integer('limit'),
     depth: a.integer('depth'),

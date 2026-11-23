@@ -60,24 +60,8 @@ describe('CLI E2E - Complete Command Coverage', () => {
             fs.rmSync(root, { recursive: true, force: true });
         });
 
-        test('deprecated `clear-cache` alias still resolves', () => {
-            const root = path.join(__dirname, 'manual-cache-alias');
-            if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true });
-
-            const cachePath = projectCacheDbPath(root)!;
-            fs.mkdirSync(path.dirname(cachePath), { recursive: true });
-            fs.writeFileSync(cachePath, 'fake cache content');
-            expect(fs.existsSync(cachePath)).toBe(true);
-
-            execSync(`node ${CLI_PATH} --confirm=yes clear-cache`, { cwd: root });
-
-            expect(fs.existsSync(cachePath)).toBe(false);
-
-            fs.rmSync(root, { recursive: true, force: true });
-        });
-
-        test('--help omits hidden `clear-cache` alias but lists `cache`', () => {
-            const output = execSync(`node ${CLI_PATH} --help`).toString();
+        test('`--help-all` lists `cache` and omits removed `clear-cache`', () => {
+            const output = execSync(`node ${CLI_PATH} --help-all`).toString();
             expect(output).toContain('cache');
             expect(output).not.toMatch(/^\s*clear-cache\b/m);
         });

@@ -36,7 +36,7 @@ describe('verbosity: all forms resolve identically', () => {
   });
   afterAll(() => fs.rmSync(repo, { recursive: true, force: true }));
 
-  const rest = () => ['-p', repo, '--skip-detect', '--no-chunk', '-o', path.join(repo, 'out.txt')];
+  const rest = () => ['-p', repo, '--no-detect', '--no-chunk', '-o', path.join(repo, 'out.txt')];
 
   const forms: Array<[string, () => string[]]> = [
     ['leading -V', () => ['-V', 'map', ...rest()]],
@@ -44,8 +44,6 @@ describe('verbosity: all forms resolve identically', () => {
     ['-V after subcommand', () => ['map', '-V', ...rest()]],
     ['trailing -V', () => ['map', ...rest(), '-V']],
     ['stacked -VV', () => ['-VV', 'map', ...rest()]],
-    ['leading --log-level debug', () => ['--log-level', 'debug', 'map', ...rest()]],
-    ['--log-level=debug', () => ['--log-level=debug', 'map', ...rest()]],
   ];
 
   test.each(forms)('%s: runs map and emits debug output', (_name, args) => {
@@ -64,25 +62,14 @@ describe('verbosity: all forms resolve identically', () => {
     expect(r.stderr).not.toContain(CONFIG_MARKER);
   });
 
-  test('--log-level info: no debug output', () => {
-    const r = run(['--log-level', 'info', 'map', ...rest()]);
-    expect(r.stderr).not.toContain(MARKER);
-  });
-
-  test('--log-level beats -V', () => {
-    const r = run(['-V', '--log-level', 'warn', 'map', ...rest()]);
-    expect(r.stderr).not.toContain(MARKER);
-  });
-
   test('--quiet beats a leading -V', () => {
     const r = run(['-V', '--quiet', 'map', ...rest()]);
     expect(r.stderr).not.toContain(MARKER);
   });
 
-  test('invalid --log-level is a usage error', () => {
-    const r = run(['--log-level', 'loud', 'map', ...rest()]);
+  test('--log-level is rejected as an unknown option', () => {
+    const r = run(['--log-level', 'debug', 'map', ...rest()]);
     expect(r.status).toBe(2);
-    expect(r.stderr).toContain("invalid --log-level 'loud'");
   });
 
   test('-v prints the version, not verbosity', () => {
@@ -99,14 +86,7 @@ describe('resolveLogLevel', () => {
     expect(resolveLogLevel({ verbose: 3 })).toBe('debug');
     expect(levelForVerboseCount(0)).toBe('info');
   });
-  test('--log-level overrides -V and is case-insensitive', () => {
-    expect(resolveLogLevel({ verbose: 2, logLevel: 'WARN' })).toBe('warn');
-    expect(resolveLogLevel({ logLevel: 'silent' })).toBe('silent');
-  });
-  test('--quiet beats everything', () => {
-    expect(resolveLogLevel({ quiet: true, verbose: 2, logLevel: 'debug' })).toBe('error');
-  });
-  test('unknown level throws a usage error', () => {
-    expect(() => resolveLogLevel({ logLevel: 'loud' })).toThrow(/invalid --log-level/);
+  test('--quiet beats -V', () => {
+    expect(resolveLogLevel({ quiet: true, verbose: 2 })).toBe('error');
   });
 });

@@ -1,4 +1,3 @@
-import { handleMetaStrategyCommand } from './strategy';
 import type { Command } from 'commander';
 import { addExploreOutputFlags, handleExploreAction } from './explore';
 import { program, theme } from './root-program';
@@ -25,7 +24,7 @@ export async function registerCommands(options: CodeLoadingOptions = {}, configP
   // 2. Register dynamic strategy commands
   await registerStrategyCommands(program, options);
 
-  // 3. Register explore command (default) with backward compatibility
+  // 3. Register explore command (default)
   registerExploreCommand();
 
   // 4. Register user-defined aliases from config (reserved names = every command above)
@@ -63,16 +62,9 @@ function registerExploreCommand(): void {
       return previous.concat([value]);
     }, [])
     .option('--filter <expr>', 'Filter results using boolean DSL (e.g., "lang:typescript -file:test")')
-    .option('--stats', 'Show codebase statistics')
-    .option('--list-strategies', 'List all available strategies');
+    .option('--stats', 'Show codebase statistics');
   addExploreOutputFlags(explore)
     .action(async (options: ExploreCommandOptions, cmd: Command) => {
-      if (options.listStrategies) {
-        await handleMetaStrategyCommand('list', options as any, cmd);
-        return;
-      }
-
-      // Handle regular explore options
       await handleExploreAction(options, cmd);
     });
   declareEffect(explore, 'read', 'yes');

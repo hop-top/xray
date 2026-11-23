@@ -107,8 +107,8 @@ describe('commands see every file', () => {
     for (const [n, fn] of names) expect(graph).toContain(`${JSON.stringify(posixPath(n)).slice(1, -1)}::${fn}`);
   });
 
-  it('lang list counts every file', () => {
-    const r = run(['lang', 'list', '--format', 'json']);
+  it('language list counts every file', () => {
+    const r = run(['language', 'list', '--format', 'json']);
     expect(r.status).toBe(0);
     const ts = (JSON.parse(r.stdout).languages as Array<{ language: string; files: number }>).find((l) => l.language === 'typescript')!;
     expect(ts.files).toBe(names.length);

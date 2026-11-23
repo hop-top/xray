@@ -77,7 +77,7 @@ describe('side-effect declarations', () => {
 
     // The walk sees what it must: strategy commands and aliases are in it.
     expect(all).toEqual(expect.arrayContaining([
-      'map', 'strategy remove', 'cache clear', 'mcp', 'help', 'completion bash',
+      'map', 'strategy delete', 'cache clear', 'serve', 'help', 'completion bash',
       'react components', 'express routes', 'comps', 'routes',
     ]));
     expect(undeclared(program)).toEqual([]);
@@ -89,15 +89,9 @@ describe('side-effect declarations', () => {
       p,
       resolveDryRunPolicy(cmd.name(), (cmd as unknown as { annotations?: Record<string, string> }).annotations ?? {}),
     ]));
-    // `watch`, `tui`, `serve`, and `mcp` are live sessions: kit refuses them in plain words. Nothing else is refused.
+    // `watch`, `tui`, and `serve` are live sessions: kit refuses them in plain words. Nothing else is refused.
     const refused = [...policies].filter(([, v]) => v !== 'allow' && v !== 'noop').map(([k, v]) => `${k}: ${v}`);
-    console.log(policies.size, policies.get('mcp'));
-    expect(refused).toEqual([
-      'watch: reject-interactive',
-      'tui: reject-interactive',
-      'serve: reject-interactive',
-      'mcp: reject-interactive',
-    ]);
+    expect(refused).toEqual(['watch: reject-interactive', 'tui: reject-interactive', 'serve: reject-interactive']);
   });
 
   it('describe reports the declared tiers, never a default', async () => {

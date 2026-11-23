@@ -110,9 +110,9 @@ describe.each([['on'], ['off']])('consent %s: the project is left as found', (co
   const cases: Array<[string, (out: string) => string[]]> = [
     ['map', (o) => ['map', '-p', '.', '-o', path.join(o, 'm')]],
     ['map --format json', (o) => ['map', '-p', '.', '--format', 'json', '-o', path.join(o, 'm.json')]],
-    ['graph', (o) => ['graph', '-p', '.', '-o', path.join(o, 'g')]],
-    ['paths', () => ['paths']],
-    ['describe', () => ['describe']],
+    ['map --flow', (o) => ['map', '--flow', '-p', '.', '-o', path.join(o, 'g')]],
+    ['config paths', () => ['config', 'paths']],
+    ['spec', () => ['spec']],
     ['imports', (o) => ['imports', '-p', '.', '-o', path.join(o, 'i.json')]],
   ];
 
@@ -132,7 +132,7 @@ describe.each([['on'], ['off']])('consent %s: the project is left as found', (co
   it('consent on records into the state dir (control); off records nothing', () => {
     setConsent(consent === 'on');
     const proj = mkProject('proj');
-    const r = xray(['paths'], proj, { tty: true });
+    const r = xray(['config', 'paths'], proj, { tty: true });
     expect(r.status).toBe(0);
     expect(fs.existsSync(telemetryOf(proj))).toBe(consent === 'on');
     expect(fs.existsSync(path.join(proj, '.xray'))).toBe(false);
@@ -140,11 +140,11 @@ describe.each([['on'], ['off']])('consent %s: the project is left as found', (co
 });
 
 describe('cache location', () => {
-  it('map writes its db under XDG_CACHE_HOME keyed by the project, and `paths` reports it', () => {
+  it('map writes its db under XDG_CACHE_HOME keyed by the project, and `config paths` reports it', () => {
     const proj = mkProject('proj');
     expect(xray(['map', '-p', '.', '-o', path.join(base, 'o')], proj).status).toBe(0);
     expect(fs.existsSync(cacheDbOf(proj))).toBe(true);
-    const p = JSON.parse(xray(['paths', '--format', 'json'], proj).stdout);
+    const p = JSON.parse(xray(['config', 'paths', '--format', 'json'], proj).stdout);
     expect(p.cacheDb).toBe(cacheDbOf(proj));
     expect(p.cacheDbExists).toBe(true);
     expect(p.telemetry).toBe(telemetryOf(proj));
@@ -154,7 +154,7 @@ describe('cache location', () => {
     const proj = mkProject('proj');
     const out1 = path.join(base, 'o1');
     const out2 = path.join(base, 'o2');
-    expect(xray(['map', '-p', '.', '--txt', '-o', out1], proj).status).toBe(0);
+    expect(xray(['map', '-p', '.', '--format', 'txt', '-o', out1], proj).status).toBe(0);
     expect(fs.readFileSync(`${out1}_root.txt`, 'utf-8')).toContain('hello');
     // Rewrite the cached tags of every file: a hit surfaces the marker.
     const store = open(cacheDbOf(proj));
@@ -164,7 +164,7 @@ describe('cache location', () => {
     const upd = db.prepare('UPDATE kv SET value = ? WHERE key = ?');
     for (const row of rows) upd.run(String(row.value).split('hello').join('zzcachedname'), row.key);
     store.close();
-    expect(xray(['map', '-p', '.', '--txt', '-o', out2], proj).status).toBe(0);
+    expect(xray(['map', '-p', '.', '--format', 'txt', '-o', out2], proj).status).toBe(0);
     expect(fs.readFileSync(`${out2}_root.txt`, 'utf-8')).toContain('zzcachedname');
   });
 
@@ -181,8 +181,8 @@ describe('cache location', () => {
     store.close();
     const outOne = path.join(base, 'p1');
     const outTwo = path.join(base, 'p2');
-    xray(['map', '-p', '.', '--txt', '-o', outOne], one);
-    xray(['map', '-p', '.', '--txt', '-o', outTwo], two);
+    xray(['map', '-p', '.', '--format', 'txt', '-o', outOne], one);
+    xray(['map', '-p', '.', '--format', 'txt', '-o', outTwo], two);
     expect(fs.readFileSync(`${outOne}_root.txt`, 'utf-8')).toContain('zzcachedname');
     expect(fs.readFileSync(`${outTwo}_root.txt`, 'utf-8')).not.toContain('zzcachedname');
   });
@@ -218,7 +218,7 @@ describe('cache location', () => {
     const proj = mkProject('proj');
     const blocker = path.join(base, 'blocker');
     fs.writeFileSync(blocker, 'a file where the cache dir should be');
-    const r = xray(['map', '-p', '.', '--txt', '-o', path.join(base, 'o')], proj, { env: { XDG_CACHE_HOME: blocker } });
+    const r = xray(['map', '-p', '.', '--format', 'txt', '-o', path.join(base, 'o')], proj, { env: { XDG_CACHE_HOME: blocker } });
     expect(r.status).toBe(0);
     expect(fs.readFileSync(path.join(base, 'o_root.txt'), 'utf-8')).toContain('hello');
     expect(tree(proj)).toEqual(['a.ts', 'b.py']);
@@ -229,7 +229,7 @@ describe('cache location', () => {
     const proj = mkProject('ro');
     fs.chmodSync(proj, 0o555);
     for (const args of [['map', '-p', '.', '-o', path.join(base, 'o')],
-      ['graph', '-p', '.', '-o', path.join(base, 'g')], ['imports', '-p', '.', '-o', path.join(base, 'i.json')], ['paths'], ['describe']]) {
+      ['map', '--flow', '-p', '.', '-o', path.join(base, 'g')], ['imports', '-p', '.', '-o', path.join(base, 'i.json')], ['config', 'paths'], ['spec']]) {
       const r = xray(args, proj);
       expect({ args, status: r.status, err: r.stderr }).toEqual({ args, status: 0, err: r.stderr });
     }
@@ -269,7 +269,7 @@ const mode = (p: string) => fs.statSync(p).mode & 0o777;
     const sink = telemetryOf(proj);
     fs.mkdirSync(path.dirname(sink), { recursive: true });
     fs.chmodSync(path.dirname(sink), 0o755);
-    expect(xray(['paths'], proj, { tty: true }).status).toBe(0);
+    expect(xray(['config', 'paths'], proj, { tty: true }).status).toBe(0);
     expect(fs.existsSync(sink)).toBe(true);
     expect(mode(path.dirname(sink))).toBe(0o700);
     expect(mode(sink)).toBe(0o600);

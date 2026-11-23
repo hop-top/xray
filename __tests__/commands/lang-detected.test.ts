@@ -42,32 +42,32 @@ describe('xray lang list: detected, not installed', () => {
     jest.restoreAllMocks();
   });
 
-  it('--json includes detectedNotInstalled as data', async () => {
+  it('--format json includes detectedNotInstalled as data', async () => {
     const lines = capture();
-    await registerLangCommand().parseAsync(['node', 'lang', 'list', '--json', '--path', repo]);
+    await registerLangCommand().parseAsync(['node', 'language', 'list', '--format', 'json', '--path', repo]);
     const out = JSON.parse(lines.join('\n'));
     expect(out.detectedNotInstalled).toEqual([
       { language: 'kotlin', files: 2, extensions: { '.kt': 2 }, status: 'not-installed' },
       { language: 'swift', files: 1, extensions: { '.swift': 1 }, status: 'not-installed' },
     ]);
-    expect(out.install).toBe('xray lang add kotlin swift');
+    expect(out.install).toBe('xray language add kotlin swift');
   });
 
   it('human output has a detected-not-installed section with counts and the fix', async () => {
     const lines = capture();
-    await registerLangCommand().parseAsync(['node', 'lang', 'list', '--path', repo]);
+    await registerLangCommand().parseAsync(['node', 'language', 'list', '--path', repo]);
     const text = lines.join('\n');
     expect(text).toContain('Detected in this repo, not installed:');
     expect(text).toMatch(/kotlin\s+2 files \(\.kt\)/);
     expect(text).toMatch(/swift\s+1 file \(\.swift\)/);
-    expect(text).toContain('xray lang add kotlin swift');
+    expect(text).toContain('xray language add kotlin swift');
   });
 
   it('json has an empty list when every detected language is installed', async () => {
     delete process.env.XRAY_LANG_BLOCK;
     resetGrammarCache();
     const lines = capture();
-    await registerLangCommand().parseAsync(['node', 'lang', 'list', '--json', '--path', repo]);
+    await registerLangCommand().parseAsync(['node', 'language', 'list', '--format', 'json', '--path', repo]);
     const out = JSON.parse(lines.join('\n'));
     expect(out.detectedNotInstalled).toEqual([]);
     expect(out.install).toBeNull();

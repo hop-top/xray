@@ -9,7 +9,7 @@ describe('-p is --path', () => {
   beforeAll(() => {
     p = createCliProject({ 'package.json': '{"name":"x"}' });
     const walk = (d: Doc): Doc[] => [d, ...d.subcommands.flatMap(walk)];
-    all = (JSON.parse(p.run('describe').stdout).commands as Doc[]).flatMap(walk);
+    all = (JSON.parse(p.run('spec').stdout).commands as Doc[]).flatMap(walk);
   });
   afterAll(() => p.cleanup());
 

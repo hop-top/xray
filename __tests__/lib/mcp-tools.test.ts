@@ -34,15 +34,15 @@ function tree(): Command {
     .option('-p, --path <path>', 'Root directory (repeatable)', repeat, [])
     .option('-o, --output <path>', 'Output file')
     .option('-a, --anchor <path>', 'Focus file')
-    .option('-q, --query <item>', 'Override query (repeatable)', repeat, [])
+    .option('--query <item>', 'Override query (repeatable)', repeat, [])
     .option('--share [path]', 'Share summary')
     .option('--detect', 'Detect')
-    .option('--skip-detect', 'Skip detect')
+    .option('--no-detect', 'Skip detect')
     .option('--no-chunk', 'Single file');
   const strategy = root.command('strategy');
   setCommandGroup(strategy, 'strategy');
   strategy.command('list');
-  strategy.command('remove').argument('<name>');
+  strategy.command('delete').argument('<name>');
   const cache = root.command('cache');
   cache.command('clear');
   const react = root.command('react');
@@ -50,7 +50,7 @@ function tree(): Command {
   declareEffect(react.command('hooks').option('-p, --path <path>', 'Project path').option('--exec-binary', 'run code'), 'read', 'yes');
   const build = root.command('build');
   setCommandGroup(build, 'strategy');
-  declareEffect(build.command('run').option('-p, --path <path>', 'Project path').option('--target <t>', 'Target'), 'read', 'yes');
+  declareEffect(build.command('show').argument('<target>', 'Target').option('-p, --path <path>', 'Project path'), 'read', 'yes');
   declareEffect(build.command('exec').argument('<target>', 'Target').option('-p, --path <path>', 'Project path'), 'destructive-local', 'no');
   build.command('undeclared').option('-p, --path <path>', 'Project path');
   const config = root.command('config-files');
@@ -66,12 +66,12 @@ function tree(): Command {
     .option('-p, --path <path>', 'Root directory (repeatable)', repeat, [])
     .option('--lens <name>', 'Lens')
     .option('--scope <name>', 'Scope')
-    .option('--lang <list>', 'Languages', repeat, [])
+    .option('--language <list>', 'Languages', repeat, [])
     .option('--format <fmt>', 'Format');
   root.command('imports')
     .argument('[paths...]', 'Files or directories inside the root')
     .option('-p, --path <root>', 'Root directory')
-    .option('--lang <list>', 'Languages', repeat, [])
+    .option('--language <list>', 'Languages', repeat, [])
     .option('-o, --output <path>', 'Output file')
     .option('--no-ignore', 'List git-ignored files too')
     .option('--format <fmt>', 'Format');
@@ -95,11 +95,11 @@ describe('isExposedPath', () => {
   it.each([['explore'], ['map'], ['impact'], ['strategy list'], ['react hooks']])('exposes %s', (p) => {
     expect(isExposedPath(root, p.split(' '))).toBe(true);
   });
-  it.each([['cache clear'], ['alias set'], ['strategy remove']])('hides %s', (p) => {
+  it.each([['cache clear'], ['alias set'], ['strategy delete']])('hides %s', (p) => {
     expect(isExposedPath(root, p.split(' '))).toBe(false);
   });
   it('exposes a strategy command declared read', () => {
-    expect(isExposedPath(root, ['build', 'run'])).toBe(true);
+    expect(isExposedPath(root, ['build', 'show'])).toBe(true);
   });
   it('hides a strategy command declared above read (build exec)', () => {
     expect(isExposedPath(root, ['build', 'exec'])).toBe(false);
@@ -153,12 +153,12 @@ describe('shapeLeaf', () => {
     expect(def.policy).toMatchObject({ root: 'path', configFromPath: true, detectOnRoot: false });
   });
 
-  it('exposes imports: paths positional (array), path/lang/format/no-ignore, root; no output', () => {
+  it('exposes imports: paths positional (array), path/language/format/no-ignore, root; no output', () => {
     const { leaf, def } = shaped(root, ['imports']);
-    expect(Object.keys(leaf.properties).sort()).toEqual(['format', 'lang', 'no-ignore', 'path', 'paths', 'root']);
+    expect(Object.keys(leaf.properties).sort()).toEqual(['format', 'language', 'no-ignore', 'path', 'paths', 'root']);
     expect(leaf.properties['no-ignore'].type).toBe('boolean');
     expect(leaf.properties.paths).toMatchObject({ type: 'array', items: { type: 'string' } });
-    expect(leaf.properties.lang.type).toBe('array');
+    expect(leaf.properties.language.type).toBe('array');
     expect(leaf.required).toBeUndefined();
     expect(leaf.description).toMatch(/xray\.imports\/v1/);
     expect(def).toMatchObject({ name: 'imports', positionals: ['paths'], fileOutput: false });
@@ -245,7 +245,7 @@ describe('buildArgv', () => {
     expect(buildArgv(d, m, { root: 'sub' }, scope)).toEqual({
       argv: ['map', '--path=/srv/sub', '--detect'], projectDirs: ['/srv/sub'],
     });
-    expect(argv(d, m, { 'skip-detect': true }, scope)).toEqual(['map', '--path=/srv/sub', '--skip-detect']);
+    expect(argv(d, m, { 'no-detect': true }, scope)).toEqual(['map', '--path=/srv/sub', '--no-detect']);
     expect(buildArgv(d, m, { path: ['x'], anchor: 'x/a.ts' }, scope)).toEqual({
       argv: ['map', '--path=/srv/sub/x', '--anchor=/srv/sub/x/a.ts'], projectDirs: ['/srv/sub/x'],
     });
@@ -349,8 +349,8 @@ describe('root containment', () => {
       expect(() => buildArgv(d, c, { paths: ['sub', p] }, scope)).toThrow(/paths "[^"]*" is outside the server root/);
     }
     expect(() => buildArgv(d, c, { paths: ['https://example.com/x'] }, scope)).toThrow(/not a URL/);
-    expect(buildArgv(d, c, { paths: ['sub', 'sub/x.py'], lang: ['go'] }, scope).argv).toEqual([
-      'imports', '--lang=go', '--', path.join(serverRoot, 'sub'), path.join(serverRoot, 'sub/x.py'),
+    expect(buildArgv(d, c, { paths: ['sub', 'sub/x.py'], language: ['go'] }, scope).argv).toEqual([
+      'imports', '--language=go', '--', path.join(serverRoot, 'sub'), path.join(serverRoot, 'sub/x.py'),
     ]);
     expect(buildArgv(d, c, { 'no-ignore': true }, scope).argv).toEqual(['imports', '--no-ignore']);
     expect(buildArgv(d, c, { 'no-ignore': false }, scope).argv).toEqual(['imports']);
@@ -415,16 +415,16 @@ describe('parseMcpRequest', () => {
   const argv = (...a: string[]) => ['node', 'xray', ...a];
 
   it.each([
-    [['mcp'], {}],
-    [['--quiet', 'mcp', '--timeout', '5'], {}],
-    [['--log-level', 'warn', 'mcp'], {}],
-    [['-C', 'proj', 'mcp'], { chdir: 'proj', chdirIndex: 3 }],
-    [['--chdir=proj', 'mcp'], { chdir: 'proj', chdirIndex: 2 }],
+    [['serve', '--stdio'], {}],
+    [['--quiet', 'serve', '--stdio', '--timeout', '5s'], {}],
+    [['-c', 'cfg.json', 'serve', '--stdio'], {}],
+    [['-C', 'proj', 'serve', '--stdio'], { chdir: 'proj', chdirIndex: 3 }],
+    [['--chdir=proj', 'serve', '--stdio'], { chdir: 'proj', chdirIndex: 2 }],
   ])('detects %j', (a, want) => {
     expect(parseMcpRequest(argv(...a))).toEqual(want);
   });
 
-  it.each([[[]], [['explore', 'mcp']], [['-C', 'mcp', 'map']], [['--', 'mcp']], [['--config', 'mcp']]])(
+  it.each([[[]], [['serve']], [['serve', '--mcp']], [['explore', 'serve', '--stdio']], [['-C', 'serve', 'map']], [['--', 'serve', '--stdio']], [['--config', 'serve']]])(
     'ignores %j',
     (a) => {
       expect(parseMcpRequest(argv(...a))).toBeNull();

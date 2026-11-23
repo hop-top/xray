@@ -47,8 +47,8 @@ describe('JSON failures carry help in the envelope, not on stderr', () => {
   });
   afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  it('strategy info <unknown>: stderr is the envelope; names are alternatives', () => {
-    const r = run('strategy', 'info', 'nope', '--format', 'json');
+  it('strategy show <unknown>: stderr is the envelope; names are alternatives', () => {
+    const r = run('strategy', 'show', 'nope', '--format', 'json');
     expect(r.status).toBe(3);
     expect(r.stdout).toBe('');
     expect(r.stderr).not.toMatch(/Available strategies|Alias validation/);
@@ -57,8 +57,8 @@ describe('JSON failures carry help in the envelope, not on stderr', () => {
     expect(e.alternatives).toEqual(expect.arrayContaining(['react', 'build']));
   });
 
-  it('strategy info <unknown> in text mode still lists the strategies', () => {
-    const r = run('strategy', 'info', 'nope');
+  it('strategy show <unknown> in text mode still lists the strategies', () => {
+    const r = run('strategy', 'show', 'nope');
     expect(r.status).toBe(3);
     expect(r.stderr).toMatch(/Available strategies/);
     expect(r.stderr).toMatch(/- react/);

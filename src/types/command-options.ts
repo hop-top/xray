@@ -67,8 +67,11 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
   /** Token limit per chunk (default: 4096) */
   limit?: string | number;
 
-  /** Include features: vars, incs, cost, docs, df, cf (repeatable); df/cf: TypeScript only for now */
+  /** Include features: variables, imports, control-flow, data-flow, cost, docs, churn, blame (repeatable) */
   with?: string[];
+
+  /** Shorthand for --with control-flow,data-flow */
+  flow?: boolean;
 
   /** Focus on specific file (Personalized PageRank) */
   anchor?: string;
@@ -86,25 +89,13 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
   fallbackCtags?: boolean;
 
   /** Match function/class name (prefix ! to negate) (repeatable) */
+  symbol?: string[];
+
+  /** Internal/config alias for symbol */
   catch?: string[];
 
-  /** Output format: txt (default), csv, xml, json, mermaid */
+  /** Output format: txt (default), csv, xml, json */
   format?: string;
-
-  /** Alias of --format txt */
-  txt?: boolean;
-
-  /** Alias of --format csv */
-  csv?: boolean;
-
-  /** Alias of --format xml */
-  xml?: boolean;
-
-  /** Alias of --format json (raw JSON graph) */
-  json?: boolean;
-
-  /** Alias of --format mermaid (.mmd) */
-  mermaid?: boolean;
 
   /** Disable chunked output (single file output) */
   chunk?: boolean;
@@ -121,13 +112,16 @@ export interface CommonAnalysisOptions extends BaseCommandOptions {
   /** Named context (multi-root glob) from config file */
   context?: string;
 
-  /** Enable strategy detection */
+  /** Enable/disable strategy detection */
   detect?: boolean;
 
   /** Languages to parse (comma-separated names/bundles; repeatable). Overrides config `languages` */
+  language?: string[];
+
+  /** Legacy/programmatic alias for language */
   lang?: string[];
 
-  /** Skip strategy detection and auto-configuration */
+  /** Skip strategy detection and auto-configuration (internal normalized flag from --no-detect) */
   skipDetect?: boolean;
 
   /** Generate a shareable summary markdown (optional path override) */

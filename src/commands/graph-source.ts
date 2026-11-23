@@ -21,11 +21,12 @@ export interface GraphSourceOptions {
   lens?: string;
   scope?: string;
   context?: string;
+  language?: string[];
   lang?: string[];
   config?: string;
 }
 
-/** Add `--graph`, `-p/--path`, `--lens`, `--scope`, `--context`, `--lang` (the graph source flags). */
+/** Add `--graph`, `-p/--path`, `--lens`, `--scope`, `--context`, `--language` (the graph source flags). */
 export function addGraphSourceOptions(cmd: Command): Command {
   return cmd
     .option('--graph <file>', 'Read a saved graph (map --format json) instead of building one', graphFileArg)
@@ -34,7 +35,7 @@ export function addGraphSourceOptions(cmd: Command): Command {
     .option('--lens <name>', 'Use named lens (config-file option overlay)')
     .option('--scope <name>', 'Use specific scope from config file')
     .option('--context <name>', 'Use named context (multi-root glob) from config file')
-    .option('--lang <list>', 'Languages to parse, comma-separated names or bundles (repeatable)',
+    .option('--language <list>', 'Languages to parse, comma-separated names or bundles (repeatable)',
       (value: string, previous: string[]) => previous.concat(value.split(',').map(s => s.trim()).filter(Boolean)), []);
 }
 
@@ -69,7 +70,7 @@ export async function obtainGraph(options: GraphSourceOptions): Promise<Serializ
     }
     return readSerializedGraph(options.graph);
   }
-  const cli = { path: options.path ?? [], lens: options.lens, scope: options.scope, context: options.context, lang: options.lang ?? [], config: options.config };
+  const cli = { path: options.path ?? [], lens: options.lens, scope: options.scope, context: options.context, language: options.language ?? options.lang ?? [], config: options.config };
   // no output file is written: only scan roots and query files must stay in their project.
   const config = loadConfig(cli.config, cli.path[0], { resolvePaths: true, confine: confineFor(cli, false) });
   const { mergedOptions } = resolveRunOptions(cli, config);

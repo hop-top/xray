@@ -326,7 +326,7 @@ def extract_match_count(files: list):
 
 ### Example Graph Output (text)
 
-`xray graph --no-chunk -o graph.txt` writes one block per function with its
+`xray map --flow --no-chunk -o graph.txt` writes one block per function with its
 control-flow (`cfg`) and data-flow (`dfg`) nodes:
 
 ```
@@ -342,7 +342,7 @@ src/b.ts (L1):
 
 ### Parsing Graph Output
 
-For programmatic use, write JSON (`xray graph --format json --no-chunk -o graph.json`)
+For programmatic use, write JSON (`xray map --flow --format json --no-chunk -o graph.json`)
 and read `nodes` and `edges`.
 
 **Extract Relationships:**

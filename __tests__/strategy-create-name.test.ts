@@ -162,13 +162,13 @@ describe('strategy names and paths', () => {
     });
   });
 
-  describe('remove', () => {
+  describe('delete', () => {
     it('a traversal name removes nothing outside the strategies directory', () => {
       const dir = project();
       fs.mkdirSync(path.join(dir, '.xray/strategies'), { recursive: true });
       const victim = path.join(dir, '.xray/x.yml');
       fs.writeFileSync(victim, 'name: x\nversion: 0.1.0\n');
-      const r = run(dir, 'strategy', 'remove', 'a/../../x', '--confirm=yes');
+      const r = run(dir, 'strategy', 'delete', 'a/../../x', '--confirm=yes');
       expect(r.status).not.toBe(0);
       expect(fs.existsSync(victim)).toBe(true);
     });
@@ -178,7 +178,7 @@ describe('strategy names and paths', () => {
       fs.mkdirSync(path.join(dir, '.xray/strategies'), { recursive: true });
       const old = path.join(dir, '.xray/strategies/Old_Name.yml');
       fs.writeFileSync(old, 'name: Old_Name\nversion: 0.1.0\n');
-      const r = run(dir, 'strategy', 'remove', 'Old_Name', '--confirm=yes');
+      const r = run(dir, 'strategy', 'delete', 'Old_Name', '--confirm=yes');
       expect(r.status).toBe(0);
       expect(fs.existsSync(old)).toBe(false);
     });

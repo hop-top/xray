@@ -27,7 +27,7 @@ import { ToolArgumentError } from './tools';
 
 /** Global flags every child gets, ahead of the command path. */
 export const CHILD_FLAGS = [
-  '--no-telemetry', '--offline', '--no-color', '--no-hints', '--log-level', 'warn',
+  '--no-telemetry', '--offline', '--no-color', '--no-hints',
 ] as const;
 
 export interface ChildResult {
@@ -133,7 +133,7 @@ export function assertConfigPinned(serverConfig: string | null, dir: string): vo
 /** Spawn `node <entry> <CHILD_FLAGS> <argv>`; resolves with captured output. */
 export function runChild(argv: string[], o: RunOptions): Promise<ChildResult> {
   return new Promise((resolve, reject) => {
-    const env: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: '1' };
+    const env: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: '1', XRAY_LOG_LEVEL: 'warn' };
     delete env.FORCE_COLOR;
     const child = spawn(process.execPath, [o.entry, ...CHILD_FLAGS, ...(o.globalArgs ?? []), ...argv], {
       cwd: o.cwd,

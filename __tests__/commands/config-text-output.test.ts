@@ -16,8 +16,8 @@ describe('config text output', () => {
     ['list', 'Total: 2 file(s)'],
     ['keys', 'Total: 3 key(s)'],
     ['values', 'A = 1'],
-  ])('config %s: listing only', (sub, expected) => {
-    const r = p.run('config', sub);
+  ])('config-files %s: listing only', (sub, expected) => {
+    const r = p.run('config-files', sub);
     expect(r.status).toBe(0);
     expect(r.stdout).toContain(expected);
     expect(r.stdout).not.toMatch(/[{}]/);
@@ -25,16 +25,16 @@ describe('config text output', () => {
   });
 
   it('--format text behaves like the default', () => {
-    expect(p.run('config', 'list', '--format', 'text').stdout).not.toMatch(/[{}]/);
+    expect(p.run('config-files', 'list', '--format', 'text').stdout).not.toMatch(/[{}]/);
   });
 
   it('--format json still yields the data', () => {
-    expect(JSON.parse(p.run('config', 'list', '--format', 'json').stdout).count).toBe(2);
-    expect(JSON.parse(p.run('config', 'keys', '--format', 'json').stdout).count).toBe(3);
+    expect(JSON.parse(p.run('config-files', 'list', '--format', 'json').stdout).count).toBe(2);
+    expect(JSON.parse(p.run('config-files', 'keys', '--format', 'json').stdout).count).toBe(3);
   });
 });
 
-describe('config list ignores node_modules at any depth', () => {
+describe('config-files list ignores node_modules at any depth', () => {
   let p: CliProject;
   beforeAll(() => {
     p = createCliProject({
@@ -48,7 +48,7 @@ describe('config list ignores node_modules at any depth', () => {
   afterAll(() => p.cleanup());
 
   it('lists project files only', () => {
-    const doc = JSON.parse(p.run('config', 'list', '--format', 'json').stdout);
+    const doc = JSON.parse(p.run('config-files', 'list', '--format', 'json').stdout);
     expect(doc.files.sort()).toEqual(['config.json', 'sub/config.json']);
   });
 });

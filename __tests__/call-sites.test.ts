@@ -94,7 +94,7 @@ describe('call-site line numbers on calls edges', () => {
   });
 
   test('CLI impact and query render 1-based call-site lines across formats', () => {
-    const mapRes = run(['map', '-p', repo, '--skip-detect', '--format', 'json', '-o', graphFile], repo);
+    const mapRes = run(['map', '-p', repo, '--no-detect', '--format', 'json', '-o', graphFile], repo);
     expect(mapRes.status).toBe(0);
 
     // impact --format text

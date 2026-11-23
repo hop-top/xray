@@ -490,7 +490,7 @@ require (
         const metadata = await strategy.analyze(path.join(tempDir, relPath), ctx);
         ctx.setFileMetadata(relPath, 'package-manager', metadata.metadata);
 
-        const result = await strategy.commands!['list-dependencies'].handler(ctx);
+        const result = await strategy.commands!['deps'].handler(ctx);
 
         expect(result.packageManagers).toContain('npm');
         expect(result.files).toHaveLength(1);

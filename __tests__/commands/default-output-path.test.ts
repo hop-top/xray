@@ -45,90 +45,82 @@ describe('default output path (no -o)', () => {
   });
   afterEach(() => fs.rmSync(sandbox, { recursive: true, force: true }));
 
-  const cmds: Array<['map' | 'graph', 'maps' | 'graphs']> = [
-    ['map', 'maps'],
-    ['graph', 'graphs'],
+  const modes: Array<[string, string[]]> = [
+    ['map', ['map']],
+    ['map --flow', ['map', '--flow']],
   ];
 
-  describe.each(cmds)('%s', (cmd, subdir) => {
+  describe.each(modes)('%s', (label, baseCmd) => {
     it.each([
-      ['json', `${cmd}.json`],
-      ['xml', `${cmd}.xml`],
-      ['mermaid', `${cmd}.mmd`],
-    ])('--format %s writes .xray/%s/%s and leaves no root .xray* dotfiles', (format, file) => {
-      const r = run([cmd, '--format', format]);
+      ['json', 'map.json'],
+      ['xml', 'map.xml'],
+    ])('--format %s writes .xray/maps/%s and leaves no root .xray* dotfiles', (format, file) => {
+      const r = run([...baseCmd, '--format', format]);
       expect(r.stderr).not.toMatch(/FileWriteError/);
       expect(r.status).toBe(0);
       expect(rootDotfiles()).toEqual([]);
       expect(fs.existsSync(path.join(proj, '.xray', 'detected-strategies.json'))).toBe(false);
-      const outPath = path.join(proj, '.xray', subdir, file);
+      const outPath = path.join(proj, '.xray', 'maps', file);
       const body = fs.readFileSync(outPath, 'utf-8');
       if (format === 'json') {
         const g = JSON.parse(body);
         expect(Array.isArray(g.nodes)).toBe(true);
         expect(Array.isArray(g.edges)).toBe(true);
-      } else if (format === 'xml') {
-        expect(body).toMatch(/^<\?xml|^<graph|<node/m);
       } else {
-        expect(body).toMatch(/^flowchart LR\n/);
+        expect(body).toMatch(/^<\?xml|^<graph|<node/m);
       }
     });
 
-    it('--format csv writes .xray/maps/map.{nodes,edges}.csv (graph: usage error, flow has no csv form)', () => {
-      const r = run([cmd, '--format', 'csv']);
-      if (cmd === 'graph') {
+    it('--format csv writes .xray/maps/map.{nodes,edges}.csv (--flow: usage error, flow has no csv form)', () => {
+      const r = run([...baseCmd, '--format', 'csv']);
+      if (label === 'map --flow') {
         expect(r.status).toBe(2);
         expect(rootNames().filter(n => n.startsWith('.xray'))).toEqual([]);
         return;
       }
       expect(r.status).toBe(0);
       expect(rootDotfiles()).toEqual([]);
-      expect(fs.readdirSync(path.join(proj, '.xray', subdir))).toEqual(
-        expect.arrayContaining([`${cmd}.nodes.csv`, `${cmd}.edges.csv`])
+      expect(fs.readdirSync(path.join(proj, '.xray', 'maps'))).toEqual(
+        expect.arrayContaining(['map.nodes.csv', 'map.edges.csv'])
       );
     });
 
-    it(`--skip-detect --format json writes .xray/${subdir}/${cmd}.json and no root dotfiles`, () => {
-      const r = run([cmd, '--skip-detect', '--format', 'json']);
+    it('--no-detect --format json writes .xray/maps/map.json and no root dotfiles', () => {
+      const r = run([...baseCmd, '--no-detect', '--format', 'json']);
       expect(r.status).toBe(0);
       expect(rootDotfiles()).toEqual([]);
-      JSON.parse(fs.readFileSync(path.join(proj, '.xray', subdir, `${cmd}.json`), 'utf-8'));
+      JSON.parse(fs.readFileSync(path.join(proj, '.xray', 'maps', 'map.json'), 'utf-8'));
     });
 
-    it(`--no-chunk (text) writes .xray/${subdir}/${cmd}.txt and leaves no root dotfiles`, () => {
-      const r = run([cmd, '--no-chunk']);
+    it('--no-chunk (text) writes .xray/maps/map.txt and leaves no root dotfiles', () => {
+      const r = run([...baseCmd, '--no-chunk']);
       expect(r.stderr).not.toMatch(/FileWriteError/);
       expect(r.status).toBe(0);
       expect(rootDotfiles()).toEqual([]);
-      expect(fs.readFileSync(path.join(proj, '.xray', subdir, `${cmd}.txt`), 'utf-8')).toContain('a.ts');
+      expect(fs.readFileSync(path.join(proj, '.xray', 'maps', 'map.txt'), 'utf-8')).toContain('a.ts');
     });
 
-    it(`chunked text default writes .xray/${subdir}/${cmd}_root.md`, () => {
-      const r = run([cmd]);
+    it('chunked text default writes .xray/maps/map_root.md', () => {
+      const r = run([...baseCmd]);
       expect(r.status).toBe(0);
       expect(rootDotfiles()).toEqual([]);
-      expect(fs.readdirSync(path.join(proj, '.xray', subdir))).toContain(`${cmd}_root.md`);
+      expect(fs.readdirSync(path.join(proj, '.xray', 'maps'))).toContain('map_root.md');
     });
 
-    it(`--share defaults into .xray/${subdir}/${cmd}.share.md`, () => {
-      const r = run([cmd, '--share', '--no-chunk']);
+    it('--share defaults into .xray/maps/map.share.md', () => {
+      const r = run([...baseCmd, '--share', '--no-chunk']);
       expect(r.status).toBe(0);
       expect(rootDotfiles()).toEqual([]);
-      expect(fs.existsSync(path.join(proj, '.xray', subdir, `${cmd}.share.md`))).toBe(true);
+      expect(fs.existsSync(path.join(proj, '.xray', 'maps', 'map.share.md'))).toBe(true);
     });
   });
 
-  it('map and graph coexist under .xray/{maps,graphs}/ without clobbering each other', () => {
+  it('json and chunked map outputs coexist under .xray/maps/ without clobbering each other', () => {
     expect(run(['map', '--format', 'json']).status).toBe(0);
     expect(run(['map']).status).toBe(0);
-    expect(run(['graph', '--format', 'json']).status).toBe(0);
-    expect(run(['graph']).status).toBe(0);
     expect(rootDotfiles()).toEqual([]);
     expect(fs.readdirSync(path.join(proj, '.xray', 'maps'))).toEqual(
       expect.arrayContaining(['map.json', 'map_root.md'])
-    );
-    expect(fs.readdirSync(path.join(proj, '.xray', 'graphs'))).toEqual(
-      expect.arrayContaining(['graph.json', 'graph_root.md'])
     );
   });
 

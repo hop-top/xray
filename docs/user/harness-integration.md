@@ -25,7 +25,7 @@ event.
 | Way | What it is | Setup | Reliability | Token cost |
 |---|---|---|---|---|
 | **Instructions** | Tell the agent xray exists: the [Claude Code skill](../../skills/xray-cli/SKILL.md), a project [`AGENTS.md`](../../AGENTS.md), or a [system prompt template](../agent/prompts/system-prompts.md) | Copy a file | Agent must remember to call xray; it often reaches for `grep` first | Instructions only, until the agent runs a command |
-| **Pull (MCP)** | `xray mcp` serves map / search / query / impact as MCP tools ([MCP server](mcp.md)) | One client config entry | Agent must decide to call the tool | Tool list per session, then what it asks for |
+| **Pull (MCP)** | `xray serve --stdio` serves map / search / query / impact as MCP tools ([MCP server](mcp.md)) | One client config entry | Agent must decide to call the tool | Tool list per session, then what it asks for |
 | **Push (hooks)** | Harness hooks run xray on an event and put the answer in the model's context ([below](#events-and-commands)) | Two hook entries + `jq` | Fires whether or not the agent thinks of xray | ≤ ~1300 chars per new symbol, nothing otherwise |
 
 They stack: instructions and MCP let the agent ask; hooks answer the
@@ -216,7 +216,7 @@ Use instructions plus MCP:
 - **MCP:** register the server (writes `~/.codex/config.toml`):
 
 ```sh
-codex mcp add xray -- xray -C /path/to/project mcp
+codex mcp add xray -- xray -C /path/to/project serve --stdio
 ```
 
 ```toml
@@ -293,9 +293,9 @@ puts text into your agent's context. Hooks run with your user's
 permissions and only run `xray`, `git`, `jq` and standard POSIX utilities.
 
 Hook and subprocess runs never record telemetry: xray turns it off when
-stdout is not a TTY, for machine-readable formats and for `xray mcp`,
+stdout is not a TTY, for machine-readable formats and for `xray serve --stdio`,
 even if you once consented. See
-[Telemetry](telemetry.md#when-telemetry-is-off); `xray describe` lists the
+[Telemetry](telemetry.md#when-telemetry-is-off); `xray spec` lists the
 rules under `telemetry`.
 
 ## Troubleshooting

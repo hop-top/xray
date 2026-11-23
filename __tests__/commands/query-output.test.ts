@@ -33,7 +33,7 @@ describe('xray query prints results', () => {
     );
     execFileSync('git', ['init', '-q'], { cwd: repo, stdio: 'pipe' });
     graphFile = path.join(outDir, 'graph.json');
-    const r = run(['map', '-p', repo, '--skip-detect', '--format', 'json', '-o', graphFile]);
+    const r = run(['map', '-p', repo, '--no-detect', '--format', 'json', '-o', graphFile]);
     expect(r.status).toBe(0);
   });
   afterAll(() => {

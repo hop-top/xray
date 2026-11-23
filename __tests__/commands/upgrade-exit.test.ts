@@ -19,7 +19,7 @@ let tmp: string;
 function run(stub: Record<string, string>) {
   const started = Date.now();
   // No --offline: the check runs. --no-telemetry keeps consent out of it.
-  const r = spawnSync(process.execPath, ['--require', STUB, ENTRY, '--no-telemetry', 'paths'], {
+  const r = spawnSync(process.execPath, ['--require', STUB, ENTRY, '--no-telemetry', 'config', 'paths'], {
     cwd: tmp,
     env: {
       PATH: process.env.PATH,
@@ -55,7 +55,7 @@ describe('upgrade notice and exit timing', () => {
   // Baseline: the same command with no check, for a fair comparison.
   const baseline = () => {
     const started = Date.now();
-    const r = spawnSync(process.execPath, [ENTRY, '--no-telemetry', '--offline', 'paths'], {
+    const r = spawnSync(process.execPath, [ENTRY, '--no-telemetry', '--offline', 'config', 'paths'], {
       cwd: tmp,
       env: { PATH: process.env.PATH, TMPDIR: tmp, HOME: tmp, XRAY_NO_TELEMETRY: '1', NO_COLOR: '1' },
       encoding: 'utf-8',

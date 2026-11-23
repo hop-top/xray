@@ -13,7 +13,7 @@ import {
 import { getLanguageConfig } from '../../src/lib/parser/language-registry';
 import { isMachineFormat } from '../../src/lib/output-format';
 
-const HINT = 'found 2 .kt, 1 .swift files without installed grammars — install with: xray lang add kotlin swift';
+const HINT = 'found 2 .kt, 1 .swift files without installed grammars — install with: xray language add kotlin swift';
 
 function stderr() {
   const lines: string[] = [];
@@ -88,7 +88,7 @@ describe('reportSkippedLanguages', () => {
     getLanguageConfig('.kt', 'A.kt');
     const lines = stderr();
     reportSkippedLanguages();
-    expect(lines).toEqual([expect.stringContaining('found 1 .kt file without an installed grammar — install with: xray lang add kotlin')]);
+    expect(lines).toEqual([expect.stringContaining('found 1 .kt file without an installed grammar — install with: xray language add kotlin')]);
   });
 
   it('resets after reporting', () => {

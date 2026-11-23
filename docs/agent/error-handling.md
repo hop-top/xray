@@ -67,7 +67,7 @@ log lines may precede it).
 
 Branch on `code` or `exit_code`, never on `message`. Usage errors (bad flag,
 surplus argument, unknown command) use the same object with `code` `USAGE`.
-`xray describe` lists the shape under `errors`. Without a JSON request,
+`xray spec` lists the shape under `errors`. Without a JSON request,
 errors stay a `✖ <message>` line on stderr.
 
 ## Error Handling Decision Tree
@@ -246,7 +246,7 @@ Error: Command timed out after 30 seconds
      TO: xray map --match "*.ts" --match "!*.test.ts"
 
    Option D: Use simpler command
-     FROM: xray graph
+     FROM: xray map --flow
      TO: xray map
      FROM: xray map --with incs --with vars --with docs
      TO: xray map

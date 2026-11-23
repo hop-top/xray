@@ -46,10 +46,10 @@ xray alias set api "rest-api endpoints"
 ### Remove Alias
 
 ```bash
-xray alias remove <name>
+xray alias delete <name>
 
 # Example
-xray alias remove comp
+xray alias delete comp
 ```
 
 ## Configuration File

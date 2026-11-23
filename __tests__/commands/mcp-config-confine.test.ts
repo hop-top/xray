@@ -16,7 +16,7 @@ const BIN = path.join(ROOT, 'bin', 'xray');
 type Msg = { id?: number; result?: any; error?: unknown };
 
 function startServer(cwd: string, env: NodeJS.ProcessEnv) {
-  const proc = spawn(process.execPath, [BIN, 'mcp'], { cwd, env, stdio: 'pipe' });
+  const proc = spawn(process.execPath, [BIN, 'serve', '--stdio'], { cwd, env, stdio: 'pipe' });
   let buf = '';
   let id = 1;
   const waiters = new Map<number, (m: Msg) => void>();
@@ -96,15 +96,15 @@ describe('xray mcp: server-root config cannot reach outside the root', () => {
 
   it('config output outside the root writes nothing there', async () => {
     await serve({ output: '../cfgout/evil.sh' });
-    const r = await server.call('map', { 'skip-detect': true, 'no-chunk': true });
+    const r = await server.call('map', { 'no-detect': true, 'no-chunk': true });
     expect(r.result.isError).toBe(false);
     expect(text(r)).toContain('insideMarker');
     expect(fs.readdirSync(cfgout)).toEqual([]);
   }, 120_000);
 
-  it.each(['map', 'graph'])('%s: config paths outside the root are refused, not analyzed', async (tool) => {
+  it('map: config paths outside the root are refused, not analyzed', async () => {
     await serve({ paths: [outside] });
-    const r = await server.call(tool, { 'skip-detect': true, 'no-chunk': true });
+    const r = await server.call('map', { 'no-detect': true, 'no-chunk': true });
     expect(r.result.isError).toBe(true);
     expect(text(r)).toContain('outside the project');
     expect(text(r)).not.toContain('outsideSecret');
@@ -119,7 +119,7 @@ describe('xray mcp: server-root config cannot reach outside the root', () => {
 
   it('a call argument still cannot name a path outside the root', async () => {
     await serve({ paths: [outside] });
-    const r = await server.call('map', { path: [outside], 'skip-detect': true });
+    const r = await server.call('map', { path: [outside], 'no-detect': true });
     expect(r.result.isError).toBe(true);
     expect(text(r)).toContain('outside the server root');
     expect(text(r)).not.toContain('outsideSecret');
@@ -127,7 +127,7 @@ describe('xray mcp: server-root config cannot reach outside the root', () => {
 
   it('config inside the root works as before', async () => {
     await serve({ paths: ['src'], output: 'out.txt' });
-    const r = await server.call('map', { 'skip-detect': true, 'no-chunk': true });
+    const r = await server.call('map', { 'no-detect': true, 'no-chunk': true });
     expect(r.result.isError).toBe(false);
     expect(text(r)).toContain('insideMarker');
     expect(fs.existsSync(path.join(proj, 'out.txt'))).toBe(false);

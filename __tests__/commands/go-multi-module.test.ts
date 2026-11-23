@@ -20,7 +20,7 @@ const write = (rel: string, body: string) => {
 
 function graph() {
   const out = path.join(outDir, `g-${Math.random().toString(36).slice(2)}.json`);
-  const r = spawnSync(process.execPath, [BIN, 'map', '--skip-detect', '-p', repo, '--format', 'json', '-o', out], {
+  const r = spawnSync(process.execPath, [BIN, 'map', '--no-detect', '-p', repo, '--format', 'json', '-o', out], {
     cwd: outDir,
     encoding: 'utf-8',
     env: { ...process.env, XRAY_NO_TELEMETRY: '1', FORCE_COLOR: '0' },
