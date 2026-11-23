@@ -186,7 +186,7 @@ Renders analysis results in various formats with support for both single-file an
 **Components:**
 - `src/lib/renderer/map-renderer.ts` - Single-file tree-structured output
 - `src/lib/renderer/chunked-renderer.ts` - Multi-file chunked output (default, directory or Louvain `community` grouping)
-- Mermaid exporter (`xray diagram`, `map --format mermaid`)
+- Mermaid exporter (`xray diagram`)
 
 **Output Formats:**
 - **Text**: Tree-structured output (default)

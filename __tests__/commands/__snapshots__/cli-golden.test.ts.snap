@@ -1099,11 +1099,11 @@ FLAGS:
                                       with --format json|csv|xml all roots merge
                                       into one graph) [default: current
                                       directory] (default: [])
-  -o, --output <path>                 Output file path, or - for stdout (one
-                                      document; not csv) [default: .xray,
-                                      auto-appends format extension if no
-                                      extension given; csv writes
-                                      <out>.nodes.csv and <out>.edges.csv]
+  -o, --output <path>                 Output file path [default:
+                                      .xray/graphs/graph, auto-appends format
+                                      extension if no extension given; csv
+                                      writes <out>.nodes.csv and
+                                      <out>.edges.csv]
   -l, --limit <number>                Token limit per chunk [default: 4096]
   -w, --with <feature>                Include feature: vars, incs, cost, docs,
                                       df, cf, churn, blame (repeatable); cf and
@@ -1540,10 +1540,11 @@ FLAGS:
                                       into one graph) [default: current
                                       directory] (default: [])
   -o, --output <path>                 Output file path, or - for stdout (one
-                                      document; not csv) [default: .xray,
-                                      auto-appends format extension if no
-                                      extension given; csv writes
-                                      <out>.nodes.csv and <out>.edges.csv]
+                                      document; not csv) [default:
+                                      .xray/maps/map, auto-appends format
+                                      extension if no extension given; csv
+                                      writes <out>.nodes.csv and
+                                      <out>.edges.csv]
   -l, --limit <number>                Token limit per chunk [default: 4096]
   -w, --with <feature>                Include feature: vars, incs, cost, docs,
                                       df, cf, churn, blame (repeatable) [df, cf:
@@ -2632,10 +2633,11 @@ FLAGS:
                                       into one graph) [default: current
                                       directory] (default: [])
   -o, --output <path>                 Output file path, or - for stdout (one
-                                      document; not csv) [default: .xray,
-                                      auto-appends format extension if no
-                                      extension given; csv writes
-                                      <out>.nodes.csv and <out>.edges.csv]
+                                      document; not csv) [default:
+                                      .xray/maps/map, auto-appends format
+                                      extension if no extension given; csv
+                                      writes <out>.nodes.csv and
+                                      <out>.edges.csv]
   -l, --limit <number>                Token limit per chunk [default: 4096]
   -w, --with <feature>                Include feature: vars, incs, cost, docs,
                                       df, cf, churn, blame (repeatable) [df, cf:
@@ -4124,7 +4126,7 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": null,
-          "description": "Output file path, or - for stdout (one document; not csv) [default: .xray, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]"
+          "description": "Output file path, or - for stdout (one document; not csv) [default: .xray/maps/map, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]"
         },
         {
           "name": "--limit",
@@ -4429,7 +4431,7 @@ exports[`cli golden: introspection describe 1`] = `
           "type": "string",
           "required": false,
           "default": null,
-          "description": "Output file path, or - for stdout (one document; not csv) [default: .xray, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]"
+          "description": "Output file path [default: .xray/graphs/graph, auto-appends format extension if no extension given; csv writes <out>.nodes.csv and <out>.edges.csv]"
         },
         {
           "name": "--limit",

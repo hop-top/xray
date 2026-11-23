@@ -88,9 +88,9 @@ function buildSampleGraph(): XrayGraph {
     rank: 0.4,
   });
 
-  g.addEdge('src/auth/token.ts', 'src/auth/token.ts:signToken', { type: 'defines' });
-  g.addEdge('src/crypto/hash.ts', 'src/crypto/hash.ts:hashSecret', { type: 'defines' });
-  g.addEdge('src/crypto/hash.ts', 'src/crypto/hash.ts:maybeHelper', { type: 'defines' });
+  g.addEdge('src/auth/token.ts', 'src/auth/token.ts:signToken', { type: 'defines', confidence: Confidence.EXTRACTED });
+  g.addEdge('src/crypto/hash.ts', 'src/crypto/hash.ts:hashSecret', { type: 'defines', confidence: Confidence.EXTRACTED });
+  g.addEdge('src/crypto/hash.ts', 'src/crypto/hash.ts:maybeHelper', { type: 'defines', confidence: Confidence.EXTRACTED });
   g.addEdge('src/auth/token.ts', 'src/crypto/hash.ts', {
     type: 'imports',
     confidence: Confidence.EXTRACTED,
