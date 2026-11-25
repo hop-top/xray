@@ -297,3 +297,77 @@ describe('buildShareSummary', () => {
     expect(summary).toContain(`@file:src/index.ts:1@${shortSha}`);
   });
 });
+
+describe('MarkdownStrategy orphans and refs resolution', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'xray-md-orphans-')));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('follows bare relative links, table links, anchor links, and absolute analyze() paths without false orphans', async () => {
+    writeFiles(tmpDir, {
+      'SKILL.md': [
+        '# Skill',
+        '',
+        '| Binary | Router |',
+        '|---|---|',
+        '| `ctxt` | [references/ctxt.md](references/ctxt.md) |',
+        '| `dpkms` | [`references/dpkms.md`](references/dpkms.md#overview) |',
+      ].join('\n'),
+      'references/ctxt.md': [
+        '# ctxt',
+        '',
+        'Back to [SKILL](../SKILL.md).',
+        '',
+        '| Objective | Command | Reference |',
+        '|---|---|---|',
+        '| Capture | `ctxt capture` | [ctxt/capture.md](ctxt/capture.md) |',
+        '| Search | `ctxt find` | [ctxt/find.md](./ctxt/find.md#flags) |',
+      ].join('\n'),
+      'references/dpkms.md': [
+        '# dpkms',
+        '',
+        '| Command | Ref |',
+        '|---|---|',
+        '| `dpkms serve` | [serve](dpkms/serve.md?plain=1#top) |',
+      ].join('\n'),
+      'references/ctxt/capture.md': '# Capture\n',
+      'references/ctxt/find.md': '# Find\n',
+      'references/dpkms/serve.md': '# Serve\n',
+      'references/orphan.md': '# Orphan\n\nSelf link: [self](orphan.md)\n',
+    });
+
+    const docs = [
+      'SKILL.md',
+      'references/ctxt.md',
+      'references/dpkms.md',
+      'references/ctxt/capture.md',
+      'references/ctxt/find.md',
+      'references/dpkms/serve.md',
+      'references/orphan.md',
+    ];
+
+    // Mirror the CLI strategy runner: pass absolute paths to analyze(), store under relative keys.
+    const strategy = new MarkdownStrategy();
+    const ctx = new StrategyContextImpl(tmpDir);
+    for (const rel of docs) {
+      const res = await strategy.analyze(path.join(tmpDir, rel), ctx);
+      ctx.setFileMetadata(rel, strategy.name, res.metadata);
+    }
+
+    const orphansResult = await strategy.commands!.orphans.handler(ctx);
+    expect(orphansResult.orphans).toEqual(['references/orphan.md']);
+    expect(orphansResult.count).toBe(1);
+
+    const refsOutput = await strategy.commands!.refs.handler(ctx);
+    expect(refsOutput).toContain('references/ctxt/capture.md');
+    expect(refsOutput).toContain('references/ctxt/find.md');
+    expect(refsOutput).toContain('references/dpkms/serve.md');
+    expect(refsOutput).toContain('SKILL.md');
+  });
+});

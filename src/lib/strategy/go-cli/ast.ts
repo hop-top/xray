@@ -215,7 +215,9 @@ export function extractFile(
 
   const processed = new Map<number, string>();
   let seq = 0;
-  const flagAliases = new Map<string, { target: Ref; persistent: boolean }>();
+  const flagAliases = new Map<string, { targets: Ref[]; persistent: boolean }>();
+  const cmdSlices = new Map<string, Ref[]>();
+  const loopTargets = new Map<string, Ref[]>();
 
   const litBody = (n: any): any =>
     n.type === 'literal_value' ? n : n.childForFieldName?.('body') || n.namedChildren.find((c: any) => c.type === 'literal_value');
@@ -375,16 +377,53 @@ export function extractFile(
     return id;
   }
 
+  const targetsOf = (raw: any, scope: string): Ref[] => {
+    const n = unwrap(raw);
+    if (!n) return [];
+    if (n.type === 'identifier') {
+      const expanded = loopTargets.get(`${scope}#${n.text}`);
+      if (expanded && expanded.length > 0) return expanded;
+    }
+    const r = refOf(raw, scope);
+    return r ? [r] : [];
+  };
+
+  const extractCmdSlice = (raw: any, scope: string): Ref[] | null => {
+    const n = unwrap(raw);
+    if (!n) return null;
+    if (n.type === 'identifier') {
+      return cmdSlices.get(`${scope}#${n.text}`) ?? cmdSlices.get(`#${n.text}`) ?? null;
+    }
+    if (n.type !== 'composite_literal') return null;
+    const t = n.childForFieldName('type');
+    if (!t || (t.type !== 'slice_type' && t.type !== 'array_type')) return null;
+    let elem = t.childForFieldName?.('element') ?? t.namedChildren[t.namedChildren.length - 1];
+    while (elem && elem.type === 'pointer_type') {
+      elem = elem.namedChildren[0];
+    }
+    if (!elem || elem.type !== 'qualified_type') return null;
+    if (!frameworkOf(elem.namedChildren[0]?.text, elem.namedChildren[1]?.text)) return null;
+    const body = litBody(n);
+    if (!body) return null;
+    const refs: Ref[] = [];
+    for (const el of body.namedChildren) {
+      const inner = el.type === 'literal_element' ? el.namedChildren[0] : el;
+      const r = refOf(inner, scope);
+      if (r) refs.push(r);
+    }
+    return refs.length > 0 ? refs : null;
+  };
+
   /** Flag receiver: X.Flags() / X.PersistentFlags() / alias variable. */
-  const flagReceiver = (operand: any, scope: string): { target: Ref; persistent: boolean } | null => {
+  const flagReceiver = (operand: any, scope: string): { targets: Ref[]; persistent: boolean } | null => {
     if (operand.type === 'identifier') return flagAliases.get(`${scope}#${operand.text}`) ?? null;
     if (operand.type === 'call_expression') {
       const fn = operand.childForFieldName('function');
       if (fn?.type !== 'selector_expression') return null;
       const m = fn.childForFieldName('field')?.text;
       if (m !== 'Flags' && m !== 'PersistentFlags') return null;
-      const target = refOf(fn.childForFieldName('operand'), scope);
-      return target ? { target, persistent: m === 'PersistentFlags' } : null;
+      const targets = targetsOf(fn.childForFieldName('operand'), scope);
+      return targets.length > 0 ? { targets, persistent: m === 'PersistentFlags' } : null;
     }
     return null;
   };
@@ -429,11 +468,15 @@ export function extractFile(
     const operand = fn.childForFieldName('operand');
     const args = n.childForFieldName('arguments')?.namedChildren ?? [];
     if (method === 'AddCommand' && operand) {
-      const parent = refOf(operand, scope);
-      if (!parent) return;
+      const parents = targetsOf(operand, scope);
+      if (parents.length === 0) return;
       for (const a of args) {
-        const child = refOf(a, scope);
-        if (child) defs.adds.push({ parent, child });
+        const children = targetsOf(a, scope);
+        for (const parent of parents) {
+          for (const child of children) {
+            defs.adds.push({ parent, child });
+          }
+        }
       }
       return;
     }
@@ -441,7 +484,62 @@ export function extractFile(
       const recv = flagReceiver(operand, scope);
       if (!recv) return;
       const flag = parseFlagCall(method, args);
-      if (flag) defs.flagAttach.push({ target: recv.target, flag: { ...flag, persistent: recv.persistent || undefined } });
+      if (flag) {
+        for (const target of recv.targets) {
+          defs.flagAttach.push({ target, flag: { ...flag, persistent: recv.persistent || undefined } });
+        }
+      }
+      return;
+    }
+    // Kit helper registrations: RegisterPathSubcommands / RegisterSetFlag / RegisterTextFlag
+    if (operand?.type === 'identifier') {
+      const imp = defs.imports[operand.text] || '';
+      if (imp.includes('hop.top/kit')) {
+        if (method === 'RegisterPathSubcommands' && args.length >= 1) {
+          const parents = targetsOf(args[0], scope);
+          const tool = args[1] ? evalString(args[1], consts) : undefined;
+          const line = n.startPosition.row + 1;
+          const label = tool ? `${tool} ` : '';
+          const specs: Array<{ name: string; short: string }> = [
+            { name: 'path', short: `Print the highest-precedence existing ${label}config file` },
+            { name: 'paths', short: `Print the full ${label}config resolution chain` },
+          ];
+          for (const parent of parents) {
+            for (const spec of specs) {
+              const id = `${rel}#${seq++}`;
+              defs.cmds.push({
+                id,
+                framework: 'cobra',
+                file: rel,
+                line,
+                name: spec.name,
+                short: spec.short,
+                flags: [{ name: 'from', type: 'string', description: 'Resolve from this directory instead of os.Getwd()' }],
+                children: [],
+                boundNames: [],
+              });
+              defs.adds.push({ parent, child: { id } });
+            }
+          }
+          return;
+        }
+        if ((method === 'RegisterSetFlag' || method === 'RegisterTextFlag') && args.length >= 2) {
+          const targets = targetsOf(args[0], scope);
+          const flagName = evalString(args[1], consts);
+          const usage = args[2] ? evalString(args[2], consts) : undefined;
+          if (flagName && targets.length > 0) {
+            const flag: CliFlag = {
+              name: flagName,
+              type: method === 'RegisterSetFlag' ? 'stringSlice' : 'string',
+              ...(usage ? { description: usage } : {}),
+            };
+            for (const target of targets) {
+              defs.flagAttach.push({ target, flag });
+            }
+          }
+          return;
+        }
+      }
     }
   };
 
@@ -457,6 +555,11 @@ export function extractFile(
           flagAliases.set(`${scope}#${nm.text}`, recv);
           return;
         }
+      }
+      const sliceRefs = extractCmdSlice(u, scope);
+      if (sliceRefs) {
+        cmdSlices.set(`${scope}#${nm.text}`, sliceRefs);
+        return;
       }
       const r = refOf(u, scope);
       if (r) {
@@ -494,6 +597,32 @@ export function extractFile(
           if (r) {
             defs.returns.push({ func: scope, to: r });
             if (r.id) defs.cmds.find(c => c.id === r.id)?.boundNames.push(scope);
+          }
+        }
+        break;
+      }
+      case 'for_statement': {
+        const rangeClause = n.namedChildren.find((c: any) => c.type === 'range_clause');
+        if (rangeClause) {
+          const left = rangeClause.childForFieldName?.('left') ?? rangeClause.namedChildren[0];
+          const right = rangeClause.childForFieldName?.('right') ?? rangeClause.namedChildren[1];
+          const valNode = left?.type === 'expression_list' && left.namedChildren.length >= 2 ? left.namedChildren[1] : null;
+          if (valNode?.type === 'identifier' && valNode.text !== '_') {
+            const refs = extractCmdSlice(right, scope);
+            if (refs && refs.length > 0) {
+              const key = `${scope}#${valNode.text}`;
+              const prev = loopTargets.get(key);
+              loopTargets.set(key, refs);
+              try {
+                for (const c of n.namedChildren) {
+                  if (c !== rangeClause) visit(c, scope);
+                }
+              } finally {
+                if (prev) loopTargets.set(key, prev);
+                else loopTargets.delete(key);
+              }
+              return;
+            }
           }
         }
         break;

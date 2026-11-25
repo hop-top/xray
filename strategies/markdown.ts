@@ -43,6 +43,21 @@ function countFileLines(content: string): number {
   return content.endsWith('\n') ? parts.length - 1 : parts.length;
 }
 
+const MARKDOWN_EXT_RE = /\.(md|mdx|markdown)$/i;
+
+/** Resolve a markdown link target to a project-relative POSIX path (and optional anchor). */
+function resolveProjectRelativeLink(
+  rawTarget: string,
+  docFile: string,
+  projectRoot: string
+): { relPath: string; anchor?: string } | null {
+  const absDoc = path.isAbsolute(docFile) ? docFile : path.resolve(projectRoot, docFile);
+  const res = resolveLinkTarget(rawTarget, absDoc, projectRoot);
+  if (res.kind !== 'file') return null;
+  const relPath = path.relative(projectRoot, res.path).split(path.sep).join('/');
+  return res.anchor !== undefined ? { relPath, anchor: res.anchor } : { relPath };
+}
+
 export default class MarkdownStrategy implements Strategy {
   name = 'markdown';
   description = 'Analyze markdown docs: TOC, cross-references, orphans, coverage, broken links';
@@ -89,27 +104,16 @@ export default class MarkdownStrategy implements Strategy {
     };
 
     for (const { text, target: url } of parsed.links) {
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        continue;
-      }
+      const resolved = resolveProjectRelativeLink(url, absolutePath, projectRoot);
+      if (!resolved) continue;
 
-      if (url.startsWith('./') || url.startsWith('../')) {
-        const fileDir = path.dirname(file);
-        const resolved = path.normalize(path.join(fileDir, url));
-        metadata.links.push({
-          text,
-          url: resolved,
-          original: url,
-          file,
-        });
-      } else if (!url.startsWith('#')) {
-        metadata.links.push({
-          text,
-          url,
-          original: url,
-          file,
-        });
-      }
+      metadata.links.push({
+        text,
+        url: resolved.relPath,
+        original: url,
+        ...(resolved.anchor !== undefined ? { anchor: resolved.anchor } : {}),
+        file,
+      });
     }
 
     for (const ref of parsed.codeRefs) {
@@ -191,6 +195,7 @@ export default class MarkdownStrategy implements Strategy {
     'refs': {
       description: 'Show cross-references between markdown files',
       async handler(ctx: StrategyContext): Promise<any> {
+        const projectRoot = ctx.getProjectRoot();
         const files = await ctx.findFiles({ extension: '.md' });
         const graph = new Map<string, string[]>();
 
@@ -199,8 +204,8 @@ export default class MarkdownStrategy implements Strategy {
           if (!metadata?.links) continue;
 
           const targets = metadata.links
-            .filter((link: any) => link.url.endsWith('.md'))
-            .map((link: any) => link.url);
+            .map((link: any) => resolveProjectRelativeLink(link.original ?? link.url, file, projectRoot)?.relPath)
+            .filter((rel: string | undefined): rel is string => !!rel && MARKDOWN_EXT_RE.test(rel));
 
           if (targets.length > 0) {
             graph.set(file, targets);
@@ -225,23 +230,27 @@ export default class MarkdownStrategy implements Strategy {
     'orphans': {
       description: 'Find markdown files with no incoming links',
       async handler(ctx: StrategyContext): Promise<any> {
+        const projectRoot = ctx.getProjectRoot();
         const files = await ctx.findFiles({ extension: '.md' });
         const linkedFiles = new Set<string>();
 
-        // Collect all linked files
+        // Collect all linked files (excluding self-links)
         for (const file of files) {
           const metadata = ctx.getMetadata(file, 'markdown');
           if (!metadata?.links) continue;
+          const selfRel = file.split(path.sep).join('/');
 
-          metadata.links.forEach((link: any) => {
-            if (link.url.endsWith('.md')) {
-              linkedFiles.add(link.url);
+          for (const link of metadata.links) {
+            const resolved = resolveProjectRelativeLink(link.original ?? link.url, file, projectRoot);
+            if (!resolved) continue;
+            if (MARKDOWN_EXT_RE.test(resolved.relPath) && resolved.relPath !== selfRel) {
+              linkedFiles.add(resolved.relPath);
             }
-          });
+          }
         }
 
         // Find orphans
-        const orphans = files.filter(f => !linkedFiles.has(f));
+        const orphans = files.filter(f => !linkedFiles.has(f.split(path.sep).join('/')));
 
         return {
           orphans,
