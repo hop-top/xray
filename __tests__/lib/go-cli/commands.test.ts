@@ -141,6 +141,57 @@ describe('AST extraction', () => {
     expect(m.tags).toEqual([]);
     expect(m.metadata!.astSkipped).toBeDefined();
   });
+
+  it('cobra: extracts loop-registered flags, loop AddCommand, and kitconfigcli.RegisterPathSubcommands', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-loops-'));
+    try {
+      fs.writeFileSync(path.join(dir, 'go.mod'), 'module example.com/demo\n\ngo 1.26\n\nrequire github.com/spf13/cobra v1.10.0\n');
+      fs.mkdirSync(path.join(dir, 'cmd'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'cmd', 'root.go'), [
+        'package cmd',
+        'import (',
+        '  "github.com/spf13/cobra"',
+        '  kitconfigcli "hop.top/kit/go/console/cli/config"',
+        ')',
+        'var rootCmd = &cobra.Command{Use: "demo"}',
+        'var auditCmd = &cobra.Command{Use: "audit"}',
+        'var auditListCmd = &cobra.Command{Use: "list"}',
+        'var auditExportCmd = &cobra.Command{Use: "export"}',
+        'var configCmd = &cobra.Command{Use: "config"}',
+        'func init() {',
+        '  rootCmd.AddCommand(auditCmd, configCmd)',
+        '  subs := []*cobra.Command{auditListCmd, auditExportCmd}',
+        '  for _, sub := range subs {',
+        '    auditCmd.AddCommand(sub)',
+        '    f := sub.Flags()',
+        '    f.Int("limit", 100, "max entries")',
+        '  }',
+        '  for _, c := range []*cobra.Command{auditListCmd, auditExportCmd} {',
+        '    c.Flags().String("actor", "", "filter by actor")',
+        '  }',
+        '  kitconfigcli.RegisterPathSubcommands(configCmd, "demo")',
+        '}',
+      ].join('\n'));
+
+      const out = JSON.parse(await run(new GoCliStrategy(), dir, { format: 'json' }));
+      expect(paths(out)).toEqual([
+        'demo',
+        'demo audit',
+        'demo audit export',
+        'demo audit list',
+        'demo config',
+        'demo config path',
+        'demo config paths',
+      ]);
+      const byPath = (p: string) => out.commands.find((c: any) => c.path.join(' ') === p);
+      expect(byPath('demo audit list').flags.map((f: any) => f.name)).toEqual(['actor', 'limit']);
+      expect(byPath('demo audit export').flags.map((f: any) => f.name)).toEqual(['actor', 'limit']);
+      expect(byPath('demo config path').flags.map((f: any) => f.name)).toEqual(['from']);
+      expect(byPath('demo config paths').flags.map((f: any) => f.name)).toEqual(['from']);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('execution is opt-in (trust model)', () => {
