@@ -88,6 +88,8 @@ export interface FileDefs {
   returns: Array<{ func: string; to: Ref }>;
   adds: Array<{ parent: Ref; child: Ref }>;
   flagAttach: Array<{ target: Ref; flag: CliFlag }>;
+  cmdParams: Array<{ func: string; paramIndex: number; paramName: string }>;
+  helperCalls: Array<{ func: string; qualifier?: string; args: Ref[][]; scope: string }>;
   consts: Record<string, string>;
   /** kit cli.Config{Name: ...} values (root command is created inside kit). */
   toolNames: string[];
@@ -185,6 +187,8 @@ export function extractFile(
     returns: [],
     adds: [],
     flagAttach: [],
+    cmdParams: [],
+    helperCalls: [],
     consts: {},
     toolNames: [],
   };
@@ -463,10 +467,20 @@ export function extractFile(
 
   const handleCall = (n: any, scope: string) => {
     const fn = n.childForFieldName('function');
-    if (!fn || fn.type !== 'selector_expression') return;
+    if (!fn) return;
+    const args = n.childForFieldName('arguments')?.namedChildren ?? [];
+    if (fn.type === 'identifier') {
+      if (args.length > 0) {
+        const mapped = args.map((a: any) => targetsOf(a, scope));
+        if (mapped.some((m: Ref[]) => m.length > 0)) {
+          defs.helperCalls.push({ func: fn.text, args: mapped, scope });
+        }
+      }
+      return;
+    }
+    if (fn.type !== 'selector_expression') return;
     const method = fn.childForFieldName('field')?.text ?? '';
     const operand = fn.childForFieldName('operand');
-    const args = n.childForFieldName('arguments')?.namedChildren ?? [];
     if (method === 'AddCommand' && operand) {
       const parents = targetsOf(operand, scope);
       if (parents.length === 0) return;
@@ -540,6 +554,13 @@ export function extractFile(
           return;
         }
       }
+      // Record package-qualified helper calls that pass command refs (e.g. pkg.AddFlags(cmd)).
+      if (args.length > 0) {
+        const mapped = args.map((a: any) => targetsOf(a, scope));
+        if (mapped.some((m: Ref[]) => m.length > 0)) {
+          defs.helperCalls.push({ func: method, qualifier: operand.text, args: mapped, scope });
+        }
+      }
     }
   };
 
@@ -574,6 +595,31 @@ export function extractFile(
       case 'function_declaration':
       case 'method_declaration': {
         const nm = n.childForFieldName('name')?.text ?? '';
+        const paramsNode = n.childForFieldName('parameters');
+        if (nm && paramsNode) {
+          let pIdx = 0;
+          for (const decl of paramsNode.namedChildren) {
+            if (decl.type !== 'parameter_declaration') continue;
+            const ids = decl.namedChildren.filter((c: any) => c.type === 'identifier');
+            let typeNode = decl.childForFieldName?.('type') ?? decl.namedChildren[decl.namedChildren.length - 1];
+            while (typeNode && typeNode.type === 'pointer_type') {
+              typeNode = typeNode.namedChildren[0];
+            }
+            const isCobraCmd =
+              typeNode?.type === 'qualified_type' &&
+              frameworkOf(typeNode.namedChildren[0]?.text, typeNode.namedChildren[1]?.text) === 'cobra';
+            if (ids.length === 0) {
+              pIdx++;
+            } else {
+              for (const idNode of ids) {
+                if (isCobraCmd) {
+                  defs.cmdParams.push({ func: nm, paramIndex: pIdx, paramName: idNode.text });
+                }
+                pIdx++;
+              }
+            }
+          }
+        }
         for (const c of n.namedChildren) visit(c, nm);
         return;
       }
@@ -808,6 +854,38 @@ export function buildReport(allDefs: FileDefs[], fallbackTool: string): Commands
     for (const fa of d.flagAttach) {
       const t = resolveOrRoot(fa.target, d);
       if (t) cmds.get(t)?.flags.push(fa.flag);
+    }
+  }
+
+  // Propagate flags registered inside helper functions taking *cobra.Command parameters.
+  const helperFlags = new Map<string, Array<{ paramIndex: number; flag: CliFlag }>>();
+  for (const d of allDefs) {
+    if (d.cmdParams.length === 0) continue;
+    const paramIndexByKey = new Map<string, number>();
+    for (const cp of d.cmdParams) {
+      paramIndexByKey.set(`${cp.func}#${cp.paramName}`, cp.paramIndex);
+    }
+    for (const fa of d.flagAttach) {
+      if (fa.target.id || fa.target.qualifier || fa.target.call || !fa.target.scope || !fa.target.name) continue;
+      const idx = paramIndexByKey.get(`${fa.target.scope}#${fa.target.name}`);
+      if (idx === undefined) continue;
+      const hk = `${d.dir}#${fa.target.scope}`;
+      helperFlags.set(hk, [...(helperFlags.get(hk) ?? []), { paramIndex: idx, flag: fa.flag }]);
+    }
+  }
+  for (const d of allDefs) {
+    for (const hc of d.helperCalls) {
+      const searchDirs = hc.qualifier ? dirsMatching(d, hc.qualifier) : [d.dir];
+      for (const dir of searchDirs) {
+        const entries = helperFlags.get(`${dir}#${hc.func}`);
+        if (!entries) continue;
+        for (const { paramIndex, flag } of entries) {
+          for (const argRef of hc.args[paramIndex] ?? []) {
+            const t = resolveOrRoot(argRef, d);
+            if (t) cmds.get(t)?.flags.push(flag);
+          }
+        }
+      }
     }
   }
 
