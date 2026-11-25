@@ -192,6 +192,43 @@ describe('AST extraction', () => {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('cobra: attaches flags registered via same-package helper functions taking *cobra.Command', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gocli-helper-flags-'));
+    try {
+      fs.writeFileSync(path.join(dir, 'go.mod'), 'module example.com/demo\n\ngo 1.26\n\nrequire github.com/spf13/cobra v1.10.0\n');
+      fs.mkdirSync(path.join(dir, 'cmd'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'cmd', 'helpers.go'), [
+        'package cmd',
+        'import "github.com/spf13/cobra"',
+        'func addTagFlag(cmd *cobra.Command) {',
+        '  cmd.Flags().StringArray("tagged", nil, "tag filter")',
+        '}',
+        'func addGraphFlags(cmd *cobra.Command) {',
+        '  f := cmd.Flags()',
+        '  f.Bool("graph", false, "render graph")',
+        '  f.Bool("no-browser", false, "do not open browser")',
+        '}',
+      ].join('\n'));
+      fs.writeFileSync(path.join(dir, 'cmd', 'find.go'), [
+        'package cmd',
+        'import "github.com/spf13/cobra"',
+        'var rootCmd = &cobra.Command{Use: "demo"}',
+        'var findCmd = &cobra.Command{Use: "find"}',
+        'func init() {',
+        '  rootCmd.AddCommand(findCmd)',
+        '  addTagFlag(findCmd)',
+        '  addGraphFlags(findCmd)',
+        '}',
+      ].join('\n'));
+
+      const out = JSON.parse(await run(new GoCliStrategy(), dir, { format: 'json' }));
+      const find = out.commands.find((c: any) => c.path.join(' ') === 'demo find');
+      expect(find.flags.map((f: any) => f.name)).toEqual(['graph', 'no-browser', 'tagged']);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('execution is opt-in (trust model)', () => {
