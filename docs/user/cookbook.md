@@ -757,7 +757,7 @@ Mermaid viewer.
 - **Pick functions with `--symbol`, one pattern per flag.** Repeat the flag
   for several functions: `--symbol NewServer --symbol Handle`. A
   pipe-separated pattern (`--symbol 'A|B'`) matches nothing: xray exits 0 with
-  an empty diagram that says `no CFG data found`. A pattern also matches
+  an empty diagram that says `no function with CFG data matched pattern(s): A|B`. A pattern also matches
   longer names that contain it. `--symbol` works without `--anchor`, and
   `--anchor <file>` does not restrict it to that file. Do not use `-c`: it is
   the global `--config` flag, so xray reads the function name as a config path,

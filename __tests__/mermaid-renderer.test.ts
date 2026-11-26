@@ -183,6 +183,32 @@ describe('mermaid-renderer', () => {
     expect(bfs).not.toContain('fn_3');
   });
 
+  test.each([
+    ['cfg', 'CFG'],
+    ['dfg', 'DFG'],
+  ] as const)('%s view names the patterns when flow data exists but --symbol matches no function', (view, label) => {
+    const g = buildSampleGraph();
+    const mmd = renderMermaid(g, { view, catch: ['A|B', 'nope'] });
+    expect(mmd).toContain(`no function with ${label} data matched pattern(s): A|B, nope`);
+    expect(mmd).not.toContain('--flow');
+    expect(mmd).not.toContain(`no ${label} data found`);
+  });
+
+  test.each([
+    ['cfg', 'CFG', 'control-flow'],
+    ['dfg', 'DFG', 'data-flow'],
+  ] as const)('%s view keeps the re-parse hint when the graph has no flow data', (view, label, withName) => {
+    const g = buildSampleGraph();
+    g.forEachNode((id: string) => {
+      g.removeNodeAttribute(id, 'cfg');
+      g.removeNodeAttribute(id, 'dfg');
+    });
+    const noPattern = renderMermaid(g, { view });
+    expect(noPattern).toContain(`no ${label} data found (run with --flow or --with ${withName})`);
+    const withPattern = renderMermaid(g, { view, catch: ['signToken'] });
+    expect(withPattern).toContain(`no ${label} data found (run with --flow or --with ${withName})`);
+  });
+
   test('cfg and dfg views render intra-procedural graphs for functions matched by --catch / --anchor', () => {
     const g = buildSampleGraph();
 
