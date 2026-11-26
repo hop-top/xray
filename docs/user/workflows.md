@@ -99,6 +99,8 @@ xray express routes >> ONBOARDING.md
 
 Share with teammates joining the project.
 
+To get diagrams (architecture, calls, control flow, data flow) and a full-detail codemap from one parse, see [Cookbook: Parse Once, Emit Every View](cookbook.md#recipe-parse-once-emit-every-view).
+
 ---
 
 ## Workflow: Debugging a Complex Issue

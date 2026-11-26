@@ -33,7 +33,26 @@ On a first map, `--preset onboarding` appends clusters and suggested questions.
 
 ## Many questions, one graph
 
-Build once with `xray map --format json -o .xray/graphs/graph.json`, then pass `--graph .xray/graphs/graph.json` to `impact` and `query`.
+Build once with `xray map --format json -o .xray/graphs/graph.json`, then pass `--graph .xray/graphs/graph.json` to `impact`, `query` and `diagram`. Never re-parse per view.
+
+## Explain a repo: codemap, flow, diagrams
+
+Parse once, emit every view. Write to a scratch dir (`OUT=$(mktemp -d)`): default `map` output lands in `.xray/` inside the repo.
+
+```bash
+xray -C <repo> map --match '!*_test.go' -w incs -w cf -w df --format json -o $OUT/graph.json
+xray -C <repo> map --match '!*_test.go' -w incs -w cf -w df --no-chunk -l 1000000 -o $OUT/codemap.txt
+xray -C <repo> diagram --graph $OUT/graph.json --view architecture -o $OUT/architecture.mmd
+xray -C <repo> diagram --graph $OUT/graph.json --view calls --anchor <entrypoint> --depth 2 --max-nodes 50 -o $OUT/calls.mmd
+xray -C <repo> diagram --graph $OUT/graph.json --view cfg --symbol <fn> -o $OUT/cfg.mmd
+xray -C <repo> diagram --graph $OUT/graph.json --view dfg --symbol <fn> -o $OUT/dfg.mmd
+xray -C <repo> handbook -o $OUT/handbook
+```
+
+- `cfg`/`dfg` need a graph saved with `-w cf -w df`. One `--symbol <fn>` per function; `--symbol 'A|B'` matches nothing (empty diagram, exit 0).
+- `-c` is `--config`, not a function filter.
+- `--no-chunk` stops at `-l` (default 4096 tokens): raise it or only the top file is inline.
+- `-o name` gets the format extension (`graph.json`); `handbook -o` is a directory and parses on its own.
 
 ## Gotchas
 

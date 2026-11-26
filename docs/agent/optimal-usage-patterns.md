@@ -200,6 +200,23 @@ Turn 4: xray map --path ./src (after modification)
 - Files changed outside of current context
 - Seeing inconsistent results
 
+### Pattern: Parse Once, Render Many
+
+When a task needs several views of one repo (codemap, call graph, CFG/DFG diagrams), save the graph once and pass it to every later call.
+
+```bash
+xray -C <repo> map -w incs -w cf -w df --format json -o "$OUT/graph.json"
+xray -C <repo> diagram --graph "$OUT/graph.json" --view architecture -o "$OUT/architecture.mmd"
+xray -C <repo> diagram --graph "$OUT/graph.json" --view cfg --symbol <fn> -o "$OUT/cfg.mmd"
+```
+
+**Do:**
+- Reuse `--graph` (also accepted by `query` and `impact`); a diagram from a saved graph skips parsing entirely.
+- One `--symbol` per function; `-c` is `--config`, not a function filter.
+- Write to a scratch `$OUT`, not the explored repo.
+
+Full steps: [Understanding a New Codebase](workflows/codebase-understanding.md#fast-path-parse-once-emit-all-views).
+
 ### Pattern: Selective Feature Inclusion
 
 Only use --with flags when necessary.
