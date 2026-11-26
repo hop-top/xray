@@ -283,7 +283,7 @@ xray -C <repo> diagram --graph "$OUT/graph.json" --view dfg --symbol <fn> -o "$O
 
 **Rules:**
 - `cfg` and `dfg` views need a graph saved with `-w cf -w df`.
-- Select functions with one `--symbol <name>` per function. Pipe-separated patterns match nothing: exit 0, empty diagram, `no CFG data found`.
+- Select functions with one `--symbol <name>` per function. Pipe-separated patterns match nothing: exit 0, empty diagram, `no function with CFG data matched pattern(s): ...`.
 - Never pass `-c <fn>`: `-c` is `--config`; the name is read as a config path and the diagram shows the wrong functions.
 - Raise `-l` with `--no-chunk`, or the text codemap stops at the default 4096-token limit.
 - Send all output to `$OUT` (or `-o`). Default `map` output lands in `.xray/` inside the repo.

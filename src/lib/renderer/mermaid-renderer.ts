@@ -462,24 +462,39 @@ function selectFlowFunctions(
   nodes: NormNode[],
   kind: 'cfg' | 'dfg',
   opts: MermaidRenderOptions
-): NormNode[] {
+): { fns: NormNode[]; hasFlow: boolean } {
   const withFlow = nodes.filter((n) => (kind === 'cfg' ? Boolean(n.cfg) : Boolean(n.dfg)));
   let matched = filterByCatch(withFlow, opts.catch);
   if (opts.anchor && opts.anchor.trim()) {
     const anchored = findAnchorSeeds(matched, opts.anchor.trim(), opts.root);
     if (anchored.length > 0) matched = anchored;
   }
-  return matched.sort((a, b) => b.rank - a.rank || a.id.localeCompare(b.id));
+  const fns = matched.sort((a, b) => b.rank - a.rank || a.id.localeCompare(b.id));
+  return { fns, hasFlow: withFlow.length > 0 };
+}
+
+/** Comment line for an empty cfg/dfg view; separates "graph lacks flow data" from "no function matched". */
+function emptyFlowMessage(
+  kind: 'cfg' | 'dfg',
+  hasFlow: boolean,
+  patterns: string[] | undefined
+): string {
+  const label = kind === 'cfg' ? 'CFG' : 'DFG';
+  const shown = (patterns ?? []).filter(Boolean);
+  if (hasFlow && shown.length > 0) {
+    const list = shown.map((p) => p.replace(/[\r\n]+/g, ' ')).join(', ');
+    return `flowchart TD\n  %% no function with ${label} data matched pattern(s): ${list}\n`;
+  }
+  const withName = kind === 'cfg' ? 'control-flow' : 'data-flow';
+  return `flowchart TD\n  %% no ${label} data found (run with --flow or --with ${withName})\n`;
 }
 
 function renderCfg(nodes: NormNode[], opts: MermaidRenderOptions): string {
   const sanitizeId = createIdSanitizer();
   const maxNodes = typeof opts.maxNodes === 'number' && opts.maxNodes > 0 ? Math.floor(opts.maxNodes) : DEFAULT_MAX_NODES;
-  const fns = selectFlowFunctions(nodes, 'cfg', opts);
+  const { fns, hasFlow } = selectFlowFunctions(nodes, 'cfg', opts);
 
-  if (fns.length === 0) {
-    return 'flowchart TD\n  %% no CFG data found (run with --flow or --with control-flow)\n';
-  }
+  if (fns.length === 0) return emptyFlowMessage('cfg', hasFlow, opts.catch);
 
   const lines: string[] = ['flowchart TD'];
   let totalRendered = 0;
@@ -529,11 +544,9 @@ function renderCfg(nodes: NormNode[], opts: MermaidRenderOptions): string {
 function renderDfg(nodes: NormNode[], opts: MermaidRenderOptions): string {
   const sanitizeId = createIdSanitizer();
   const maxNodes = typeof opts.maxNodes === 'number' && opts.maxNodes > 0 ? Math.floor(opts.maxNodes) : DEFAULT_MAX_NODES;
-  const fns = selectFlowFunctions(nodes, 'dfg', opts);
+  const { fns, hasFlow } = selectFlowFunctions(nodes, 'dfg', opts);
 
-  if (fns.length === 0) {
-    return 'flowchart TD\n  %% no DFG data found (run with --flow or --with data-flow)\n';
-  }
+  if (fns.length === 0) return emptyFlowMessage('dfg', hasFlow, opts.catch);
 
   const lines: string[] = ['flowchart TD'];
   let totalRendered = 0;
