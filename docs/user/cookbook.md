@@ -13,6 +13,7 @@ Copy, paste, adapt these practical solutions for common tasks.
 7. [Onboarding: Teaching Someone Your Project](#recipe-onboarding---teaching-someone-your-project)
 8. [Documentation: Auto-Generating API Specs](#recipe-documentation---auto-generating-api-specs)
 9. [Agent Sessions: Callers on Every Grep](#recipe-agent-sessions---callers-on-every-grep)
+10. [Parse Once, Emit Every View](#recipe-parse-once-emit-every-view)
 
 ---
 
@@ -707,6 +708,73 @@ xray impact <symbol> --graph .xray/graph.json --format brief --quiet
 Setup per harness (Claude Code, nerv, Gemini CLI, Codex, Cursor):
 [Harness Integration Guide](harness-integration.md). Real output and
 limits: [Use case: impact analysis](use-cases.md#use-case-impact-analysis).
+
+---
+
+## Recipe: Parse Once, Emit Every View
+
+**Scenario:** you need to explain how an unfamiliar repo works (structure,
+control flow, data flow, diagrams, CLI surface) and do not want to re-parse
+it for each view.
+
+Parse once into a saved graph, then render every view from that file. The
+examples use a Go repo; `-C <repo>` points xray at it and `$OUT` is a scratch
+directory outside the repo.
+
+```bash
+OUT=$(mktemp -d)
+
+# 1. Parse once: imports + control flow + data flow, tests excluded
+xray -C <repo> map --match '!*_test.go' -w incs -w cf -w df \
+  --format json -o "$OUT/graph.json"
+
+# 2. One-file text codemap with inline CFG + DFG and external dependencies
+xray -C <repo> map --match '!*_test.go' -w incs -w cf -w df \
+  --no-chunk -l 1000000 -o "$OUT/codemap.txt"
+
+# 3. Mermaid diagrams from the saved graph (no re-parse)
+xray -C <repo> diagram --graph "$OUT/graph.json" --view architecture -o "$OUT/architecture.mmd"
+xray -C <repo> diagram --graph "$OUT/graph.json" --view calls \
+  --anchor <entrypoint> --depth 2 --max-nodes 50 -o "$OUT/calls.mmd"
+xray -C <repo> diagram --graph "$OUT/graph.json" --view cfg \
+  --symbol <fn> -o "$OUT/cfg.mmd"
+xray -C <repo> diagram --graph "$OUT/graph.json" --view dfg \
+  --symbol <fn> -o "$OUT/dfg.mmd"
+
+# 4. Optional: framework surface and subsystem handbook
+xray -C <repo> go-cli commands          # or react / express / rest-api
+xray -C <repo> handbook -o "$OUT/handbook"
+```
+
+Read `codemap.txt` first for the overview, then open the `.mmd` files in any
+Mermaid viewer.
+
+**Things to know:**
+
+- **Reuse `--graph`.** `diagram --graph graph.json` reads the saved file and
+  skips parsing; building the graph again per view is the slow path. The graph
+  must have been saved with `-w cf -w df` for the `cfg` and `dfg` views.
+- **Pick functions with `--symbol`, one pattern per flag.** Repeat the flag
+  for several functions: `--symbol NewServer --symbol Handle`. A
+  pipe-separated pattern (`--symbol 'A|B'`) matches nothing: xray exits 0 with
+  an empty diagram that says `no CFG data found`. A pattern also matches
+  longer names that contain it. `--symbol` works without `--anchor`, and
+  `--anchor <file>` does not restrict it to that file. Do not use `-c`: it is
+  the global `--config` flag, so xray reads the function name as a config path,
+  warns `Config file not found` and draws the anchor file's functions instead
+  of yours.
+- **Raise `-l` for the single-file codemap.** `--no-chunk` still stops at the
+  token limit (default 4096), which keeps only the top-ranked file inline.
+- **`-o <name>` gets the format extension** (`-o graph` writes `graph.json`);
+  an explicit `.json` or `.txt` is kept. For `handbook`, `-o` is a directory.
+- **Keep the repo clean.** Without `-o`, `map` writes under `.xray/` in the
+  repo root, which shows up as untracked unless the repo ignores it. Send
+  every output to a scratch directory.
+- **Handbook parses on its own.** It takes no `--graph` and has no `--match`,
+  so test files are included.
+
+See also: [`xray diagram`](commands.md#xray-diagram),
+[`xray handbook`](commands.md#xray-handbook).
 
 ---
 

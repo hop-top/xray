@@ -267,6 +267,30 @@ src/components/UserProfile.tsx:
 - Layering/architecture patterns
 - Integration points
 
+## Fast Path: Parse Once, Emit All Views
+
+**Use when:** you must explain how a repo works (flow, diagrams, CLI surface) and will ask for several views. Parse once with `map --format json`; render every diagram from that file with `--graph`. Do not re-parse per view.
+
+```bash
+OUT=$(mktemp -d)   # scratch dir outside the repo
+xray -C <repo> map --match '!*_test.go' -w incs -w cf -w df --format json -o "$OUT/graph.json"
+xray -C <repo> map --match '!*_test.go' -w incs -w cf -w df --no-chunk -l 1000000 -o "$OUT/codemap.txt"
+xray -C <repo> diagram --graph "$OUT/graph.json" --view architecture -o "$OUT/architecture.mmd"
+xray -C <repo> diagram --graph "$OUT/graph.json" --view calls --anchor <entrypoint> --depth 2 --max-nodes 50 -o "$OUT/calls.mmd"
+xray -C <repo> diagram --graph "$OUT/graph.json" --view cfg --symbol <fn> -o "$OUT/cfg.mmd"
+xray -C <repo> diagram --graph "$OUT/graph.json" --view dfg --symbol <fn> -o "$OUT/dfg.mmd"
+```
+
+**Rules:**
+- `cfg` and `dfg` views need a graph saved with `-w cf -w df`.
+- Select functions with one `--symbol <name>` per function. Pipe-separated patterns match nothing: exit 0, empty diagram, `no CFG data found`.
+- Never pass `-c <fn>`: `-c` is `--config`; the name is read as a config path and the diagram shows the wrong functions.
+- Raise `-l` with `--no-chunk`, or the text codemap stops at the default 4096-token limit.
+- Send all output to `$OUT` (or `-o`). Default `map` output lands in `.xray/` inside the repo.
+- Read `codemap.txt` before the `.mmd` files. `handbook -o "$OUT/handbook"` parses on its own (no `--graph`).
+
+Full recipe and notes: [Cookbook: Parse Once, Emit Every View](../../user/cookbook.md#recipe-parse-once-emit-every-view).
+
 ## Validation: Have You Succeeded?
 
 You've successfully understood the codebase when you can:
